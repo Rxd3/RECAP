@@ -1,7 +1,8 @@
 # Contract test plans
 
-These three Python files contain only descriptions and TODOs. No functional
-tests have been implemented or passed; pytest currently has no tests to collect.
+Member 5's evaluation tests are implemented: `test_evaluation_*.py` and
+`test_evaluate_models_cli.py`, with shared fixtures in `eval_fixtures.py`. The
+other contract files still contain only descriptions and TODOs.
 
 - Member 1: records, labels, IDs, policy edge cases and fixed split integrity.
 - Member 6 with Members 2–3: adapters, gold-free inputs, alignment and persistence.

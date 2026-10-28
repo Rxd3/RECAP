@@ -1,7 +1,9 @@
-# Evaluation protocol — planned v1
+# Evaluation protocol — v1
 
-Owner: Member 5. Reviewers: Members 1–4 and 6. This document specifies future
-behavior; no evaluation calculations or results exist yet.
+Owner: Member 5. Reviewers: Members 1–4 and 6. The core of this protocol is
+implemented in `src/punct_restore/evaluation/` and `scripts/evaluate_models.py`
+(2026-10-29). Bootstrap intervals, the runtime table and error-example export
+are still planned. No results are recorded in this document.
 
 ## Data discipline and alignment
 
@@ -50,9 +52,56 @@ Project both gold and predicted joint labels to the first component for the
 standard four-class punctuation metrics above (excluding O for the primary).
 Project to the second component for casing accuracy, three-class macro F1,
 per-case precision/recall/F1 and a casing confusion matrix. Apply the same
-zero-division convention. Report casing on all validated tokens; any subset
-analysis must define its support. Case-only or separate-model experiments must
-declare how punctuation and casing outputs are combined.
+zero-division convention. Primary casing and joint metrics exclude the token
+positions listed in the release's casing masks (see below); punctuation at those
+positions is still scored. All-token casing is reported as the secondary
+`casing/all` block. Any other subset analysis must define its support.
+Case-only or separate-model experiments must declare how punctuation and casing
+outputs are combined.
+
+## Scored sets, masks, views and the shortcut baseline
+
+**Scored set.**
+- The `.ids` list defines which records are scored: `primary_eval/<split>_mode_<M>.ids` for primary results, the full split or `leakage_controlled/*.ids` for supplementary ones.
+- Predictions must cover every scored ID.
+- A prediction ID that is not in the gold file is an error.
+- Prediction IDs that are in the gold file but outside the list are ignored and counted (`ignored_prediction_ids`), so one prediction file can be scored on several lists.
+- The mode C lists are subsets of the mode A lists, so A-versus-C punctuation comparisons are scored on the mode C IDs.
+
+**Casing masks.** Each line of `masks/case_joint/<split>.jsonl` is
+`{"sample_id", "excluded_positions", "reason"}`, one line per released record.
+Masks are required when scoring mode C and rejected for modes A and B.
+
+**Views.** These show how much of a score comes from dataset shortcuts.
+- Every released utterance ends in PERIOD or QUESTION, and 45.8–56.0% of PERIOD labels are utterance-final.
+- `punctuation/non_final` repeats the punctuation metrics without each sequence's last position.
+- `casing/unmasked_non_initial` repeats the casing metrics without position 0.
+
+**Report blocks (the first is primary):**
+
+| Mode | Blocks |
+| --- | --- |
+| A, B | `punctuation/all`, `punctuation/non_final` |
+| C | `joint/unmasked`, `punctuation/all`, `punctuation/non_final`, `casing/unmasked`, `casing/unmasked_non_initial`, `casing/all` |
+
+**Shortcut baseline (`shortcut_baseline`).** This is a reference row, not a model. It reads tokens only.
+- Every position gets O, except the last.
+- The last position gets QUESTION if the first token is a wh-word or an auxiliary (lists in `evaluation/baseline.py`), otherwise PERIOD.
+- In mode C, casing is FIRST_UPPER at position 0 and LOWER elsewhere.
+
+**Running.** All commands are run from the repository root.
+
+```text
+python scripts/evaluate_models.py baseline --gold <processed>/mode_A/validation.jsonl \
+    --ids <splits>/primary_eval/validation_mode_A.ids --out results/predictions/shortcut_A_validation.jsonl
+python scripts/evaluate_models.py score --gold <processed>/mode_C/validation.jsonl \
+    --ids <splits>/primary_eval/validation_mode_C.ids --predictions <model predictions>.jsonl \
+    --masks <processed>/masks/case_joint/validation.jsonl --out results/tables/<run_id>.json
+```
+
+- `score` writes `<run_id>.json`, with schema `recap-eval-v1` and the SHA-256 of every input, plus a `<run_id>.md` summary.
+- Existing outputs are never overwritten, and folders are never created.
+- Invalid input exits with code 1 and a one-line message naming the file and the line or `sample_id`.
 
 ## Comparability across modes and conditions
 
