@@ -1,4 +1,4 @@
-"""Punctuation/truecasing scaffold; integration coordinated by Member 6.
+"""RECAP punctuation/truecasing scaffold; integration coordinated by Member 6.
 
 Responsibility: future shared sequence-labeling package, currently unfinished.
 """

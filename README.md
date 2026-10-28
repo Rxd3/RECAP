@@ -1,4 +1,6 @@
-# Extended Punctuation and Truecasing Restoration
+# RECAP
+
+**Restoring English Casing and Punctuation**
 
 **COE025 — Natural Language Processing | Group Project 2 — Sequence Labeling**
 
@@ -10,6 +12,8 @@ trained model, inference command, or evaluation calculation is implemented yet.
 Restore punctuation and capitalization in unformatted English text, including a
 future evaluation on speech-recognition transcripts. Each word receives a label
 for the punctuation boundary **after** it and a casing label for the word itself.
+
+Repository: [Rxd3/RECAP](https://github.com/Rxd3/RECAP) (private).
 
 Project 1, [NALTRA](https://github.com/Rxd3/NALTRA/), classified whole documents.
 Project 2 predicts aligned token sequences in a separate repository. We retain
@@ -143,12 +147,13 @@ tests. Structural verification is recorded in [initial verification](docs/INITIA
 Use `main` for reviewed integration and each member's branch for development.
 All six member branches start at the same scaffolding commit. Open focused PRs
 into `main`; discuss shared interface changes with affected owners first.
-Never force-push another member's work. The repository has no remote configured
-by this setup, and nothing has been pushed. Publishing is a separate action.
+Never force-push another member's work. The Project 2 remote is
+`https://github.com/Rxd3/RECAP.git`; `main` and all six member branches are
+published there. Team members need collaborator access to this private repository.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the daily checklist and
 [Git workflow](docs/GIT_WORKFLOW.md) for clone, branch, commit, push, PR, and
-conflict commands using a future Project 2 remote.
+conflict commands using the Project 2 remote.
 
 ## Roadmap and current status
 

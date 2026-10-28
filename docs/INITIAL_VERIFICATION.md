@@ -1,6 +1,9 @@
 # Initial verification — 2026-10-28
 
-This records scaffold checks only, not model/feature/evaluation test results.
+This records the original local scaffold checks, before the later RECAP naming
+and user-authorized repository publication. It is not a record of
+model/feature/evaluation test results. Current remote/clone instructions are in
+[GIT_WORKFLOW.md](GIT_WORKFLOW.md).
 
 Observed inventory: 67 scaffold files, 24 Python placeholders, 3 YAML configs,
 6 discoverable Python packages and 45 resolved local documentation links.
@@ -36,8 +39,8 @@ for syntax/configuration inspection; no packages were installed.
 - [x] Created all six feature branches from that same commit; left `main` checked out.
 - [x] Verified a clean working tree, no configured remote and no pushes.
 
-The exact commit can be retrieved with `git rev-parse main`; it is not embedded
-here to avoid a self-referential commit hash. Branch names are in
+The original scaffold commit can be retrieved with
+`git rev-list --max-parents=0 main`. Branch names are in
 [GIT_WORKFLOW.md](GIT_WORKFLOW.md). No Git operation was unavailable during setup.
 
 ## Unresolved implementation work
@@ -47,4 +50,4 @@ split compatibility/leakage, B→A approval, CRF feature agreement, trained mode
 real metrics and end-to-end inference are pending. See the decision register and
 team board. Runtime dependency compatibility and an experiment lock are not yet
 established. The test modules are plans only; no functional model tests were run
-or claimed. Publication awaits a separately authorized Project 2 remote.
+or claimed. The subsequent repository publication does not implement these tasks.

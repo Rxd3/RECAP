@@ -11,19 +11,19 @@
 | 5 | `feat/m5-evaluation` |
 | 6 | `feat/m6-integration-presentation` |
 
-All six start at the same initial scaffolding commit. The local setup leaves
-`main` checked out. No remote is configured or pushed by scaffolding. The URL
-below is a placeholder for the future **Project 2** repository, never NALTRA.
+All six share the initial scaffolding commit and the subsequent RECAP naming and
+publication update. The local setup leaves `main` checked out. The private
+Project 2 repository is [Rxd3/RECAP](https://github.com/Rxd3/RECAP), with `main`
+and all six member branches published. `origin` points to this repository, never
+NALTRA. Team members need collaborator access before cloning.
 
-## 1. Clone after Project 2 has been published
+## 1. Clone Project 2
 
-Replace `TEAM/PROJECT2` with the actual repository path. Do not run placeholder
-commands unchanged. A teammate/repository owner must separately create and
-publish the authorized Project 2 remote before others can clone it.
+After the repository owner grants your GitHub account access:
 
 ```powershell
-git clone https://github.com/TEAM/PROJECT2.git nlp-project2
-cd nlp-project2
+git clone https://github.com/Rxd3/RECAP.git
+cd RECAP
 git remote -v
 git status
 git fetch origin
@@ -48,7 +48,6 @@ git switch feat/m1-data-preprocessing
 git merge main
 ```
 
-Before a remote exists, skip `pull` and merge available local `main` instead.
 Merge updated `main` frequently and after dependency PRs land. Merging preserves
 history; do not force-push or rewrite another member's commits.
 
@@ -72,7 +71,7 @@ member's uncommitted edits. Use `git diff` to determine who should own a change.
 
 ## 4. Push and open a pull request
 
-Only after the correct Project 2 remote exists and team publishing is authorized:
+After reviewing your changes and confirming `origin` is `Rxd3/RECAP`:
 
 ```powershell
 git push -u origin feat/m1-data-preprocessing
@@ -158,6 +157,7 @@ git switch main
 
 These commands describe initial setup, which should be run once; do not
 reinitialize an existing/unrelated repository or recreate existing branches.
-The actual outcome for this workspace is in
-[INITIAL_VERIFICATION.md](INITIAL_VERIFICATION.md). Remote creation, `remote add`
-and publication are separate owner actions and were not performed here.
+The original local setup is recorded in
+[INITIAL_VERIFICATION.md](INITIAL_VERIFICATION.md). The user subsequently
+authorized repository publication; the current remote and clone instructions
+are documented above. No repository settings or collaborators were changed.
