@@ -1,0 +1,36 @@
+schema_version: 1
+status: proposed_sources_not_downloaded
+sources:
+  iwslt2017:
+    dataset_id: IWSLT/iwslt2017
+    url: https://huggingface.co/datasets/IWSLT/iwslt2017
+    intended_role: primary_text_for_derived_extended_punctuation_and_casing
+    revision: null
+    configuration: null
+    english_text_field: null
+    verified_license_and_usage: null
+    download_method: null
+    source_split_mapping: null
+    ready_made_extended_labels_verified: false
+  iwslt2011:
+    dataset_id: cdminix/iwslt2011
+    url: https://huggingface.co/datasets/cdminix/iwslt2011
+    intended_role: standard_punctuation_reference_and_possible_asr_evaluation
+    revision: null
+    configuration: null
+    english_text_field: null
+    verified_license_and_usage: null
+    download_method: null
+    source_split_mapping: null
+    clean_asr_alignment_verified: false
+preprocessing:
+  policy_version: null
+  tokenizer: null
+  input_lowercasing_proposal: str.lower
+  ambiguous_punctuation_policy: null
+splits:
+  strategy: null
+  grouping_key: null
+  seed: null
+  manifest_path: null
+  cross_source_leakage_audit: null

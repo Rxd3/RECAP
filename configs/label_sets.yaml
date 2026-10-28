@@ -1,0 +1,46 @@
+schema_version: 1
+status: scaffold_vocabulary_with_proposed_projection
+punctuation:
+  standard: [O, COMMA, PERIOD, QUESTION]
+  extended: [O, COMMA, PERIOD, QUESTION, EXCLAMATION, COLON, SEMICOLON, DASH]
+casing: [LOWER, FIRST_UPPER, ALL_UPPER]
+modes:
+  A:
+    task: punctuation
+    punctuation_set: standard
+    num_classes: 4
+  B:
+    task: punctuation
+    punctuation_set: extended
+    num_classes: 8
+  C:
+    task: joint
+    punctuation_set: standard
+    separator: "|"
+    ordering: punctuation_major_casing_minor
+    num_classes: 12
+    labels:
+      - "O|LOWER"
+      - "O|FIRST_UPPER"
+      - "O|ALL_UPPER"
+      - "COMMA|LOWER"
+      - "COMMA|FIRST_UPPER"
+      - "COMMA|ALL_UPPER"
+      - "PERIOD|LOWER"
+      - "PERIOD|FIRST_UPPER"
+      - "PERIOD|ALL_UPPER"
+      - "QUESTION|LOWER"
+      - "QUESTION|FIRST_UPPER"
+      - "QUESTION|ALL_UPPER"
+extended_to_standard:
+  status: proposed_requires_benchmark_verification_and_team_approval
+  approved: false
+  mapping:
+    O: O
+    COMMA: COMMA
+    PERIOD: PERIOD
+    QUESTION: QUESTION
+    EXCLAMATION: PERIOD
+    COLON: COMMA
+    SEMICOLON: PERIOD
+    DASH: COMMA

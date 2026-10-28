@@ -1,0 +1,89 @@
+# Python and packaging
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Environments, local editors and operating systems
+.venv/
+venv/
+env/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+*.local.yaml
+
+# Local downloads, processed data, split outputs and model artifacts
+/data/raw/**
+/data/processed/**
+/data/splits/**
+/artifacts/**
+
+# Generated run outputs; experiment notes outside runs/ are reviewed text
+/experiments/runs/**
+/results/**
+/presentation/assets/**
+
+# Preserve directory documentation/markers, including nested directories
+!/data/**/
+!/data/**/README.md
+!/data/**/.gitkeep
+!/artifacts/**/
+!/artifacts/**/README.md
+!/artifacts/**/.gitkeep
+!/experiments/runs/**/
+!/experiments/runs/**/README.md
+!/experiments/runs/**/.gitkeep
+!/results/**/
+!/results/**/README.md
+!/results/**/.gitkeep
+!/presentation/assets/**/
+!/presentation/assets/**/README.md
+!/presentation/assets/**/.gitkeep
+
+# Models/dataset archives accidentally written elsewhere
+*.pkl
+*.pickle
+*.joblib
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.h5
+*.onnx
+*.npz
+*.npy
+*.arrow
+*.parquet
+*.jsonl
+*.csv
+*.tsv
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.gz
+
+# Temporary files and logs
+*.log
+*.tmp
+*.temp
+*.bak
+~$*
+tmp/
+temp/

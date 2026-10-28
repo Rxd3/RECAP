@@ -1,0 +1,5 @@
+# Development setup, not a frozen experiment environment. Run from repo root.
+-e .[dev]
+# Planned only: numpy, pandas, scikit-learn, sklearn-crfsuite, datasets, matplotlib.
+# Add reviewed dependencies to pyproject.toml as implementations need them.
+# PyTorch/neural dependencies are outside the initial project scaffold.

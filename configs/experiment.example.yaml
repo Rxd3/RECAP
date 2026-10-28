@@ -1,0 +1,38 @@
+schema_version: 1
+status: template_not_runnable
+run_id: null
+seed: null
+label_mode: A
+label_sets_config: configs/label_sets.yaml
+dataset:
+  sources_config: configs/datasets.yaml
+  release_id: null
+  preprocessing_version: null
+  split_manifest: null
+  train_path: null
+  validation_path: null
+  test_path: null
+model:
+  family: hmm  # Future alternatives: crf; improved CRF uses the same model.
+  parameters: {}
+features:
+  preset: null  # HMM: null; future CRF: basic or improved.
+  parameters: {}
+evaluation:
+  primary_metric: punctuation_macro_f1_excluding_O
+  zero_division: 0
+  include_O_in_primary_metric: false
+  token_accuracy: secondary
+  selection_split: validation
+  final_reporting_split: test
+  cross_mode_projection_policy_version: null
+outputs:
+  model_dir: artifacts/models/REPLACE_RUN_ID
+  predictions_dir: results/predictions/REPLACE_RUN_ID
+  tables_dir: results/tables/REPLACE_RUN_ID
+  figures_dir: results/figures/REPLACE_RUN_ID
+provenance:
+  code_commit: null
+  dependency_lock: null
+  dataset_checksums: null
+  hardware_and_threads: null
