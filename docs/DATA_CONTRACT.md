@@ -22,7 +22,7 @@ sequence. The following illustrative record is a single JSONL line, not data:
 | `tokens` | Nonempty list of nonempty strings, with no whitespace-only tokens |
 | `punct_labels` | Exactly one punctuation label per token: A/C use standard 4; B uses extended 8 |
 | `case_labels` | Exactly one of LOWER, FIRST_UPPER, ALL_UPPER per token in every annotated release |
-| `metadata` | Optional original text, upstream ID, talk/document/group ID, offsets, source revision, policy version, parent ID, condition |
+| `metadata` | Optional original text, upstream ID, talk/document/group ID, offsets, source revision, policy version, parent ID, condition. SponSpeech releases use `upstream_id`, `source_split`, `group_id`, `original_text`, `normalized_text` (the text `offsets` index into), `offsets`, `source_revision`, `policy_version`, `annotation_view` (`canonical` or `native`) and `condition` |
 
 Punctuation belongs to the boundary **after** the corresponding token. Casing
 belongs to that token, not to the next word after a PERIOD. Every token/label
@@ -44,19 +44,22 @@ approved policy, and apply Python `str.lower()` to input word tokens. Do not use
 `casefold()` interchangeably. Version this policy before producing a release.
 All models receive exactly the same ordered token strings and sequence windows.
 
-The tentative interpretations are LOWER (cased letters lowercase), FIRST_UPPER
-(initial cased letter uppercase, following cased letters lowercase), and
-ALL_UPPER (all cased letters uppercase). They do **not** resolve overlaps:
-one-letter uppercase words, digits/punctuation-only tokens, mixed-case names
-such as `iPhone`, acronyms, and leading symbols require an explicit precedence,
-mapping or exclusion rule. None is silently assigned today. Record those choices
-in [DECISIONS.md](DECISIONS.md); no fourth casing class may be added casually.
+Casing follows the approved D4 precedence ([DECISIONS.md](DECISIONS.md)), applied in this order:
+(1) no cased letters, including numbers → LOWER; (2) a single uppercase letter such as `I` or `A` → FIRST_UPPER;
+(3) several cased letters, all uppercase → ALL_UPPER; (4) otherwise the first cased letter decides (uppercase →
+FIRST_UPPER, lowercase → LOWER). Step 4 approximates mixed-case words such as `iPhone`. Those token positions keep
+their label and are listed in a per-release mask (`masks/case_joint/<file>.jsonl`: `sample_id`,
+`excluded_positions`, `reason`), so primary casing and joint metrics can exclude them without changing token
+alignment; punctuation at those positions is still scored. The mask format is a Member 1 proposal that Member 5
+must accept for the evaluation contract. No fourth casing class may be added casually.
 
 Define contractions, apostrophes, hyphens, decimals, abbreviations, Unicode dash
 variants, quote/bracket attachment, repeated punctuation, leading punctuation,
 missing terminal punctuation and sentence/window boundaries before extraction.
 Record how loss of some orthographic detail limits exact text reconstruction.
-The tokenizer and maximum sequence policy are pending, not model-specific.
+The approved D2/D3 rules (policy `m1-v1`) keep contractions, numbers, URLs, abbreviations, word-internal hyphens
+and negative signs inside tokens, map `--` and standalone spaced hyphens to DASH, and turn ellipses into O inside an
+utterance and PERIOD at its end; one sequence is one source utterance (no windowing).
 
 ## Label modes and projection
 
@@ -74,9 +77,9 @@ punctuation first and casing second in configuration order. Do not combine B
 with casing to form a 24-class target; do not store an independent, diverging
 `joint_labels` gold array.
 
-### Proposed B → A collapse (unapproved)
+### B → A projection (approved, D5)
 
-| Extended | Proposed standard |
+| Extended | Standard |
 | --- | --- |
 | O | O |
 | COMMA | COMMA |
@@ -87,12 +90,15 @@ with casing to form a 24-class target; do not store an independent, diverging
 | SEMICOLON | PERIOD |
 | DASH | COMMA |
 
-The proposal treats colon/dash as internal boundaries and exclamation/semicolon
-as stronger boundaries. This is a modeling simplification, not a linguistic
-equivalence or verified IWSLT convention. Members 1 and 5 must inspect benchmark
-annotation rules and ambiguous examples, agree a policy version, and change
-`approved: false` only in a reviewed PR before any collapse is used. An approved
-alternate mapping changes the release/projection version and comparison target.
+The mapping treats colon/dash as internal boundaries and exclamation/semicolon
+as stronger boundaries. It is a modeling simplification, not a linguistic
+equivalence. The team lead approved it on 2026-10-28 (D5, policy `m1-v1`;
+`approved: true` in `label_sets.yaml`). Canonical modes A and C use it. A release
+may also carry a separately versioned *native* four-class view of the source
+(`benchmark_native/`, `metadata.annotation_view: "native"`) for comparison with
+the original benchmark; its scores are never compared with canonical scores as
+if the gold labels were the same. Any later change of mapping changes the
+release/projection version and comparison target.
 
 A is a subset of B, so A → B preserves those four names but cannot recover lost
 extended distinctions. Native four-label benchmark data must not be presented
@@ -115,6 +121,12 @@ splits, source configurations, and IWSLT years; mirrored translation directions
 may repeat the same English text. Keep duplicates/paired variants in the same
 group. Respect existing benchmark split semantics where possible; conflicts
 require an explicit decision and a new version, not hidden resplitting.
+For SponSpeech (D6) the overlap unit is the source video ID. `dev` becomes
+`validation`; the second test set test-amb keeps `split: "test"`, records its
+origin in `metadata.source_split` and is written to its own file, never merged
+with `test`. Leakage-controlled validation/test ID lists, frozen before model
+selection, are the primary evaluation sets; the full official splits are
+supplementary.
 
 The manifest records source revisions, sample/group assignments, normalization
 and tokenizer versions, segmentation policy, seed where relevant, exclusions,

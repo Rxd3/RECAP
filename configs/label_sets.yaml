@@ -1,5 +1,5 @@
 schema_version: 1
-status: scaffold_vocabulary_with_proposed_projection
+status: vocabulary_with_approved_projection
 punctuation:
   standard: [O, COMMA, PERIOD, QUESTION]
   extended: [O, COMMA, PERIOD, QUESTION, EXCLAMATION, COLON, SEMICOLON, DASH]
@@ -33,8 +33,10 @@ modes:
       - "QUESTION|FIRST_UPPER"
       - "QUESTION|ALL_UPPER"
 extended_to_standard:
-  status: proposed_requires_benchmark_verification_and_team_approval
-  approved: false
+  status: approved_by_team_lead_d5
+  approved: true
+  approval: "D5 canonical B-to-A projection, approved by the team lead on 2026-10-28; see docs/DECISIONS.md"
+  policy_version: m1-v1
   mapping:
     O: O
     COMMA: COMMA

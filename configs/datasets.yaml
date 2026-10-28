@@ -1,36 +1,60 @@
 schema_version: 1
-status: proposed_sources_not_downloaded
+status: sponspeech_selected_d1
+selected_source: sponspeech
 sources:
+  sponspeech:
+    dataset_id: sponspeech
+    url: https://storage.googleapis.com/sponspeech/sponspeech.tar.gz
+    reference: "Liu and Beigi (2024), Spontaneous Informal Speech Dataset for Punctuation Restoration, arXiv:2409.11241"
+    intended_role: primary_text_for_extended_punctuation_and_casing
+    decision: D1 approved by the team lead on 2026-10-28
+    revision: gcs-generation-1716975130398953
+    archive_bytes: 63547617096
+    configuration: transcripts_only
+    english_text_field: text/<utterance_id>.txt
+    group_field: utt2spk (YouTube video ID)
+    verified_license_and_usage: CC BY-NC 4.0, attribution list in the archive README.txt
+    download_method: HTTP range extraction of the transcript sections (no audio); see docs/DATASET_PLAN.md
+    local_raw_dir: data/raw/sponspeech-gcs-generation-1716975130398953
+    source_split_mapping: {train: train, dev: validation, test: test, test-amb: test}
+    ready_made_extended_labels_verified: false
+    clean_asr_alignment_verified: false
   iwslt2017:
     dataset_id: IWSLT/iwslt2017
     url: https://huggingface.co/datasets/IWSLT/iwslt2017
-    intended_role: primary_text_for_derived_extended_punctuation_and_casing
-    revision: null
+    intended_role: not_selected_d1
+    revision: c18a4f81a47ae6fa079fe9d32db288ddde38451d
     configuration: null
     english_text_field: null
-    verified_license_and_usage: null
+    verified_license_and_usage: "card lists cc-by-nc-nd-4.0; not reviewed further"
     download_method: null
     source_split_mapping: null
     ready_made_extended_labels_verified: false
   iwslt2011:
     dataset_id: cdminix/iwslt2011
     url: https://huggingface.co/datasets/cdminix/iwslt2011
-    intended_role: standard_punctuation_reference_and_possible_asr_evaluation
-    revision: null
+    intended_role: not_selected_d1
+    revision: 787665f83399713599465b50eeae66e24d3ae968
     configuration: null
     english_text_field: null
-    verified_license_and_usage: null
+    verified_license_and_usage: "no card or license in the repository"
     download_method: null
     source_split_mapping: null
     clean_asr_alignment_verified: false
 preprocessing:
-  policy_version: null
-  tokenizer: null
+  policy_version: m1-v1
+  tokenizer: punct_restore.data.preprocessing.tokenize (D2)
   input_lowercasing_proposal: str.lower
-  ambiguous_punctuation_policy: null
+  ambiguous_punctuation_policy: D3 (docs/DECISIONS.md); unresolved records listed in audit/unresolved.jsonl
+  casing_policy: D4 precedence; approximations masked in masks/case_joint
+  standard_from_extended: configs/label_sets.yaml extended_to_standard (D5)
 splits:
-  strategy: null
-  grouping_key: null
+  strategy: original_sponspeech_membership_plus_frozen_leakage_controlled_eval_subsets
+  grouping_key: source video ID (utt2spk)
   seed: null
-  manifest_path: null
-  cross_source_leakage_audit: null
+  manifest_path: data/splits/<release_id>/
+  cross_source_leakage_audit: shared video, identical transcript and >=50% word 6-gram overlap (D6)
+release:
+  current_release_id: sponspeech-m1-v1
+  shared_location: https://drive.google.com/drive/folders/1ZKDNnRHXsLJf3UjOdKVgQ0bYpo12IQfH?usp=sharing
+  uploaded: false
