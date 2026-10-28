@@ -10,7 +10,7 @@ contracts alone. Discuss shared changes before coding, then obtain affected
 owners' review. See [architecture](docs/ARCHITECTURE.md) and
 [decision register](docs/DECISIONS.md).
 
-## Member 1 — Dataset and Preprocessing
+## Member 1 — Dataset and Preprocessing Mutasim  member 1
 
 **Branch:** `feat/m1-data-preprocessing`
 
@@ -49,7 +49,7 @@ Member 6 for portable handoff and artifact distribution. No model is required.
 contract-test PR. Provide versioned data/manifests separately from Git. Notify
 Members 2–6 of release ID, paths, checksums, distributions and known limitations.
 
-## Member 2 — HMM Baseline
+## Member 2 — HMM Baseline Raşit  
 
 **Branch:** `feat/m2-hmm-baseline`
 
@@ -85,7 +85,7 @@ begin on illustrative tiny fixtures while the release is pending.
 selected configuration, runtime conditions and limitations; do not write scores
 before evaluation runs.
 
-## Member 3 — CRF Main Model
+## Member 3 — CRF Main Model Omar
 
 **Branch:** `feat/m3-crf-model`
 
@@ -121,7 +121,7 @@ for integration. CRF implementation need not wait for HMM training.
 **Handoff:** give Member 4 the stable CRF adapter/extractor signature and basic
 preset; give Members 5 and 6 compatible artifacts, predictions and provenance.
 
-## Member 4 — Feature Engineering and Model Improvement
+## Member 4 — Feature Engineering and Model Improvement Mohamed Kamaleldin
 
 **Branch:** `feat/m4-feature-engineering`
 
@@ -156,7 +156,7 @@ Do not independently rewrite or replace the CRF model.
 **Handoff:** provide Member 3 the versioned extractor/configuration, Member 5 the
 paired run bundles and hypothesis list, and Member 6 feature-loading requirements.
 
-## Member 5 — Evaluation and Error Analysis
+## Member 5 — Evaluation and Error Analysis Abd Raouf
 
 **Branch:** `feat/m5-evaluation`
 
@@ -195,7 +195,7 @@ and tiny fixture tests can be prepared before trained models exist.
 representative errors, selection/test separation and limitations; return failure
 cases to Members 1–4 for analysis without silently changing the frozen test.
 
-## Member 6 — Integration, Reproducibility and Presentation
+## Member 6 — Integration, Reproducibility and Presentation Abdulla Jamal
 
 **Branch:** `feat/m6-integration-presentation`
 
