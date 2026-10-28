@@ -6,10 +6,11 @@ Sequence Labeling. Six members; Python; one independent repository.
 
 ## Current deliverable
 
-Initial scaffolding only: package folders, intentionally unfinished modules,
-configuration templates, common contracts, team board, Git workflow and local
-branches. No training algorithms, probability estimation, Viterbi implementation,
-feature extraction, scoring, text reconstruction, or data download is included.
+Initial scaffolding is complete. Member 2 now implements supervised HMM
+estimation, log-space Viterbi, unknown words, persistence and training/prediction
+export, verified using synthetic fixtures only. Real-data training waits for
+Member 1's dataset handoff. Feature extraction, shared scoring, text
+reconstruction, CRF and dataset preparation remain outside this increment.
 
 ## Future research scope
 

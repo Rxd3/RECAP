@@ -4,8 +4,9 @@
 
 **COE025 — Natural Language Processing | Group Project 2 — Sequence Labeling**
 
-**Status: Initial Scaffolding / Work Not Yet Implemented.** No data pipeline,
-trained model, inference command, or evaluation calculation is implemented yet.
+**Status: Member 2's HMM core is implemented and tested on synthetic fixtures.**
+Real-data training and evaluation are pending. The data pipeline, CRF, shared
+evaluation and integrated text-restoration demo remain unfinished.
 
 ## Overview
 
@@ -52,14 +53,23 @@ Mode C uses **4 × 3 = 12**, never 8 × 3. Its label form is
 [data rules](docs/DATA_CONTRACT.md) define alignment and proposed projections.
 Ambiguous annotation policies remain open in [decisions](docs/DECISIONS.md).
 
-## Proposed datasets
+## Dataset preparation
+
+The team reports selecting **SponSpeech** and is preparing the data. Its exact
+source URL/revision, annotations, shared-schema representation and fixed splits
+are pending handoff from Member 1. The HMM makes no dataset-specific assumptions
+and has not been trained on SponSpeech. See [HMM notes](experiments/HMM_NOTES.md)
+for the handoff checklist.
+
+The original scaffold listed these alternatives; they are not assumed to be the
+selected training source:
 
 - [IWSLT/iwslt2017](https://huggingface.co/datasets/IWSLT/iwslt2017): proposed
   primary English text source for deriving extended punctuation and casing.
 - [cdminix/iwslt2011](https://huggingface.co/datasets/cdminix/iwslt2011): proposed
   standard-punctuation reference and potential ASR evaluation source.
 
-Neither source has been downloaded or approved for this project. Exact source
+Neither alternative has been downloaded or approved by this setup. Exact source
 revision, English configuration/fields, access method, license conditions,
 annotation conventions, and compatible splits need verification. IWSLT 2017 is
 not assumed to supply ready-made eight-class annotations. See the
@@ -90,16 +100,16 @@ configs/                 Label vocabularies, source planning, experiment templat
 data/{raw,processed,splits}/  Local data and frozen split manifests (ignored)
 src/punct_restore/
   data/                  Member 1: cleaning and label derivation
-  models/                Members 2–3: HMM and CRF placeholders
+  models/                Member 2: implemented HMM; Member 3: CRF placeholder
   features/              Member 4: shared CRF feature interface
   evaluation/            Member 5: scoring and analysis placeholders
   demo/                  Member 6: inference demonstration placeholder
   pipeline.py            Member 6: integration placeholder
-scripts/                 Future command entry points; currently stop explicitly
+scripts/                 HMM training/export CLI; other entry points unfinished
 experiments/             Model notes and future run-record instructions
 results/{predictions,tables,figures}/  Empty output locations
 artifacts/models/        Empty, ignored model storage
-tests/                   Contract test plans; no executable tests yet
+tests/                   HMM/CLI synthetic tests and future shared contract plans
 docs/                    Scope, contracts, decisions, workflow, reproduction
 presentation/assets/    Presentation outline and future evidence
 ```
@@ -137,10 +147,18 @@ sklearn-crfsuite, Datasets, and matplotlib are candidates to review when needed.
 PyTorch is a future extension only. No GPU framework or pretrained model is
 required. [Reproducibility notes](docs/REPRODUCIBILITY.md) describe future locking.
 
-The six task scripts are explicit placeholders that exit with an explanatory
-message. Do not expect training, prediction, or `--help` to work yet.
-The test modules contain TODO plans only; a pytest run currently collects no
-tests. Structural verification is recorded in [initial verification](docs/INITIAL_VERIFICATION.md).
+Member 2's command and tests can be inspected/run without a dataset:
+
+```powershell
+python scripts/train_hmm.py --help
+python -m pytest tests/test_hmm.py tests/test_hmm_cli.py -q
+```
+
+[HMM notes](experiments/HMM_NOTES.md) document estimation, validation, persistence
+and a future training command. No real-data run or performance result exists.
+The other five task scripts and the three shared contract-test plans remain
+placeholders. Original scaffold checks are recorded in
+[initial verification](docs/INITIAL_VERIFICATION.md).
 
 ## Git collaboration
 
@@ -159,6 +177,7 @@ conflict commands using the Project 2 remote.
 
 - [x] Create package structure, configuration templates, ownership and contracts.
 - [x] Prepare independent local Git history and six member branches.
+- [x] Implement the dataset-independent HMM, training/export CLI and synthetic tests.
 - [ ] Agree annotation policies, source configuration, and evaluation projections.
 - [ ] Release reproducible data and immutable split manifests.
 - [ ] Implement and validate the HMM baseline and basic CRF.

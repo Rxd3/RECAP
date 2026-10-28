@@ -1,8 +1,13 @@
-# Future task scripts
+# Task scripts
 
-Every task script is an explicit scaffold placeholder. Executing one currently
-exits nonzero with an unfinished message; no flags, training, data processing,
-evaluation or inference are implemented. Run future commands from the repo root.
+`train_hmm.py` is implemented for shared-contract JSONL and supports `--help`
+without data. It estimates an HMM, writes a versioned JSON artifact/run manifest,
+and optionally exports aligned predictions with hashes. It does not download,
+preprocess, score or choose settings. No real-data run has occurred.
+See [HMM notes](../experiments/HMM_NOTES.md) for flags and future commands.
+
+The other five task scripts remain scaffold placeholders and exit nonzero with
+an unfinished message. Run commands from the repository root.
 
 | Script | Owner | Future responsibility |
 | --- | --- | --- |
@@ -13,5 +18,5 @@ evaluation or inference are implemented. Run future commands from the repo root.
 | `evaluate_models.py` | Member 5 | Validate alignment; score compatible targets and analyze errors |
 | `run_demo.py` | Member 6 | Shared input + compatible trained model → restored text |
 
-TODO: Members define argument interfaces and actual commands with Member 6 as
-implementations become available. Keep core logic in package modules.
+TODO: Members define remaining argument interfaces with Member 6 as implementations
+become available. Keep core logic in package modules.

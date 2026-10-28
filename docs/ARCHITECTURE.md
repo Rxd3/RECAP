@@ -1,7 +1,7 @@
 # Architecture and ownership
 
-This is a design for future implementation. Python modules currently contain
-descriptions and TODOs only; the six task scripts deliberately exit unfinished.
+Member 2's HMM and training/export CLI are implemented with synthetic tests;
+real-data training is pending. Other components remain designs/placeholders.
 
 ```text
 verified source text
@@ -44,7 +44,8 @@ Member 3's model. Shared documents/configs need affected owners' review.
 - Evaluation joins by ID, checks order/length/release and applies a named,
   approved projection. It never repairs mismatches by truncating or zipping.
 - Task scripts will be thin entry points around package code. Configuration and
-  paths are repository-relative; scripts currently have no real CLI parser.
+  paths are repository-relative. `train_hmm.py` has a parser and run manifests;
+  other scripts remain unfinished.
 
 Future neural adapters may implement the common contract; add complexity only
 when an agreed experiment requires it. Separate dataset, artifact and prediction

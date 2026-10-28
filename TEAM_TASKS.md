@@ -1,9 +1,10 @@
 # Six-member project board
 
-**Initial Scaffolding / Work Not Yet Implemented.** Replace Member placeholders
-with names later. No implementation checkboxes are complete and no deadlines are
-assumed. Every member must understand their component's assumptions, the label
-schemes, leakage risks, evaluation choices and the overall methodology.
+**Status:** scaffolding complete; Member 2's dataset-independent HMM is implemented
+and tested on synthetic fixtures. Real-data training, tuning and official results
+remain pending. No deadlines are assumed. Every member must understand their
+component's assumptions, the label schemes, leakage risks, evaluation choices
+and the overall methodology.
 
 Primary ownership identifies the first reviewer, not permission to change shared
 contracts alone. Discuss shared changes before coding, then obtain affected
@@ -58,13 +59,13 @@ Members 2–6 of release ID, paths, checksums, distributions and known limitatio
 
 **Tasks:**
 
-- [ ] Specify HMM assumptions, states per mode and sequence start/end handling.
-- [ ] Estimate initial, transition and emission probabilities from training only.
-- [ ] Implement numerically stable Viterbi decoding and an unseen-word strategy.
+- [x] Specify HMM assumptions, states per mode and sequence start/end handling.
+- [x] Implement initial, transition and emission estimation from training only (fixture-tested; real-data run pending).
+- [x] Implement numerically stable Viterbi decoding and an unseen-word strategy.
 - [ ] Select smoothing/settings on shared validation data and record them.
-- [ ] Support agreed label modes through configuration and the common model interface.
+- [x] Support agreed label modes through configuration and the common model interface.
 - [ ] Train on the shared release; save reproducible metadata and artifacts.
-- [ ] Export predictions preserving IDs, order and one label per token.
+- [x] Implement prediction export preserving IDs, order and one label per token (fixture-tested).
 - [ ] Document baseline limitations and observed behavior after actual experiments.
 
 **Deliverables:** trained HMM baseline; reproducible training command/config;
@@ -76,8 +77,8 @@ begin on illustrative tiny fixtures while the release is pending.
 
 **Definition of Done:**
 
-- [ ] Tiny hand-checkable sequences verify probability/Viterbi and OOV behavior.
-- [ ] Model contract holds, no gold leakage occurs, and save/load preserves predictions.
+- [x] Tiny hand-checkable sequences verify probability/Viterbi and OOV behavior.
+- [x] HMM input/output contract, gold-invariance and save/load hold on synthetic tests; shared integration review remains pending.
 - [ ] Artifact, data/mode/configuration hashes and actual commands are recorded.
 - [ ] Member 5 validates prediction alignment and computes the baseline scores.
 

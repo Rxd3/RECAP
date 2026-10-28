@@ -1,8 +1,9 @@
 # Reproducibility and integration runbook — planned
 
-Owner: Member 6, with all producing members. No training/inference/evaluation
-commands have been implemented. Environment setup in the README is available;
-the six task scripts explicitly stop as unfinished.
+Owner: Member 6, with all producing members. Member 2's HMM training/export
+command is implemented and documented in [HMM notes](../experiments/HMM_NOTES.md).
+No real dataset has been trained/evaluated. Other task commands remain unfinished;
+the integrated workflow below is still a plan.
 
 ## Future workflow and evidence
 
@@ -15,8 +16,9 @@ the six task scripts explicitly stop as unfinished.
 | Evaluate | `scripts/evaluate_models.py` | Gold release + verified predictions, frozen metric/projection settings |
 | Demonstrate | `scripts/run_demo.py` | Compatible artifact, shared observable input and versioned text decoder |
 
-Member 6 will define flags and exact example commands in a reviewed PR after
-adapters exist. Do not infer working command-line arguments from filenames.
+Member 6 will coordinate remaining flags and integration commands as adapters
+arrive. Only the HMM CLI is currently implemented. Do not infer other working
+command-line arguments from filenames.
 
 For every real run, capture code commit/dirty status, full command, resolved
 configuration, source revisions, preprocessing and tokenizer versions, split

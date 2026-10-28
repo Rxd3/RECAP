@@ -27,18 +27,19 @@ Follow the README environment setup. Runtime dependencies are planned, not yet
 installed or pinned for experiments. Add only needed dependencies with a clear
 reason and a compatible tested environment in implementation PRs.
 
-The three `tests/test_*_contract.py` files contain TODO plans, not real tests.
-Do not call a zero-test collection a successful functional test. Until behavior
-exists, safe checks are Python syntax parsing, TOML/YAML parsing, label counts,
-file/link structure and ignore rules, as recorded in
-[initial verification](docs/INITIAL_VERIFICATION.md). Once genuine tests exist:
+Member 2's synthetic HMM and CLI tests now run with pytest. The three
+`tests/test_*_contract.py` files still contain shared TODO plans. For unfinished
+components, use structural/configuration checks without claiming functional
+coverage. Original checks are recorded in
+[initial verification](docs/INITIAL_VERIFICATION.md). Run implemented tests with:
 
 ```powershell
 python -m pytest
 ```
 
-No training, feature extraction, inference or scoring is expected to work today.
-The six task scripts intentionally return a nonzero exit with an unfinished message.
+The HMM can fit/predict shared-contract records; official real-data training is
+pending. `scripts/train_hmm.py` is implemented. The other task scripts remain
+unfinished, and no shared scoring or integrated text-decoding workflow exists yet.
 
 ## Data, artifacts and claims
 
