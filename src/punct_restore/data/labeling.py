@@ -5,7 +5,7 @@ the gap text and the original-case word surface produced by preprocessing.tokeni
 Mode C is the standard 4 punctuation labels x 3 casing labels (12); it is composed at load time with join_labels(),
 never stored as an independent array.
 
-Approved policies (docs/DECISIONS.md, policy m1-v1):
+Approved policies (docs/DECISIONS.md, policy m1-v2):
   * D3: mode B maps '--' and standalone spaced hyphens to DASH; ellipsis is O inside and PERIOD at the end.
   * D5: canonical mode A (and the punctuation part of mode C) is the approved B -> A projection in
     configs/label_sets.yaml. The "native" SponSpeech four-class view (! ; -> PERIOD, : -> COMMA, dash -> O) is
@@ -59,6 +59,11 @@ def gap_label(gap, is_last, scheme):
     if ELLIPSIS.search(gap):
         flags.append("ellipsis")
         gap = ELLIPSIS.sub(" ", gap)
+        # Ellipsis-only normalization does not resolve mixed boundaries such as
+        # '...?' or '?...'. Keep the fallback label, but exclude these cases via
+        # the existing unresolved-cluster policy before the terminal early return.
+        if any(c in EXTENDED_MARKS for c in gap) or DASH.search(gap):
+            flags.append("mark_cluster")
         if is_last:
             return "PERIOD", flags          # every source utterance ends with a terminal mark by construction
     found = {marks[c] for c in gap if c in marks}
@@ -69,7 +74,7 @@ def gap_label(gap, is_last, scheme):
             found.add("DASH")
     if CUTOFF_HYPHEN.search(gap):
         flags.append("cutoff_hyphen")
-    if len(found) > 1:
+    if len(found) > 1 and "mark_cluster" not in flags:
         flags.append("mark_cluster")
     if scheme == "native":
         flags += [f for mark, f in (("!", "exclam_mapped"), (";", "semicolon_mapped"), (":", "colon_mapped")) if mark in gap]
@@ -164,7 +169,7 @@ def casing_labels(tokens, text):
 
 def join_labels(punct_labels, case_labels, separator="|"):
     """Mode C target at load time: 'PERIOD|FIRST_UPPER'. Never stored as a separate gold array."""
-    return [f"{p}{separator}{c}" for p, c in zip(punct_labels, case_labels)]
+    return [f"{p}{separator}{c}" for p, c in zip(punct_labels, case_labels, strict=True)]
 
 
 # --- Independent cross-check of standard punctuation ----------------------------------------------------------------

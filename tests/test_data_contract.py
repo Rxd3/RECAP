@@ -231,9 +231,9 @@ def write_fixture(root):
         for u, text in utts.items():
             (root / split / "text" / f"{u}.txt").write_text(text, encoding="utf-8")
     (root / "README.txt").write_text("LICENSE\nCC BY-NC 4.0\n", encoding="utf-8")
-    lines = [f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.relative_to(root)}\n"
+    lines = [f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.relative_to(root).as_posix()}\n"
              for p in sorted(root.rglob("*")) if p.is_file()]
-    (root / "MANIFEST.sha256").write_text("".join(lines))
+    (root / "MANIFEST.sha256").write_text("".join(lines), encoding="utf-8", newline="\n")
     return root / "MANIFEST.sha256"
 
 
@@ -315,7 +315,7 @@ def test_release_is_byte_reproducible(tmp_path):
 def test_manifest_records_policy_license_and_views(tmp_path):
     rel, _ = build(tmp_path, "run1")
     manifest = json.loads((rel / "release_manifest.json").read_text())
-    assert manifest["policy_version"] == "m1-v1" and manifest["source"]["license"] == "CC BY-NC 4.0"
+    assert manifest["policy_version"] == "m1-v2" and manifest["source"]["license"] == "CC BY-NC 4.0"
     assert set(manifest["annotation_views"]) == {"canonical", "native"}
     assert (rel / "SPONSPEECH_LICENSE_AND_ATTRIBUTION.txt").exists() and (rel / "RELEASE_NOTES.md").exists()
 
@@ -323,12 +323,12 @@ def test_manifest_records_policy_license_and_views(tmp_path):
 def test_manifest_lists_every_release_and_split_file(tmp_path):
     rel, spl = build(tmp_path, "run1")
     manifest = json.loads((rel / "release_manifest.json").read_text())
-    on_disk = {str(p.relative_to(rel)) for p in rel.rglob("*") if p.is_file()} - {"release_manifest.json", "SHA256SUMS"}
+    on_disk = {p.relative_to(rel).as_posix() for p in rel.rglob("*") if p.is_file()} - {"release_manifest.json", "SHA256SUMS"}
     assert set(manifest["files"]) == on_disk
     assert "masks/case_joint/train.jsonl" in manifest["files"] and "audit/unresolved.jsonl" in manifest["files"]
     for path, info in manifest["files"].items():
         assert info["sha256"] == hashlib.sha256((rel / path).read_bytes()).hexdigest()
-    assert set(manifest["split_files"]) == {str(p.relative_to(spl)) for p in spl.rglob("*") if p.is_file()} - {"SHA256SUMS"}
+    assert set(manifest["split_files"]) == {p.relative_to(spl).as_posix() for p in spl.rglob("*") if p.is_file()} - {"SHA256SUMS"}
 
 
 def test_metadata_snapshot_flags_tts_videos_and_changes_id_lists(tmp_path):
@@ -367,7 +367,7 @@ def make_archive(tmp_path):
             path = raw / "sponspeech_text" / name[len("sponspeech/"):]
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(data)
-    manifest = "".join(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.relative_to(raw)}\n"
+    manifest = "".join(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.relative_to(raw).as_posix()}\n"
                        for p in sorted((raw / "sponspeech_text").rglob("*")) if p.is_file())
     return gz, manifest
 

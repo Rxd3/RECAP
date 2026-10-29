@@ -15,13 +15,13 @@ import os
 import re
 from dataclasses import dataclass
 
-# --- Source identity (SponSpeech; adoption pending D1) -----------------------------------------------------------
+# --- Source identity (SponSpeech; D1 approved) ------------------------------------------------------------------
 
 SOURCE_ID = "sponspeech"
 # Object generation of https://storage.googleapis.com/sponspeech/sponspeech.tar.gz (verified size 63,547,617,096 B).
 SOURCE_REVISION = "gcs-generation-1716975130398953"
 SOURCE_SPLITS = ("train", "dev", "test-amb", "test")
-POLICY_VERSION = "m1-v1"               # approved D2-D6 policies (docs/DECISIONS.md)
+POLICY_VERSION = "m1-v2"               # D3 mixed-ellipsis flags and D6 normalized-input deduplication
 UTT_ID_RE = re.compile(r"^([A-Za-z0-9_-]{11})-(\d+)$")
 
 

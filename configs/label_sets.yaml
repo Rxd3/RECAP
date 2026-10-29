@@ -36,7 +36,7 @@ extended_to_standard:
   status: approved_by_team_lead_d5
   approved: true
   approval: "D5 canonical B-to-A projection, approved by the team lead on 2026-10-28; see docs/DECISIONS.md"
-  policy_version: m1-v1
+  policy_version: m1-v2
   mapping:
     O: O
     COMMA: COMMA

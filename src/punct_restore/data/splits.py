@@ -31,13 +31,14 @@ def ngram_keys(tokens, n=NGRAM):
 
 
 class Reference:
-    """Groups, exact texts and 6-grams of a reference set (e.g. train, or train + validation)."""
+    """Groups, original text, normalized token tuples and 6-grams of reference records."""
 
     def __init__(self, records):
-        self.groups, self.texts, self.grams = set(), set(), set()
+        self.groups, self.texts, self.model_inputs, self.grams = set(), set(), set(), set()
         for r in records:
             self.groups.add(r["group_id"])
             self.texts.add(r["original_text"])
+            self.model_inputs.add(tuple(r["tokens"]))
             self.grams |= ngram_keys(r["tokens"])
 
 
@@ -47,6 +48,8 @@ def overlap_reason(rec, ref):
         return "shared_video"
     if rec["original_text"] in ref.texts:
         return "identical_text_other_video"
+    if tuple(rec["tokens"]) in ref.model_inputs:
+        return "identical_model_input_other_video"
     keys = ngram_keys(rec["tokens"])
     if keys and sum(g in ref.grams for g in keys) / len(keys) >= NEAR_DUP:
         return "near_duplicate_other_video"
@@ -54,9 +57,10 @@ def overlap_reason(rec, ref):
 
 
 def overlap_counts(eval_recs, ref_recs):
-    """Independent re-check with plain string sets: shared videos, identical texts, 6-gram near-duplicates."""
+    """Independently re-check videos, raw text, model-input tuples and six-grams."""
     ref_groups = {r["group_id"] for r in ref_recs}
     ref_texts = {r["original_text"] for r in ref_recs}
+    ref_inputs = {tuple(r["tokens"]) for r in ref_recs}
     ref_grams = set()
     for r in ref_recs:
         t = r["tokens"]
@@ -71,4 +75,5 @@ def overlap_counts(eval_recs, ref_recs):
             "shared_videos": len({r["group_id"] for r in eval_recs} & ref_groups),
             "records_in_shared_videos": sum(r["group_id"] in ref_groups for r in eval_recs),
             "identical_texts": sum(r["original_text"] in ref_texts for r in eval_recs),
+            "identical_model_inputs": sum(tuple(r["tokens"]) in ref_inputs for r in eval_recs),
             "near_duplicates": near}

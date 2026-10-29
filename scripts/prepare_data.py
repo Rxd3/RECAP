@@ -5,7 +5,7 @@ files MANIFEST.sha256 and video_metadata_oembed.jsonl from the release's provena
 
     python scripts/prepare_data.py extract --raw-root RAW                       # pinned byte ranges (~97 MB)
     python scripts/prepare_data.py extract --raw-root RAW --archive sponspeech.tar.gz   # full-archive fallback
-    python scripts/prepare_data.py build --raw-root RAW --release-id sponspeech-m1-v1
+    python scripts/prepare_data.py build --raw-root RAW --release-id sponspeech-m1-v2
 
 `extract` writes RAW/sponspeech_text/ and fails unless every file matches RAW/MANIFEST.sha256. `build` writes
 data/processed/<release-id>/ and data/splits/<release-id>/ (ignored by Git) following the approved policies D1-D6

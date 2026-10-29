@@ -19,6 +19,7 @@ import os
 import platform
 import shutil
 import statistics
+from pathlib import Path, PurePosixPath
 
 from . import extraction, labeling, preprocessing, splits, validation
 
@@ -168,7 +169,7 @@ def describe_files(folder, skip=("release_manifest.json", "SHA256SUMS")):
     for d, _, fs in os.walk(folder):
         for x in fs:
             p = os.path.join(d, x)
-            rel = os.path.relpath(p, folder)
+            rel = Path(p).relative_to(folder).as_posix()
             if rel in skip:
                 continue
             with open(p, "rb") as f:
@@ -186,7 +187,11 @@ def build_release(raw_dir, processed_dir, splits_dir, release_id, *, label_sets_
         raise PermissionError("the B -> A projection in configs/label_sets.yaml is not approved")
     out = os.path.join(processed_dir, release_id)
     split_out = os.path.join(splits_dir, release_id)
+    if os.path.exists(out) or os.path.exists(split_out):
+        raise FileExistsError(f"release already exists: {release_id}; use a new immutable release ID")
     raw_bad_before = preprocessing.verify_raw_manifest(raw_manifest) if raw_manifest else None
+    if raw_bad_before:
+        raise ValueError(f"raw manifest mismatch before build: {raw_bad_before[:5]}")
     utts = {s: preprocessing.read_source_split(raw_dir, s) for s in preprocessing.SOURCE_SPLITS}
     log("loaded " + ", ".join(f"{s}={len(u)}" for s, u in utts.items()))
     texts = collections.defaultdict(list)
@@ -210,7 +215,7 @@ def build_release(raw_dir, processed_dir, splits_dir, release_id, *, label_sets_
         for name in RELEASE_FILES:
             path = os.path.join(out, folder, name + ".jsonl")
             write_lines(path, (json.dumps(r["views"][key], **JSON) + "\n" for r in by_file[name]))
-            files[os.path.relpath(path, out)] = {"records": len(by_file[name])}
+            files[Path(path).relative_to(out).as_posix()] = {"records": len(by_file[name])}
 
     # casing/joint evaluation masks: one line per released record, positions excluded from casing and joint metrics
     for name in RELEASE_FILES:
@@ -319,8 +324,8 @@ def build_release(raw_dir, processed_dir, splits_dir, release_id, *, label_sets_
     # read back every view: contract validation and cross-view consistency
     checks = {"source_records": len(results), "rejected": len(results) - len(kept), "file_errors": {}, "view_mismatches": {}}
     for path in files:
-        mode = "A" if "mode_A" in path else path.split("/")[0][-1]
-        name = os.path.basename(path)[:-6]
+        mode = PurePosixPath(path).parent.name.removeprefix("mode_")
+        name = PurePosixPath(path).stem
         ok, errs = validation.validate_file(os.path.join(out, path), label_sets, split=splits.SPLIT_OF[{"validation": "dev", "test_amb": "test-amb"}.get(name, name)], mode=mode)
         files[path]["valid"] = ok
         if errs:
@@ -336,10 +341,13 @@ def build_release(raw_dir, processed_dir, splits_dir, release_id, *, label_sets_
     checks["unique_sample_ids"] = len({r["sample_id"] for r in results}) == len(results)
     checks["raw_mismatch_before"] = raw_bad_before
     checks["raw_mismatch_after"] = preprocessing.verify_raw_manifest(raw_manifest) if raw_manifest else None
+    if (checks["file_errors"] or checks["view_mismatches"] or not checks["unique_sample_ids"]
+            or checks["raw_mismatch_after"]):
+        raise ValueError("release validation failed; no release manifest or checksums will be published")
     stats["checks"] = checks
-    with open(os.path.join(out, "stats.json"), "w", encoding="utf-8") as f:
+    with open(os.path.join(out, "stats.json"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(stats, f, indent=1, sort_keys=True)
-    with open(os.path.join(split_out, "leakage_controlled", "report.json"), "w", encoding="utf-8") as f:
+    with open(os.path.join(split_out, "leakage_controlled", "report.json"), "w", encoding="utf-8", newline="\n") as f:
         json.dump({"subsets": controlled_report, "overlap": overlap}, f, indent=1, sort_keys=True)
 
     # license and attribution travel with the release (CC BY-NC 4.0 requires attribution)
@@ -374,10 +382,10 @@ def build_release(raw_dir, processed_dir, splits_dir, release_id, *, label_sets_
     view_info = {p: {"records": v["records"], "valid": v.get("valid")} for p, v in files.items()}
     manifest["files"] = {p: {**d, **view_info.get(p, {})} for p, d in describe_files(out).items()}
     manifest["split_files"] = describe_files(split_out)
-    with open(os.path.join(out, "release_manifest.json"), "w", encoding="utf-8") as f:
+    with open(os.path.join(out, "release_manifest.json"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(manifest, f, indent=1, sort_keys=True)
     for folder in (out, split_out):
-        paths = sorted(os.path.relpath(os.path.join(d, x), folder) for d, _, fs in os.walk(folder) for x in fs if x != "SHA256SUMS")
+        paths = sorted(Path(d, x).relative_to(folder).as_posix() for d, _, fs in os.walk(folder) for x in fs if x != "SHA256SUMS")
         write_lines(os.path.join(folder, "SHA256SUMS"), (f"{sha256_file(os.path.join(folder, p))}  {p}\n" for p in paths))
     log("checks: " + json.dumps({k: v for k, v in checks.items() if k not in ("file_errors", "view_mismatches")})
         + f" file_errors={len(checks['file_errors'])} view_mismatches={len(checks['view_mismatches'])}")
@@ -389,7 +397,7 @@ def write_release_notes(out, release_id, stats, manifest):
     sizes = stats["subset_sizes"]
     lines = [f"# {release_id}\n\n",
              f"Source: SponSpeech, {manifest['source']['reference']}\n",
-             f"License: CC BY-NC 4.0 (non-commercial use only). Attribution list: SPONSPEECH_LICENSE_AND_ATTRIBUTION.txt\n",
+             "License: CC BY-NC 4.0 (non-commercial use only). Attribution list: SPONSPEECH_LICENSE_AND_ATTRIBUTION.txt\n",
              f"Source revision: {manifest['source']['revision']}. Policy: {manifest['policy_version']}. Schema: v{manifest['schema_version']}.\n",
              f"Code SHA-256: {manifest['code_sha256']}\n\n",
              "## Records\n\n| file | released | flagged (unresolved) | rejected |\n|---|---:|---:|---:|\n"]

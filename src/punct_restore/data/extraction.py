@@ -18,6 +18,7 @@ import tarfile
 import urllib.error
 import urllib.request
 import zlib
+from pathlib import Path
 
 ARCHIVE_URL = "https://storage.googleapis.com/sponspeech/sponspeech.tar.gz"
 ARCHIVE_BYTES = 63547617096
@@ -186,7 +187,8 @@ def verify_extraction(raw_root, manifest_path):
         raise ValueError("MANIFEST.sha256 must be placed directly in raw_root (its paths start with sponspeech_text/)")
     with open(manifest_path, encoding="utf-8") as f:
         listed = {line.rstrip("\n").split("  ", 1)[1] for line in f}
-    present = {os.path.relpath(os.path.join(d, x), raw_root) for d, _, fs in os.walk(os.path.join(raw_root, OUTPUT_DIR)) for x in fs}
+    present = {Path(d, x).relative_to(raw_root).as_posix()
+               for d, _, fs in os.walk(os.path.join(raw_root, OUTPUT_DIR)) for x in fs}
     missing = sorted(listed - present)
     bad = [] if missing else verify_raw_manifest(manifest_path)
     return missing + bad, sorted(present - listed)

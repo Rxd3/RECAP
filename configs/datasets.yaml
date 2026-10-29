@@ -42,7 +42,7 @@ sources:
     source_split_mapping: null
     clean_asr_alignment_verified: false
 preprocessing:
-  policy_version: m1-v1
+  policy_version: m1-v2
   tokenizer: punct_restore.data.preprocessing.tokenize (D2)
   input_lowercasing_proposal: str.lower
   ambiguous_punctuation_policy: D3 (docs/DECISIONS.md); unresolved records listed in audit/unresolved.jsonl
@@ -53,8 +53,9 @@ splits:
   grouping_key: source video ID (utt2spk)
   seed: null
   manifest_path: data/splits/<release_id>/
-  cross_source_leakage_audit: shared video, identical transcript and >=50% word 6-gram overlap (D6)
+  cross_source_leakage_audit: shared video, identical transcript, exact lowercased token tuple and >=50% word 6-gram overlap (D6)
 release:
-  current_release_id: sponspeech-m1-v1
+  current_release_id: sponspeech-m1-v2
+  supersedes_release_id: sponspeech-m1-v1
   shared_location: https://drive.google.com/drive/folders/1ZKDNnRHXsLJf3UjOdKVgQ0bYpo12IQfH?usp=sharing
   uploaded: false
