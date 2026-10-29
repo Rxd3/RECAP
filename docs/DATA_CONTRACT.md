@@ -57,9 +57,11 @@ Define contractions, apostrophes, hyphens, decimals, abbreviations, Unicode dash
 variants, quote/bracket attachment, repeated punctuation, leading punctuation,
 missing terminal punctuation and sentence/window boundaries before extraction.
 Record how loss of some orthographic detail limits exact text reconstruction.
-The approved D2/D3 rules (policy `m1-v1`) keep contractions, numbers, URLs, abbreviations, word-internal hyphens
+The approved D2/D3 rules (policy `m1-v2`) keep contractions, numbers, URLs, abbreviations, word-internal hyphens
 and negative signs inside tokens, map `--` and standalone spaced hyphens to DASH, and turn ellipses into O inside an
-utterance and PERIOD at its end; one sequence is one source utterance (no windowing).
+utterance and PERIOD at its end; one sequence is one source utterance (no windowing). The ellipsis-only rule does
+not resolve mixed boundaries such as `...?` or `...!`: these carry `mark_cluster` and are excluded from default
+training and primary evaluation until an explicit policy resolves them.
 
 ## Label modes and projection
 
@@ -128,9 +130,14 @@ with `test`. Leakage-controlled validation/test ID lists, frozen before model
 selection, are the primary evaluation sets; the full official splits are
 supplementary.
 
+Exact duplicate checks include both original text and the complete lowercased `tuple(tokens)`, regardless of
+punctuation/casing differences or sequence length. Six-grams alone do not cover short utterances. Primary subsets
+exclude both kinds of matches; the overlap report names raw-text and model-input overlap separately.
+
 The manifest records source revisions, sample/group assignments, normalization
 and tokenizer versions, segmentation policy, seed where relevant, exclusions,
-record/token totals and checksums. Split ratios and counts are unassigned today.
+record/token totals and checksums. Native split assignments remain fixed; versioned subset counts are in the
+release statistics and validation record.
 
 ## Clean versus noisy records
 
@@ -141,5 +148,5 @@ alignment manifest; changed-token ASR hypotheses need distinct stable IDs and
 Do not copy clean label arrays onto insertions/deletions. Cross-condition scores
 must describe whether the evaluation target and tokenization are comparable.
 
-All count/statistics tables remain pending until actual preprocessing. See
-[DATASET_PLAN.md](DATASET_PLAN.md) for the inspection and release checklist.
+See [DATASET_PLAN.md](DATASET_PLAN.md) and [DATA_RELEASE_VALIDATION.md](DATA_RELEASE_VALIDATION.md) for source
+inspection, release statistics and verification. This records data checks, not model performance.

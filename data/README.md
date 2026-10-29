@@ -3,7 +3,10 @@
 Owner: Member 1. Generated contents of these folders are ignored by Git; only markers and this guide are tracked.
 Do not add large data with `git add -f`. Releases are shared through the team's Google Drive folder
 ([RECAP -NLP2](https://drive.google.com/drive/folders/1ZKDNnRHXsLJf3UjOdKVgQ0bYpo12IQfH?usp=sharing); preferred by the team lead, to be recorded under D11) with SHA-256 sums.
-Release `sponspeech-m1-v1` follows the approved policies D1-D6 (docs/DECISIONS.md); it has not been uploaded yet.
+Current release `sponspeech-m1-v2` uses policy `m1-v2` and supersedes `sponspeech-m1-v1-rev2`.
+Version 2 fixes Windows paths/newlines, flags mixed ellipsis boundaries, and excludes exact model-input duplicates
+from primary subsets. Version 1 remains unchanged as historical data. The corrected bundle is prepared under
+`artifacts/data/sponspeech-m1-v2/`; its upload to the shared Drive is a separate handoff step.
 
 - `raw/`: immutable source files, one folder per source revision.
 - `processed/`: versioned JSONL releases following the [contract](../docs/DATA_CONTRACT.md).
@@ -42,7 +45,7 @@ RAW/sponspeech_text/              train/ dev/ test-amb/ test/ (text/*.txt, utt2s
 
    ```bash
    python scripts/prepare_data.py build --raw-root data/raw/sponspeech-gcs-generation-1716975130398953 \
-     --release-id sponspeech-m1-v1
+     --release-id sponspeech-m1-v2
    ```
 
    Both provenance files are required. `MANIFEST.sha256` is checked before and after the build. The title snapshot
@@ -51,7 +54,7 @@ RAW/sponspeech_text/              train/ dev/ test-amb/ test/ (text/*.txt, utt2s
 5. **Verify.** `python -m pytest`, then check the build against the published checksums:
    `diff data/processed/<release>/SHA256SUMS <published copy>` (same for `data/splits`).
 
-## Release layout (`sponspeech-m1-v1`, policy `m1-v1`)
+## Release layout (`sponspeech-m1-v2`, policy `m1-v2`)
 
 ```text
 data/processed/<release>/
@@ -82,7 +85,8 @@ Each release `<id>` is published as a folder in [RECAP -NLP2](https://drive.goog
 containing `<id>-processed.tar.gz`, `<id>-splits.tar.gz`, `<id>-provenance.tar.gz` (raw manifest, title snapshot,
 extraction logs; only needed to rebuild from source), `<id>.SHA256SUMS`, `<id>-RELEASE_NOTES.md` and
 `SPONSPEECH_LICENSE_AND_ATTRIBUTION.txt`. A re-packaged release gets a new folder `<id>-rev<N>` with unchanged file
-names (current: `sponspeech-m1-v1-rev2`, manifest revision 2, same data as the first package). From the repository root:
+names. The old Drive folder `sponspeech-m1-v1-rev2` contains version 1; it is not the corrected version 2.
+Data/selection changes require a new release ID, not replacement files under an old name. From the repository root:
 
 ```bash
 shasum -a 256 -c <id>.SHA256SUMS
@@ -98,7 +102,7 @@ SponSpeech is CC BY-NC 4.0: no commercial use; keep `SPONSPEECH_LICENSE_AND_ATTR
 
 ```python
 from punct_restore.data import join_labels, load_records, read_ids
-rel, spl = "data/processed/sponspeech-m1-v1", "data/splits/sponspeech-m1-v1"
+rel, spl = "data/processed/sponspeech-m1-v2", "data/splits/sponspeech-m1-v2"
 train_ids = set(read_ids(f"{spl}/default_train/mode_A.ids"))
 train = [r for r in load_records(f"{rel}/mode_A/train.jsonl") if r["sample_id"] in train_ids]
 ```
@@ -111,4 +115,14 @@ train = [r for r in load_records(f"{rel}/mode_A/train.jsonl") if r["sample_id"] 
   primary casing and joint metrics (punctuation at those positions is still scored); report all-token scores separately.
 - `benchmark_native/` is only for comparison with the original SponSpeech four-class benchmark; never compare its
   scores with canonical mode A scores as if the gold labels were identical.
-- Every utterance ends in PERIOD or QUESTION; Member 5 decides whether to also report scores without the final token.
+- Every canonical A/C sequence ends in PERIOD or QUESTION; Member 5 decides whether to also report scores without the final token.
+
+## Release validation and immutability
+
+The builder refuses an existing release ID and stops on raw-manifest or output-validation failures. Manifest
+paths and SHA256SUMS use POSIX separators; generated text uses UTF-8/LF on every platform. Primary subsets reject
+shared videos, exact original transcripts, exact lowercased token tuples (including short phrases) and the
+documented six-gram near-duplicates. Mixed ellipsis/other-mark boundaries remain available in the full views but
+are flagged and excluded from default training/primary evaluation under D3.
+
+See [the release validation record](../docs/DATA_RELEASE_VALIDATION.md) for checks, corrected counts and handoff.

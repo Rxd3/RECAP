@@ -17,9 +17,12 @@ assigned. Members must discuss shared interface changes before implementation.
 
 ## Resolved decisions
 
-Approved by the team lead on 2026-10-28 (relayed by Member 1). Policy version `m1-v1`, implemented in
-`src/punct_restore/data/` and release `sponspeech-m1-v1`. **Sign-off by the listed reviewers happens in the
-Member 1 pull request and is not yet recorded.** PR link: pending.
+Approved by the team lead on 2026-10-28 and reviewed with corrections on 2026-10-29.
+Current policy `m1-v2` and release `sponspeech-m1-v2` supersede `m1-v1`/`sponspeech-m1-v1`.
+The lead authorized fixing the release findings, verifying the corrected data and merging
+[Member 1 PR #1](https://github.com/Rxd3/RECAP/pull/1) if all checks pass. This records the lead's decision;
+it does not impersonate individual reviewer sign-offs. Verification is recorded in
+[DATA_RELEASE_VALIDATION.md](DATA_RELEASE_VALIDATION.md).
 
 | ID | Resolution | Rationale | Affected contracts | Reviewers |
 | --- | --- | --- | --- | --- |
@@ -28,7 +31,7 @@ Member 1 pull request and is not yet recorded.** PR link: pending.
 | D3 | `--` and standalone spaced hyphens → DASH; word-internal hyphens and negative signs stay in tokens; ellipsis → O inside an utterance, PERIOD at the end (this loses some punctuation detail); unresolved records keep their reasons and source IDs, are excluded from default training and primary evaluation lists, and stay available for ambiguity analysis. Cases not covered (e.g. several marks in one gap) are flagged for review, not decided | Uses only the extended labels; no silent deletion | DATA_CONTRACT label modes, release audit files | 5, 6 |
 | D4 | Casing precedence: (1) no cased letters → LOWER; (2) single uppercase letter → FIRST_UPPER; (3) several cased letters, all uppercase → ALL_UPPER; (4) otherwise first cased letter (upper → FIRST_UPPER, lower → LOWER). Step-4 approximations (`iPhone`) are masked per token position from primary casing/joint metrics; punctuation stays scored | Deterministic, no fourth casing class; masks keep sequences and positions intact | DATA_CONTRACT casing; mask interface to agree with Member 5 | 3, 4, 5, 6 |
 | D5 | Canonical B → A projection as in `configs/label_sets.yaml` (EXCLAMATION, SEMICOLON → PERIOD; COLON, DASH → COMMA); canonical modes A and C use it. Native SponSpeech four-class labels are kept as a separate, versioned benchmark view; canonical and native scores are never compared as if their gold labels were the same | One consistent standard target; native view for original-benchmark comparison | `configs/label_sets.yaml`, EVALUATION_PROTOCOL cross-mode comparison | 2, 3, 5 |
-| D6 | Original split membership kept; `dev` → `validation`; test-amb in its own file with `split: "test"` and `metadata.source_split`; overlap unit = source video ID; exact, near-duplicate (≥ 50% shared word 6-grams) and shared-video audits; leakage-controlled validation/test subsets frozen before model selection and used for primary evaluation; full official splits for supplementary reporting | Upstream splits share videos; primary results must not depend on leaked content | DATA_CONTRACT splits, `data/splits/` manifests | 5, 6 |
+| D6 | Original split membership kept; `dev` → `validation`; test-amb in its own file with `split: "test"` and `metadata.source_split`; overlap unit = source video ID; exact original-text and lowercased token-tuple checks (including short sequences), near-duplicate (≥ 50% shared word 6-grams) and shared-video audits; leakage-controlled validation/test subsets frozen before model selection and used for primary evaluation; full official splits for supplementary reporting | Upstream splits share videos; primary results must not depend on leaked content | DATA_CONTRACT splits, `data/splits/` manifests | 5, 6 |
 
 ## Open decisions requiring agreement
 
@@ -43,3 +46,14 @@ Member 1 pull request and is not yet recorded.** PR link: pending.
 
 Do not add label classes to avoid an annotation decision. Preserve the agreed
 4/8/12 target spaces; review and version any explicit mapping/exclusion policy.
+
+## Policy m1-v2 corrections (2026-10-29)
+
+- D3: mixed ellipsis/other-mark boundaries are unresolved clusters even at the end of an utterance. The
+  provisional label is retained only in the full/audit views; such records are excluded from primary use.
+- D6: exact lowercased token-tuple overlap is checked in addition to original-text, video and six-gram overlap,
+  including sequences shorter than six tokens. No silent short-phrase exemption is applied.
+- Reproducibility: persisted paths use POSIX separators and generated text uses LF; raw hashes and view validation
+  must pass before a manifest/checksum set can be published. Existing release IDs cannot be overwritten.
+- The 4/8/12 vocabularies, B-to-A mapping, casing rules, utterance tokenization and original split membership are
+  unchanged. Version 1 files/checksums are preserved; consumers must choose the version 2 release explicitly.

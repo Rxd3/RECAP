@@ -8,13 +8,13 @@ version = "0.0.1"
 description = "RECAP: Restoring English Casing and Punctuation with sequence labeling"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = ["PyYAML>=6"]
 
 [project.urls]
 Repository = "https://github.com/Rxd3/RECAP"
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "PyYAML>=6"]
+dev = ["pytest>=8"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
