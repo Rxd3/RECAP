@@ -1,7 +1,10 @@
 # Architecture and ownership
 
-This is a design for future implementation. Python modules currently contain
-descriptions and TODOs only; the six task scripts deliberately exit unfinished.
+Member 1's release pipeline and Member 2's full HMM workflow are implemented.
+HMM training, selection, evaluation and independent reproduction are complete;
+see [results](../experiments/HMM_RESULTS.md). The study calls Member 5's pinned
+scorer from a separate checkout. Other components remain designs/placeholders
+on this branch.
 
 ```text
 verified source text
@@ -44,7 +47,9 @@ Member 3's model. Shared documents/configs need affected owners' review.
 - Evaluation joins by ID, checks order/length/release and applies a named,
   approved projection. It never repairs mismatches by truncating or zipping.
 - Task scripts will be thin entry points around package code. Configuration and
-  paths are repository-relative; scripts currently have no real CLI parser.
+  paths are repository-relative. Preparation and HMM train/predict/experiment/
+  verification/handoff scripts are implemented; CRF, ablations, evaluation on
+  this branch and demo scripts remain unfinished.
 
 Future neural adapters may implement the common contract; add complexity only
 when an agreed experiment requires it. Separate dataset, artifact and prediction

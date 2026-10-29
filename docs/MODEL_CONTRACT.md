@@ -1,7 +1,9 @@
 # Shared model and feature contracts — proposed v1
 
-Owners: Members 2 and 3; reviewers: Members 4–6. These are conceptual interfaces,
-not implemented methods or executable examples.
+Owners: Members 2 and 3; reviewers: Members 4–6. The common operations below remain
+proposed for CRF/integration. Member 2's concrete HMM adapter is implemented as
+described at the end of this guide. Its A/B/C models have been trained and
+independently reproduced; see [HMM results](../experiments/HMM_RESULTS.md).
 
 ## Common future operations
 
@@ -88,4 +90,23 @@ is present. Sentence-initial capitalization is not an implicit model prediction.
 
 Quotes, contractions, dash spacing and unsupported casing patterns require
 approved policies. The compact labels may not reconstruct every original glyph.
-No text decoder or model implementation exists in this scaffold.
+No integrated text decoder exists yet. The HMM label predictor is implemented;
+CRF and other adapters remain unfinished.
+
+## Implemented HMM adapter — Member 2
+
+`HMMModel` in `src/punct_restore/models/hmm.py` receives `label_mode`, ordered
+`labels`, `smoothing` and `min_token_count` at construction. It provides
+`fit(training_records, *, metadata=None)`, `predict(records)`,
+`save_model(path)` and class method `load_model(path)`. Configuration belongs to
+the instance rather than being repeated on each fit. HMM has no feature extractor.
+Save/load paths identify a JSON file, not a model directory.
+
+The training CLI injects labels from `configs/label_sets.yaml` and records
+provenance. Predictions read only schema version, IDs and token sequences;
+extra gold fields are ignored and never copied into predictions. Training
+requires aligned casing arrays even in A/B, as specified by the shared data
+contract; no missing annotations or cross-mode conversions are guessed.
+
+Read [HMM_NOTES.md](../experiments/HMM_NOTES.md) for math, OOV policy, persistence,
+CLI outputs, synthetic checks, release handoff and remaining integration review.

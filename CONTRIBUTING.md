@@ -23,22 +23,26 @@ Current code is intentionally unfinished; a placeholder is not a working model.
 
 ## Environment and validation
 
-Follow the README environment setup. Runtime dependencies are planned, not yet
-installed or pinned for experiments. Add only needed dependencies with a clear
-reason and a compatible tested environment in implementation PRs.
+Follow the README environment setup. The completed HMM study pins PyYAML in
+`requirements-hmm.txt` and records its tested Python version. Add only needed
+dependencies with a clear reason and a compatible tested environment in
+implementation PRs.
 
-The three `tests/test_*_contract.py` files contain TODO plans, not real tests.
-Do not call a zero-test collection a successful functional test. Until behavior
-exists, safe checks are Python syntax parsing, TOML/YAML parsing, label counts,
-file/link structure and ignore rules, as recorded in
-[initial verification](docs/INITIAL_VERIFICATION.md). Once genuine tests exist:
+Member 2's synthetic HMM and CLI tests now run with pytest. The three
+`tests/test_*_contract.py` files still contain shared TODO plans. For unfinished
+components, use structural/configuration checks without claiming functional
+coverage. Original checks are recorded in
+[initial verification](docs/INITIAL_VERIFICATION.md). Run implemented tests with:
 
 ```powershell
 python -m pytest
 ```
 
-No training, feature extraction, inference or scoring is expected to work today.
-The six task scripts intentionally return a nonzero exit with an unfinished message.
+The HMM's full-data training, validation selection, saved-model inference and
+independent reproduction are complete; see [results](experiments/HMM_RESULTS.md)
+and [runbook](experiments/HMM_RUNBOOK.md). Its study uses the pinned Member 5
+scorer in a separate checkout. CRF, ablations and the integrated text-decoding
+workflow remain unfinished on this branch.
 
 ## Data, artifacts and claims
 

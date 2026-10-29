@@ -4,7 +4,11 @@ Owner: Member 6 coordinates storage; each model owner supplies its artifacts.
 `models/` is empty and ignored apart from its directory marker. Do not commit
 weights, checkpoints, serialized estimators, or downloaded pretrained models.
 
-Future handoffs need a versioned artifact location, SHA-256, model family and
+Handoffs need a versioned artifact location, SHA-256, model family and
 mode, ordered labels, input/preprocessing contract version, feature settings,
 training split hash, seed, code commit, dependencies, and load instructions.
-No artifact can currently be loaded because model I/O is not implemented.
+HMM model I/O is implemented. Member 2's local handoff is
+`hmm/hmm-sponspeech-v2-20261029.zip`; its selected-model index, full study and
+per-file checksums are described in the [completion audit](../docs/MEMBER2_COMPLETION.md).
+Load the selected JSON with `HMMModel.load_model(path)`. The dataset is distributed
+separately through the Member 1 release. Keep these generated files outside Git.

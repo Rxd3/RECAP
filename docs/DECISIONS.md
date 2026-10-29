@@ -38,7 +38,7 @@ it does not impersonate individual reviewer sign-offs. Verification is recorded 
 | ID | Pending question | Lead and required reviewers | Blocks |
 | --- | --- | --- | --- |
 | D7 | CRF extractor injection, feature names, basic/improved presets and available context | 3 and 4; 6 | CRF feature implementation |
-| D8 | HMM smoothing/OOV/state boundaries and CRF backend/tuning protocol | 2 and 3; 5 | Reproducible training |
+| D8 | CRF backend/tuning protocol; implemented HMM choices recorded below | 3; 2, 5 | Reproducible CRF training |
 | D9 | Separate casing versus joint study and compatible comparison target | 3 and 4; 1, 5 | Casing ablation design |
 | D10 | Real ASR availability versus synthetic noise; alignment and reporting unit | 1 and 5; 6 | Noisy evaluation |
 | D11 | Artifact distribution, environment locking and CLI flags (team lead prefers the shared Google Drive folder for data releases) | 6; 1, 2, 3, 5 | Reproducible integration |
@@ -46,6 +46,30 @@ it does not impersonate individual reviewer sign-offs. Verification is recorded 
 
 Do not add label classes to avoid an annotation decision. Preserve the agreed
 4/8/12 target spaces; review and version any explicit mapping/exclusion policy.
+
+## Member 2 implementation record (2026-10-29)
+
+The team lead authorized completing and double-checking the HMM baseline.
+This records implementation and experimental evidence; it does not substitute
+for individual teammates' review or resolve CRF and integration choices.
+
+- D8, HMM: supervised counts, additive smoothing, learned START/END boundaries,
+  log-space Viterbi and a training-frequency UNK bucket. Validation selected
+  alpha 0.01 in A/B/C, rare-word cutoff 1 in A/B and 2 in C from the declared
+  nine-candidate grid per mode. No validation data enters parameter estimation.
+- D11, HMM: versioned JSON artifacts, explicit training/prediction IDs and an
+  authenticated release manifest. CPython 3.13.5 / PyYAML 6.0.3 passed isolated
+  reproduction. The checksummed local handoff is ready for the team's preferred
+  Drive distribution; no public model release or teammate receipt is implied.
+- D12, HMM measurement: common validation tokens, one model thread, 200 warmup
+  sequences, three in-memory prediction repetitions and a separate decode
+  latency pass. Hardware, timing scope and raw repetitions are preserved. No
+  confidence intervals or statistical-significance claims are made.
+
+See [HMM notes](../experiments/HMM_NOTES.md),
+[configuration](../configs/hmm_sponspeech_v2.yaml) and
+[verified results](../experiments/HMM_RESULTS.md). The shared scorer is pinned
+at `3044a58e777200bcac64e6e3364922404be359bf` (Member 5 PR #2).
 
 ## Policy m1-v2 corrections (2026-10-29)
 
