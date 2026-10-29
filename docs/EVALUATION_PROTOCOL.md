@@ -162,7 +162,10 @@ talk/document group level where practical; describe dependence and uncertainty.
 - **Error examples:** `errors [--block NAME] [--per-pair K] [--seed S]` counts every wrong position per (gold, predicted) pair. It then draws up to K examples per pair at random with the seed, and writes them as text rebuilt with the gold and with the predicted labels.
 - **Prediction manifest:** `score --manifest predictions.manifest.json` checks that the manifest's `model_name`, `label_mode`, `ordered_labels`, `predictions_sha256` and `input.sha256` match the scored predictions, the vocabulary and the gold file. These are the HMM's field names, which every model should mirror. The manifest's identity is then recorded in the report.
 
-**Runtime table: planned.** It needs the models to record their timing. Proposed manifest field, to agree with Member 6 and the model owners: `runtime: {fit_seconds, predict_seconds, predicted_tokens, hardware}`, measured on one machine under identical conditions.
+**Runtime table: measured** for the HMM ([EVALUATION_RESULTS.md](EVALUATION_RESULTS.md), section 7).
+- **Method:** the HMM was re-timed on one machine, single process, with no other jobs running: the median of 3 prediction passes over the primary validation set after a warm-up, plus one in-process fit on `default_train`.
+- **Every later model is timed the same way.** The HMM bundle's own `runtime.json` comes from a different machine, so it is not compared directly.
+- **Proposed manifest field for future runs:** `runtime: {fit_seconds, predict_seconds, predicted_tokens, hardware}`.
 
 ## Required future output bundle
 
