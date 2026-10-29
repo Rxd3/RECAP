@@ -1,15 +1,18 @@
 # Task scripts
 
-`train_hmm.py` is implemented for shared-contract JSONL and supports `--help`
-without data. It estimates an HMM, writes a versioned JSON artifact/run manifest,
-and optionally exports aligned predictions with hashes. It does not download,
-preprocess, score or choose settings. No real-data run has occurred.
-See [HMM notes](../experiments/HMM_NOTES.md) for flags and future commands.
+`prepare_data.py` implements pinned SponSpeech transcript extraction and validated,
+immutable release building. Run `python scripts/prepare_data.py --help` and follow
+[data/README.md](../data/README.md).
 
-The other five task scripts remain scaffold placeholders and exit nonzero with
-an unfinished message. Run commands from the repository root.
+`train_hmm.py` implements shared-schema HMM training, versioned JSON artifacts/run
+manifests and optional aligned prediction exports. It does not score, choose settings
+or apply the release ID lists automatically. Apply explicit filtering before full-data
+training; `--split-manifest` only records a checksum. Run
+`python scripts/train_hmm.py --help` and see [HMM notes](../experiments/HMM_NOTES.md).
 
-| Script | Owner | Future responsibility |
+The remaining four scripts are placeholders. Run commands from the repository root.
+
+| Script | Owner | Responsibility |
 | --- | --- | --- |
 | `prepare_data.py` | Member 1 | Verified sources → validated JSONL and fixed splits |
 | `train_hmm.py` | Member 2 | Shared training records → HMM artifact/predictions |
@@ -18,5 +21,5 @@ an unfinished message. Run commands from the repository root.
 | `evaluate_models.py` | Member 5 | Validate alignment; score compatible targets and analyze errors |
 | `run_demo.py` | Member 6 | Shared input + compatible trained model → restored text |
 
-TODO: Members define remaining argument interfaces with Member 6 as implementations
-become available. Keep core logic in package modules.
+Other members define argument interfaces and actual commands with Member 6 as
+implementations become available. Keep core logic in package modules.

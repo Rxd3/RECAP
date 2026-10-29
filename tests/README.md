@@ -1,17 +1,13 @@
-# Tests and contract plans
+# Contract tests
 
-`test_hmm.py` and `test_hmm_cli.py` implement Member 2's synthetic unit/integration
-tests. They cover hand-calculated estimation, exhaustive Viterbi checks, END,
-OOV behavior, A/B/C alignment, gold-invariance, input failures, persistence and
-CLI artifact/prediction manifests. Temporary test training is not a research
-experiment and produces no committed datasets or model results.
-
-```powershell
-python -m pytest tests/test_hmm.py tests/test_hmm_cli.py -q
-```
-
-The three `test_*_contract.py` files remain descriptions/TODO plans for shared
-integration as other components become available:
+Run `python -m pytest -q` from the repository root. Member 1's data contract and
+release regression suites use tiny local fixtures and cover annotation policies,
+alignment, masks, split integrity, checksums, extraction and immutable releases.
+`test_hmm.py` and `test_hmm_cli.py` cover hand-calculated probabilities,
+exhaustive Viterbi/END checks, OOV handling, all modes, gold-field invariance,
+input failures, persistence and CLI manifests. These fixture fits are compatibility
+tests, not research experiments. Remaining model/evaluation contract plans develop
+on their member branches.
 
 - Member 1: records, labels, IDs, policy edge cases and fixed split integrity.
 - Member 6 with Members 2–3: adapters, gold-free inputs, alignment and persistence.

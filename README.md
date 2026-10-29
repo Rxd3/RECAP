@@ -4,9 +4,11 @@
 
 **COE025 — Natural Language Processing | Group Project 2 — Sequence Labeling**
 
-**Status: Member 2's HMM core is implemented and tested on synthetic fixtures.**
-Real-data training and evaluation are pending. The data pipeline, CRF, shared
-evaluation and integrated text-restoration demo remain unfinished.
+**Status:** Member 1's corrected SponSpeech pipeline and Member 2's HMM core
+are implemented and tested. Use release `sponspeech-m1-v2` (policy `m1-v2`);
+see [release validation](docs/DATA_RELEASE_VALIDATION.md). Full-data HMM training,
+validation tuning and official evaluation remain pending. CRF, shared evaluation
+and the integrated demo develop on their member branches.
 
 ## Overview
 
@@ -39,7 +41,7 @@ Hello everyone, welcome to our presentation. Today we will discuss natural langu
 This is an illustrative target, not a model prediction. Punctuation-only modes
 do not themselves predict capitalization; the full example requires casing.
 
-## Planned label configurations
+## Label configurations
 
 | Mode | Target | Labels |
 | --- | --- | --- |
@@ -50,34 +52,25 @@ do not themselves predict capitalization; the full example requires casing.
 Mode C uses **4 × 3 = 12**, never 8 × 3. Its label form is
 `PERIOD|FIRST_UPPER`: punctuation after this word, casing of this word.
 [Label configuration](configs/label_sets.yaml) is the vocabulary source of truth;
-[data rules](docs/DATA_CONTRACT.md) define alignment and proposed projections.
-Ambiguous annotation policies remain open in [decisions](docs/DECISIONS.md).
+[data rules](docs/DATA_CONTRACT.md) define alignment and approved projections.
+Decisions D1–D6 are recorded in [decisions](docs/DECISIONS.md).
 
-## Dataset preparation
+## Dataset
 
-The team reports selecting **SponSpeech** and is preparing the data. Its exact
-source URL/revision, annotations, shared-schema representation and fixed splits
-are pending handoff from Member 1. The HMM makes no dataset-specific assumptions
-and has not been trained on SponSpeech. See [HMM notes](experiments/HMM_NOTES.md)
-for the handoff checklist.
-
-The original scaffold listed these alternatives; they are not assumed to be the
-selected training source:
-
-- [IWSLT/iwslt2017](https://huggingface.co/datasets/IWSLT/iwslt2017): proposed
-  primary English text source for deriving extended punctuation and casing.
-- [cdminix/iwslt2011](https://huggingface.co/datasets/cdminix/iwslt2011): proposed
-  standard-punctuation reference and potential ASR evaluation source.
-
-Neither alternative has been downloaded or approved by this setup. Exact source
-revision, English configuration/fields, access method, license conditions,
-annotation conventions, and compatible splits need verification. IWSLT 2017 is
-not assumed to supply ready-made eight-class annotations. See the
+SponSpeech is the approved source: 206,632 original utterances, with 206,584
+retained in each annotation view and 48 rejected with documented reasons.
+Only transcripts are used. The fixed source revision, CC BY-NC 4.0 attribution,
+cleaning rules and known source overlap are recorded in the
 [dataset plan](docs/DATASET_PLAN.md) and [storage guide](data/README.md).
 
-## Planned models and evaluation
+Train on the mode's `default_train/*.ids` selection and evaluate on
+`primary_eval/*.ids`. Full official files contain unresolved examples and source
+overlap; the training CLI must explicitly apply the ID lists. Report `test` and
+`test_amb` separately. Version 2 supersedes the earlier version 1 Drive handoff.
 
-1. HMM with Viterbi decoding: baseline.
+## Models and evaluation
+
+1. HMM with Viterbi decoding: implemented baseline; full-data training/tuning pending.
 2. Linear-chain CRF with basic features: main model.
 3. The same CRF with improved features: controlled improvement and ablations.
 
@@ -99,17 +92,17 @@ zero-division policy. No results exist yet.
 configs/                 Label vocabularies, source planning, experiment template
 data/{raw,processed,splits}/  Local data and frozen split manifests (ignored)
 src/punct_restore/
-  data/                  Member 1: cleaning and label derivation
+  data/                  Member 1: implemented source extraction, labels and release validation
   models/                Member 2: implemented HMM; Member 3: CRF placeholder
   features/              Member 4: shared CRF feature interface
   evaluation/            Member 5: scoring and analysis placeholders
   demo/                  Member 6: inference demonstration placeholder
   pipeline.py            Member 6: integration placeholder
-scripts/                 HMM training/export CLI; other entry points unfinished
+scripts/                 Working prepare_data.py and train_hmm.py; other scripts develop separately
 experiments/             Model notes and future run-record instructions
 results/{predictions,tables,figures}/  Empty output locations
 artifacts/models/        Empty, ignored model storage
-tests/                   HMM/CLI synthetic tests and future shared contract plans
+tests/                   Data contract/release regressions and HMM/CLI tests
 docs/                    Scope, contracts, decisions, workflow, reproduction
 presentation/assets/    Presentation outline and future evidence
 ```
@@ -130,8 +123,8 @@ dependencies, acceptance criteria, shared milestones, and handoffs.
 
 ## Installation and environment preparation
 
-Use Python 3.11+ from the repository root. Python 3.13 was available during
-scaffolding; experiment dependency compatibility has not yet been established.
+Use Python 3.11+ from the repository root. The corrected data release was verified
+with Python 3.13.5 and PyYAML 6.0.3. Record model experiment environments separately.
 
 ```powershell
 python -m venv .venv
@@ -141,29 +134,26 @@ python -m pip install -e ".[dev]"
 
 On macOS/Linux activate with `source .venv/bin/activate`. Alternatively,
 `python -m pip install -r requirements.txt` installs the same development extra.
-These are preparation instructions; setup did not install packages. Runtime
-dependencies are intentionally empty. NumPy, pandas, scikit-learn,
+The data pipeline requires PyYAML; the development extra adds pytest.
+NumPy, pandas, scikit-learn,
 sklearn-crfsuite, Datasets, and matplotlib are candidates to review when needed.
 PyTorch is a future extension only. No GPU framework or pretrained model is
 required. [Reproducibility notes](docs/REPRODUCIBILITY.md) describe future locking.
 
-Member 2's command and tests can be inspected/run without a dataset:
-
-```powershell
-python scripts/train_hmm.py --help
-python -m pytest tests/test_hmm.py tests/test_hmm_cli.py -q
-```
-
-[HMM notes](experiments/HMM_NOTES.md) document estimation, validation, persistence
-and a future training command. No real-data run or performance result exists.
-The other five task scripts and the three shared contract-test plans remain
-placeholders. Original scaffold checks are recorded in
-[initial verification](docs/INITIAL_VERIFICATION.md).
+`python scripts/prepare_data.py --help` describes source extraction and release
+building. See [data/README.md](data/README.md) for the exact commands and required
+provenance package. `python -m pytest -q` runs the data tests using tiny local
+fixtures without downloading SponSpeech. The HMM core and CLI also have fixture
+tests; inspect `python scripts/train_hmm.py --help` and
+[HMM notes](experiments/HMM_NOTES.md). The CLI needs explicit ID-list filtering
+or checksummed filtered inputs before a full-data run; `--split-manifest` alone
+does not filter. Other scripts develop on their member branches. [Initial verification](docs/INITIAL_VERIFICATION.md) is historical;
+[release validation](docs/DATA_RELEASE_VALIDATION.md) records current data checks.
 
 ## Git collaboration
 
 Use `main` for reviewed integration and each member's branch for development.
-All six member branches start at the same scaffolding commit. Open focused PRs
+All six member branches were created from the same scaffolding commit. Open focused PRs
 into `main`; discuss shared interface changes with affected owners first.
 Never force-push another member's work. The Project 2 remote is
 `https://github.com/Rxd3/RECAP.git`; `main` and all six member branches are
@@ -177,14 +167,14 @@ conflict commands using the Project 2 remote.
 
 - [x] Create package structure, configuration templates, ownership and contracts.
 - [x] Prepare independent local Git history and six member branches.
-- [x] Implement the dataset-independent HMM, training/export CLI and synthetic tests.
-- [ ] Agree annotation policies, source configuration, and evaluation projections.
-- [ ] Release reproducible data and immutable split manifests.
-- [ ] Implement and validate the HMM baseline and basic CRF.
+- [x] Agree D1–D6 annotation policies, source configuration, and data projections.
+- [x] Implement reproducible data releases and immutable split manifests.
+- [x] Implement the HMM core, training/export CLI and synthetic tests.
+- [ ] Train/evaluate the HMM baseline and implement the basic CRF.
 - [ ] Implement improved CRF features and controlled ablations.
 - [ ] Evaluate frozen settings on held-out data; analyze errors and runtime.
 - [ ] Integrate inference, rehearse the demo, and prepare evidence-based slides.
 
-No deadlines, dataset counts, model scores, or finished experiments are assumed.
+No deadlines, model scores, or finished experiments are assumed.
 Record seeds, source revisions, preprocessing versions, split hashes, code
 commits, environments, and commands for every future run.

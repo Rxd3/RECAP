@@ -2,9 +2,15 @@
 
 **Status:** dataset-independent implementation complete; real-data training,
 hyperparameter selection, runtime experiments and official scores are pending.
-The user reports that the team selected **SponSpeech** and is preparing it.
-The exact source URL/revision, format, annotations and split manifest have not
-been supplied. No SponSpeech-specific loading or annotation policy is assumed.
+Member 1's corrected release **sponspeech-m1-v2** (policy **m1-v2**) is verified;
+see [release validation](../docs/DATA_RELEASE_VALIDATION.md) and
+[data usage](../data/README.md). Compatibility-only fits/predictions in all three
+modes pass. No full-data model or benchmark score has been produced.
+
+Before using the full-data command template below, add verified ID-list filtering
+to the CLI or create checksummed filtered JSONL inputs. The current CLI reads the
+whole `--train` file; `--split-manifest` records a hash and does not apply
+`default_train` or `primary_eval` IDs. Use the corrected mode-specific selections.
 
 ## Implemented interface
 
