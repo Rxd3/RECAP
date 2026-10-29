@@ -145,9 +145,11 @@ building. See [data/README.md](data/README.md) for the exact commands and requir
 provenance package. `python -m pytest -q` runs the data tests using tiny local
 fixtures without downloading SponSpeech. The HMM core and CLI also have fixture
 tests; inspect `python scripts/train_hmm.py --help` and
-[HMM notes](experiments/HMM_NOTES.md). The CLI needs explicit ID-list filtering
-or checksummed filtered inputs before a full-data run; `--split-manifest` alone
-does not filter. Other scripts develop on their member branches. [Initial verification](docs/INITIAL_VERIFICATION.md) is historical;
+[HMM notes](experiments/HMM_NOTES.md). Training requires `--train-ids`, and
+`--release-manifest` verifies the official release. The
+[HMM runbook](experiments/HMM_RUNBOOK.md) covers validation selection, saved-model
+inference and independent reproduction. Other scripts develop on their member
+branches. [Initial verification](docs/INITIAL_VERIFICATION.md) is historical;
 [release validation](docs/DATA_RELEASE_VALIDATION.md) records current data checks.
 
 ## Git collaboration

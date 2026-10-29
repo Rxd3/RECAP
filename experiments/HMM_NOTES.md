@@ -7,10 +7,10 @@ see [release validation](../docs/DATA_RELEASE_VALIDATION.md) and
 [data usage](../data/README.md). Compatibility-only fits/predictions in all three
 modes pass. No full-data model or benchmark score has been produced.
 
-Before using the full-data command template below, add verified ID-list filtering
-to the CLI or create checksummed filtered JSONL inputs. The current CLI reads the
-whole `--train` file; `--split-manifest` records a hash and does not apply
-`default_train` or `primary_eval` IDs. Use the corrected mode-specific selections.
+The release-aware CLI now requires frozen training IDs and verifies the release
+manifest, versions and label configuration. The experiment and independent
+reproduction commands are in [HMM_RUNBOOK.md](HMM_RUNBOOK.md). Full-data runs and
+observed results remain pending until those commands finish.
 
 ## Implemented interface
 
@@ -82,68 +82,20 @@ records, duplicate IDs, mismatched lengths, wrong modes and held-out training
 records fail explicitly. Artifact loading checks dimensions, nonnegative
 counts, incoming/outgoing balance and vocabulary consistency.
 
-## Commands ready for the data handoff
+## Experiment workflow and completion evidence
 
-Inspect the CLI now without any dataset:
+Use [HMM_RUNBOOK.md](HMM_RUNBOOK.md) and the predeclared configuration
+[configs/hmm_sponspeech_v2.yaml](../configs/hmm_sponspeech_v2.yaml). The shared
+Member 5 evaluator is pinned at commit 3044a58e777200bcac64e6e3364922404be359bf.
 
-```powershell
-python scripts/train_hmm.py --help
-python -m pytest tests/test_hmm.py tests/test_hmm_cli.py -q
-```
+- Training requires explicit IDs; missing/duplicate IDs and invalid unselected
+  records fail before output. Source-file order is preserved.
+- The release manifest authenticates canonical files, default-training IDs,
+  label configuration, source revision and policy versions.
+- The predictor strips gold/source metadata and loads the saved artifact.
+- Search is validation-only; all modes freeze before held-out evaluation.
+- The audit independently checks metrics and performs full refit/prediction
+  reproduction. Generated models and predictions remain outside Git.
 
-The following is a **future command template**, not an experiment already run.
-Replace all release/version/path placeholders with Member 1's verified values:
-
-```powershell
-python scripts/train_hmm.py --train data/processed/RELEASE/A/train.jsonl --output-dir artifacts/models/hmm-A-RUN --label-mode A --smoothing 0.1 --min-token-count 2 --dataset-release-id RELEASE --preprocessing-version VERSION --tokenizer-version VERSION --label-policy-version VERSION --split-manifest data/splits/RELEASE/manifest.json
-```
-
-Add `--predict-input path/to/validation.jsonl` to export predictions after fitting.
-No evaluation calculations or test-set selection are performed by this script.
-For mode C supply C-mode training records; for B supply native extended labels.
-
-Each new run directory contains `model.json` and `run.json`; optional prediction
-export adds `predictions.jsonl` and `predictions.manifest.json`. Provenance records
-training/manifest/label-config SHA-256 values, release/policy versions, ordered
-labels, hyperparameters, deterministic/no-seed status, code commit/dirty flag,
-Python/platform, portable command and model/prediction hashes. Training time
-includes input reading, validation and estimation. No calibrated confidence or
-benchmark latency is claimed. External paths are recorded as filenames plus
-hashes to avoid embedding personal absolute paths; relocate inputs when replaying.
-
-The CLI checksums the supplied split manifest but does **not** claim to audit
-its sample/group membership, since Member 1 has not delivered that schema yet.
-Obtain a validated, duplicate/leakage-audited release before official training.
-Any needed SponSpeech adapter must be agreed with Member 1 rather than guessed.
-
-## What the dataset handoff must include
-
-- [ ] Exact source link/revision and verified release ID/usage conditions.
-- [ ] Tokenized train/validation/test JSONL or a clear mapping to the shared schema.
-- [ ] Stable IDs, fixed split/group manifest and file checksums.
-- [ ] Tokenization, lowercasing, punctuation/casing policies and their versions.
-- [ ] Available modes and verified casing; an approved projection if any is used.
-- [ ] Known exclusions, class distributions and clean/noisy alignment limitations.
-
-Then inspect a small sample, validate compatibility with Member 1, train on train
-only, select smoothing/cutoff on validation, freeze settings, and hand prediction
-bundles to Member 5 for evaluation and compatible artifacts to Member 6. Do not
-add test-driven tuning or replace missing gold casing with guessed labels.
-
-## Completion and evidence
-
-- [x] Supervised counts, smoothing, explicit boundaries and log-space Viterbi.
-- [x] Train-only rare/unknown handling and all A/B/C label spaces.
-- [x] Shared output alignment, gold-invariance and validated save/load.
-- [x] CLI, portable provenance and checksummed optional prediction export.
-- [x] Hand-calculated probabilities, exhaustive path checks and temporary CLI tests.
-- [ ] Real release inspection, hyperparameter selection, official training and scores.
-- [ ] Measured runtime/limitations and evaluated baseline handoff.
-
-Synthetic fixtures are software checks only. No real dataset, trained research
-artifact, performance table or experimental result has been committed.
-
-Verification for this increment: `python -m pytest -q` passed **59 tests**.
-Black (Python 3.11 target, 100-character lines), Ruff checks for imports/Python
-compatibility/common correctness, documentation links and `git diff --check`
-also passed. Data/output directories retain only their original empty markers.
+Full-data selection, measured limitations and evaluated handoff are pending at
+this implementation checkpoint. No benchmark numbers are claimed here.

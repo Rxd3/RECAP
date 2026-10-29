@@ -5,9 +5,9 @@ immutable release building. Run `python scripts/prepare_data.py --help` and foll
 [data/README.md](../data/README.md).
 
 `train_hmm.py` implements shared-schema HMM training, versioned JSON artifacts/run
-manifests and optional aligned prediction exports. It does not score, choose settings
-or apply the release ID lists automatically. Apply explicit filtering before full-data
-training; `--split-manifest` only records a checksum. Run
+manifests and optional aligned prediction exports. `--train-ids` is required;
+`--release-manifest` authenticates release inputs, IDs and the label configuration.
+The experiment runner selects settings using the pinned Member 5 scorer. Run
 `python scripts/train_hmm.py --help` and see [HMM notes](../experiments/HMM_NOTES.md).
 
 The remaining four scripts are placeholders. Run commands from the repository root.
@@ -16,6 +16,9 @@ The remaining four scripts are placeholders. Run commands from the repository ro
 | --- | --- | --- |
 | `prepare_data.py` | Member 1 | Verified sources → validated JSONL and fixed splits |
 | `train_hmm.py` | Member 2 | Shared training records → HMM artifact/predictions |
+| `predict_hmm.py` | Member 2 | Saved artifact → gold-free predictions |
+| `run_hmm_experiments.py` | Member 2 | Frozen validation search, held-out evaluation and timing |
+| `verify_hmm_experiments.py` | Member 2 | Independent score audit and full refit/prediction reproduction |
 | `train_crf.py` | Member 3 | Shared records + injected features → CRF artifact/predictions |
 | `run_ablations.py` | Member 4 | Controlled basic/improved feature comparisons |
 | `evaluate_models.py` | Member 5 | Validate alignment; score compatible targets and analyze errors |

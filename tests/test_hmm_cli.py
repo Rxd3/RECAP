@@ -31,6 +31,8 @@ def setup_run(tmp_path, mode="A", split="train"):
         "case_labels": ["FIRST_UPPER", "ALL_UPPER"],
     }
     jsonl(train, [sample])
+    train_ids = tmp_path / "train.ids"
+    train_ids.write_text("unit-train\n", encoding="utf-8")
     manifest = tmp_path / "split_manifest.json"
     # Only its checksum is consumed; Member 1 owns the eventual manifest schema/audit.
     manifest.write_text(json.dumps({"synthetic_fixture": True}), encoding="utf-8")
@@ -44,6 +46,8 @@ def setup_run(tmp_path, mode="A", split="train"):
         str(SCRIPT),
         "--train",
         str(train),
+        "--train-ids",
+        str(train_ids),
         "--output-dir",
         str(output),
         "--label-mode",

@@ -9,6 +9,10 @@ input failures, persistence and CLI manifests. These fixture fits are compatibil
 tests, not research experiments. Remaining model/evaluation contract plans develop
 on their member branches.
 
+`test_hmm_workflow.py` checks strict selections and release checksum failures.
+`test_hmm_experiments.py` checks validation-only freeze gates, tie-breaking,
+saved-model inference and the independent metric counter.
+
 - Member 1: records, labels, IDs, policy edge cases and fixed split integrity.
 - Member 6 with Members 2–3: adapters, gold-free inputs, alignment and persistence.
 - Member 5: hand-checkable metrics, O handling, zero division and projections.
