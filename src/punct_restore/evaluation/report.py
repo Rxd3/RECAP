@@ -1,7 +1,8 @@
 """Evaluation report (JSON dict and Markdown summary), owned by Member 5.
 
 Schema "recap-eval-v1": inputs with SHA-256, counts, the primary score and every block of the
-mode. Floats are rounded to 6 decimals; the Markdown view shows percentages with 2 decimals.
+mode, plus a grouped bootstrap interval per block when requested. Floats are rounded to 6
+decimals; the Markdown view shows percentages with 2 decimals.
 """
 
 from __future__ import annotations
@@ -10,6 +11,7 @@ from typing import Any
 
 from .inputs import Bundle, Vocab
 from .metrics import score_block
+from .uncertainty import BootstrapSpec, block_intervals
 from .views import block_pairs, blocks_for
 
 SCHEMA = "recap-eval-v1"
@@ -17,72 +19,101 @@ DECIMALS = 6
 PRIMARY_METRIC = "macro_f1"
 
 
-def _rounded(value: Any) -> Any:
+def rounded(value: Any) -> Any:
     if isinstance(value, float):
         return round(value, DECIMALS)
     if isinstance(value, dict):
-        return {key: _rounded(item) for key, item in value.items()}
+        return {key: rounded(item) for key, item in value.items()}
     if isinstance(value, list):
-        return [_rounded(item) for item in value]
+        return [rounded(item) for item in value]
     return value
 
 
-def evaluate(bundle: Bundle, vocab: Vocab) -> dict[str, Any]:
-    """Score every block of the bundle's mode; the first block is primary."""
+def plain_inputs(bundle: Bundle) -> dict[str, dict[str, str] | None]:
+    """The bundle's read-only input identities as plain JSON-ready dicts."""
+    return {key: dict(value) if value is not None else None
+            for key, value in bundle.inputs.items()}
+
+
+def evaluate(bundle: Bundle, vocab: Vocab,
+             bootstrap: BootstrapSpec | None = None) -> dict[str, Any]:
+    """Score every block of the bundle's mode (first block primary); optional bootstrap CIs."""
     specs = blocks_for(bundle.label_mode, vocab)
     blocks = {spec.name: score_block(block_pairs(bundle.records, spec), spec.labels,
                                      spec.macro_over)
               for spec in specs}
+    if bootstrap is not None:
+        intervals = block_intervals(bundle.records, specs, bootstrap)
+        blocks = {name: {**block, "macro_f1_ci": intervals[name]} for name, block in blocks.items()}
     primary = specs[0].name
-    inputs = {key: dict(value) if value is not None else None
-              for key, value in bundle.inputs.items()}
     report = {"schema": SCHEMA, "label_mode": bundle.label_mode, "model_name": bundle.model_name,
-              "inputs": inputs,
+              "inputs": plain_inputs(bundle),
               "counts": {"sequences": len(bundle.records),
                          "tokens": sum(len(record.gold) for record in bundle.records),
                          "ignored_prediction_ids": bundle.ignored_prediction_ids},
               "primary": {"block": primary, "metric": PRIMARY_METRIC,
                           "value": blocks[primary][PRIMARY_METRIC]},
               "blocks": blocks}
-    return _rounded(report)
+    return rounded(report)
 
 
-def _pct(value: float) -> str:
+def pct(value: float) -> str:
     return f"{100 * value:.2f}"
 
 
-def _md_text(text: str) -> str:
-    """One-line Markdown-safe text: control characters become '?', table pipes are escaped."""
-    printable = "".join(char if char.isprintable() else "?" for char in text)
-    return printable.replace("|", "\\|")
+def printable(text: str) -> str:
+    """One-line text: control characters (newlines, escape codes) become '?'."""
+    return "".join(char if char.isprintable() else "?" for char in text)
+
+
+def md_text(text: str) -> str:
+    """One-line Markdown-safe text: printable() plus escaped table pipes."""
+    return printable(text).replace("|", "\\|")
+
+
+def ci_text(ci: dict[str, Any]) -> str:
+    """'low to high' in percent (reads well for negative differences too)."""
+    return f"{pct(ci['low'])} to {pct(ci['high'])}"
+
+
+def inputs_line(inputs: dict[str, Any]) -> str:
+    listed = ", ".join(f"{key} `{md_text(value['path'])}` (sha256 {value['sha256']})"
+                       for key, value in inputs.items() if value is not None)
+    return f"Inputs: {listed}.\n\n"
 
 
 def _header(report: dict[str, Any]) -> list[str]:
     counts, primary = report["counts"], report["primary"]
-    inputs = ", ".join(f"{key} `{_md_text(value['path'])}` (sha256 {value['sha256']})"
-                       for key, value in report["inputs"].items() if value is not None)
-    return [f"# Evaluation: {_md_text(report['model_name'])} (mode {report['label_mode']})\n\n",
-            f"Inputs: {inputs}.\n\n",
+    return [f"# Evaluation: {md_text(report['model_name'])} (mode {report['label_mode']})\n\n",
+            inputs_line(report["inputs"]),
             (f"Sequences {counts['sequences']}, tokens {counts['tokens']}, "
              f"ignored prediction IDs {counts['ignored_prediction_ids']}.\n\n"),
-            f"**Primary:** `{primary['block']}` macro F1 = {_pct(primary['value'])}%\n\n"]
+            f"**Primary:** `{primary['block']}` macro F1 = {pct(primary['value'])}%\n\n"]
+
+
+def _block_rows(report: dict[str, Any]) -> list[str]:
+    with_ci = any("macro_f1_ci" in block for block in report["blocks"].values())
+    extra_head, extra_rule = (" Macro F1 95% CI |", " ---: |") if with_ci else ("", "")
+    rows = [("| Block | Scored positions | Macro F1 % | Micro F1 % | Accuracy % | Flag |"
+             f"{extra_head}\n"),
+            f"| --- | ---: | ---: | ---: | ---: | --- |{extra_rule}\n"]
+    for name, block in report["blocks"].items():
+        flag = "empty support" if block["empty_support"] else ""
+        ci = f" {ci_text(block['macro_f1_ci'])} |" if with_ci else ""
+        rows.append(f"| {name} | {block['scored_positions']} | {pct(block['macro_f1'])} | "
+                    f"{pct(block['micro']['f1'])} | {pct(block['accuracy'])} | {flag} |{ci}\n")
+    return rows
 
 
 def to_markdown(report: dict[str, Any]) -> str:
     """Short human-readable summary of a report produced by evaluate()."""
-    lines = _header(report) + [
-        "| Block | Scored positions | Macro F1 % | Micro F1 % | Accuracy % | Flag |\n",
-        "| --- | ---: | ---: | ---: | ---: | --- |\n"]
-    for name, block in report["blocks"].items():
-        flag = "empty support" if block["empty_support"] else ""
-        lines.append(f"| {name} | {block['scored_positions']} | {_pct(block['macro_f1'])} | "
-                     f"{_pct(block['micro']['f1'])} | {_pct(block['accuracy'])} | {flag} |\n")
+    lines = _header(report) + _block_rows(report)
     primary = report["primary"]["block"]
     lines += [f"\n## Per class: {primary}\n\n",
               "| Label | Precision % | Recall % | F1 % | Support | Predicted |\n",
               "| --- | ---: | ---: | ---: | ---: | ---: |\n"]
     for label, scores in report["blocks"][primary]["per_class"].items():
-        lines.append(f"| {_md_text(label)} | {_pct(scores['precision'])} | "
-                     f"{_pct(scores['recall'])} | {_pct(scores['f1'])} | "
+        lines.append(f"| {md_text(label)} | {pct(scores['precision'])} | "
+                     f"{pct(scores['recall'])} | {pct(scores['f1'])} | "
                      f"{scores['support']} | {scores['predicted']} |\n")
     return "".join(lines)

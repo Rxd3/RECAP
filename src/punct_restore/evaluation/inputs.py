@@ -58,6 +58,7 @@ class Aligned:
     gold: tuple[str, ...]
     pred: tuple[str, ...]
     masked: frozenset[int]
+    tokens: tuple[str, ...] = ()  # model input words, for error examples
 
 
 @dataclass(frozen=True)
@@ -323,7 +324,8 @@ def load_bundle(gold_path: str | Path, ids_path: str | Path, predictions_path: s
     model, predictions, ignored = _read_predictions(predictions_path, mode, vocab, gold, scored)
     masks = _read_masks(masks_file, gold, scored) if masks_file is not None else {}
     records = tuple(Aligned(sample_id, gold[sample_id].group_id, gold[sample_id].labels,
-                            predictions[sample_id], masks.get(sample_id, frozenset()))
+                            predictions[sample_id], masks.get(sample_id, frozenset()),
+                            gold[sample_id].tokens)
                     for sample_id in scored)
     inputs = _identities(gold=gold_path, ids=ids_path, predictions=predictions_path,
                          masks=masks_file)

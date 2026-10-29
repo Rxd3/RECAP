@@ -25,6 +25,7 @@ from eval_fixtures import (
 from punct_restore.evaluation import evaluate, load_bundle, to_markdown
 from punct_restore.evaluation.inputs import Bundle, Vocab, sha256_file
 from punct_restore.evaluation.metrics import score_block
+from punct_restore.evaluation.report import ci_text, md_text, printable
 from punct_restore.evaluation.views import block_pairs, blocks_for
 
 BLOCK_KEYS = {"labels", "macro_over", "scored_positions", "per_class", "macro_f1", "micro", "accuracy",
@@ -245,3 +246,11 @@ def test_markdown_sanitises_model_name(tmp_path: Path, vocab: Vocab, raw: str, s
     assert markdown.count("\n") == to_markdown(report).count("\n")
     if "\n" in raw or "\r" in raw:
         assert raw not in markdown
+
+
+def test_public_text_helpers() -> None:
+    assert printable("a\nb\x85c\x7fd") == "a?b?c?d"
+    assert printable("模型 ok") == "模型 ok"
+    assert md_text("a|b\nc") == "a" + ESCAPED_PIPE + "b?c"
+    assert ci_text({"low": 0.1, "high": 0.25}) == "10.00 to 25.00"
+    assert ci_text({"low": -0.05, "high": 0.1}) == "-5.00 to 10.00"

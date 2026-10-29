@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import importlib.util
+from pathlib import Path
 from types import ModuleType
 
 import pytest
-from eval_fixtures import SCRIPT_PATH
+from cli_analysis_cases import build_case
+from eval_fixtures import SCRIPT_PATH, Case
 
 from punct_restore.evaluation import load_vocab
 from punct_restore.evaluation.inputs import Vocab
@@ -26,3 +28,15 @@ def cli() -> ModuleType:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+@pytest.fixture
+def grouped_case(tmp_path: Path) -> Case:
+    """Mode A command line case: 8 records over 4 groups, preds.jsonl (model_a) and preds_b.jsonl (model_b)."""
+    return build_case(tmp_path / "case", "A")
+
+
+@pytest.fixture
+def mode_c_case(tmp_path: Path) -> Case:
+    """The same case in mode C, with a masks file."""
+    return build_case(tmp_path / "case_c", "C")

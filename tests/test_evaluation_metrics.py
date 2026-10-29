@@ -13,7 +13,13 @@ from typing import Any
 import pytest
 
 from punct_restore.evaluation.inputs import Vocab
-from punct_restore.evaluation.metrics import confusion, score_block, split_joint
+from punct_restore.evaluation.metrics import (
+    class_counts,
+    confusion,
+    macro_f1_from_counts,
+    score_block,
+    split_joint,
+)
 
 LABELS = ("O", "COMMA", "PERIOD", "QUESTION")
 NON_O = LABELS[1:]
@@ -247,3 +253,15 @@ def test_matches_sklearn_random(sk_metrics: ModuleType, vocab: Vocab, seed: int)
     rng = random.Random(seed)
     _assert_matches_sklearn(sk_metrics, _random_punctuation_pairs(rng), LABELS, NON_O)
     _assert_matches_sklearn(sk_metrics, _random_joint_pairs(rng, vocab.C), vocab.C, vocab.C)
+
+
+# --- count helpers used by the grouped bootstrap -----------------------------------------------
+
+def test_class_counts() -> None:
+    assert class_counts(((5, 1), (2, 3))) == ((5, 3), (6, 5), (7, 4))
+
+
+def test_macro_f1_from_counts() -> None:
+    assert macro_f1_from_counts((0, 1), (1, 1), (0, 1)) == 0.5
+    assert macro_f1_from_counts((1, 0), (1, 0), (1, 0)) == 0.5  # zero-support class stays in the mean
+    assert macro_f1_from_counts((), (), ()) == 0.0

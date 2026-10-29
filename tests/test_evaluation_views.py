@@ -139,6 +139,18 @@ def test_projections() -> None:
     assert casing_of("PERIOD|FIRST_UPPER") == "FIRST_UPPER"
 
 
+def test_block_spec_projected(vocab: Vocab) -> None:
+    for spec in blocks_for("A", vocab):
+        assert spec.projected("COMMA") == "COMMA", spec.name
+    label = "PERIOD|FIRST_UPPER"
+    expected = {"joint/unmasked": label, "punctuation/all": "PERIOD", "punctuation/non_final": "PERIOD",
+                "casing/unmasked": "FIRST_UPPER", "casing/unmasked_non_initial": "FIRST_UPPER",
+                "casing/all": "FIRST_UPPER"}
+    assert [spec.name for spec in blocks_for("C", vocab)] == list(expected)
+    for spec in blocks_for("C", vocab):
+        assert spec.projected(label) == expected[spec.name], spec.name
+
+
 def test_mode_a_pairs_keep_record_then_position_order(vocab: Vocab) -> None:
     first = aligned(("O", "PERIOD"), ("O", "QUESTION"), sample_id="r1")
     second = aligned(("COMMA", "O", "PERIOD"), ("O", "O", "PERIOD"), sample_id="r2")

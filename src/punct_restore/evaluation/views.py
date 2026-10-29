@@ -23,6 +23,10 @@ class BlockSpec:
     positions: Callable[[Aligned], Iterable[int]]
     project: Callable[[str], str] | None = None
 
+    def projected(self, label: str) -> str:
+        """The label in this block's label space (unchanged without a projection)."""
+        return self.project(label) if self.project is not None else label
+
 
 def all_positions(record: Aligned) -> Iterable[int]:
     return range(len(record.gold))
@@ -70,6 +74,5 @@ def blocks_for(mode: str, vocab: Vocab) -> tuple[BlockSpec, ...]:
 
 def block_pairs(records: Sequence[Aligned], spec: BlockSpec) -> list[tuple[str, str]]:
     """(gold, predicted) pairs at the block's positions, projected to the block's labels."""
-    project = spec.project or (lambda label: label)
-    return [(project(record.gold[i]), project(record.pred[i]))
+    return [(spec.projected(record.gold[i]), spec.projected(record.pred[i]))
             for record in records for i in spec.positions(record)]

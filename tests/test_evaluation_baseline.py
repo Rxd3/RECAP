@@ -142,7 +142,8 @@ def test_baseline_predictions_pass_input_checks(tmp_path: Path, vocab: Vocab, mo
 
 
 def test_public_api() -> None:
-    names = {"EvaluationInputError", "evaluate", "load_bundle", "load_scored_gold", "load_vocab",
+    names = {"BootstrapSpec", "EvaluationInputError", "check_manifest", "compare", "comparison_markdown",
+             "error_examples", "errors_markdown", "evaluate", "load_bundle", "load_scored_gold", "load_vocab",
              "shortcut_predictions", "to_markdown"}
     assert set(evaluation.__all__) == names
     for name in names:

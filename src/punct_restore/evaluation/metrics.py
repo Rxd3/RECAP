@@ -40,6 +40,21 @@ def _class_scores(tp: int, support: int, predicted: int) -> dict[str, float | in
             "support": support, "predicted": predicted}
 
 
+def class_counts(matrix: Sequence[Sequence[int]]) -> tuple[tuple[int, ...], ...]:
+    """(tp, support, predicted) per class from a square confusion matrix."""
+    tp = tuple(matrix[i][i] for i in range(len(matrix)))
+    support = tuple(sum(row) for row in matrix)
+    predicted = tuple(sum(column) for column in zip(*matrix))
+    return tp, support, predicted
+
+
+def macro_f1_from_counts(tp: Sequence[int], support: Sequence[int],
+                         predicted: Sequence[int]) -> float:
+    """Mean F1 over the given classes (zero_division=0); used by the bootstrap."""
+    scores = [_class_scores(t, s, p)["f1"] for t, s, p in zip(tp, support, predicted)]
+    return _div(sum(scores), len(scores))
+
+
 def score_block(pairs: Iterable[tuple[str, str]], labels: Sequence[str],
                 macro_over: Sequence[str]) -> dict[str, Any]:
     """Per-class, macro and micro (both over `macro_over`) and accuracy for one block."""
@@ -47,16 +62,15 @@ def score_block(pairs: Iterable[tuple[str, str]], labels: Sequence[str],
     if not macro_over or any(label not in labels for label in macro_over):
         raise ValueError(f"macro_over must be a nonempty subset of the labels: {list(macro_over)}")
     matrix = confusion(pairs, labels)
-    support = [sum(row) for row in matrix]
-    predicted = [sum(column) for column in zip(*matrix)]
-    tp_by_class = [matrix[i][i] for i in range(len(labels))]
+    tp_by_class, support, predicted = class_counts(matrix)
     per_class = {label: _class_scores(tp_by_class[i], support[i], predicted[i])
                  for i, label in enumerate(labels)}
     macro_indices = [labels.index(label) for label in macro_over]
     micro_tp = sum(tp_by_class[i] for i in macro_indices)
     micro_p = _div(micro_tp, sum(predicted[i] for i in macro_indices))
     micro_r = _div(micro_tp, sum(support[i] for i in macro_indices))
-    macro_f1 = _div(sum(per_class[label]["f1"] for label in macro_over), len(macro_over))
+    macro_f1 = macro_f1_from_counts(*([vector[i] for i in macro_indices]
+                                      for vector in (tp_by_class, support, predicted)))
     return {"labels": list(labels), "macro_over": list(macro_over),
             "scored_positions": sum(support), "per_class": per_class, "macro_f1": macro_f1,
             "micro": {"precision": micro_p, "recall": micro_r, "f1": _f1(micro_p, micro_r)},

@@ -9,7 +9,10 @@ import json
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from types import ModuleType
 from typing import Any
+
+import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = REPO_ROOT / "scripts" / "evaluate_models.py"
@@ -21,6 +24,30 @@ FILE_NAMES = {"gold": "gold.jsonl", "ids": "list.ids", "predictions": "preds.jso
 def corrupt_line_two(path: Path) -> None:
     """Keep the first line of the file and make line 2 invalid UTF-8."""
     path.write_bytes(path.read_bytes().splitlines(keepends=True)[0] + BAD_UTF8_LINE)
+
+
+def run_cli(cli: ModuleType, capsys: pytest.CaptureFixture[str], argv: list[str]) -> tuple[int, str, str]:
+    """cli.main(argv) in-process: (exit code, stdout, stderr)."""
+    code = cli.main(argv)
+    captured = capsys.readouterr()
+    return code, captured.out, captured.err
+
+
+def assert_one_error_line(err: str) -> None:
+    """Spec 8: one friendly stderr line, no traceback."""
+    assert err.startswith("error: "), repr(err)
+    assert err.endswith("\n") and err.count("\n") == 1, repr(err)
+    assert "\r" not in err and "Traceback" not in err, repr(err)
+
+
+def cli_argv(command: str, case: Case, out: Path, *extra: str, predictions: bool = True) -> list[str]:
+    """[command, --gold, --ids, (--predictions), (--masks), *extra, --out] for a written case."""
+    argv = [command, "--gold", str(case.gold), "--ids", str(case.ids)]
+    if predictions:
+        argv += ["--predictions", str(case.predictions)]
+    if case.masks is not None:
+        argv += ["--masks", str(case.masks)]
+    return argv + [*extra, "--out", str(out)]
 
 
 def gold_row(sample_id: str, mode: str, tokens: Sequence[str], punct: Sequence[str], case: Sequence[str],

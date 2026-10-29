@@ -2,8 +2,9 @@
 
 Owner: Member 5. Reviewers: Members 1–4 and 6. The core of this protocol is
 implemented in `src/punct_restore/evaluation/` and `scripts/evaluate_models.py`
-(2026-10-29). Bootstrap intervals, the runtime table and error-example export
-are still planned. No results are recorded in this document.
+(2026-10-29), including grouped bootstrap intervals, paired model comparison,
+error-example export and the prediction-manifest check. The runtime table is
+still planned (see below). No results are recorded in this document.
 
 ## Data discipline and alignment
 
@@ -137,6 +138,17 @@ sequence length, questions, abbreviations and capitalization cases. Preserve
 sample IDs and provenance. Do not select only favorable examples. Optional
 confidence intervals should use a documented seed and paired resampling at the
 talk/document group level where practical; describe dependence and uncertainty.
+
+**Implemented.**
+- **Confidence intervals:** `score --bootstrap N [--seed S]` (N at least 100; the seed defaults to 2026).
+  - Whole videos (`metadata.group_id`) are resampled with replacement.
+  - Each block's macro F1 gets a 95% percentile interval, `macro_f1_ci`.
+  - All blocks share the same draws.
+- **Paired comparison:** `compare --predictions-a A --predictions-b B` scores two models on the same gold file, ID list and masks, giving each block's macro F1 difference B − A. With `--bootstrap`, both models use the same resampled videos, which adds the paired 95% interval of the difference and the share of resamples in which B beats A.
+- **Error examples:** `errors [--block NAME] [--per-pair K] [--seed S]` counts every wrong position per (gold, predicted) pair. It then draws up to K examples per pair at random with the seed, and writes them as text rebuilt with the gold and with the predicted labels.
+- **Prediction manifest:** `score --manifest predictions.manifest.json` checks that the manifest's `model_name`, `label_mode`, `ordered_labels`, `predictions_sha256` and `input.sha256` match the scored predictions, the vocabulary and the gold file. These are the HMM's field names, which every model should mirror. The manifest's identity is then recorded in the report.
+
+**Runtime table: planned.** It needs the models to record their timing. Proposed manifest field, to agree with Member 6 and the model owners: `runtime: {fit_seconds, predict_seconds, predicted_tokens, hardware}`, measured on one machine under identical conditions.
 
 ## Required future output bundle
 
