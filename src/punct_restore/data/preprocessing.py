@@ -15,7 +15,7 @@ import os
 import re
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from itertools import islice
+from itertools import chain, islice
 
 # --- Source identity (SponSpeech; D1 approved) ------------------------------------------------------------------
 
@@ -48,6 +48,11 @@ def _map_source_files(function, items):
     queuing a future for every transcript and keep memory independent of file count.
     """
     pending = iter(items)
+    first = list(islice(pending, 257))
+    if len(first) <= 256:
+        yield from map(function, first)
+        return
+    pending = chain(first, pending)
     with ThreadPoolExecutor(max_workers=16) as pool:
         while batch := list(islice(pending, 256)):
             yield from pool.map(function, batch)
