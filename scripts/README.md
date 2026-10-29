@@ -1,10 +1,12 @@
-# Future task scripts
+# Task scripts
 
-Every task script is an explicit scaffold placeholder. Executing one currently
-exits nonzero with an unfinished message; no flags, training, data processing,
-evaluation or inference are implemented. Run future commands from the repo root.
+`prepare_data.py` implements pinned SponSpeech transcript extraction and validated,
+immutable release building. Run `python scripts/prepare_data.py --help` and follow
+[data/README.md](../data/README.md). Other scripts remain placeholders in the data
+branch; their implementations develop on the respective member branches. Run
+commands from the repository root.
 
-| Script | Owner | Future responsibility |
+| Script | Owner | Responsibility |
 | --- | --- | --- |
 | `prepare_data.py` | Member 1 | Verified sources → validated JSONL and fixed splits |
 | `train_hmm.py` | Member 2 | Shared training records → HMM artifact/predictions |
@@ -13,5 +15,5 @@ evaluation or inference are implemented. Run future commands from the repo root.
 | `evaluate_models.py` | Member 5 | Validate alignment; score compatible targets and analyze errors |
 | `run_demo.py` | Member 6 | Shared input + compatible trained model → restored text |
 
-TODO: Members define argument interfaces and actual commands with Member 6 as
+Other members define argument interfaces and actual commands with Member 6 as
 implementations become available. Keep core logic in package modules.

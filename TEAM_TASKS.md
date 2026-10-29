@@ -1,8 +1,9 @@
 # Six-member project board
 
-**Initial Scaffolding / Work Not Yet Implemented.** Replace Member placeholders
-with names later. No implementation checkboxes are complete and no deadlines are
-assumed. Every member must understand their component's assumptions, the label
+**Status:** Member 1 data preparation is implemented; its corrected version 2
+release is documented in [release validation](docs/DATA_RELEASE_VALIDATION.md).
+Other components develop on member branches. No deadlines are assumed. Every
+member must understand their component's assumptions, the label
 schemes, leakage risks, evaluation choices and the overall methodology.
 
 Primary ownership identifies the first reviewer, not permission to change shared
@@ -20,16 +21,16 @@ and `tests/test_data_contract.py`. Label policy changes require Member 5 review.
 
 **Tasks:**
 
-- [ ] Inspect source configurations, fields, revision, access, annotations and license.
-- [ ] Agree and document cleaning, tokenization, lowercasing and edge-case policies.
-- [ ] Extract punctuation boundaries and casing from original English text.
-- [ ] Prepare aligned A (4), B (8) and C (4×3=12) representations without pipeline copies.
-- [ ] Verify the proposed B→A mapping against benchmark rules with Member 5.
-- [ ] Audit duplicate English text across source configs/years and talk/document groups.
-- [ ] Freeze reproducible training/validation/test assignments and checksums.
-- [ ] Calculate actual data/length statistics, exclusions and class distributions.
-- [ ] Validate every release against the shared contract and add tiny fixture tests.
-- [ ] Verify clean/ASR availability and alignment without labeling synthetic noise as ASR.
+- [x] Inspect source configurations, fields, revision, access, annotations and license.
+- [x] Agree and document cleaning, tokenization, lowercasing and edge-case policies.
+- [x] Extract punctuation boundaries and casing from original English text.
+- [x] Prepare aligned A (4), B (8) and C (4×3=12) representations without pipeline copies.
+- [x] Verify the approved B→A mapping and retain a separate native benchmark view.
+- [x] Audit duplicate English text across source configs/years and talk/document groups.
+- [x] Freeze reproducible training/validation/test assignments and checksums.
+- [x] Calculate actual data/length statistics, exclusions and class distributions.
+- [x] Validate every release against the shared contract and add tiny fixture tests.
+- [x] Verify clean/ASR availability and alignment without labeling synthetic noise as ASR.
 
 **Deliverables:** working preprocessing pipeline; reproducible processed-data
 release and split manifest; annotation policy; provenance/download guide;
@@ -40,14 +41,17 @@ Member 6 for portable handoff and artifact distribution. No model is required.
 
 **Definition of Done:**
 
-- [ ] Approved policies cover ambiguous punctuation/casing and rejected records.
-- [ ] IDs, lengths, labels and splits validate; no known cross-split duplicate leakage.
-- [ ] Regeneration command, source revision, environment and hashes are recorded.
-- [ ] Members 2, 3, 5 and 6 can load the same release without retokenizing/resplitting.
+- [x] Approved policies cover ambiguous punctuation/casing and rejected records.
+- [x] IDs, lengths, labels and splits validate; primary subsets pass video, raw/normalized exact and six-gram overlap checks against their reference splits.
+- [x] Regeneration command, source revision, environment and hashes are recorded.
+- [ ] Members 2, 3, 5 and 6 acknowledge the same distributed release without retokenizing/resplitting.
 
-**Handoff:** first submit source/policy inspection PR, then a data pipeline and
-contract-test PR. Provide versioned data/manifests separately from Git. Notify
-Members 2–6 of release ID, paths, checksums, distributions and known limitations.
+**Handoff:** [PR #1](https://github.com/Rxd3/RECAP/pull/1) contains the pipeline,
+contracts and regression tests. Provide the corrected `sponspeech-m1-v2` bundle
+from `artifacts/data/sponspeech-m1-v2/` through the shared Drive folder, then ask
+Members 2–6 to acknowledge its ID lists, checksums and documented limitations.
+The old `sponspeech-m1-v1-rev2` bundle is superseded. Drive upload and individual
+member acknowledgments remain pending; the team lead authorized this review.
 
 ## Member 2 — HMM Baseline Raşit  
 

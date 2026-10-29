@@ -1,7 +1,9 @@
-# Contract test plans
+# Contract tests
 
-These three Python files contain only descriptions and TODOs. No functional
-tests have been implemented or passed; pytest currently has no tests to collect.
+Run `python -m pytest -q` from the repository root. Member 1's data contract and
+release regression suites use tiny local fixtures and cover annotation policies,
+alignment, masks, split integrity, checksums, extraction and immutable releases.
+Model and evaluation tests develop on their member branches.
 
 - Member 1: records, labels, IDs, policy edge cases and fixed split integrity.
 - Member 6 with Members 2–3: adapters, gold-free inputs, alignment and persistence.
