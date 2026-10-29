@@ -2,8 +2,10 @@
 
 Owner: Member 6, with all producing members. Member 2's HMM training/export
 command is implemented and documented in [HMM notes](../experiments/HMM_NOTES.md).
-No real dataset has been trained/evaluated. Other task commands remain unfinished;
-the integrated workflow below is still a plan.
+Its full SponSpeech v2 study passed score recounts, independent full-data refits
+and exact prediction reproduction; see [HMM results](../experiments/HMM_RESULTS.md)
+and the [HMM runbook](../experiments/HMM_RUNBOOK.md). Other task commands remain
+unfinished on this branch; the integrated workflow below is still a plan.
 
 ## Future workflow and evidence
 
@@ -17,8 +19,9 @@ the integrated workflow below is still a plan.
 | Demonstrate | `scripts/run_demo.py` | Compatible artifact, shared observable input and versioned text decoder |
 
 Member 6 will coordinate remaining flags and integration commands as adapters
-arrive. Only the HMM CLI is currently implemented. Do not infer other working
-command-line arguments from filenames.
+arrive. Data preparation and HMM train/predict/search/verification/packaging
+commands are implemented. The HMM study uses the pinned Member 5 evaluator in
+a separate checkout. Do not infer other working command-line arguments from filenames.
 
 For every real run, capture code commit/dirty status, full command, resolved
 configuration, source revisions, preprocessing and tokenizer versions, split
@@ -26,13 +29,14 @@ manifest/checksums, ordered labels, feature version, random seeds, Python/packag
 versions, OS/hardware/threads and measured duration. Use repository-relative
 paths and distinct run IDs. Share artifact and prediction hashes with consumers.
 
-Runtime dependencies are intentionally absent at scaffold time. Add only needed
-packages in reviewed implementation PRs, verify Python compatibility, then
-capture a tested environment lock for experiments. `requirements.txt` currently
+HMM reproduction uses CPython 3.13.5 and the pinned PyYAML in
+`requirements-hmm.txt`; all three reproduction levels below passed in an isolated
+environment. Add only needed packages in reviewed implementation PRs and capture
+a tested environment for each model. `requirements.txt` currently
 installs the development extra; it is not a lock or a claim of a tested model
 environment. Avoid adding GPU packages for the planned classical models.
 
-## Three future reproduction levels
+## Reproduction levels
 
 1. Recalculate metrics from an existing verified gold/prediction bundle.
 2. Rerun inference using matching artifacts, feature code and input processing.

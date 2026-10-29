@@ -2,7 +2,8 @@
 
 Owners: Members 2 and 3; reviewers: Members 4–6. The common operations below remain
 proposed for CRF/integration. Member 2's concrete HMM adapter is implemented as
-described at the end of this guide; no real-data model has been trained.
+described at the end of this guide. Its A/B/C models have been trained and
+independently reproduced; see [HMM results](../experiments/HMM_RESULTS.md).
 
 ## Common future operations
 

@@ -1,16 +1,17 @@
 # HMM baseline — Member 2 (Raşit)
 
-**Status:** dataset-independent implementation complete; real-data training,
-hyperparameter selection, runtime experiments and official scores are pending.
+**Status:** implementation, real-data training, validation selection, held-out
+evaluation, runtime measurements and independent reproduction are complete.
 Member 1's corrected release **sponspeech-m1-v2** (policy **m1-v2**) is verified;
 see [release validation](../docs/DATA_RELEASE_VALIDATION.md) and
 [data usage](../data/README.md). Compatibility-only fits/predictions in all three
-modes pass. No full-data model or benchmark score has been produced.
+modes pass. [HMM_RESULTS.md](HMM_RESULTS.md) records all actual scores and limits.
 
 The release-aware CLI now requires frozen training IDs and verifies the release
 manifest, versions and label configuration. The experiment and independent
-reproduction commands are in [HMM_RUNBOOK.md](HMM_RUNBOOK.md). Full-data runs and
-observed results remain pending until those commands finish.
+reproduction commands are in [HMM_RUNBOOK.md](HMM_RUNBOOK.md). The completed study
+is `hmm-sponspeech-v2-20261029`; all three full-data refits reproduce artifact bytes
+and every final prediction.
 
 ## Implemented interface
 
@@ -69,12 +70,14 @@ token named `<UNK>` remains distinct from the internal bucket. Sparse emission
 counts avoid storing a dense vocabulary-by-label matrix; training streams
 records and retains counts and the ID-uniqueness set, not full sequences.
 
-Defaults `smoothing=0.1` and `min_token_count=2` are **untuned starting values**.
-Select them on validation after the release arrives. With cutoff 1, UNK receives
+Constructor defaults `smoothing=0.1` and `min_token_count=2` remain untuned starting
+values. Validation selected alpha 0.01 for all modes, cutoff 1 for A/B and cutoff
+2 for C. Load the selected artifact to use its recorded settings. With cutoff 1, UNK receives
 only smoothing mass if no words were pooled. The baseline cannot distinguish
 different unseen words and has no context-feature or neural backoff. It cannot
-restore detailed casing outside the three approved classes. Weak future results
-must be reported rather than hidden by changing splits or gold labels.
+restore detailed casing outside the three approved classes. Actual results show
+weak internal punctuation and rare-label recall; the results report includes
+these weaknesses alongside the primary scores.
 
 Prediction reads only schema version, IDs and tokens. Gold arrays, original
 text and arbitrary metadata are ignored even if accidentally supplied. Invalid
@@ -97,5 +100,7 @@ Member 5 evaluator is pinned at commit 3044a58e777200bcac64e6e3364922404be359bf.
 - The audit independently checks metrics and performs full refit/prediction
   reproduction. Generated models and predictions remain outside Git.
 
-Full-data selection, measured limitations and evaluated handoff are pending at
-this implementation checkpoint. No benchmark numbers are claimed here.
+The pinned scorer and independent counter agree on all 27 validation primary
+scores and every final metric block. The isolated reproduction environment uses
+CPython 3.13.5 and PyYAML 6.0.3. Full training, selected settings, measured
+limitations and handoff contents are recorded in [HMM_RESULTS.md](HMM_RESULTS.md).

@@ -1,8 +1,10 @@
 # HMM experiments and reproduction
 
 Owner: Member 2. Use release `sponspeech-m1-v2` and policy `m1-v2`.
-The workflow is implemented; real-data results remain pending until these
-commands finish and pass verification. See [HMM notes](HMM_NOTES.md) for the math.
+The real-data study completed and passed independent verification on 2026-10-29.
+See [results](HMM_RESULTS.md) for measurements and [HMM notes](HMM_NOTES.md)
+for the math. Training implementation commit:
+`e4c31834799bb261e78218c67dd85e148ad8d493`.
 
 ## Environment and inputs
 
@@ -54,12 +56,36 @@ normalization/gold invariance, refits each winner, and compares model bytes and 
 full-split predictions. Frozen metadata is retained during the independent refit
 for byte comparison. Use a new verification directory when repeating the audit.
 
+The completed run used the equivalent isolated environment at
+`tmp/member2-repro-env/Scripts/python.exe`; its raw commands and package versions
+are preserved in the run. Selection froze at `2026-10-29T13:30:02.885568+00:00`,
+before test access at `2026-10-29T13:30:41.053263+00:00`. Do not overwrite the
+completed study or use its test outcomes to retune settings.
+
 ## Saved-model use and handoff
 
 Training requires `--train-ids`; `--release-manifest` verifies official release
 inputs. `predict_hmm.py` loads an artifact without training. Use `--all-records`
 or an explicit `--ids` selection, and `--selection-record` to bind the artifact
 to its frozen winner. Inspect each script's `--help`.
+
+Package a verified run after committing the packaging code and report:
+
+```powershell
+tmp/hmm-env/Scripts/python.exe scripts/package_hmm_handoff.py --run-dir experiments/runs/hmm-sponspeech-v2-20261029 --evaluator-root tmp/member2-evaluation-3044a58 --output-dir artifacts/hmm/hmm-sponspeech-v2-20261029
+```
+
+The command requires matching independent verification and checks frozen model,
+candidate and report identities. It creates a ZIP, an outer `.zip.sha256`, and
+an internal `SHA256SUMS`, then verifies every archived file by SHA-256. Existing
+handoff paths are immutable. `MODEL_INDEX.json` identifies each selected model
+by relative path and hash. Load it with `HMMModel.load_model(path)`; predict on
+shared gold-free records. The raw dataset is distributed separately as the
+Member 1 release. The handoff's `HANDOFF.md` explains use by Members 3, 5 and 6.
+
+The repository is public; local packaging does not publish model files. Give
+the leader the ZIP for the shared Drive handoff. Consumer acknowledgments and
+Member 6's text reconstruction/demo remain separate team responsibilities.
 
 Give Members 3, 5 and 6 selected models, configurations/selections, prediction
 JSONL/sidecars, reports, timing/environment, verification evidence, license and

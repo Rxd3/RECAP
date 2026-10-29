@@ -1,8 +1,10 @@
 # Experiment planning and records
 
 Owners: Members 2–5 produce records; Member 6 maintains reproduction instructions.
-The notes here are plans, not completed experiments. No scores or run records
-exist. Generated run bundles belong under ignored `runs/<run_id>/`.
+Member 2's completed study is recorded in [HMM_RESULTS.md](HMM_RESULTS.md);
+[HMM_RUNBOOK.md](HMM_RUNBOOK.md) gives exact reproduction and packaging commands.
+Other model notes remain plans until their experiments finish. Generated run
+bundles belong under ignored `runs/<run_id>/`.
 
 Copy [experiment.example.yaml](../configs/experiment.example.yaml) when the
 pipeline exists. Record the hypothesis, changed variable, full resolved config,
