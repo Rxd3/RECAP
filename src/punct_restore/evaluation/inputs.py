@@ -73,7 +73,7 @@ def load_vocab(path: str | Path = LABEL_SETS_PATH) -> Vocab:
     """Ordered vocabularies from configs/label_sets.yaml (agreed 4/8/3/12 structure)."""
     name = Path(path).name
     try:
-        import yaml  # PyYAML is a declared dev dependency (pyproject dev extra)
+        import yaml  # PyYAML is a declared runtime dependency (pyproject)
     except ModuleNotFoundError as exc:
         raise EvaluationInputError('PyYAML is required: python -m pip install -e ".[dev]"') from exc
     try:

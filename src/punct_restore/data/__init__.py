@@ -1,6 +1,13 @@
-"""Dataset package placeholder, owned by Member 1.
+"""Dataset preparation and shared-contract validation, owned by Member 1.
 
-Responsibility: future verified data preparation and shared-contract validation.
+Modules: preprocessing (source loading, cleaning, tokenization), labeling (punctuation and casing labels),
+splits (sample IDs, split mapping, leakage audits), validation (DATA_CONTRACT.md checks), release (building and
+loading versioned releases). Policies D1-D6 are recorded in docs/DECISIONS.md; usage in data/README.md.
 """
 
-# TODO(Member 1): define exports after data policies and implementations exist.
+from .labeling import join_labels, load_label_sets
+from .release import build_release, load_records, read_ids
+from .validation import validate_file, validate_record
+
+__all__ = ["build_release", "join_labels", "load_label_sets", "load_records", "read_ids", "validate_file",
+           "validate_record"]
