@@ -25,7 +25,7 @@ from eval_fixtures import (
 from punct_restore.evaluation import evaluate, load_bundle, to_markdown
 from punct_restore.evaluation.inputs import Bundle, Vocab, sha256_file
 from punct_restore.evaluation.metrics import score_block
-from punct_restore.evaluation.report import ci_text, md_text, printable
+from punct_restore.evaluation.report import ci_text, md_text, pct, printable
 from punct_restore.evaluation.views import block_pairs, blocks_for
 
 BLOCK_KEYS = {"labels", "macro_over", "scored_positions", "per_class", "macro_f1", "micro", "accuracy",
@@ -85,10 +85,6 @@ def _floats_in(value: Any) -> Iterator[float]:
     elif isinstance(value, list):
         for item in value:
             yield from _floats_in(item)
-
-
-def _pct(value: float) -> str:
-    return f"{100 * value:.2f}"
 
 
 def _table_cells(line: str) -> list[str]:
@@ -210,8 +206,8 @@ def test_markdown_contains_rows(tmp_path: Path, vocab: Vocab, mode: str) -> None
     for name, block in report["blocks"].items():
         rows = _lines_starting(markdown, f"| {name} |")
         assert len(rows) == 1, name
-        assert _table_cells(rows[0])[1:5] == [str(block["scored_positions"]), _pct(block["macro_f1"]),
-                                              _pct(block["micro"]["f1"]), _pct(block["accuracy"])], name
+        assert _table_cells(rows[0])[1:5] == [str(block["scored_positions"]), pct(block["macro_f1"]),
+                                              pct(block["micro"]["f1"]), pct(block["accuracy"])], name
 
 
 def test_markdown_per_class_table_for_primary_block_only(tmp_path: Path, vocab: Vocab) -> None:
@@ -265,3 +261,19 @@ def test_public_text_helpers() -> None:
     assert md_text("a|b\nc") == "a" + ESCAPED_PIPE + "b?c"
     assert ci_text({"low": 0.1, "high": 0.25}) == "10.00 to 25.00"
     assert ci_text({"low": -0.05, "high": 0.1}) == "-5.00 to 10.00"
+
+
+@pytest.mark.parametrize(("value", "shown"), [
+    (0.67985, "67.99"),  # 100 * 0.67985 is 67.98499... as a float; the stored 6-dp value is a tie
+    (0.52385, "52.39"),
+    (0.123444, "12.34"),
+    (0.0, "0.00"),
+    (1.0, "100.00"),
+    (-0.009233, "-0.92"),
+    (-0.000145, "-0.01"),
+    (-0.67985, "-67.99"),  # negative ties (differences, CI lows) round away from zero too
+    (5e-05, "0.01"),  # repr() gives exponent form below 1e-4
+    (-5e-05, "-0.01"),
+])
+def test_pct_rounds_the_stored_value_half_up(value: float, shown: str) -> None:
+    assert pct(value) == shown

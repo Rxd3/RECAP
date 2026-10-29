@@ -7,6 +7,7 @@ decimals; the Markdown view shows percentages with 2 decimals.
 
 from __future__ import annotations
 
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 from .inputs import Bundle, Vocab
@@ -17,6 +18,7 @@ from .views import block_pairs, blocks_for
 SCHEMA = "recap-eval-v1"
 DECIMALS = 6
 PRIMARY_METRIC = "macro_f1"
+PCT_STEP = Decimal("0.01")
 
 
 def rounded(value: Any) -> Any:
@@ -59,7 +61,12 @@ def evaluate(bundle: Bundle, vocab: Vocab,
 
 
 def pct(value: float) -> str:
-    return f"{100 * value:.2f}"
+    """Percentage with 2 decimals, rounded half-up from the stored decimal value.
+
+    Formatting the float directly would print 0.67985 as 67.98, because 100 * 0.67985 is
+    67.98499... in binary floating point.
+    """
+    return str((Decimal(repr(value)) * 100).quantize(PCT_STEP, rounding=ROUND_HALF_UP))
 
 
 def printable(text: str) -> str:
