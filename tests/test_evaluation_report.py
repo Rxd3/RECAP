@@ -107,9 +107,11 @@ def test_report_schema_mode_a(tmp_path: Path, vocab: Vocab) -> None:
     folder = _folder(tmp_path)
     case = valid_case(folder, "A")
     report = _report(case, vocab)
-    assert set(report) == {"schema", "label_mode", "model_name", "inputs", "counts", "primary", "blocks"}
+    assert set(report) == {"schema", "label_mode", "policy_version", "model_name", "inputs", "counts", "primary",
+                           "blocks"}
     assert report["schema"] == "recap-eval-v1"
     assert report["label_mode"] == "A"
+    assert report["policy_version"] is None  # fixture gold carries no metadata.policy_version
     assert report["model_name"] == "m"
     assert report["inputs"] == {"gold": _identity(folder, "gold.jsonl", case.gold),
                                 "ids": _identity(folder, "list.ids", case.ids),
@@ -122,6 +124,15 @@ def test_report_schema_mode_a(tmp_path: Path, vocab: Vocab) -> None:
         assert set(block) == BLOCK_KEYS
         assert list(block["per_class"]) == ["O", "COMMA", "PERIOD", "QUESTION"]
     assert report["blocks"]["punctuation/non_final"]["scored_positions"] == 4
+
+
+def test_report_records_data_policy_version(tmp_path: Path, vocab: Vocab) -> None:
+    gold = [{**row, "metadata": {"policy_version": "m1-v2"}} for row in gold_rows("A")]
+    report = _report(write_case(_folder(tmp_path), gold, SCORED, perfect_preds("A")), vocab)
+    assert report["policy_version"] == "m1-v2"
+    assert "Data policy `m1-v2`." in _header_text(to_markdown(report))
+    unversioned = _report(valid_case(tmp_path, "A"), vocab)
+    assert "policy" not in _header_text(to_markdown(unversioned)).lower()
 
 
 def test_report_counts_scored_sequences_only(tmp_path: Path, vocab: Vocab) -> None:

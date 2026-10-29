@@ -107,10 +107,11 @@ def ci_report(pair: Pair, vocab: Vocab) -> dict[str, Any]:
 
 
 def test_compare_report_schema_without_bootstrap(pair: Pair, report: dict[str, Any], vocab: Vocab) -> None:
-    assert set(report) == {"schema", "label_mode", "model_a", "model_b", "inputs_a", "inputs_b",
-                           "sequences", "primary_block", "blocks"}
+    assert set(report) == {"schema", "label_mode", "policy_version", "model_a", "model_b", "inputs_a",
+                           "inputs_b", "sequences", "primary_block", "blocks"}
     assert report["schema"] == "recap-compare-v1"
     assert report["label_mode"] == "A"
+    assert report["policy_version"] == pair[0].policy_version
     assert report["model_a"] == "model_a"
     assert report["model_b"] == "model_b"
     assert report["sequences"] == len(IDS) == len(pair[0].records)
@@ -118,6 +119,15 @@ def test_compare_report_schema_without_bootstrap(pair: Pair, report: dict[str, A
     assert list(report["blocks"]) == [spec.name for spec in blocks_for("A", vocab)]
     assert [set(block) for block in report["blocks"].values()] == [
         {"macro_f1_a", "macro_f1_b", "difference"}] * len(report["blocks"])
+
+
+def test_compare_records_data_policy_version(tmp_path: Path, vocab: Vocab) -> None:
+    gold = [{**row, "metadata": {"policy_version": "m1-v2"}} for row in gold_rows("A")]
+    case = write_case(tmp_path, gold, SCORED, perfect_preds("A"))
+    preds_b = write_jsonl(tmp_path / "preds_b.jsonl", perfect_preds("A", model="model_b"))
+    versioned = compare(_bundle(case, vocab), _bundle(case, vocab, preds_b), vocab)
+    assert versioned["policy_version"] == "m1-v2"
+    assert "Data policy `m1-v2`." in comparison_markdown(versioned)
 
 
 def test_compare_report_inputs_identify_both_prediction_files(report: dict[str, Any]) -> None:

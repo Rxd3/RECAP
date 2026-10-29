@@ -256,12 +256,34 @@ GOLD_RULES = {
     "mode_a_unknown_case": gold_with({1: {"case_labels": ["FIRST_UPPER", "UPPER", "LOWER"]}}),
     "mode_b_unknown_case": gold_with({1: {"case_labels": ["Title", "LOWER", "LOWER"]}}, "B"),
     "duplicate_sample_id": gold_with({1: {"sample_id": "s1"}}),
+    # s3 (row 2) is outside the ID list: the release version is checked over the whole gold file
+    "mixed_policy_versions": gold_with({"*": {"metadata": {"policy_version": "m1-v1"}},
+                                        2: {"metadata": {"policy_version": "m1-v2"}}}),
+    "policy_version_on_first_line_only": gold_with({0: {"metadata": {"policy_version": "m1-v2"}}}),
+    # an unversioned line counts as a version (None), not as "nothing seen yet"
+    "policy_version_after_unversioned_lines": gold_with({2: {"metadata": {"policy_version": "m1-v2"}}}),
+    "policy_version_not_a_string": gold_with({"*": {"metadata": {"policy_version": 2}}}),
+    "policy_version_empty": gold_with({"*": {"metadata": {"policy_version": ""}}}),
 }
 
 
 @pytest.mark.parametrize("kwargs", GOLD_RULES.values(), ids=GOLD_RULES.keys())
 def test_gold_rules(tmp_path: Path, vocab: Vocab, kwargs: dict[str, Any]) -> None:
     assert "gold.jsonl" in _error(_bundle, tmp_path, vocab, **kwargs)
+
+
+def test_policy_version_read_from_gold(tmp_path: Path, vocab: Vocab) -> None:
+    versioned = gold_with({"*": {"metadata": {"group_id": "g1", "policy_version": "m1-v2"}}})
+    assert _bundle(tmp_path, vocab, **versioned).policy_version == "m1-v2"
+    assert _bundle(tmp_path, vocab).policy_version is None  # fixture gold has no policy_version
+
+
+def test_mixed_policy_versions_name_the_line_and_both_versions(tmp_path: Path, vocab: Vocab) -> None:
+    mixed = gold_with({"*": {"metadata": {"policy_version": "m1-v1"}}, 2: {"metadata": {"policy_version": "m1-v2"}}})
+    message = _error(_bundle, tmp_path, vocab, **mixed)
+    assert all(part in message for part in ("gold.jsonl line 3", "policy_version", "'m1-v1'", "'m1-v2'"))
+    case = write_case(tmp_path, mixed["gold"], SCORED, perfect_preds("A"))
+    assert "policy_version" in _error(load_scored_gold, case.gold, case.ids, vocab)
 
 
 def test_mode_b_gold_uses_extended_vocab(tmp_path: Path, vocab: Vocab) -> None:

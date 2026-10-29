@@ -11,7 +11,15 @@ from typing import Any
 
 from .inputs import Bundle, EvaluationInputError, Vocab
 from .metrics import score_block
-from .report import ci_text, inputs_line, md_text, pct, plain_inputs, rounded
+from .report import (
+    ci_text,
+    inputs_line,
+    md_text,
+    pct,
+    plain_inputs,
+    policy_text,
+    rounded,
+)
 from .uncertainty import BootstrapSpec, paired_differences
 from .views import BlockSpec, block_pairs, blocks_for
 
@@ -43,6 +51,7 @@ def compare(bundle_a: Bundle, bundle_b: Bundle, vocab: Vocab,
         blocks[spec.name] = {"macro_f1_a": a, "macro_f1_b": b, "difference": b - a,
                              **({"difference_ci": intervals[spec.name]} if intervals else {})}
     return rounded({"schema": SCHEMA, "label_mode": bundle_a.label_mode,
+                    "policy_version": bundle_a.policy_version,  # same gold file for A and B
                     "model_a": bundle_a.model_name, "model_b": bundle_b.model_name,
                     "inputs_a": plain_inputs(bundle_a), "inputs_b": plain_inputs(bundle_b),
                     "sequences": len(bundle_a.records), "primary_block": specs[0].name,
@@ -58,7 +67,8 @@ def comparison_markdown(report: dict[str, Any]) -> str:
     rule = "| --- | ---: | ---: | ---: |" + (" ---: | ---: |\n" if with_ci else "\n")
     lines = [f"# Comparison: {b} vs {a} (mode {report['label_mode']})\n\n",
              "A " + inputs_line(report["inputs_a"]), "B " + inputs_line(report["inputs_b"]),
-             f"Sequences {report['sequences']}. Primary block `{report['primary_block']}`.\n\n",
+             (f"Sequences {report['sequences']}. Primary block `{report['primary_block']}`."
+              f"{policy_text(report['policy_version'])}\n\n"),
              head, rule]
     for name, block in report["blocks"].items():
         row = (f"| {name} | {pct(block['macro_f1_a'])} | {pct(block['macro_f1_b'])} | "

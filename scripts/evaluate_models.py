@@ -41,7 +41,11 @@ from punct_restore.evaluation import (
 from punct_restore.evaluation.error_analysis import DEFAULT_BLOCK, DEFAULT_PER_PAIR
 from punct_restore.evaluation.inputs import file_identity
 from punct_restore.evaluation.report import printable
-from punct_restore.evaluation.uncertainty import DEFAULT_SEED, MAX_RESAMPLES, MIN_RESAMPLES
+from punct_restore.evaluation.uncertainty import (
+    DEFAULT_SEED,
+    MAX_RESAMPLES,
+    MIN_RESAMPLES,
+)
 
 OS_MESSAGES = {errno.EEXIST: "{} already exists; refusing to overwrite",
                errno.ENOENT: "file or folder not found: {}",

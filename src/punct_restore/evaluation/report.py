@@ -46,7 +46,8 @@ def evaluate(bundle: Bundle, vocab: Vocab,
         intervals = block_intervals(bundle.records, specs, bootstrap)
         blocks = {name: {**block, "macro_f1_ci": intervals[name]} for name, block in blocks.items()}
     primary = specs[0].name
-    report = {"schema": SCHEMA, "label_mode": bundle.label_mode, "model_name": bundle.model_name,
+    report = {"schema": SCHEMA, "label_mode": bundle.label_mode,
+              "policy_version": bundle.policy_version, "model_name": bundle.model_name,
               "inputs": plain_inputs(bundle),
               "counts": {"sequences": len(bundle.records),
                          "tokens": sum(len(record.gold) for record in bundle.records),
@@ -76,6 +77,11 @@ def ci_text(ci: dict[str, Any]) -> str:
     return f"{pct(ci['low'])} to {pct(ci['high'])}"
 
 
+def policy_text(version: str | None) -> str:
+    """' Data policy `m1-v2`.' for a versioned gold file, '' when the gold carries no version."""
+    return f" Data policy `{md_text(version)}`." if version is not None else ""
+
+
 def inputs_line(inputs: dict[str, Any]) -> str:
     listed = ", ".join(f"{key} `{md_text(value['path'])}` (sha256 {value['sha256']})"
                        for key, value in inputs.items() if value is not None)
@@ -87,7 +93,8 @@ def _header(report: dict[str, Any]) -> list[str]:
     return [f"# Evaluation: {md_text(report['model_name'])} (mode {report['label_mode']})\n\n",
             inputs_line(report["inputs"]),
             (f"Sequences {counts['sequences']}, tokens {counts['tokens']}, "
-             f"ignored prediction IDs {counts['ignored_prediction_ids']}.\n\n"),
+             f"ignored prediction IDs {counts['ignored_prediction_ids']}."
+             f"{policy_text(report['policy_version'])}\n\n"),
             f"**Primary:** `{primary['block']}` macro F1 = {pct(primary['value'])}%\n\n"]
 
 

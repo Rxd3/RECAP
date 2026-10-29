@@ -68,6 +68,7 @@ class Bundle:
     records: tuple[Aligned, ...]
     ignored_prediction_ids: int
     inputs: Mapping[str, Mapping[str, str] | None]  # read-only views (MappingProxyType)
+    policy_version: str | None = None  # the gold file's data release policy, e.g. "m1-v2"
 
 
 def load_vocab(path: str | Path = LABEL_SETS_PATH) -> Vocab:
@@ -186,15 +187,13 @@ def _checked_labels(value: Any, allowed: Sequence[str], length: int, where: str,
     return tuple(value)
 
 
-def _group_id(record: Mapping[str, Any], where: str) -> str | None:
-    """metadata.group_id as given; no metadata object or null gives None, non-strings raise."""
+def _metadata_text(record: Mapping[str, Any], field: str, where: str) -> str | None:
+    """metadata.<field> as given; no metadata object or null gives None, non-strings raise."""
     metadata = record.get("metadata")
-    if not isinstance(metadata, dict):
-        return None
-    group_id = metadata.get("group_id")
-    if group_id is not None and (not isinstance(group_id, str) or not group_id):
-        raise EvaluationInputError(f"{where}: metadata.group_id must be a nonempty string")
-    return group_id
+    value = metadata.get(field) if isinstance(metadata, dict) else None
+    if value is not None and (not isinstance(value, str) or not value):
+        raise EvaluationInputError(f"{where}: metadata.{field} must be a nonempty string")
+    return value
 
 
 def _gold_record(record: Mapping[str, Any], mode: str, vocab: Vocab, where: str) -> GoldRecord:
@@ -207,11 +206,13 @@ def _gold_record(record: Mapping[str, Any], mode: str, vocab: Vocab, where: str)
     punct = _checked_labels(record["punct_labels"], punct_vocab, len(tokens), where, "punct_labels")
     case = _checked_labels(record["case_labels"], vocab.casing, len(tokens), where, "case_labels")
     labels = tuple(map(join_joint, punct, case)) if mode == "C" else punct
-    return GoldRecord(sample_id, _group_id(record, where), tuple(tokens), labels)
+    return GoldRecord(sample_id, _metadata_text(record, "group_id", where), tuple(tokens), labels)
 
 
-def _read_gold(path: Path, vocab: Vocab) -> tuple[str, dict[str, GoldRecord]]:
+def _read_gold(path: Path, vocab: Vocab) -> tuple[str, dict[str, GoldRecord], str | None]:
+    """Mode, records by ID and the single policy_version shared by every line (None if absent)."""
     mode: str | None = None
+    policy_version: str | None = None
     records: dict[str, GoldRecord] = {}
     for number, record in _read_jsonl(path):
         where = f"{path.name} line {number}"
@@ -224,11 +225,17 @@ def _read_gold(path: Path, vocab: Vocab) -> tuple[str, dict[str, GoldRecord]]:
         if label_mode != mode:
             raise EvaluationInputError(
                 f"{where}: label_mode {label_mode} differs from earlier {mode}")
+        version = _metadata_text(record, "policy_version", where)
+        if records and version != policy_version:
+            raise EvaluationInputError(
+                f"{where}: metadata.policy_version {version!r} differs from earlier "
+                f"{policy_version!r}")
+        policy_version = version
         gold = _gold_record(record, mode, vocab, where)
         if gold.sample_id in records:
             raise EvaluationInputError(f"{where}: duplicate sample_id {gold.sample_id!r}")
         records[gold.sample_id] = gold
-    return mode, records
+    return mode, records, policy_version
 
 
 def _read_ids(path: Path, gold: Mapping[str, GoldRecord], gold_name: str) -> tuple[str, ...]:
@@ -297,7 +304,7 @@ def load_scored_gold(gold_path: str | Path, ids_path: str | Path,
                      vocab: Vocab) -> tuple[str, tuple[GoldRecord, ...]]:
     """Mode and the gold records named by the ID list, in list order."""
     gold_path = Path(gold_path)
-    mode, gold = _read_gold(gold_path, vocab)
+    mode, gold, _ = _read_gold(gold_path, vocab)
     scored = _read_ids(Path(ids_path), gold, gold_path.name)
     return mode, tuple(gold[sample_id] for sample_id in scored)
 
@@ -313,7 +320,7 @@ def load_bundle(gold_path: str | Path, ids_path: str | Path, predictions_path: s
     """Checked, aligned records for the scored IDs; masks are required for mode C only."""
     gold_path, ids_path, predictions_path = Path(gold_path), Path(ids_path), Path(predictions_path)
     masks_file = Path(masks_path) if masks_path is not None else None
-    mode, gold = _read_gold(gold_path, vocab)
+    mode, gold, policy_version = _read_gold(gold_path, vocab)
     if mode == "C" and masks_file is None:
         raise EvaluationInputError(
             "mode C needs the casing masks file (masks/case_joint/<file>.jsonl)")
@@ -329,4 +336,4 @@ def load_bundle(gold_path: str | Path, ids_path: str | Path, predictions_path: s
                     for sample_id in scored)
     inputs = _identities(gold=gold_path, ids=ids_path, predictions=predictions_path,
                          masks=masks_file)
-    return Bundle(mode, model, records, ignored, inputs)
+    return Bundle(mode, model, records, ignored, inputs, policy_version)

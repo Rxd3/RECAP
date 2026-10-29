@@ -3,7 +3,7 @@
 Owner: Member 5. Reviewers: Members 1–4 and 6. The core of this protocol is
 implemented in `src/punct_restore/evaluation/` and `scripts/evaluate_models.py`
 (2026-10-29), including grouped bootstrap intervals, paired model comparison,
-error-example export and the prediction-manifest check. The runtime table is
+error-example export, the prediction-manifest check and the data-policy record. The runtime table is
 still planned (see below). No results are recorded in this document.
 
 ## Data discipline and alignment
@@ -12,6 +12,13 @@ Training fits models and train-derived statistics. Validation selects smoothing,
 features, hyperparameters, thresholds and any decoding settings. Freeze selected
 settings before using the held-out test set for final reporting. Report a test
 set change or test-driven iteration honestly and revise the protocol if needed.
+
+**Data release.** The official release is `sponspeech-m1-v2` (policy `m1-v2`, see
+`docs/DATA_RELEASE_VALIDATION.md`). Take the processed views and the ID lists from the
+same release. The v2 views differ from v1 only in `metadata.policy_version`, but the v2
+primary and default lists are smaller. Every report records the gold file's
+`metadata.policy_version` (`policy_version` in the JSON, "Data policy" in the Markdown),
+and a gold file that mixes versions is rejected.
 
 Within each mode/condition, every model uses the same test IDs, tokenization,
 sequence lengths and gold release. Validate prediction/input/gold manifests,
@@ -74,7 +81,7 @@ outputs are combined.
 Masks are required when scoring mode C and rejected for modes A and B.
 
 **Views.** These show how much of a score comes from dataset shortcuts.
-- Every released utterance ends in PERIOD or QUESTION, and 45.8–56.0% of PERIOD labels are utterance-final.
+- Every mode A and C sequence ends in PERIOD or QUESTION. So does every mode B sequence in the default and primary lists; 10 full-view mode B records end in EXCLAMATION. 45.8–56.0% of PERIOD labels are utterance-final.
 - `punctuation/non_final` repeats the punctuation metrics without each sequence's last position.
 - `casing/unmasked_non_initial` repeats the casing metrics without position 0.
 
@@ -100,7 +107,7 @@ python scripts/evaluate_models.py score --gold <processed>/mode_C/validation.jso
     --masks <processed>/masks/case_joint/validation.jsonl --out results/tables/<run_id>.json
 ```
 
-- `score` writes `<run_id>.json`, with schema `recap-eval-v1` and the SHA-256 of every input, plus a `<run_id>.md` summary.
+- `score` writes `<run_id>.json`, with schema `recap-eval-v1`, the SHA-256 of every input and the gold file's data policy version, plus a `<run_id>.md` summary.
 - Existing outputs are never overwritten, and folders are never created.
 - Invalid input exits with code 1 and a one-line message naming the file and the line or `sample_id`.
 
@@ -114,16 +121,23 @@ within the same mode first.
 A compatible cross-mode punctuation comparison requires identical examples and
 tokens, verified source gold, the same approved B→A projection applied to both
 gold and predictions, and reporting on the shared four-class target. C projects
-to its punctuation component. Record the projection policy version. This is
-blocked until the proposed mapping is approved, and it cannot measure retained
-extended distinctions. Compare casing only when both systems predict casing.
+to its punctuation component. Record the projection policy version. The D5
+projection is approved (policy `m1-v2`, `configs/label_sets.yaml`). It cannot
+measure retained extended distinctions. Compare casing only when both systems
+predict casing.
 
-Native IWSLT 2011 and derived IWSLT 2017 tests are separate benchmarks unless a
-verified common test release exists. Their source years alone do not prove
-compatibility or independence. Complete the cross-source leakage audit first.
-Separate clean, real ASR, and synthetic-noise results. ASR insertions/deletions
-require a declared alignment/reference policy; do not directly compare token
-metrics over different token inventories as if they were paired unchanged input.
+SponSpeech is the only source. Report `test` and `test_amb` separately and never
+pool them, because they share 25 videos. `benchmark_native/mode_A` keeps the
+original four-class gold (D5). Report it in its own table and never compare it
+with canonical mode A scores. Keep clean, real-ASR and synthetic-noise results
+separate. ASR insertions and deletions need a declared alignment policy.
+
+**Known gold issues in the v2 primary lists** (from Member 5's data check; nothing is relabelled):
+- **Leftover speaker labels.** About 50 primary validation records keep a speaker label. Most are in videos `fusAJwee7ws` and `gMcBTwru5go`. One example is `SPEAKER 1:`, which gives 26 false COLON labels, 6.1% of mode B validation COLON support. Read validation COLON scores with this in mind.
+- **Subtitle cue numbers** (for example `sponspeech:test:nSVl92jJbwk-116`) appear as tokens with gold DASH, and some symbols are dropped from the model input without a flag.
+- **Two auto-caption-style videos** miss commas and sentence ends in their gold: `732fql_jhJQ` (135 validation records) and `JNxcznsrRb8` (46 test records).
+- **Source transcripts** contain errors in about 1% of records. Treat a capital after O as possible gold noise when reading confusion matrices.
+- **`QUESTION|ALL_UPPER`** has only 18, 9 and 15 primary tokens (validation, test, test_amb). Always give its support and the bootstrap interval, and never rank mode C models on a joint difference smaller than that interval.
 
 ## Efficiency, uncertainty and error analysis
 
