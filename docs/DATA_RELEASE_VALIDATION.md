@@ -49,6 +49,8 @@ reduce memory use. Truncated-view and other failure paths have regression tests.
 - Two independent fixture builds produce identical bytes. The full real-data release
   was regenerated once and independently audited; a second full real-data rebuild
   was not run in this review.
+- Processed/split archives were read back and every member matched its source-file
+  hash. All six bundle checksum entries and the seven-file handoff ZIP CRC check pass.
 
 ## Frozen fingerprints
 
@@ -60,6 +62,7 @@ reduce memory use. Truncated-view and other failure paths have regression tests.
 | Metadata snapshot | `86d8d3681f193d27ae990aaf1dd4b6a8e280e6e8d2dbeb08649aa48fa1c669a3` |
 | Processed SHA256SUMS | `19ed874f9ae3de4489bdc668aaad6581c24b56e00d57f2d671d8a4c2908d4bbb` |
 | Splits SHA256SUMS | `40ea6371b038d5d36e6da390493bfc0e45c513ec46c324ee1a6af8766e7546b7` |
+| Handoff ZIP (224,632,100 bytes) | `1e4b4a9504c68cd8e3af8d6a2a0ef7de5de0146c76457752a56a90dcf6504b9f` |
 
 The manifest records the Python version and exact checksums for every generated file.
 Corrected subset counts/distributions and remaining source limitations are recorded
