@@ -12,14 +12,14 @@
 | 6 | `feat/m6-integration-presentation` |
 
 All six share the initial scaffolding commit and the subsequent RECAP naming and
-publication update. The local setup leaves `main` checked out. The private
+publication update. The initial setup left `main` checked out. The public
 Project 2 repository is [Rxd3/RECAP](https://github.com/Rxd3/RECAP), with `main`
 and all six member branches published. `origin` points to this repository, never
-NALTRA. Team members need collaborator access before cloning.
+NALTRA. Team members need collaborator access to push their branches.
 
 ## 1. Clone Project 2
 
-After the repository owner grants your GitHub account access:
+Clone the repository, then select your assigned branch:
 
 ```powershell
 git clone https://github.com/Rxd3/RECAP.git

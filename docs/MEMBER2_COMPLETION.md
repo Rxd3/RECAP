@@ -35,6 +35,26 @@ in the Member 1 v2 bundle. See the [runbook](../experiments/HMM_RUNBOOK.md) for
 the exact packaging and reproduction commands and [results](../experiments/HMM_RESULTS.md)
 for measured scores.
 
+Archive size: **27,095,563 bytes** (25.84 MiB); **365 checksummed files** plus
+the checksum index. Outer SHA-256:
+
+```text
+4cdc5725b6538d87a1c9aa237b47743683f547e11061b208be8ce1436880aa02
+```
+
+Packaging source: `34849b9dca7eea8b6a60ff0ac9889a908d1cf38b` (clean).
+The ZIP round-trip passed. A fresh extraction independently passed all 365 file
+hashes, loaded each model through `MODEL_INDEX.json`, and reproduced 20 gold-free
+test predictions in each mode. The archived report retains its packaging-time
+snapshot; this audit records subsequent delivery checks.
+
+The documented verifier also passed against the freshly extracted experiment,
+using a separate output directory. It independently refit all three models,
+reproduced every full-split prediction, rechecked all 27 candidate primary scores
+and recounted every final metric block. Local evidence:
+`tmp/member2-handoff-portable-verification/verification.json`, SHA-256
+`2191e3bf4f7738e84a6028973e599410928822390dbcdd97075d7e7fba407b31`.
+
 - Member 3 compares the CRF to the HMM within the same mode and primary IDs.
 - Member 5 receives full predictions, reports, masks, counts and provenance for
   subsequent model comparisons and error analysis.

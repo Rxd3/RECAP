@@ -6,11 +6,13 @@ Sequence Labeling. Six members; Python; one independent repository.
 
 ## Current deliverable
 
-Initial scaffolding is complete. Member 2 now implements supervised HMM
-estimation, log-space Viterbi, unknown words, persistence and training/prediction
-export, verified using synthetic fixtures only. Real-data training waits for
-Member 1's dataset handoff. Feature extraction, shared scoring, text
-reconstruction, CRF and dataset preparation remain outside this increment.
+Member 1's corrected SponSpeech release and Member 2's supervised HMM baseline
+are complete and verified. The HMM implements log-space Viterbi, unknown words,
+persistence, release-aware training, validation selection and prediction export.
+Real-data scores, runtime and independent refit evidence are recorded in
+[HMM results](../experiments/HMM_RESULTS.md). The study uses Member 5's pinned
+shared scorer in a separate checkout. CRF, feature ablations and integrated text
+reconstruction remain outside Member 2's completed baseline deliverables.
 
 ## Future research scope
 

@@ -23,9 +23,10 @@ Current code is intentionally unfinished; a placeholder is not a working model.
 
 ## Environment and validation
 
-Follow the README environment setup. Runtime dependencies are planned, not yet
-installed or pinned for experiments. Add only needed dependencies with a clear
-reason and a compatible tested environment in implementation PRs.
+Follow the README environment setup. The completed HMM study pins PyYAML in
+`requirements-hmm.txt` and records its tested Python version. Add only needed
+dependencies with a clear reason and a compatible tested environment in
+implementation PRs.
 
 Member 2's synthetic HMM and CLI tests now run with pytest. The three
 `tests/test_*_contract.py` files still contain shared TODO plans. For unfinished
@@ -37,9 +38,11 @@ coverage. Original checks are recorded in
 python -m pytest
 ```
 
-The HMM can fit/predict shared-contract records; official real-data training is
-pending. `scripts/train_hmm.py` is implemented. The other task scripts remain
-unfinished, and no shared scoring or integrated text-decoding workflow exists yet.
+The HMM's full-data training, validation selection, saved-model inference and
+independent reproduction are complete; see [results](experiments/HMM_RESULTS.md)
+and [runbook](experiments/HMM_RUNBOOK.md). Its study uses the pinned Member 5
+scorer in a separate checkout. CRF, ablations and the integrated text-decoding
+workflow remain unfinished on this branch.
 
 ## Data, artifacts and claims
 
