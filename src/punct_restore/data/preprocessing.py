@@ -13,7 +13,9 @@ import collections
 import hashlib
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from itertools import islice
 
 # --- Source identity (SponSpeech; D1 approved) ------------------------------------------------------------------
 
@@ -39,6 +41,18 @@ class SourceError(ValueError):
     """A raw file breaks the input expectations (encoding, single line, ID format, utt2spk agreement)."""
 
 
+def _map_source_files(function, items):
+    """Read small source files concurrently, preserving order with bounded pending work.
+
+    Windows file-open latency dominates the 206k-file source check. Batches avoid
+    queuing a future for every transcript and keep memory independent of file count.
+    """
+    pending = iter(items)
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        while batch := list(islice(pending, 256)):
+            yield from pool.map(function, batch)
+
+
 def read_utt2spk(raw_dir, source_split):
     """{utterance id: video id} for one SponSpeech split. Lines are '<utt-id> <video-id>'."""
     mapping = {}
@@ -53,8 +67,8 @@ def read_utt2spk(raw_dir, source_split):
 
 def read_source_split(raw_dir, source_split):
     """All utterances of one SponSpeech split, sorted by upstream ID, with input checks."""
-    out = []
-    for utt_id, video_id in sorted(read_utt2spk(raw_dir, source_split).items()):
+    def read_one(item):
+        utt_id, video_id = item
         with open(os.path.join(raw_dir, source_split, "text", utt_id + ".txt"), "rb") as f:
             raw = f.read()
         try:
@@ -66,21 +80,19 @@ def read_source_split(raw_dir, source_split):
             raise SourceError(f"{source_split}/{utt_id}: ID does not match utt2spk video {video_id}")
         if not text.strip() or "\n" in text or "\r" in text:
             raise SourceError(f"{source_split}/{utt_id}: empty or multi-line transcript")
-        out.append(SourceUtterance(source_split, utt_id, video_id, int(m.group(2)), text, hashlib.sha256(raw).hexdigest()))
-    return out
+        return SourceUtterance(source_split, utt_id, video_id, int(m.group(2)), text, hashlib.sha256(raw).hexdigest())
+    return list(_map_source_files(read_one, sorted(read_utt2spk(raw_dir, source_split).items())))
 
 
 def verify_raw_manifest(manifest_path):
     """Paths (relative to the manifest) whose SHA-256 no longer matches. Empty list means raw data is unchanged."""
     base = os.path.dirname(os.path.abspath(manifest_path))
-    bad = []
+    def check_one(line):
+        digest, rel = line.rstrip("\n").split("  ", 1)
+        with open(os.path.join(base, rel), "rb") as fh:
+            return rel if hashlib.sha256(fh.read()).hexdigest() != digest else None
     with open(manifest_path, encoding="utf-8") as f:
-        for line in f:
-            digest, rel = line.rstrip("\n").split("  ", 1)
-            with open(os.path.join(base, rel), "rb") as fh:
-                if hashlib.sha256(fh.read()).hexdigest() != digest:
-                    bad.append(rel)
-    return bad
+        return [bad for bad in _map_source_files(check_one, f) if bad is not None]
 
 
 # --- Normalization: remove non-lexical material, log every removal ------------------------------------------------

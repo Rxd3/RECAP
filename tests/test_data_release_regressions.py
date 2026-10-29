@@ -136,3 +136,17 @@ def test_failed_validation_cannot_publish_release_manifest(tmp_path, monkeypatch
 def test_joint_targets_do_not_silently_truncate():
     with pytest.raises(ValueError):
         labeling.join_labels(["O", "PERIOD"], ["LOWER"])
+
+
+def test_truncated_view_cannot_publish_a_release(tmp_path, monkeypatch):
+    original_write = release.write_lines
+
+    def truncate_one_view(path, lines):
+        if str(path).replace("\\", "/").endswith("mode_B/train.jsonl"):
+            lines = list(lines)[:-1]
+        original_write(path, lines)
+
+    monkeypatch.setattr(release, "write_lines", truncate_one_view)
+    with pytest.raises(ValueError, match="release validation failed"):
+        build(tmp_path, "truncated-view")
+    assert not (tmp_path / "truncated-view/processed/fixture/release_manifest.json").exists()

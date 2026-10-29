@@ -19,6 +19,8 @@ import os
 import platform
 import shutil
 import statistics
+from contextlib import ExitStack
+from itertools import zip_longest
 from pathlib import Path, PurePosixPath
 
 from . import extraction, labeling, preprocessing, splits, validation
@@ -331,11 +333,20 @@ def build_release(raw_dir, processed_dir, splits_dir, release_id, *, label_sets_
         if errs:
             checks["file_errors"][path] = errs[:20]
     for name in RELEASE_FILES:
-        views = {}
-        for folder in ("mode_A", "mode_B", "mode_C", "benchmark_native/mode_A"):
-            with open(os.path.join(out, folder, name + ".jsonl"), encoding="utf-8") as f:
-                views[folder] = [json.loads(line) for line in f]
-        diffs = sum((validation.compare_views(views["mode_A"], views[k]) for k in views if k != "mode_A"), [])
+        # Read aligned rows together instead of retaining four full JSONL views.
+        # The train views contain millions of tokens; full reloads multiply peak RAM.
+        diffs = []
+        with ExitStack() as stack:
+            streams = [stack.enter_context(open(os.path.join(out, folder, name + ".jsonl"), encoding="utf-8"))
+                       for folder in ("mode_A", "mode_B", "mode_C", "benchmark_native/mode_A")]
+            for lines in zip_longest(*streams):
+                if any(line is None for line in lines):
+                    diffs.append("sample IDs or their order differ")
+                    break
+                rows = [json.loads(line) for line in lines]
+                diffs.extend(d for row in rows[1:] for d in validation.compare_views(rows[:1], [row]))
+                if len(diffs) >= 20:
+                    break
         if diffs:
             checks["view_mismatches"][name] = diffs[:20]
     checks["unique_sample_ids"] = len({r["sample_id"] for r in results}) == len(results)
