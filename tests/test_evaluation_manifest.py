@@ -112,8 +112,12 @@ def _fixed(raw: bytes) -> Render:
     return lambda manifest: raw
 
 
+def _drop(manifest: dict[str, Any], field: str) -> dict[str, Any]:
+    return {key: value for key, value in manifest.items() if key != field}
+
+
 def _without(field: str) -> Render:
-    return lambda manifest: _json_bytes({key: value for key, value in manifest.items() if key != field})
+    return lambda manifest: _json_bytes(_drop(manifest, field))
 
 
 def _with_input(value: Any) -> Render:
@@ -130,11 +134,69 @@ def _with_input(value: Any) -> Render:
     pytest.param(_with_input("abc"), BAD_INPUT, id="input_is_string"),
     pytest.param(_with_input({}), BAD_INPUT, id="input_is_empty_object"),
     pytest.param(_with_input({"path": "x"}), BAD_INPUT, id="input_without_sha256"),
+    pytest.param(_with_input({"sha256": ["x"]}), BAD_INPUT, id="sha256_is_list"),
+    pytest.param(_with_input({"sha256": {}}), BAD_INPUT, id="sha256_is_object"),
 ])
 def test_malformed_manifest_raises(render: Render, message: str, case_a: Case, vocab: Vocab) -> None:
     path = _manifest_path(case_a)
     path.write_bytes(render(valid_manifest(case_a, vocab, "A")))
     with pytest.raises(EvaluationInputError, match=_exact(message)):
+        check_manifest(path, _bundle(case_a, vocab), vocab)
+
+
+def _nested(manifest: dict[str, Any], input_value: Any) -> dict[str, Any]:
+    """The HMM handoff bundle's shape: no top-level input, the identity under inputs.input."""
+    model = {"path": "model.json", "sha256": "f" * 64}
+    return {**_drop(manifest, "input"), "inputs": {"input": input_value, "model": model}}
+
+
+@pytest.mark.parametrize("mode", ["A", "C"])
+def test_nested_inputs_input_passes(mode: str, tmp_path: Path, vocab: Vocab) -> None:
+    case = valid_case(tmp_path, mode)
+    manifest = valid_manifest(case, vocab, mode)
+    path = _write_manifest(case, _nested(manifest, manifest["input"]))
+    assert check_manifest(path, _bundle(case, vocab), vocab) is None
+
+
+def test_nested_input_from_a_different_file_raises(case_a: Case, vocab: Vocab) -> None:
+    manifest = valid_manifest(case_a, vocab, "A")
+    wrong = {**manifest["input"], "sha256": sha256_file(case_a.predictions)}
+    path = _write_manifest(case_a, _nested(manifest, wrong))
+    with pytest.raises(EvaluationInputError, match=_exact(DIFFERENT_INPUT)):
+        check_manifest(path, _bundle(case_a, vocab), vocab)
+
+
+def test_top_level_and_nested_input_agreeing_passes(case_a: Case, vocab: Vocab) -> None:
+    manifest = valid_manifest(case_a, vocab, "A")
+    path = _write_manifest(case_a, {**_nested(manifest, manifest["input"]), "input": manifest["input"]})
+    assert check_manifest(path, _bundle(case_a, vocab), vocab) is None
+
+
+def test_top_level_and_nested_input_must_agree(case_a: Case, vocab: Vocab) -> None:
+    manifest = valid_manifest(case_a, vocab, "A")
+    other = {**manifest["input"], "sha256": "0" * 64}
+    path = _write_manifest(case_a, {**_nested(manifest, other), "input": manifest["input"]})
+    with pytest.raises(EvaluationInputError, match=_exact(f"{PREFIX}input and inputs.input name different files")):
+        check_manifest(path, _bundle(case_a, vocab), vocab)
+
+
+@pytest.mark.parametrize(("inputs", "message"), [
+    pytest.param({"model": {"sha256": "f" * 64}}, f"{PREFIX}missing field(s) input", id="inputs_without_input"),
+    pytest.param("abc", f"{PREFIX}missing field(s) input", id="inputs_is_string"),
+    pytest.param({"input": "abc"}, BAD_INPUT, id="nested_input_is_string"),
+    pytest.param({"input": {"path": "x"}}, BAD_INPUT, id="nested_input_without_sha256"),
+    pytest.param({"input": {"sha256": ["x"]}}, BAD_INPUT, id="nested_sha256_is_list"),
+    pytest.param({"input": {"sha256": {}}}, BAD_INPUT, id="nested_sha256_is_object"),
+])
+def test_malformed_nested_input_raises(inputs: Any, message: str, case_a: Case, vocab: Vocab) -> None:
+    path = _write_manifest(case_a, {**_drop(valid_manifest(case_a, vocab, "A"), "input"), "inputs": inputs})
+    with pytest.raises(EvaluationInputError, match=_exact(message)):
+        check_manifest(path, _bundle(case_a, vocab), vocab)
+
+
+def test_valid_top_level_input_with_malformed_nested_input_raises(case_a: Case, vocab: Vocab) -> None:
+    path = _write_manifest(case_a, {**valid_manifest(case_a, vocab, "A"), "inputs": {"input": "abc"}})
+    with pytest.raises(EvaluationInputError, match=_exact(BAD_INPUT)):
         check_manifest(path, _bundle(case_a, vocab), vocab)
 
 
