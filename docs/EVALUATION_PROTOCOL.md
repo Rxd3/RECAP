@@ -39,6 +39,22 @@ predicted count. Label names and support accompany every table.
   counts as a non-O false negative. Do not filter out gold-O tokens before scoring.
 - Optionally report all-class macro/micro F1, explicitly labeled **including O**.
 - Token accuracy including O is secondary because O may dominate.
+
+### Why non-O macro F1 is the primary metric
+
+Mode A validation numbers illustrate each choice.
+
+- **O dominates, so accuracy compresses the differences between models.**
+  - O is 87.06% of tokens (538,697 of 618,771).
+  - The shortcut baseline never predicts a comma, yet it reaches 89.98% accuracy against the HMM's 90.44%: a 0.46-point gap.
+  - The same two models differ by 8.33 points in non-O macro F1 (28.21 vs 36.54).
+- **Leaving O out of the average rewards restored marks.**
+  - O errors still count: O→COMMA is a false positive and COMMA→O a false negative.
+  - So a model cannot score by predicting O everywhere.
+- **Macro averaging gives every mark equal weight.**
+  - COMMA and PERIOD make up 95.75% of non-O tokens, so a micro average would hardly see QUESTION (4.25%) or the rare mode B classes. Restoring those rare marks is the point of the extended task.
+  - Micro P/R/F1 is still reported, because prior punctuation work usually quotes it.
+- **Mode C keeps all 12 joint classes.** `O|FIRST_UPPER` and `O|ALL_UPPER` carry the casing of unpunctuated words, so dropping the O-punctuation classes would drop most casing decisions.
 - Report an ordered confusion matrix including O and both gold/prediction class
   distributions; describe normalization if normalized figures are added.
 

@@ -1,6 +1,6 @@
 # Evaluation results: HMM baseline (Member 5)
 
-This is the Member 5 deliverable for the HMM baseline (PR #4) and the shortcut baseline: confusion matrices, rare-label and class-imbalance analysis, error pairs, sequence-level errors and a runtime measurement. It follows [EVALUATION_PROTOCOL.md](EVALUATION_PROTOCOL.md). CRF rows will be added once the CRF code is merged.
+This is the Member 5 deliverable for the HMM baseline (PR #4) and the shortcut baseline: confusion matrices, rare-label and class-imbalance analysis, error pairs, sequence-level errors and a runtime measurement. It follows [EVALUATION_PROTOCOL.md](EVALUATION_PROTOCOL.md). The CRF models (Member 3) are evaluated in [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) (validation so far, with feature ablations; test pending).
 
 ## Provenance
 
