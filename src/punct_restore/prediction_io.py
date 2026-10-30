@@ -150,10 +150,11 @@ def write_prediction_outputs(
     label_mode: str,
     ordered_labels: Sequence[str],
 ) -> None:
-    """Write the predictions and, when given, their manifest; on any failure remove what this call started.
+    """Write the predictions and, when given, their manifest; on any failure try to delete both.
 
-    The original error propagates (a failed cleanup never replaces it), so a failed write never
-    leaves a partial predictions file behind.
+    Cleanup is best effort: it deletes each file this call started writing (including a file it
+    was overwriting), ignores a delete that itself fails, and leaves any folders it created.
+    The original error is always the one re-raised.
     """
     started: list[Path] = []
     done = False
@@ -189,17 +190,23 @@ def _comparable(path: str | Path) -> str:
 
 
 def _check_creatable(flag: str, path: Path) -> None:
-    """Raise ValueError if ``path`` is a folder or its nearest existing ancestor is not a writable folder."""
-    if path.is_dir():
-        raise ValueError(f"{flag}: {path.resolve().name or path.resolve()} is a folder, not a file")
-    ancestor = path.resolve().parent
-    while not ancestor.exists() and ancestor.parent != ancestor:
-        ancestor = ancestor.parent
-    shown = ancestor.name or ancestor.anchor
-    if not ancestor.is_dir():
-        raise ValueError(f"{flag}: cannot create {path.name}: {shown} is not a folder")
-    if not os.access(ancestor, os.W_OK):
-        raise ValueError(f"{flag}: cannot create {path.name}: {shown} is not writable")
+    """Raise ValueError if ``path`` is a folder or its nearest existing ancestor is not a writable folder.
+
+    An OSError while looking (e.g. a parent that cannot be read) also becomes a one-line ValueError.
+    """
+    try:
+        if path.is_dir():
+            raise ValueError(f"{flag}: {path.resolve().name or path.resolve()} is a folder, not a file")
+        ancestor = path.resolve().parent
+        while not ancestor.exists() and ancestor.parent != ancestor:
+            ancestor = ancestor.parent
+        shown = ancestor.name or ancestor.anchor
+        if not ancestor.is_dir():
+            raise ValueError(f"{flag}: cannot create {path.name}: {shown} is not a folder")
+        if not os.access(ancestor, os.W_OK):
+            raise ValueError(f"{flag}: cannot create {path.name}: {shown} is not writable")
+    except OSError as e:
+        raise ValueError(f"{flag}: cannot check {path.name or path}: {e.strerror or e}") from e
 
 
 def check_new_output_paths(

@@ -36,7 +36,6 @@ from punct_restore.prediction_io import (  # noqa: E402
     check_new_output_paths,
     read_frozen_ids,
     read_observations,
-    write_prediction_manifest,  # noqa: F401  (kept importable as train_crf.<name>)
     write_prediction_outputs,
     write_predictions_jsonl,  # noqa: F401
 )
@@ -283,9 +282,11 @@ def cmd_train(args: argparse.Namespace) -> int:
     input_path = Path(args.input)
     ids_path = Path(args.ids)
     output_path = Path(args.output)
-    manifest_path = Path(args.manifest_out) if args.manifest_out else output_path.with_suffix(".joblib.manifest.json")
 
     try:  # even with --overwrite, the manifest must never replace the model or an input
+        if not output_path.name:
+            raise ValueError(f"--output must name a file, got {args.output!r}")
+        manifest_path = Path(args.manifest_out) if args.manifest_out else output_path.with_suffix(".joblib.manifest.json")
         check_new_output_paths({"--output": output_path, "--manifest-out": manifest_path},
                                {"--input": input_path, "--ids": ids_path,
                                 "--config-path": Path(args.config_path) if args.config_path else None})
@@ -459,24 +460,27 @@ def cmd_train(args: argparse.Namespace) -> int:
 
 
 def _predict_path_error(args: argparse.Namespace, manifest_path: Path | None) -> str | None:
-    """Return a one-line error for missing inputs or unprotected existing outputs, else None."""
+    """Return a one-line error for missing, unreadable or clashing paths, else None."""
     model_path, input_path, output_path = Path(args.model), Path(args.input), Path(args.output)
-    if not model_path.is_file():
-        return f"Error: Model artifact not found at {model_path}"
-    if not input_path.is_file():
-        return f"Error: Input JSONL not found at {input_path}"
     try:
+        if not model_path.is_file():
+            return f"Error: Model artifact not found at {model_path}"
+        if not input_path.is_file():
+            return f"Error: Input JSONL not found at {input_path}"
         check_new_output_paths(
             {"--output": output_path, "--manifest-out": manifest_path},
             {"--input": input_path, "--model": model_path,
              "--ids": Path(args.ids) if args.ids else None},
         )
+        if output_path.exists() and not args.overwrite:
+            return f"Error: Output file already exists at {output_path}. Use --overwrite to replace."
+        if manifest_path is not None and manifest_path.exists() and not args.overwrite:
+            return f"Error: Manifest already exists at {manifest_path}. Use --overwrite to replace."
     except ValueError as e:
         return f"Error: {e}"
-    if output_path.exists() and not args.overwrite:
-        return f"Error: Output file already exists at {output_path}. Use --overwrite to replace."
-    if manifest_path is not None and manifest_path.exists() and not args.overwrite:
-        return f"Error: Manifest already exists at {manifest_path}. Use --overwrite to replace."
+    except OSError as e:  # e.g. a folder on the way cannot be read
+        shown = Path(e.filename).name if e.filename else "a path"
+        return f"Error: cannot check {shown}: {e.strerror or e}"
     return None
 
 
