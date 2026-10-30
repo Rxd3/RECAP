@@ -1,7 +1,7 @@
 # Data storage and release plan
 
 Owner: Member 1. Generated contents of `raw/`, `processed/` and `splits/` are ignored by Git. Tracked: this guide,
-the folder markers, a 10-utterance sample in [`sample/`](sample/README.md) and small release metadata in
+a 10-utterance sample in [`sample/`](sample/README.md) and small release metadata in
 [`release_metadata/`](release_metadata/README.md).
 Do not add large data with `git add -f`. Releases are shared through the team's Google Drive folder
 ([RECAP -NLP2](https://drive.google.com/drive/folders/1ZKDNnRHXsLJf3UjOdKVgQ0bYpo12IQfH?usp=sharing); decision D11) with SHA-256 sums.
@@ -31,7 +31,8 @@ RAW/sponspeech_text/              train/ dev/ test-amb/ test/ (text/*.txt, utt2s
    `python -m pip install -e ".[dev]"` (the pinned PyYAML, sklearn-crfsuite, python-crfsuite and joblib, plus pytest;
    the data code itself needs only PyYAML and the standard library).
 2. **Provenance files.** Take `<release>-provenance.tar.gz` from the Drive handoff ZIP (below), check it against
-   `<release>.SHA256SUMS`, and unpack it into `RAW`. Do not re-fetch the title snapshot: titles change over time.
+   `<release>.SHA256SUMS`, and unpack it into `RAW` (create it first with
+   `mkdir -p data/raw/sponspeech-gcs-generation-1716975130398953`). Do not re-fetch the title snapshot: titles change over time.
 3. **Recreate the transcripts** (no audio):
 
    ```bash
@@ -99,6 +100,7 @@ run these from the extracted `sponspeech-m1-v2/` folder, with `data/` meaning th
 
 ```bash
 shasum -a 256 -c <id>.SHA256SUMS
+mkdir -p data/processed data/splits
 tar -xzf <id>-processed.tar.gz -C data/processed
 tar -xzf <id>-splits.tar.gz -C data/splits
 (cd data/processed/<id> && shasum -a 256 -c SHA256SUMS)

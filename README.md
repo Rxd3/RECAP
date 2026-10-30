@@ -186,14 +186,31 @@ report `test` and `test_amb` separately (they share 25 videos).
 | `artifacts/` | Ignored local model and data bundles (handoff ZIPs). Only `artifacts/README.md` is tracked. |
 | `configs/` | `configs/label_sets.yaml` (label vocabularies), `configs/datasets.yaml` (source checklist), `configs/hmm_sponspeech_v2.yaml` (frozen HMM search). |
 | `contributions/` | One file per team member: role, branch, pull request, commits and files. |
-| `data/` | Ignored local data: `data/raw/`, `data/processed/`, `data/splits/`. Committed: a 10-utterance sample in `data/sample/` and release metadata in `data/release_metadata/`. `data/README.md` explains how to rebuild or download a release. |
+| `data/` | Local data goes in the ignored folders raw/, processed/ and splits/ under `data/`, created when a release is built or unpacked. Committed: a 10-utterance sample in `data/sample/` and release metadata in `data/release_metadata/`. `data/README.md` explains how to rebuild or download a release. |
 | `docs/` | Contracts, dataset documentation, decisions, evaluation protocol and results; listed below. Index: `docs/README.md`. |
-| `experiments/` | Model notes and runbooks: `experiments/HMM_NOTES.md`, `experiments/HMM_RUNBOOK.md`, `experiments/HMM_RESULTS.md`, `experiments/CRF_NOTES.md`, `experiments/FEATURE_NOTES.md`. Run outputs go to the ignored `experiments/runs/`. |
+| `experiments/` | Model notes and runbooks: `experiments/HMM_NOTES.md`, `experiments/HMM_RUNBOOK.md`, `experiments/HMM_RESULTS.md`, `experiments/CRF_NOTES.md`, `experiments/FEATURE_NOTES.md`. Local run outputs go to the ignored folder experiments/runs/ (create it with `mkdir -p`). |
 | `presentation/` | Presentation workspace (`presentation/README.md`); the outline is `docs/PRESENTATION_OUTLINE.md`. |
-| `results/` | `results/scores/` holds the committed evaluator JSON behind every reported number (`results/scores/README.md`), including Member 3's six CRF training manifests in `results/scores/crf_training_manifests/`. Local outputs in `results/predictions/` and `results/tables/` (kept as empty folders, because the evaluator never creates folders) are ignored. |
+| `results/` | `results/scores/` holds the committed evaluator JSON behind every reported number (`results/scores/README.md`), including Member 3's six CRF training manifests in `results/scores/crf_training_manifests/`. Local evaluator outputs go to the ignored folders results/predictions/ and results/tables/; create them with `mkdir -p` first, because the evaluator never creates folders. |
 | `scripts/` | Command-line entry points; see the table below and `scripts/README.md`. |
 | `src/punct_restore/` | The Python package; every module is listed in the package table below. |
 | `tests/` | The pytest suite for data, models, features, CLIs and evaluation; fixtures only. |
+
+**Evaluator outputs** (`results/scores/`, one folder per study; details in `results/scores/README.md`):
+
+| Folder | Content |
+| --- | --- |
+| `results/scores/ablations/` | One-feature-group-removed ablations of the improved CRF, per mode, on validation (50k training sample) |
+| `results/scores/b_to_a/` | Mode B models projected to mode A (D5 mapping) vs their mode A twins, mode A validation gold |
+| `results/scores/crf_test/` | The six CRFs on test and test_amb, each predicted once; paired comparisons; error pairs |
+| `results/scores/crf_training_manifests/` | Member 3's six CRF training manifests: settings, data hashes, fit time, peak memory, environment |
+| `results/scores/crf_validation/` | The six CRFs on validation (model selection); paired comparisons; error pairs |
+| `results/scores/filler/` | Improved CRF with and without the filler-word cue, per mode, on validation |
+| `results/scores/h1_joint/` | Joint mode C vs punctuation-only mode A on the mode C validation IDs (H1) |
+| `results/scores/hmm/` | HMM and shortcut baseline on validation, test and test_amb; HMM error pairs |
+| `results/scores/leakage/` | HMM and improved CRF on the official mode A test, split by exclusion cause |
+| `results/scores/per_class/` | Paired per-class F1 intervals behind hypotheses H2–H4 |
+| `results/scores/runtime/` | HMM and CRF prediction timing (median of 3 passes, same laptop) |
+| `results/scores/sensitivity/` | Mode A CRF basic and improved at other c1/c2 and iteration settings, on validation |
 
 **Package** (`src/punct_restore/`; each package folder `src/punct_restore/`, `src/punct_restore/data/`,
 `src/punct_restore/models/`, `src/punct_restore/features/` and `src/punct_restore/evaluation/` has a
@@ -244,6 +261,7 @@ Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM
 
 | File | Content |
 | --- | --- |
+| `configs/README.md`, `data/README.md`, `data/sample/README.md`, `data/release_metadata/README.md`, `experiments/README.md`, `tests/README.md`, `scripts/README.md`, `results/README.md` | Folder guides: what each folder holds and how to use it. |
 | `docs/PROJECT_SCOPE.md`, `docs/ARCHITECTURE.md` | Scope, components and ownership. |
 | `docs/DATASET_CARD.md` | What SponSpeech ships, what RECAP adds, splits, labels, leakage, licence. |
 | `docs/DATASET_PLAN.md` | Source, annotation policy, released counts and limitations (preprocessing). |
