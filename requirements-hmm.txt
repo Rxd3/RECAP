@@ -1,0 +1,3 @@
+# HMM reproduction runtime, tested with CPython 3.13.5 on Windows.
+# The estimator, JSON artifacts and workflow otherwise use the standard library.
+PyYAML==6.0.3

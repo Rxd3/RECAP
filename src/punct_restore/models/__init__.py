@@ -1,6 +1,6 @@
-"""Model placeholders, owned by Members 2 (HMM) and 3 (CRF).
+"""Model adapters, owned by Members 2 (implemented HMM) and 3 (future CRF).
 
-Responsibility: future model adapters sharing docs/MODEL_CONTRACT.md.
+Responsibility: model adapters sharing docs/MODEL_CONTRACT.md.
 """
 
-# TODO(Members 2 and 3): agree implemented adapter exports with Member 6.
+# TODO(Members 2, 3 and 6): coordinate shared exports as integration develops.

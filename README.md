@@ -4,11 +4,12 @@
 
 **COE025 — Natural Language Processing | Group Project 2 — Sequence Labeling**
 
-**Status:** Member 1's SponSpeech preprocessing pipeline and contract tests are
-implemented. The corrected release is `sponspeech-m1-v2` (policy `m1-v2`); see
-[release validation](docs/DATA_RELEASE_VALIDATION.md) before using the data.
-Model implementations develop on their member branches; no trained model or
-benchmark score is included in this data PR.
+**Status:** Member 1's corrected SponSpeech pipeline and Member 2's trained HMM
+baseline are verified. Use release `sponspeech-m1-v2` (policy `m1-v2`);
+see [release validation](docs/DATA_RELEASE_VALIDATION.md). All 27 validation
+candidates, three selected models and final HMM results passed independent
+verification; see [HMM results](experiments/HMM_RESULTS.md). CRF, the shared
+evaluation implementation and the integrated demo develop on their member branches.
 
 ## Overview
 
@@ -16,7 +17,7 @@ Restore punctuation and capitalization in unformatted English text, including a
 future evaluation on speech-recognition transcripts. Each word receives a label
 for the punctuation boundary **after** it and a casing label for the word itself.
 
-Repository: [Rxd3/RECAP](https://github.com/Rxd3/RECAP) (private).
+Repository: [Rxd3/RECAP](https://github.com/Rxd3/RECAP) (public).
 
 Project 1, [NALTRA](https://github.com/Rxd3/NALTRA/), classified whole documents.
 Project 2 predicts aligned token sequences in a separate repository. We retain
@@ -68,9 +69,9 @@ Train on the mode's `default_train/*.ids` selection and evaluate on
 overlap; the training CLI must explicitly apply the ID lists. Report `test` and
 `test_amb` separately. Version 2 supersedes the earlier version 1 Drive handoff.
 
-## Planned models and evaluation
+## Models and evaluation
 
-1. HMM with Viterbi decoding: baseline.
+1. HMM with Viterbi decoding: trained, validation-selected and evaluated in A/B/C.
 2. Linear-chain CRF with basic features: main model.
 3. The same CRF with improved features: controlled improvement and ablations.
 
@@ -84,7 +85,10 @@ secondary. Mode C also requires joint and projected punctuation/casing scores.
 Modes B and C have different tasks; compare only justified compatible targets.
 Validation selects settings; test data is reserved for final reporting. The
 [evaluation protocol](docs/EVALUATION_PROTOCOL.md) specifies denominators and
-zero-division policy. No results exist yet.
+zero-division policy. [HMM results](experiments/HMM_RESULTS.md) include actual
+primary scores, position diagnostics, confusion counts, class support and runtime.
+The study uses Member 5's pinned scorer directly from its separate checkout;
+the evaluator on this branch remains a placeholder.
 
 ## Repository structure
 
@@ -93,16 +97,16 @@ configs/                 Label vocabularies, source planning, experiment templat
 data/{raw,processed,splits}/  Local data and frozen split manifests (ignored)
 src/punct_restore/
   data/                  Member 1: implemented source extraction, labels and release validation
-  models/                Members 2–3: HMM and CRF placeholders
+  models/                Member 2: implemented HMM; Member 3: CRF placeholder
   features/              Member 4: shared CRF feature interface
   evaluation/            Member 5: scoring and analysis placeholders
   demo/                  Member 6: inference demonstration placeholder
   pipeline.py            Member 6: integration placeholder
-scripts/                 Working prepare_data.py; model/evaluation scripts develop separately
-experiments/             Model notes and future run-record instructions
+scripts/                 Working preparation and HMM train/predict/study/verification/handoff commands
+experiments/             HMM results, model notes and reproducible run instructions
 results/{predictions,tables,figures}/  Empty output locations
-artifacts/models/        Empty, ignored model storage
-tests/                   Executable data contract and release regression tests
+artifacts/               Ignored data and HMM handoff bundles
+tests/                   Data contract/release regressions and HMM/CLI tests
 docs/                    Scope, contracts, decisions, workflow, reproduction
 presentation/assets/    Presentation outline and future evidence
 ```
@@ -143,7 +147,12 @@ required. [Reproducibility notes](docs/REPRODUCIBILITY.md) describe future locki
 `python scripts/prepare_data.py --help` describes source extraction and release
 building. See [data/README.md](data/README.md) for the exact commands and required
 provenance package. `python -m pytest -q` runs the data tests using tiny local
-fixtures without downloading SponSpeech. Other scripts develop on their member
+fixtures without downloading SponSpeech. The HMM core and CLI also have fixture
+tests; inspect `python scripts/train_hmm.py --help` and
+[HMM notes](experiments/HMM_NOTES.md). Training requires `--train-ids`, and
+`--release-manifest` verifies the official release. The
+[HMM runbook](experiments/HMM_RUNBOOK.md) covers validation selection, saved-model
+inference and independent reproduction. Other scripts develop on their member
 branches. [Initial verification](docs/INITIAL_VERIFICATION.md) is historical;
 [release validation](docs/DATA_RELEASE_VALIDATION.md) records current data checks.
 
@@ -154,7 +163,7 @@ All six member branches were created from the same scaffolding commit. Open focu
 into `main`; discuss shared interface changes with affected owners first.
 Never force-push another member's work. The Project 2 remote is
 `https://github.com/Rxd3/RECAP.git`; `main` and all six member branches are
-published there. Team members need collaborator access to this private repository.
+published there. Team members need collaborator access to push their branches.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the daily checklist and
 [Git workflow](docs/GIT_WORKFLOW.md) for clone, branch, commit, push, PR, and
@@ -166,11 +175,14 @@ conflict commands using the Project 2 remote.
 - [x] Prepare independent local Git history and six member branches.
 - [x] Agree D1–D6 annotation policies, source configuration, and data projections.
 - [x] Implement reproducible data releases and immutable split manifests.
-- [ ] Implement and validate the HMM baseline and basic CRF.
+- [x] Implement the HMM core, training/export CLI and synthetic tests.
+- [x] Train/evaluate the HMM baseline with validation-only selection and independent reproduction.
+- [ ] Implement and evaluate the basic CRF.
 - [ ] Implement improved CRF features and controlled ablations.
 - [ ] Evaluate frozen settings on held-out data; analyze errors and runtime.
 - [ ] Integrate inference, rehearse the demo, and prepare evidence-based slides.
 
-No deadlines, model scores, or finished experiments are assumed.
+HMM evidence is recorded in [HMM results](experiments/HMM_RESULTS.md); other model
+results and team deadlines remain pending.
 Record seeds, source revisions, preprocessing versions, split hashes, code
 commits, environments, and commands for every future run.

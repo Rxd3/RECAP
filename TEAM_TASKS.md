@@ -1,10 +1,12 @@
 # Six-member project board
 
-**Status:** Member 1 data preparation is implemented; its corrected version 2
-release is documented in [release validation](docs/DATA_RELEASE_VALIDATION.md).
-Other components develop on member branches. No deadlines are assumed. Every
-member must understand their component's assumptions, the label
-schemes, leakage risks, evaluation choices and the overall methodology.
+**Status:** Member 1 data preparation and Member 2's trained HMM baseline are
+verified. The corrected release is documented in
+[release validation](docs/DATA_RELEASE_VALIDATION.md). Real-data HMM training,
+selection, scoring and independent reproduction are complete; see
+[HMM results](experiments/HMM_RESULTS.md). No deadlines are assumed. Every
+member must understand their component's assumptions, label schemes, leakage
+risks, evaluation choices and the overall methodology.
 
 Primary ownership identifies the first reviewer, not permission to change shared
 contracts alone. Discuss shared changes before coding, then obtain affected
@@ -62,32 +64,37 @@ member acknowledgments remain pending; the team lead authorized this review.
 
 **Tasks:**
 
-- [ ] Specify HMM assumptions, states per mode and sequence start/end handling.
-- [ ] Estimate initial, transition and emission probabilities from training only.
-- [ ] Implement numerically stable Viterbi decoding and an unseen-word strategy.
-- [ ] Select smoothing/settings on shared validation data and record them.
-- [ ] Support agreed label modes through configuration and the common model interface.
-- [ ] Train on the shared release; save reproducible metadata and artifacts.
-- [ ] Export predictions preserving IDs, order and one label per token.
-- [ ] Document baseline limitations and observed behavior after actual experiments.
+- [x] Specify HMM assumptions, states per mode and sequence start/end handling.
+- [x] Implement initial, transition and emission estimation from training only; approved real-data counts verified.
+- [x] Implement numerically stable Viterbi decoding and an unseen-word strategy.
+- [x] Select smoothing/settings on shared validation data and record them (27 candidates; all modes frozen before test).
+- [x] Support agreed label modes through configuration and the common model interface.
+- [x] Train on the shared release; save reproducible metadata and artifacts (all three independent refits byte-identical).
+- [x] Implement prediction export preserving IDs, order and one label per token; all full-split predictions reproduced.
+- [x] Document baseline limitations and observed behavior after actual experiments.
 
 **Deliverables:** trained HMM baseline; reproducible training command/config;
 standard prediction bundle; model-specific notes and meaningful tests.
 
 **Dependencies:** Member 1's approved policies and release; Member 5's scoring
-protocol; Member 6's artifact/inference adapter contract. Interface planning can
-begin on illustrative tiny fixtures while the release is pending.
+protocol; Member 6's artifact/inference adapter contract. The completed HMM follows
+the shared record contract; integrated demo acceptance remains Member 6's work.
 
 **Definition of Done:**
 
-- [ ] Tiny hand-checkable sequences verify probability/Viterbi and OOV behavior.
-- [ ] Model contract holds, no gold leakage occurs, and save/load preserves predictions.
-- [ ] Artifact, data/mode/configuration hashes and actual commands are recorded.
-- [ ] Member 5 validates prediction alignment and computes the baseline scores.
+- [x] Tiny hand-checkable sequences verify probability/Viterbi and OOV behavior.
+- [x] HMM input/output contract, gold-invariance and save/load hold on synthetic tests and real data; integrated demo review remains pending.
+- [x] Artifact, data/mode/configuration hashes and actual commands are recorded.
+- [x] Member 5's pinned shared scorer validates prediction alignment and computes the baseline scores; an independent counter verifies them.
 
-**Handoff:** give Members 3, 5 and 6 the frozen artifact/prediction bundle,
-selected configuration, runtime conditions and limitations; do not write scores
-before evaluation runs.
+**Handoff:** the leader receives the local, checksummed bundle
+`artifacts/hmm/hmm-sponspeech-v2-20261029.zip`, containing selected models, all
+candidate evidence, predictions, scores, configuration, runtime and reproduction
+proof. See [results](experiments/HMM_RESULTS.md) and
+[runbook](experiments/HMM_RUNBOOK.md). Distribute it through the team Drive folder
+to Members 3, 5 and 6. Individual acknowledgments and Member 6's integrated demo
+are separate remaining team actions. Running the shared scorer records technical
+validation, not a human Member 5 sign-off.
 
 ## Member 3 — CRF Main Model Omar
 
