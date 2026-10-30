@@ -43,15 +43,10 @@ drive-download-*/
 # Preserve directory documentation/markers, including nested directories
 !/data/**/
 !/data/**/README.md
-!/data/**/.gitkeep
 !/artifacts/**/
 !/artifacts/**/README.md
-!/experiments/runs/**/
-!/experiments/runs/**/README.md
-!/experiments/runs/**/.gitkeep
 !/results/**/
 !/results/**/README.md
-!/results/**/.gitkeep
 # Evaluator JSON behind every reported number (Member 5); small, text only.
 !/results/scores/**/*.json
 !/results/scores/**/*.tsv

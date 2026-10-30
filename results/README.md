@@ -9,7 +9,8 @@ attribution in [DATA_LICENSE.md](../docs/DATA_LICENSE.md)). `scores/crf_training
 manifests (settings, data hashes, fit time, peak memory, environment). The scripts in
 `scripts/reporting/` rebuild the result tables from these files ([REPRODUCIBILITY.md](../docs/REPRODUCIBILITY.md)).
 
-`predictions/` and `tables/` hold only directory markers in Git (the evaluator never creates folders). Local prediction JSONL,
+Local outputs go to `predictions/` and `tables/`, which are ignored and not in Git; create them with
+`mkdir -p results/predictions results/tables` first, because the evaluator never creates folders. Local prediction JSONL,
 new score files and Markdown summaries written there are ignored; predictions are regenerated from the
 shared models ([REPRODUCIBILITY.md](../docs/REPRODUCIBILITY.md)).
 
