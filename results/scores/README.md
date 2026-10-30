@@ -20,6 +20,8 @@ All files were written by `scripts/evaluate_models.py` (`score`, `compare`, `err
 | `ablations/mode_<M>/` | One-feature-group-removed ablations on validation (50k-sequence training sample) |
 | `filler/mode_<M>/` | Improved CRF with and without the filler-word cue on validation (same sample) |
 | `h1_joint/` | Mode A model vs the mode C model projected to punctuation, on mode A validation gold over the mode C IDs: paired comparisons (`*_jointC_vs_A.json`) and per-model scores (`*_A_on_C_ids.json`, `*_C_as_A_on_C_ids.json`) |
+| `b_to_a/` | Mode B models projected to mode A (D5 mapping) vs their mode A twins, mode A validation gold, with per-class intervals |
+| `per_class/` | Paired per-class F1 intervals (`compare --class`) behind hypotheses H2–H4 |
 | `leakage/` | HMM and improved CRF on the official mode A test, split by leakage-control status and exclusion reason; native SponSpeech labels |
 | `runtime/` | HMM and CRF prediction timing (median of 3 passes, same laptop) |
 | `crf_training_manifests/` | Member 3's six training manifests: settings, data hashes, fit time, peak memory, environment |

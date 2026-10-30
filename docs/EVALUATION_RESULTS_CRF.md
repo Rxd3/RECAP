@@ -86,9 +86,9 @@ The team wrote H1–H6 in its execution plan on 2026-10-29, before any CRF resul
 | # | Hypothesis | Outcome | Evidence |
 |---|---|---|---|
 | H1 | Joint mode C gives higher PERIOD F1 than mode A | **Not supported for PERIOD** (mixed: higher only for CRF improved), but joint training helps inside the utterance | Paired comparison on mode A gold over the 19,936 mode C validation IDs: each mode A model against the same model type trained on mode C, projected to punctuation. PERIOD F1, A vs C: HMM 69.31 vs 68.33, CRF basic 71.57 vs 71.43, CRF improved 72.33 vs 72.63. The joint CRF improved gains +0.42 macro (0.05 to 0.82), mostly on QUESTION (+1.51). Every joint model gains on non-final positions, and all three intervals exclude 0: HMM +8.69, CRF basic +1.59, CRF improved +1.16. Overall, the joint HMM loses 0.62 (−1.20 to −0.03). |
-| H2 | Threshold decoding raises rare-class recall | **Partly supported** (test) | Recall rises for almost every non-O class, but mostly for COMMA (mode A 45.22 → 52.63; mode B 45.36 → 57.80). The rare classes gain under 1 point: QUESTION A +0.46; B COLON +0.60, DASH +0.38, SEMICOLON +0.83, EXCLAMATION 0. Macro F1 gains +0.51 / +0.41 / +0.70 (sections 1–2; the τ grid is in section 7). |
-| H3 | Question cues raise QUESTION F1 | **Supported** (validation ablation) | Removing the question cues lowers QUESTION F1 by 4.05 (A), 2.85 (B) and 4.93 (C, punctuation projection). Primary intervals exclude 0 in every mode (section 6). |
-| H4 | Filler and discourse cues raise COMMA F1 | **Not supported** (validation) | Adding a filler cue (*um*, *uh*, *er*, *erm*, *like*, *you know*, *i mean*, repeated words) changes primary macro F1 by +0.04 (A), +0.04 (B) and −0.28 (C joint), and COMMA F1 by +0.14, +0.21 and +0.18 (C, punctuation projection). All primary intervals include 0. Removing the clause cues (conjunctions and discourse markers) changes COMMA F1 by +0.03 (A), +0.05 (B) and −0.20 (C, punctuation projection). |
+| H2 | Threshold decoding raises rare-class recall | **Partly supported** (test) | Recall rises for almost every non-O class, but mostly for COMMA (mode A 45.22 → 52.63; mode B 45.36 → 57.80). Per-class F1 changes, threshold − improved, with paired 95% intervals: COMMA +2.38 (1.89 to 2.88) in A, +2.52 (1.88 to 3.22) in B, and `COMMA|LOWER` +2.79 (2.15 to 3.46) in C. PERIOD falls overall (A −0.76, B −1.59) but rises on non-final positions (+1.43, +1.60). Every rare-class interval includes 0 (QUESTION, COLON, SEMICOLON, DASH, EXCLAMATION). Macro F1 gains +0.51 / +0.41 / +0.70 (sections 1–2; the τ grid is in section 7). |
+| H3 | Question cues raise QUESTION F1 | **Supported** (validation ablation) | Removing the question cues changes QUESTION F1 by −4.05 (−5.37 to −2.99) in A and −2.85 (−4.45 to −1.58) in B, and `QUESTION|LOWER` F1 by −5.39 (−6.81 to −4.10) in C. These are paired per-class intervals (`compare --class`). Primary intervals exclude 0 in every mode (section 6). |
+| H4 | Filler and discourse cues raise COMMA F1 | **Partly supported** for fillers, **not supported** for discourse markers (validation) | Adding the filler cue (*um*, *uh*, *er*, *erm*, *like*, *you know*, *i mean*, repeated words) raises COMMA F1 by +0.14 (−0.00 to 0.28) in A and +0.21 (0.06 to 0.37) in B, and `COMMA|LOWER` F1 by +0.25 (0.05 to 0.45) in C. Its primary macro F1 does not change (+0.04 / +0.04 / −0.28, all intervals include 0). Removing the clause cues (conjunctions and discourse markers) changes COMMA F1 by +0.03 (−0.08 to 0.14) in A and +0.05 (−0.08 to 0.18) in B, and `COMMA|LOWER` F1 by −0.18 (−0.34 to −0.03) in C. |
 | H5 | Much of PERIOD F1 comes from the utterance-final token | **Supported** (test) | The shortcut alone reaches PERIOD F1 66.68 in mode A, against the HMM's 67.34. Without the final token, the HMM's primary score falls from 35.12 to 9.13. |
 | H6 | The CRF beats the HMM in every mode | **Supported** (test and test_amb) | CRF basic − HMM and CRF improved − HMM: all six paired intervals exclude 0 on test (section 2) and on test_amb (section 9). |
 
@@ -326,7 +326,7 @@ Difference = with filler − without, in points (validation, 95% paired CI; * = 
 | B | +0.04 (-0.23 to 0.29) | +0.19 (-0.07 to 0.45) | +0.21 |
 | C | -0.28 (-0.66 to 0.11) | +0.13 (-0.15 to 0.42) | +0.18 |
 
-No interval excludes 0, so the filler cue has no detectable effect. The upper bounds (+0.27, +0.29 and +0.11 primary) do not rule out a small benefit.
+No primary interval excludes 0, so the filler cue does not move macro F1. The class it targets does move: COMMA F1 rises by +0.14 (−0.00 to 0.28) in A and +0.21 (0.06 to 0.37) in B, and `COMMA|LOWER` F1 by +0.25 (0.05 to 0.45) in C (paired per-class intervals, `results/scores/per_class/`). The gain is small but consistent.
 
 ## 7. Threshold decoding (Member 5 extension)
 
@@ -500,6 +500,18 @@ Mode C is shown as its punctuation projection and its masked casing projection; 
 | LOWER | 359,979 | 4,107 | 48 |
 | FIRST_UPPER | 9,773 | 31,633 | 30 |
 | ALL_UPPER | 267 | 67 | 628 |
+
+## 11. Label granularity: trained on 8 classes, scored on 4 (validation)
+
+Each mode B model was projected to mode A with the approved D5 mapping (`scripts/project_joint.py --from B`). It was compared with its mode A twin on mode A validation gold, over the same 20,040 primary IDs: B projection − A model, points, paired 95% CI.
+
+| Model | Mode A model | Mode B projected | Difference | non_final difference |
+|---|---|---|---|---|
+| HMM | 36.54 | 36.64 | +0.10 (−0.00 to 0.22) | +0.48 (0.34 to 0.65) |
+| CRF basic | 44.54 | 44.30 | −0.24 (−0.44 to −0.04) | −0.15 (−0.40 to 0.12) |
+| CRF improved | 51.18 | 51.44 | +0.25 (0.05 to 0.47) | +0.39 (0.09 to 0.72) |
+
+Training on the finer 8-class labels barely changes 4-class punctuation: the differences are under 0.3 points and go both ways. Per class, the improved CRF trained on mode B gains on QUESTION (+0.90, 0.36 to 1.52) and loses a little on COMMA (−0.25, −0.40 to −0.10). The extended labels cost nothing on the basic task. Files: `results/scores/b_to_a/`.
 
 ## Multiple comparisons (Holm)
 

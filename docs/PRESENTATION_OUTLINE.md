@@ -74,7 +74,7 @@ Feature ablations on validation, one group removed at a time from the improved C
 - **Leakage** (official mode A test):
   - The improved CRF scores 67.09 on utterances from videos in its training set, against 49.50 on the leak-free test.
   - The HMM: 33.54 vs 34.74.
-- **Filler-word cue** (validation): no detectable effect. Every interval includes 0.
+- **Filler-word cue** (validation): macro F1 unchanged, comma F1 slightly up (+0.21 in B, +0.25 in C; intervals exclude 0).
 - **Casing** (mode C, masked casing F1, test): HMM 79.81, CRF basic 84.23, CRF improved 85.09.
 - **Most common error is a missed comma** (mode A test):
   - 63% of the HMM's 39,586 errors;
