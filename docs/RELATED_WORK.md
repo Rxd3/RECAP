@@ -11,7 +11,7 @@ RTI-20240917-01). <https://arxiv.org/abs/2409.11241>
 Introduces SponSpeech: informal podcast-style speech from Creative Commons YouTube videos, with
 creator-written transcripts and a harder test-amb split; it benchmarks full stop, comma and
 question mark with text and audio models (BERT reaches overall F1 75.4 on test).
-*RECAP differs:* we keep the transcripts only, relabel them into 4, 8 and 12-class token views,
+*RECAP differs:* we keep the transcripts only, derive the course's 4-, 8- and 12-class token labels from them,
 replace the official splits with leak-free primary lists, and train classical models. Our scores use
 different gold labels, splits and metrics, so they are not comparable with the paper's.
 
@@ -32,6 +32,14 @@ word-level information only: the hidden-event language model.
 *RECAP differs:* RECAP's hidden-event LM (`src/punct_restore/models/hidden_event_lm.py`) follows this
 design but predicts every punctuation class of the mode, not only boundaries, and serves as a comparison
 method next to the HMM and the CRFs.
+
+**Stolcke et al. (1998).** Andreas Stolcke, Elizabeth Shriberg, Rebecca Bates, Mari Ostendorf, Dilek Hakkani,
+Madelaine Plauche, Gokhan Tur, Yu Lu. *Automatic detection of sentence boundaries and disfluencies based on
+recognized words.* ICSLP 1998, doi:10.21437/ICSLP.1998-486.
+<https://www.isca-archive.org/icslp_1998/stolcke98_icslp.html>
+Combines word-based event n-gram language models with decision-tree prosodic models to find sentence
+boundaries and disfluencies in recognized Switchboard speech; the combination beats each source alone.
+*RECAP differs:* the hidden-event LM uses words only, with no prosody, and labels every punctuation class.
 
 **Gotoh and Renals (2000).** Yoshihiko Gotoh, Steve Renals. *Sentence Boundary Detection in Broadcast
 Speech Transcripts.* Proc. ISCA ITRW on Automatic Speech Recognition (ASR2000), Paris, pp. 228–235.
@@ -59,8 +67,11 @@ annotation from speech.* ICSLP 2002, pp. 917–920, doi:10.21437/ICSLP.2002-307.
 <https://www.isca-archive.org/icslp_2002/huang02b_icslp.html>
 Treats punctuation insertion as word tagging, with a maximum-entropy tagger over word and pitch/timing
 cues, on Switchboard reference and recognizer transcripts.
-*RECAP differs:* words only (no prosody), sequence models (HMM, CRF) instead of a per-word classifier,
-and extended and joint label sets.
+*RECAP differs:* words only (no prosody), the course's extended and joint label sets, and sequence models
+(HMM, CRF) as the main models. RECAP's exploratory gap classifier is a per-token classifier on the CRF's
+features; it loses 1.27 / 1.70 / 4.74 points to the improved CRF in modes A / B / C (validation, 50k
+sample), a gap that mixes the label transitions with training differences
+([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §14.1).
 
 **Liu, Stolcke, Shriberg and Harper (2005).** Yang Liu, Andreas Stolcke, Elizabeth Shriberg, Mary Harper.
 *Using Conditional Random Fields for Sentence Boundary Detection in Speech.* ACL 2005, pp. 451–458.
@@ -77,8 +88,11 @@ for Portuguese broadcast news.* Speech Communication 50, pp. 847–862, doi:10.1
 Restores both capitalization and punctuation in Portuguese broadcast news: finite-state transducers and
 maximum-entropy models for capitalization, and a maximum-entropy model with lexical and acoustic
 features for punctuation.
-*RECAP differs:* English spontaneous speech, words only, and one joint 12-class tagger for punctuation
-and casing instead of separate models.
+*RECAP differs:* English spontaneous speech and words only. RECAP's main mode C model is one joint
+12-class tagger, but an exploratory factored pipeline (a punctuation CRF plus a casing-only CRF, separate
+models as here) beats it on the joint metric by +2.08 (1.22 to 2.94) and on masked casing by +1.49, while
+the joint model keeps an edge on punctuation inside the utterance (−0.83 for the factored pipeline)
+(validation, 50k sample; [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §14.5).
 
 **Wang, Ng and Sim (2012).** Xuancong Wang, Hwee Tou Ng, Khe Chai Sim. *Dynamic conditional random
 fields for joint sentence boundary and punctuation prediction.* Interspeech 2012, pp. 1384–1387,
@@ -93,8 +107,8 @@ doi:10.21437/Interspeech.2013-675. <https://www.isca-archive.org/interspeech_201
 CRFs over language-model scores, token n-grams, sentence length and parse-tree features predict
 punctuation in newspaper text, dictated messages and spoken text, with up to 26% relative F-score over a
 hidden-event language model. This text-only CRF is the closest precedent for RECAP's CRF.
-*RECAP differs:* no parser or language-model features, an extended 8-class and a joint 12-class label
-set, and evaluation on leak-free splits of spontaneous speech.
+*RECAP differs:* no parser or language-model features, the course's 8-class and joint 12-class label
+sets (labels derived from SponSpeech), and evaluation on leak-free splits of spontaneous speech.
 
 ## Truecasing
 
@@ -122,7 +136,10 @@ Networks.* Interspeech 2017, pp. 548–552, doi:10.21437/Interspeech.2017-1247.
 One bidirectional RNN learns punctuation and capitalization jointly and beats separate models.
 *RECAP differs:* we test the same question with classical models: each mode C model, projected to
 punctuation, is compared with its mode A twin on identical validation sequences
-([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md), H1).
+([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md), H1). An exploratory factored-vs-joint study points
+the other way on casing: separate models win on the joint metric (+2.08) and on masked casing (+1.49), and
+joint training helps only punctuation inside the utterance (−0.83 for the factored pipeline) (validation,
+50k sample; §14.5).
 
 ## IWSLT TED-talk benchmarks
 
@@ -169,6 +186,21 @@ probabilities the F1-optimal threshold is half the optimal F1.
 *RECAP differs:* the threshold is applied per token to CRF marginals (1 − P(O) > τ), tuned on validation
 for macro F1, and frozen before test.
 
+**Saerens, Latinne and Decaestecker (2002).** Marco Saerens, Patrice Latinne, Christine Decaestecker.
+*Adjusting the Outputs of a Classifier to New A Priori Probabilities: A Simple Procedure.* Neural
+Computation 14(1), pp. 21–41, doi:10.1162/089976602753284446.
+<https://api.crossref.org/works/10.1162/089976602753284446>
+Shows how to correct a classifier's posterior probabilities when the class priors change.
+*RECAP differs:* prior-adjusted threshold decoding divides each non-O class's CRF marginal by its training
+prior raised to γ, with γ chosen on validation (exploratory; [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §14.3).
+
+**Menon et al. (2021).** Aditya Krishna Menon, Sadeep Jayasumana, Ankit Singh Rawat, Himanshu Jain, Andreas
+Veit, Sanjiv Kumar. *Long-tail learning via logit adjustment.* ICLR 2021. <https://arxiv.org/abs/2007.07314>
+Adjusts logits by label frequency, after training or in the loss, so that rare labels are predicted more
+often in imbalanced classification.
+*RECAP differs:* the same post-hoc idea applied per token to a CRF's marginals, after a separate τ gate
+for "any mark", in sequence labelling.
+
 **Lin and Wang (2020).** Binghuai Lin, Liyuan Wang. *Joint Prediction of Punctuation and Disfluency in
 Speech Transcripts.* Interspeech 2020, pp. 716–720, doi:10.21437/Interspeech.2020-1277.
 <https://www.isca-archive.org/interspeech_2020/lin20c_interspeech.html>
@@ -189,10 +221,14 @@ and the utterance-final shortcut that this creates is measured separately (`non_
 ## Summary: where RECAP sits
 
 RECAP's models are not new. HMM, maximum-entropy and CRF taggers for punctuation (Huang and Zweig 2002;
-Liu et al. 2005; Lu and Ng 2010; Ueffing et al. 2013) and joint restoration of punctuation and
-capitalization (Batista et al. 2008; Gravano et al. 2009; Pahuja et al. 2017) are established, and
-recent benchmark work uses pretrained transformers on TED talks with three marks. RECAP applies the
-course's classical models to spontaneous-speech transcripts. Its own contributions are in the data and
-the evaluation: an 8-class and a joint 12-class view, leak-free splits with the measured cost of leakage,
-the end-of-utterance shortcut analysis, and threshold decoding and a filler cue tested on top of the
-baselines.
+Liu et al. 2005; Lu and Ng 2010; Ueffing et al. 2013), hidden-event language models (Stolcke and Shriberg
+1996; Stolcke et al. 1998) and joint restoration of punctuation and capitalization (Batista et al. 2008;
+Gravano et al. 2009; Pahuja et al. 2017) are established, and recent benchmark work uses pretrained
+transformers on TED talks with three marks. RECAP applies the course's classical models and its 8- and
+12-class modes, with labels derived from SponSpeech, to spontaneous-speech transcripts. Its contributions
+are in the data and the evaluation: leak-free splits with the measured cost of leakage, the end-of-utterance
+shortcut analysis, and threshold decoding and a filler cue tested on top of the baselines. Exploratory
+comparison methods, added after the first test report (EVALUATION_RESULTS_CRF.md §13–14), place the CRF
+among its neighbours: a gap classifier without transitions, a Stolcke-style hidden-event LM,
+prior-adjusted threshold decoding (Saerens et al. 2002; Menon et al. 2021), question-lookback features, a
+factored casing pipeline, and simulated ASR noise.
