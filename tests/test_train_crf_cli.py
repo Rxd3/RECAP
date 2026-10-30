@@ -18,7 +18,9 @@ Covers:
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+import subprocess
 import sys
 from typing import Any
 
@@ -831,3 +833,104 @@ class TestCRFInspectCLI:
         for f_path in files:
             assert not Path(f_path).is_absolute()
             assert "\\" not in f_path
+
+
+class TestPredictManifestAndProvenance:
+    """Prediction sidecar manifest, reusable helpers and git-derived provenance."""
+
+    @staticmethod
+    def _train_mode_a(tmp_path: Path) -> Path:
+        data, ids, model = tmp_path / "t.jsonl", tmp_path / "t.ids", tmp_path / "m.joblib"
+        write_id_file(ids, create_synthetic_train_jsonl(data, mode="A", num_samples=4))
+        ret = train_crf.main(["train", "-m", "A", "-i", str(data), "--ids", str(ids),
+                              "-o", str(model), "--max-iterations", "10"])
+        assert ret == 0
+        return model
+
+    @staticmethod
+    def _write_gold(path: Path) -> list[str]:
+        rows = [("gold_a", ["we", "love", "python"]), ("gold_b", ["how", "are", "you"])]
+        with open(path, "w", encoding="utf-8") as f:
+            for s_id, tokens in rows:
+                n = len(tokens)
+                rec = {"sample_id": s_id, "split": "test", "label_mode": "A", "tokens": tokens,
+                       "punct_labels": ["O"] * (n - 1) + ["PERIOD"], "case_labels": ["LOWER"] * n}
+                f.write(json.dumps(rec) + "\n")
+        return [s_id for s_id, _ in rows]
+
+    def test_predict_writes_manifest_accepted_by_evaluator(self, tmp_path: Path) -> None:
+        from punct_restore.evaluation.inputs import load_bundle, load_vocab
+        from punct_restore.evaluation.manifest import check_manifest
+
+        model = self._train_mode_a(tmp_path)
+        gold, ids, preds, man = (tmp_path / n for n in ("gold.jsonl", "g.ids", "p.jsonl", "p.man.json"))
+        write_id_file(ids, self._write_gold(gold))
+
+        ret = train_crf.main(["predict", "--model", str(model), "--input", str(gold),
+                              "--ids", str(ids), "--output", str(preds), "--manifest-out", str(man)])
+        assert ret == 0
+
+        vocab = load_vocab()
+        check_manifest(man, load_bundle(gold, ids, preds, None, vocab), vocab)
+        manifest = json.loads(man.read_text(encoding="utf-8"))
+        assert set(manifest) == {"model_name", "label_mode", "ordered_labels",
+                                 "predictions_sha256", "input"}
+        assert not Path(manifest["input"]["path"]).is_absolute()
+        assert manifest["predictions_sha256"] == train_crf.sha256_file(preds)
+
+    def test_predict_refuses_existing_manifest(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        model = self._train_mode_a(tmp_path)
+        inp, man = tmp_path / "in.jsonl", tmp_path / "p.man.json"
+        inp.write_text(json.dumps({"sample_id": "s1", "tokens": ["hello"]}) + "\n", encoding="utf-8")
+        man.write_text("keep me", encoding="utf-8")
+
+        ret = train_crf.main(["predict", "-m", str(model), "-i", str(inp),
+                              "-o", str(tmp_path / "p.jsonl"), "--manifest-out", str(man)])
+        assert ret == 1
+        assert "Manifest already exists" in capsys.readouterr().err
+        assert man.read_text(encoding="utf-8") == "keep me"
+
+    def test_git_status_porcelain_unknown_without_git(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        def no_git(*_args: Any, **_kwargs: Any) -> None:
+            raise FileNotFoundError("git")
+
+        monkeypatch.setattr(train_crf.subprocess, "run", no_git)
+        assert train_crf.git_status_porcelain() == "unknown"
+
+        failed = subprocess.CompletedProcess(["git"], 128, stdout="", stderr="fatal")
+        monkeypatch.setattr(train_crf.subprocess, "run", lambda *_a, **_k: failed)
+        assert train_crf.git_status_porcelain() == "unknown"
+
+        done = subprocess.CompletedProcess(["git"], 0, stdout=" M x.py\n", stderr="")
+        monkeypatch.setattr(train_crf.subprocess, "run", lambda *_a, **_k: done)
+        assert train_crf.git_status_porcelain() == " M x.py\n"
+
+    def test_train_manifest_has_no_hardcoded_warning(self, tmp_path: Path) -> None:
+        data, ids = tmp_path / "t.jsonl", tmp_path / "t.ids"
+        write_id_file(ids, create_synthetic_train_jsonl(data, mode="A", num_samples=3))
+        man = tmp_path / "m.man.json"
+        ret = train_crf.main(["train", "-m", "A", "-i", str(data), "--ids", str(ids),
+                              "-o", str(tmp_path / "m.joblib"), "--manifest-out", str(man),
+                              "--max-iterations", "10"])
+        assert ret == 0
+        warning = json.loads(man.read_text(encoding="utf-8"))["reproducibility_warning"]
+        assert "Local uncommitted modifications" not in warning
+
+    def test_read_observations_is_gold_free_and_in_file_order(self, tmp_path: Path) -> None:
+        gold, ids = tmp_path / "gold.jsonl", tmp_path / "g.ids"
+        write_id_file(ids, list(reversed(self._write_gold(gold))))
+        observations = train_crf.read_observations(gold, ids)
+        assert [o["sample_id"] for o in observations] == ["gold_a", "gold_b"]
+        assert all(set(o) == {"sample_id", "tokens"} for o in observations)
+        write_id_file(ids, ["gold_a", "ghost"])
+        with pytest.raises(ValueError, match="Missing 1 selected IDs"):
+            train_crf.read_observations(gold, ids)
+
+    def test_write_predictions_jsonl_uses_platform_newline(self, tmp_path: Path) -> None:
+        pred = {"sample_id": "s1", "model_name": "m", "label_mode": "A", "predicted_labels": ["O"]}
+        out = tmp_path / "nested" / "p.jsonl"
+        train_crf.write_predictions_jsonl([pred], out)
+        expected = (json.dumps(pred, ensure_ascii=False) + "\n").replace("\n", os.linesep)
+        assert out.read_bytes() == expected.encode("utf-8")

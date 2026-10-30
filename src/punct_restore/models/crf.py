@@ -4,6 +4,7 @@ Owned by Member 3 (Omar Alzyod).
 Adheres strictly to the shared model contract (docs/MODEL_CONTRACT.md):
 - Common interface: fit(training_records, *, label_mode, config, feature_extractor=None)
 - Record-oriented prediction: predict(records) -> list[dict[str, Any]]
+- Per-token posteriors: predict_marginals(records) -> list[list[dict[str, float]]]
 - Invariant model persistence: save_model(path), load_model(path)
 - Full support for:
     * Mode A (4 standard punctuation classes)
@@ -19,7 +20,7 @@ import os
 from pathlib import Path
 import platform
 import sys
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any, Callable, Iterable, Mapping, Sequence
 
 import joblib
 import sklearn_crfsuite
@@ -319,30 +320,22 @@ class CRFModel:
 
         return self
 
-    def predict(self, records: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
-        """Predict labels for gold-free input observation records.
-
-        Args:
-            records: Sequence of input observation mappings, each containing:
-                - 'sample_id': Non-empty unique identifier string.
-                - 'tokens': Non-empty list of non-empty lowercased strings.
-
-        Returns:
-            List of prediction dictionaries conforming to docs/MODEL_CONTRACT.md:
-            {
-                "sample_id": str,
-                "model_name": str,
-                "label_mode": str,
-                "predicted_labels": list[str]
-            }
-        """
+    def _fitted_backend(self) -> sklearn_crfsuite.CRF:
+        """Return the fitted backend estimator or raise the standard not-fitted error."""
         if not self._is_fitted or self._backend is None:
             raise RuntimeError("CRFModel is not fitted. Call fit() before predict().")
+        return self._backend
 
+    def _prediction_features(
+        self, records: Sequence[Mapping[str, Any]]
+    ) -> tuple[list[str], list[int], list[list[dict[str, Any]]]]:
+        """Validate gold-free records and extract features.
+
+        Returns:
+            (sample ids, token lengths, feature sequences); all empty for empty records.
+        """
         if not isinstance(records, Sequence) or isinstance(records, (str, bytes)):
             raise TypeError(f"records must be a Sequence, got {type(records).__name__}")
-        if len(records) == 0:
-            return []
 
         X: list[list[dict[str, Any]]] = []
         sample_ids: list[str] = []
@@ -368,8 +361,32 @@ class CRFModel:
             sample_ids.append(sample_id)
             token_lengths.append(len(tokens))
 
+        return sample_ids, token_lengths, X
+
+    def predict(self, records: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+        """Predict labels for gold-free input observation records.
+
+        Args:
+            records: Sequence of input observation mappings, each containing:
+                - 'sample_id': Non-empty unique identifier string.
+                - 'tokens': Non-empty list of non-empty lowercased strings.
+
+        Returns:
+            List of prediction dictionaries conforming to docs/MODEL_CONTRACT.md:
+            {
+                "sample_id": str,
+                "model_name": str,
+                "label_mode": str,
+                "predicted_labels": list[str]
+            }
+        """
+        backend = self._fitted_backend()
+        sample_ids, token_lengths, X = self._prediction_features(records)
+        if not X:
+            return []
+
         # Perform backend batch prediction
-        raw_preds = self._backend.predict(X)
+        raw_preds = backend.predict(X)
 
         predictions: list[dict[str, Any]] = []
         vocab_set = set(self.vocabulary)
@@ -380,12 +397,7 @@ class CRFModel:
                 raise ValueError(
                     f"Model predicted {len(seq_list)} labels for sequence {s_id} with {expected_len} tokens."
                 )
-            # Ensure every label belongs to declared vocabulary
-            for lbl in seq_list:
-                if lbl not in vocab_set:
-                    raise ValueError(
-                        f"Model predicted label {lbl!r} outside declared Mode {self.label_mode} vocabulary."
-                    )
+            self._require_known_labels(seq_list, vocab_set)
 
             predictions.append({
                 "sample_id": s_id,
@@ -395,6 +407,53 @@ class CRFModel:
             })
 
         return predictions
+
+    def predict_marginals(
+        self, records: Sequence[Mapping[str, Any]]
+    ) -> list[list[dict[str, float]]]:
+        """Per-token posterior label probabilities for gold-free input records.
+
+        Args:
+            records: Same input records as predict().
+
+        Returns:
+            One list per record, one dict per token mapping EVERY label of the active mode
+            vocabulary (in vocabulary order) to its marginal probability. Labels never seen
+            in training get 0.0. Empty records give [].
+        """
+        backend = self._fitted_backend()
+        sample_ids, token_lengths, X = self._prediction_features(records)
+        if not X:
+            return []
+
+        raw_marginals = backend.predict_marginals(X)
+        vocab_set = set(self.vocabulary)
+        results: list[list[dict[str, float]]] = []
+
+        for s_id, expected_len, seq in zip(sample_ids, token_lengths, raw_marginals, strict=True):
+            if len(seq) != expected_len:
+                raise ValueError(
+                    f"Model produced {len(seq)} marginal distributions for sequence {s_id} "
+                    f"with {expected_len} tokens."
+                )
+            results.append([self._token_marginals(probs, vocab_set) for probs in seq])
+
+        return results
+
+    def _token_marginals(
+        self, token_probs: Mapping[str, float], vocab_set: set[str]
+    ) -> dict[str, float]:
+        """Build a new full-vocabulary probability dict for one token."""
+        self._require_known_labels(token_probs, vocab_set)
+        return {label: float(token_probs.get(label, 0.0)) for label in self.vocabulary}
+
+    def _require_known_labels(self, labels: Iterable[str], vocab_set: set[str]) -> None:
+        """Raise ValueError when a predicted label is outside the declared Mode vocabulary."""
+        for lbl in labels:
+            if lbl not in vocab_set:
+                raise ValueError(
+                    f"Model predicted label {lbl!r} outside declared Mode {self.label_mode} vocabulary."
+                )
 
     def predict_tokens(self, tokens: Sequence[str], *, sample_id: str = "seq_0") -> list[str]:
         """Convenience method predicting a single sequence of string tokens.
