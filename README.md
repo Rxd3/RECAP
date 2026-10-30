@@ -87,6 +87,10 @@ improved-feature CRF above, in modes A, B and C. Member 3 wrote both CRF feature
 - **The cost of leakage, measured.** The frozen models also predicted the full official test, split
   by why each utterance was excluded ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §8).
 - **Threshold decoding** of the CRF marginals (`scripts/tune_threshold.py`), with τ tuned on validation.
+- **Comparison methods and robustness checks:** a gap classifier (the CRF features without transitions), a
+  Stolcke-style hidden-event language model, prior-adjusted threshold decoding (τ × γ), question-lookback
+  features, a factored casing pipeline (punctuation CRF + casing-only CRF), and simulated ASR noise on the test
+  inputs (results in [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md)).
 - **A filler-word cue** (`improved_plus_filler` in `scripts/run_ablations.py`), tested on validation.
 - **Label granularity (B→A):** mode B models projected to the four mode A labels with the D5 mapping,
   compared with their mode A twins on mode A validation gold
@@ -193,24 +197,26 @@ report `test` and `test_amb` separately (they share 25 videos).
 | `results/` | `results/scores/` holds the committed evaluator JSON behind every reported number (`results/scores/README.md`), including Member 3's six CRF training manifests in `results/scores/crf_training_manifests/`. Local evaluator outputs go to the ignored folders results/predictions/ and results/tables/; create them with `mkdir -p` first, because the evaluator never creates folders. |
 | `scripts/` | Command-line entry points; see the table below and `scripts/README.md`. |
 | `src/punct_restore/` | The Python package; every module is listed in the package table below. |
-| `tests/` | The pytest suite for data, models, features, CLIs and evaluation; fixtures only. |
+| `tests/` | The pytest suite for data, models, features, CLIs and evaluation; fixtures only. Groups are listed in `tests/README.md`; the comparison-method tests are `tests/test_gap_classifier.py`, `tests/test_hidden_event_lm.py`, `tests/test_train_hidden_event_lm_cli.py`, `tests/test_factored.py`, `tests/test_factor_predictions.py`, `tests/test_crf_case_mode.py`, `tests/test_threshold_priors.py`, `tests/test_asr_noise.py`, `tests/test_simulate_asr_noise.py`, `tests/test_prediction_io_helpers.py`. |
 
 **Evaluator outputs** (`results/scores/`, one folder per study; details in `results/scores/README.md`):
 
 | Folder | Content |
 | --- | --- |
-| `results/scores/ablations/` | One-feature-group-removed ablations of the improved CRF, per mode, on validation (50k training sample) |
+| `results/scores/ablations/` | One-feature-group-removed ablations of the improved CRF, per mode, on validation (50k training sample); also the gap classifier, the question-lookback variant and the factored casing pipeline |
 | `results/scores/b_to_a/` | Mode B models projected to mode A (D5 mapping) vs their mode A twins, mode A validation gold |
 | `results/scores/crf_test/` | The six CRFs on test and test_amb, each predicted once; paired comparisons; error pairs |
 | `results/scores/crf_training_manifests/` | Member 3's six CRF training manifests: settings, data hashes, fit time, peak memory, environment |
 | `results/scores/crf_validation/` | The six CRFs on validation (model selection); paired comparisons; error pairs |
 | `results/scores/filler/` | Improved CRF with and without the filler-word cue, per mode, on validation |
+| `results/scores/gold_noise/` | Mode B rescored without the known noisy records, with the excluded ID lists and their rules |
 | `results/scores/h1_joint/` | Joint mode C vs punctuation-only mode A on the mode C validation IDs (H1) |
 | `results/scores/hmm/` | HMM and shortcut baseline on validation, test and test_amb; HMM error pairs |
 | `results/scores/leakage/` | HMM and improved CRF on the official mode A test, split by exclusion cause |
 | `results/scores/per_class/` | Paired per-class F1 intervals behind hypotheses H2–H4 |
 | `results/scores/runtime/` | HMM and CRF prediction timing (median of 3 passes, same laptop) |
 | `results/scores/sensitivity/` | Mode A CRF basic and improved at other c1/c2 and iteration settings, on validation |
+| `results/scores/asr_noise/` | Frozen HMM and CRFs on test inputs with simulated ASR word errors (one folder per WER), with the corruption summary |
 
 **Package** (`src/punct_restore/`; each package folder `src/punct_restore/`, `src/punct_restore/data/`,
 `src/punct_restore/models/`, `src/punct_restore/features/` and `src/punct_restore/evaluation/` has a
@@ -218,11 +224,16 @@ package initializer, `<folder>/__init__.py`):
 
 | Module | Role |
 | --- | --- |
-| `src/punct_restore/data/` | Member 1's data pipeline: `extraction` (raw transcripts from the official archive), `preprocessing` (loading, cleaning, tokenization), `labeling` (punctuation and casing labels), `splits` (split assignment and leakage audits), `release` (versioned release build and load), `validation` (checks against the data contract). |
+| `src/punct_restore/data/` | Member 1's data pipeline: `extraction` (raw transcripts from the official archive), `preprocessing` (loading, cleaning, tokenization), `labeling` (punctuation and casing labels), `splits` (split assignment and leakage audits), `release` (versioned release build and load), `validation` (checks against the data contract), `asr_noise` (simulated ASR word errors with labels and masks kept aligned). |
 | `src/punct_restore/models/hmm.py` | Supervised HMM with Viterbi decoding. |
 | `src/punct_restore/models/hmm_workflow.py` | Validated file selection and provenance for the HMM commands. |
 | `src/punct_restore/models/crf.py` | Linear-chain CRF: fit, predict, marginals, save and load. |
-| `src/punct_restore/models/threshold.py` | Threshold decoding of CRF marginals (τ tuned on validation only). |
+| `src/punct_restore/models/threshold.py` | Threshold decoding of CRF marginals (τ, and γ for the prior-adjusted variant, tuned on validation only). |
+| `src/punct_restore/models/gap_classifier.py` | Gap classifier: the improved CRF features with a per-token logistic regression and no label transitions (`gap_improved`). |
+| `src/punct_restore/models/hidden_event_lm.py` | Hidden-event n-gram language model (Stolcke style): Viterbi over word and punctuation-event tokens; mode C adds a unigram truecaser. |
+| `src/punct_restore/models/ngram_lm.py` | N-gram counting and interpolated absolute-discount probabilities for the hidden-event LM. |
+| `src/punct_restore/models/truecaser.py` | Unigram truecaser: the most frequent casing per word, with a sentence-start rule for unseen words. |
+| `src/punct_restore/models/factored.py` | Factored casing pipeline: joins mode A punctuation and CASE predictions into mode C labels. |
 | `src/punct_restore/features/crf_features.py` | CRF features: basic and improved presets, ablation switches and the filler cue. |
 | `src/punct_restore/evaluation/` | Member 5's evaluator: `inputs` (input checks), `views` (scored positions and report blocks), `metrics` (token-level P/R/F1), `uncertainty` (bootstrap grouped by video), `comparison` (paired comparison), `error_analysis` (error examples), `baseline` (shortcut baseline), `manifest` (prediction-manifest check), `report` (JSON and Markdown reports). |
 | `src/punct_restore/prediction_io.py` | Gold-free prediction JSONL and manifest writing, shared by `scripts/train_crf.py`, `scripts/tune_threshold.py` and `scripts/project_joint.py`. |
@@ -249,6 +260,9 @@ Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM
 | `scripts/evaluate_models.py` | Evaluation | `score`, `compare` (paired), `errors` and `baseline` (the shortcut). |
 | `scripts/run_demo.py` | Demo | Restores punctuation and casing for one text with a saved HMM or CRF. |
 | `scripts/project_joint.py` | Study (H1) | Projects mode C predictions onto mode A punctuation labels, so a joint model can be compared with its mode A twin. |
+| `scripts/train_hidden_event_lm.py` | Comparison | `train` fits the hidden-event LM on an explicit ID list; `predict` writes predictions and, with `--manifest-out`, a manifest. |
+| `scripts/factor_predictions.py` | Comparison | Combines mode A and CASE predictions into mode C predictions with a manifest (the factored casing pipeline). |
+| `scripts/simulate_asr_noise.py` | Robustness | Writes copies of the validation or test inputs with simulated ASR word errors at a target WER, labels and masks kept aligned. |
 | `scripts/build_leakage_subsets.py` | Study (leakage) | Splits an official evaluation file into kept and excluded ID lists by exclusion cause, for the leakage-cost analysis. |
 | `scripts/reporting/build_m3_tables.py` | Reporting | Rebuilds the CRF result tables for one split (main, paired, views, per class, errors, confusion) from `results/scores/`. |
 | `scripts/reporting/build_m3_final_sections.py` | Reporting | Rebuilds the threshold, leakage, test_amb and runtime sections from `results/scores/` and the training manifests. |

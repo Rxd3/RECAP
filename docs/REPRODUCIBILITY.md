@@ -298,6 +298,71 @@ restores punctuation only. A CRF `.joblib` from the Drive folder above works the
 Without `--text`, the demo prompts for input. A missing or unsupported model, or unusable text,
 exits 1 with one `error:` line.
 
+## 11. Comparison methods and robustness checks
+
+All of these select settings on validation only and predict test once. Results:
+[EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md).
+
+**Hidden-event LM.** Train one model per (order, discount) of the grid, predict validation, score, and keep
+the best setting on validation; then predict test once with it:
+
+```bash
+mkdir -p experiments/runs/hidden_event_lm
+python scripts/train_hidden_event_lm.py train --mode A --input <processed>/mode_A/train.jsonl \
+    --ids <splits>/default_train/mode_A.ids --order <N> --discount <D> \
+    --output experiments/runs/hidden_event_lm/A_o<N>_d<D>.json
+python scripts/train_hidden_event_lm.py predict --model experiments/runs/hidden_event_lm/A_o<N>_d<D>.json \
+    --input <processed>/mode_A/validation.jsonl --ids <splits>/primary_eval/validation_mode_A.ids \
+    --output experiments/runs/hidden_event_lm/A_o<N>_d<D>_validation.jsonl \
+    --manifest-out experiments/runs/hidden_event_lm/A_o<N>_d<D>_validation.manifest.json
+```
+
+Score each prediction file with `evaluate_models.py score` (section 6; mode C needs `--masks`).
+
+**Prior-adjusted threshold decoding (τ × γ).** `--train` and `--train-ids` add add-one label priors from
+the training records and search γ together with τ:
+
+```bash
+mkdir -p experiments/runs
+python scripts/tune_threshold.py tune --model <model>.joblib --gold <processed>/mode_A/validation.jsonl \
+    --ids <splits>/primary_eval/validation_mode_A.ids \
+    --train <processed>/mode_A/train.jsonl --train-ids <splits>/default_train/mode_A.ids \
+    --out experiments/runs/tau_gamma_A.json
+```
+
+`tune_threshold.py predict --tau-file experiments/runs/tau_gamma_A.json ...` (section 7) then applies the
+frozen τ and γ.
+
+**Gap classifier, question lookback and the factored casing pipeline** (validation, 50k training sample):
+
+```bash
+mkdir -p experiments/runs
+python scripts/run_ablations.py --mode A --out experiments/runs/gap_A --variants gap_improved
+python scripts/run_ablations.py --mode A --out experiments/runs/question2_A --variants improved,improved_plus_question2
+python scripts/run_ablations.py --mode C --out experiments/runs/factored_C --variants improved,case_improved,factored
+```
+
+The factored run writes `factored/validation.jsonl` (mode C labels) from a mode A CRF and a casing-only
+CRF; score it with `--masks`. To join two existing prediction files yourself:
+
+```bash
+python scripts/factor_predictions.py --punct <mode A predictions>.jsonl --case <CASE predictions>.jsonl \
+    --gold <processed>/mode_C/validation.jsonl --out experiments/runs/factored_C.jsonl \
+    --manifest-out experiments/runs/factored_C.manifest.json
+```
+
+**Simulated ASR noise.** Write corrupted copies of the test inputs, then predict and score them with the
+frozen models as in sections 5 and 6, using the noisy files, ID lists and masks:
+
+```bash
+mkdir -p experiments/runs
+python scripts/simulate_asr_noise.py --split test --wer 0.10 --seed 2026 --out experiments/runs/asr_wer10
+```
+
+The output folder (which must not exist) holds `mode_<A|B|C>/test.jsonl`, `test_mode_<M>.ids`, the
+remapped `masks/test.jsonl` and `summary.json` with the achieved WER and edit counts. Repeat with
+`--wer 0.05` and `--wer 0.15`.
+
 ## Reproduction levels reached
 
 1. **Recompute metrics from saved predictions.** Every reported table can be recomputed or checked
