@@ -46,7 +46,8 @@ python -m pytest -q
 ```
 
 On macOS/Linux, activate with `source .venv/bin/activate`. The tests use small fixtures and
-download nothing.
+download nothing. Checked on 2026-10-30: a fresh `git clone` of the final branch (commit `f5a4721`) passes
+`python -m pytest -q` (1164 tests) with the pinned dependency versions installed.
 
 ## 2. Data
 

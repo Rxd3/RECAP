@@ -9,7 +9,7 @@ Use [TEAM_TASKS.md](TEAM_TASKS.md) to find owners and reviewers.
 2. Check `git status`, switch to your branch, then merge updated `main` regularly.
 3. Edit primarily your assigned files. Discuss shared interfaces before coding
    and ask affected owners to review coordinated changes.
-4. Keep logic in `src/punct_restore/` and future scripts thin. Put adjustable
+4. Keep logic in `src/punct_restore/` and scripts thin. Put adjustable
    settings in `configs/` and use repository-relative paths.
 5. Add small meaningful tests with actual behavior. Tests must not download data,
    contact live APIs, require pretrained weights or need a GPU.
