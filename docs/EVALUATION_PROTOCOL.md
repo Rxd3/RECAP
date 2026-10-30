@@ -118,6 +118,7 @@ Masks are required when scoring mode C and rejected for modes A and B.
 **Running.** All commands are run from the repository root.
 
 ```text
+mkdir -p results/predictions results/tables
 python scripts/evaluate_models.py baseline --gold <processed>/mode_A/validation.jsonl \
     --ids <splits>/primary_eval/validation_mode_A.ids --out results/predictions/shortcut_A_validation.jsonl
 python scripts/evaluate_models.py score --gold <processed>/mode_C/validation.jsonl \

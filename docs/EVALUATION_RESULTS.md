@@ -310,6 +310,7 @@ Hardware: Intel64 Family 6 Model 158 Stepping 10, GenuineIntel, Python 3.13.1, o
 All commands are run from the repository root with the v2 release in `data/`.
 
 ```bash
+mkdir -p results/tables
 python scripts/evaluate_models.py score --gold data/processed/sponspeech-m1-v2/mode_A/test.jsonl --ids data/splits/sponspeech-m1-v2/primary_eval/test_mode_A.ids --predictions <hmm>/final/mode_A/test/predictions.jsonl --bootstrap 1000 --out results/tables/hmm_A_test.json
 ```
 
