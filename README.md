@@ -215,7 +215,7 @@ report `test` and `test_amb` separately (they share 25 videos).
 | `results/` | `results/scores/` holds the committed evaluator JSON behind every reported number (`results/scores/README.md`), including Member 3's six CRF training manifests in `results/scores/crf_training_manifests/`. Local evaluator outputs go to the ignored folders results/predictions/ and results/tables/; create them with `mkdir -p` first, because the evaluator never creates folders. |
 | `scripts/` | Command-line entry points; see the table below and `scripts/README.md`. |
 | `src/punct_restore/` | The Python package; every module is listed in the package table below. |
-| `tests/` | The pytest suite for data, models, features, CLIs and evaluation; fixtures only. Groups are listed in `tests/README.md`; the comparison-method and robustness tests are `tests/test_gap_classifier.py`, `tests/test_hidden_event_lm.py`, `tests/test_train_hidden_event_lm_cli.py`, `tests/test_factored.py`, `tests/test_factor_predictions.py`, `tests/test_crf_case_mode.py`, `tests/test_threshold_priors.py`, `tests/test_asr_noise.py`, `tests/test_simulate_asr_noise.py`, `tests/test_prediction_io_helpers.py`, `tests/test_gold_noise.py`, `tests/test_find_gold_noise.py`, `tests/test_threshold_provenance.py`, `tests/test_crf_convergence.py`, `tests/test_length_position.py`. |
+| `tests/` | The pytest suite for data, models, features, CLIs and evaluation; fixtures only. Groups are listed in `tests/README.md`; the comparison-method and robustness tests are `tests/test_gap_classifier.py`, `tests/test_hidden_event_lm.py`, `tests/test_train_hidden_event_lm_cli.py`, `tests/test_factored.py`, `tests/test_factor_predictions.py`, `tests/test_crf_case_mode.py`, `tests/test_threshold_priors.py`, `tests/test_asr_noise.py`, `tests/test_simulate_asr_noise.py`, `tests/test_asr_noise_table.py`, `tests/test_prediction_io_helpers.py`, `tests/test_gold_noise.py`, `tests/test_find_gold_noise.py`, `tests/test_threshold_provenance.py`, `tests/test_crf_convergence.py`, `tests/test_length_position.py`. |
 
 **Evaluator outputs** (`results/scores/`, one folder per study; details in `results/scores/README.md`):
 
@@ -236,6 +236,7 @@ report `test` and `test_amb` separately (they share 25 videos).
 | `results/scores/runtime/` | HMM and CRF prediction timing (median of 3 passes, same laptop) |
 | `results/scores/sensitivity/` | Mode A CRF basic and improved at other c1/c2 and iteration settings, on validation |
 | `results/scores/asr_noise/` | Frozen HMM and CRFs on test inputs with simulated ASR word errors (one folder per WER), with the corruption summary |
+| `results/scores/asr_noise_v2/` | Frozen HMM and CRFs on test inputs with `v2` simulated ASR word errors across seeds 2026–2028 at WER 5%, 10% and 15%, `v1` seed variance at WER 15%, and `summary.json` |
 | `results/scores/threshold/` | Plain threshold decoding (τ): validation grids, test and test_amb scores, paired comparisons against the improved CRF |
 | `results/scores/threshold_prior/` | Prior-adjusted threshold decoding (τ × γ): validation grids, test and test_amb, paired comparisons |
 | `results/scores/gap/` | Gap classifier vs the improved CRF on validation (the CRF without transitions) |
@@ -287,9 +288,10 @@ Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM
 | `scripts/project_joint.py` | Study (H1) | Projects mode C predictions onto mode A punctuation labels, so a joint model can be compared with its mode A twin. |
 | `scripts/train_hidden_event_lm.py` | Comparison | `train` fits the hidden-event LM on an explicit ID list; `predict` writes predictions and, with `--manifest-out`, a manifest. |
 | `scripts/factor_predictions.py` | Comparison | Combines mode A and CASE predictions into mode C predictions with a manifest (the factored casing pipeline). |
-| `scripts/simulate_asr_noise.py` | Robustness | Writes copies of the validation or test inputs with simulated ASR word errors at a target WER, labels and masks kept aligned. |
+| `scripts/simulate_asr_noise.py` | Robustness | Writes copies of the validation or test inputs with simulated ASR word errors (`--edit-model {v1,v2}`) at a target WER, labels and masks kept aligned. |
 | `scripts/build_leakage_subsets.py` | Study (leakage) | Splits an official evaluation file into kept and excluded ID lists by exclusion cause, for the leakage-cost analysis. |
 | `scripts/find_gold_noise.py` | Study (gold noise) | Flags speaker labels, subtitle cue residue and auto-caption videos on the primary mode B lists; writes the flagged IDs and summaries. |
+| `scripts/reporting/asr_noise_table.py` | Reporting | Builds the ASR noise `v2` summary JSON and `docs/ASR_NOISE_V2.md` from `results/scores/`. |
 | `scripts/reporting/build_m3_tables.py` | Reporting | Rebuilds the CRF result tables for one split (main, paired, views, per class, errors, confusion) from `results/scores/`. |
 | `scripts/reporting/build_m3_final_sections.py` | Reporting | Rebuilds the threshold, leakage, test_amb and runtime sections from `results/scores/` and the training manifests. |
 | `scripts/reporting/build_ablation_table.py` | Reporting | Rebuilds the feature-ablation tables from `results/scores/ablations/`. |
@@ -316,6 +318,7 @@ Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM
 | `docs/EVALUATION_RESULTS.md` | HMM and shortcut results (validation, test, test_amb). |
 | `docs/HYPOTHESES.md` | The six team hypotheses, written before any CRF result existed (outcomes in the CRF results). |
 | `docs/EVALUATION_RESULTS_CRF.md` | CRF test results, validation selection, ablations, threshold decoding, filler cue, leakage, runtime, label granularity, multiple comparisons. |
+| `docs/ASR_NOISE_V2.md` | Simulated ASR noise `v2` edit model, multi-seed evaluation tables, `v1` vs `v2` comparison, findings and limits. |
 | `docs/CRF_EXPERIMENTS.md` | The six CRF runs: features, settings, hashes, commands. |
 | `docs/RELATED_WORK.md` | Prior work, checked online, and how RECAP differs. |
 | `docs/REPRODUCIBILITY.md` | Every command, with the environments actually used. |

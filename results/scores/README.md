@@ -6,7 +6,7 @@ All files were written by `scripts/evaluate_models.py` (`score`, `compare`, `err
 - `threshold/tau_<mode>.json` and `threshold_prior/tau_gamma_<mode>.json` come from `scripts/tune_threshold.py tune`;
 - `runtime/` comes from the timing script;
 - `crf_training_manifests/*.manifest.json` come from `scripts/train_crf.py train` (Member 3);
-- `asr_noise/wer<rate>/summary.json` comes from `scripts/simulate_asr_noise.py`;
+- `asr_noise/wer<rate>/summary.json` and `asr_noise_v2/<edit_model>/wer<rate>/seed<seed>/summary.json` come from `scripts/simulate_asr_noise.py`, and `asr_noise_v2/summary.json` comes from `scripts/reporting/asr_noise_table.py`;
 - `gold_noise/*_B_noisy.tsv` (sample ID, exclusion rule) and `gold_noise/*_B_summary.json` (counts, including test_amb and `default_train`) come from `scripts/find_gold_noise.py`;
 - `crf_convergence/convergence.json` comes from `scripts/reporting/crf_convergence.py`;
 - `hmm/length_position_A_test.json` comes from `scripts/reporting/length_position.py`.
@@ -37,6 +37,7 @@ All files were written by `scripts/evaluate_models.py` (`score`, `compare`, `err
 | `gold_noise/` | Mode B rescored without the known noisy records (speaker labels, subtitle cue numbers, two auto-caption videos), with the excluded ID lists and their rules and the finder's counts per split |
 | `crf_convergence/` | Loss traces of the six delivered CRFs: iterations, final loss, relative drop over the last 10 iterations |
 | `asr_noise/wer<rate>/` | Frozen HMM and CRFs on test inputs with simulated ASR-style word errors (5/10/15% WER), with the corruption summary |
+| `asr_noise_v2/` | Frozen HMM and CRFs on test inputs with `v2` simulated ASR word errors across seeds 2026–2028 at 5/10/15% WER, `v1` seed variance at 15% WER, and `summary.json` |
 | `leakage/` | HMM and improved CRF on the official mode A test, split by leakage-control status and exclusion reason; native SponSpeech labels |
 | `runtime/` | HMM and CRF prediction timing (median of 3 passes, same laptop) |
 | `crf_training_manifests/` | Member 3's six training manifests: settings, data hashes, fit time, peak memory, environment |

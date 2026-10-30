@@ -26,8 +26,9 @@ read and write files, and report errors as one line on stderr. Full command sequ
 | `reporting/build_tables.py`, `reporting/_cli.py` | Team (final push) | Reporting | Shared helpers (half-up percentages, cells, JSON loading) and one-line error handling; not run directly. |
 | `train_hidden_event_lm.py` | Team (final push) | Comparison | `train` fits a Stolcke-style hidden-event LM (mode C adds a unigram truecaser); `predict` writes predictions and, with `--manifest-out`, a manifest. |
 | `factor_predictions.py` | Team (final push) | Comparison | Joins mode A predictions and CASE predictions (a casing-only CRF) into mode C predictions with a manifest. |
-| `simulate_asr_noise.py` | Team (final push) | Robustness | Copies the validation or test inputs of every mode with simulated ASR word errors (deletion, homophone substitution, adjacent swap) at a target WER; labels and casing masks stay aligned. |
+| `simulate_asr_noise.py` | Team (final push) | Robustness | Copies the validation or test inputs of every mode with simulated ASR word errors (`--edit-model {v1,v2}`: `v1` has deletion, homophone substitution, adjacent swap; `v2` adds `default_train` confusion substitution, filler/function-word insertion, <=3-char deletion, and 10% swap cap) at a target WER; labels and casing masks stay aligned. |
 | `find_gold_noise.py` | Team (final push) | Study (gold noise) | Flags speaker labels, subtitle cue residue and auto-caption videos on the primary mode B lists; writes `<split>_B_noisy.tsv` and `<split>_B_summary.json`. |
+| `reporting/asr_noise_table.py` | Team (final push) | Reporting | Builds the multi-seed ASR noise `v2` summary JSON and `docs/ASR_NOISE_V2.md` from `results/scores/`. |
 | `reporting/crf_convergence.py` | Team (final push) | Reporting | Loss-trace summary of trusted CRF `.joblib` models. |
 | `reporting/length_position.py` | Team (final push) | Reporting | Mode A micro F1 by utterance length and QUESTION recall by position (EVALUATION_RESULTS.md §6). |
 | `run_demo.py` | Member 6 | Demo | Loads a saved HMM or hidden-event LM (`.json`), or a CRF or gap classifier (`.joblib`, `.pkl`), through `src/punct_restore/pipeline.py` (CASE-mode CRFs are refused) and prints the restored text; without `--text` it prompts interactively. |
@@ -88,9 +89,10 @@ train_hidden_event_lm.py predict --model MODEL.json --input JSONL [--ids IDS] --
 factor_predictions.py --punct A_PRED.jsonl --case CASE_PRED.jsonl --gold MODE_C_GOLD.jsonl --out C_PRED.jsonl
     --manifest-out MAN.json [--model-name factored]
 simulate_asr_noise.py [--data-root data] [--release sponspeech-m1-v2] --split {validation,test} --wer W
-    [--seed 2026] [--masks FILE] --out NEW_DIR
+    [--seed 2026] [--edit-model {v1,v2}] [--masks FILE] --out NEW_DIR
 
 find_gold_noise.py [--data-root data] [--release sponspeech-m1-v2] [--mode B] --out NEW_DIR
+reporting/asr_noise_table.py [--scores-root results/scores] --json-out OUT.json --out OUT.md
 reporting/crf_convergence.py --models MODEL.joblib|DIR [...] --out OUT.json
 reporting/length_position.py --gold MODE_A_GOLD.jsonl --ids IDS [--masks K]
     --predictions NAME=PRED.jsonl [NAME=PRED.jsonl ...] --out OUT.json

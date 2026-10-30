@@ -269,13 +269,14 @@ mkdir -p experiments/runs
 python scripts/reporting/build_m3_tables.py --split test --tau --out experiments/runs/crf_test_tables.md
 python scripts/reporting/build_m3_final_sections.py --out experiments/runs/crf_sections_7_10.md
 python scripts/reporting/build_ablation_table.py --out experiments/runs/ablation_tables.md
+python scripts/reporting/asr_noise_table.py --json-out experiments/runs/asr_noise_v2_summary.json --out experiments/runs/ASR_NOISE_V2.md
 python scripts/reporting/time_models.py --kind crf --model <model>.joblib --mode A --out experiments/runs/runtime_crf_A.json
 ```
 
-The first three read only the committed JSON in `results/scores/` and the committed training manifests
+The first four read only the committed JSON in `results/scores/` and the committed training manifests
 (`--manifests` defaults to `results/scores/crf_training_manifests`);
 they reproduce the tables of [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) (§1–4 with errors and
-confusion matrices, §7–10, §6). `time_models.py` needs a saved model and the release.
+confusion matrices, §7–10, §6) and [ASR_NOISE_V2.md](ASR_NOISE_V2.md). `time_models.py` needs a saved model and the release.
 
 ## 10. Demo
 
@@ -357,11 +358,12 @@ frozen models as in sections 5 and 6, using the noisy files, ID lists and masks:
 ```bash
 mkdir -p experiments/runs
 python scripts/simulate_asr_noise.py --split test --wer 0.10 --seed 2026 --out experiments/runs/asr_wer10
+python scripts/simulate_asr_noise.py --edit-model v2 --split test --wer 0.10 --seed 2026 --out experiments/runs/asr_v2_wer10_s2026
 ```
 
 The output folder (which must not exist) holds `mode_<A|B|C>/test.jsonl`, `test_mode_<M>.ids`, the
 remapped `masks/test.jsonl` and `summary.json` with the achieved WER and edit counts. Repeat with
-`--wer 0.05` and `--wer 0.15`.
+`--wer 0.05` and `--wer 0.15` (and `--seed 2027`, `--seed 2028` for multi-seed variance; see [ASR_NOISE_V2.md](ASR_NOISE_V2.md)).
 
 ## 12. Gold noise, CRF convergence and length/position errors
 
