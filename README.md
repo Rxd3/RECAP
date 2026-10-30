@@ -158,8 +158,24 @@ report `test` and `test_amb` separately (they share 25 videos).
 | `presentation/` | Presentation workspace; the outline is `docs/PRESENTATION_OUTLINE.md`. |
 | `results/` | Ignored evaluator outputs: `results/predictions/`, `results/tables/`, `results/figures/`. |
 | `scripts/` | Command-line entry points; see the table below and `scripts/README.md`. |
-| `src/punct_restore/` | The package: `src/punct_restore/data/` (extraction, labeling, preprocessing, release, splits, validation), `src/punct_restore/models/` (`src/punct_restore/models/hmm.py`, `src/punct_restore/models/hmm_workflow.py`, `src/punct_restore/models/crf.py`), `src/punct_restore/features/crf_features.py`, `src/punct_restore/evaluation/` (metrics, views, bootstrap, comparison, errors, reports) and `src/punct_restore/pipeline.py` (model loading for the demo). |
+| `src/punct_restore/` | The Python package; every module is listed in the package table below. |
 | `tests/` | The pytest suite for data, models, features, CLIs and evaluation; fixtures only. |
+
+**Package** (`src/punct_restore/`; each package folder `src/punct_restore/`, `src/punct_restore/data/`,
+`src/punct_restore/models/`, `src/punct_restore/features/` and `src/punct_restore/evaluation/` has a
+package initializer, `<folder>/__init__.py`):
+
+| Module | Role |
+| --- | --- |
+| `src/punct_restore/data/` | Member 1's data pipeline: `extraction` (raw transcripts from the official archive), `preprocessing` (loading, cleaning, tokenization), `labeling` (punctuation and casing labels), `splits` (split assignment and leakage audits), `release` (versioned release build and load), `validation` (checks against the data contract). |
+| `src/punct_restore/models/hmm.py` | Supervised HMM with Viterbi decoding. |
+| `src/punct_restore/models/hmm_workflow.py` | Validated file selection and provenance for the HMM commands. |
+| `src/punct_restore/models/crf.py` | Linear-chain CRF: fit, predict, marginals, save and load. |
+| `src/punct_restore/models/threshold.py` | Threshold decoding of CRF marginals (τ tuned on validation only). |
+| `src/punct_restore/features/crf_features.py` | CRF features: basic and improved presets, ablation switches and the filler cue. |
+| `src/punct_restore/evaluation/` | Member 5's evaluator: `inputs` (input checks), `views` (scored positions and report blocks), `metrics` (token-level P/R/F1), `uncertainty` (bootstrap grouped by video), `comparison` (paired comparison), `error_analysis` (error examples), `baseline` (shortcut baseline), `manifest` (prediction-manifest check), `report` (JSON and Markdown reports). |
+| `src/punct_restore/prediction_io.py` | Gold-free prediction JSONL and manifest writing, shared by `scripts/train_crf.py` and `scripts/tune_threshold.py`. |
+| `src/punct_restore/pipeline.py` | Demo inference: load a trained HMM or CRF, clean raw text, predict labels, rebuild text. |
 
 Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM_TASKS.md`
 (work board), `pyproject.toml` and `requirements.txt` (package and dependencies),
