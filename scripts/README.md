@@ -17,10 +17,10 @@ read and write files, and report errors as one line on stderr. Full command sequ
 | `run_ablations.py` | Team (final push) | CRF | Trains the improved CRF with one feature group removed (or the filler cue added) on a training sample and writes each variant's primary-validation predictions; score them with `evaluate_models.py`. Never reads test. |
 | `tune_threshold.py` | Team (final push) | CRF | Threshold decoding of CRF marginals: `tune` picks τ on validation, `predict` applies the frozen τ once. |
 | `evaluate_models.py` | Member 5 | Evaluation | `score` one prediction file, `compare` two on the same IDs (paired bootstrap), `errors` (confusion pairs and examples), `baseline` (the end-of-utterance shortcut). |
-| `project_joint.py` | Team (final push) | Study (H1) | Projects mode C predictions onto mode A punctuation labels (`label_mode` A, `model_name` `<name>_joint_C`) with a manifest, for the joint vs punctuation-only comparison. |
+| `project_joint.py` | Team (final push) | Study (H1, B→A) | Projects mode C (`--from C`, default; `model_name` `<name>_joint_C`) or mode B predictions (`--from B`, the approved D5 mapping; `<name>_from_B`) onto mode A punctuation labels, with a manifest. |
 | `build_leakage_subsets.py` | Team (final push) | Study (leakage) | Writes `all.ids`, `kept.ids`, `excluded_train_video.ids`, `excluded_other_leak.ids`, `excluded_quality.ids` and `counts.json` for one split and mode. |
 | `reporting/build_m3_tables.py` | Team (final push) | Reporting | CRF result tables for one split from `results/scores/`; `--tau` adds the threshold rows (test only). |
-| `reporting/build_m3_final_sections.py` | Team (final push) | Reporting | Threshold, leakage, test_amb and runtime sections from `results/scores/` and the training manifests. |
+| `reporting/build_m3_final_sections.py` | Team (final push) | Reporting | Threshold, leakage, test_amb and runtime sections from `results/scores/` and the training manifests (`--manifests`, default `<scores-root>/crf_training_manifests`). |
 | `reporting/build_ablation_table.py` | Team (final push) | Reporting | Feature-ablation tables from `results/scores/ablations/`. |
 | `reporting/time_models.py` | Team (final push) | Reporting | Median-of-3 prediction timing after a 200-record warm-up (and an optional HMM fit). |
 | `reporting/build_tables.py`, `reporting/_cli.py` | Team (final push) | Reporting | Shared helpers (half-up percentages, cells, JSON loading) and one-line error handling; not run directly. |
@@ -63,20 +63,21 @@ tune_threshold.py predict --model M --input JSONL --ids I --tau-file experiments
 evaluate_models.py score --gold JSONL --ids IDS --predictions PRED [--masks K] --out REPORT.json
     [--manifest MAN] [--bootstrap N] [--seed S]
 evaluate_models.py compare --gold JSONL --ids IDS [--masks K] --out REPORT.json
-    --predictions-a A --predictions-b B [--bootstrap N] [--seed S]
+    --predictions-a A --predictions-b B [--bootstrap N] [--seed S] [--class LABEL ...]
+    (--class is repeatable: per-class F1 of A and B, B - A and, with --bootstrap, its paired CI)
 evaluate_models.py errors --gold JSONL --ids IDS --predictions PRED [--masks K] --out REPORT.json
     [--block NAME] [--per-pair K] [--seed S]
 evaluate_models.py baseline --gold JSONL --ids IDS --out PRED.jsonl
 
 run_demo.py --model-path MODEL [--text "some lowercased text"]
 
-project_joint.py --predictions C_PRED.jsonl --gold MODE_A_GOLD.jsonl --out A_PRED.jsonl
+project_joint.py [--from {C,B}] --predictions PRED.jsonl --gold MODE_A_GOLD.jsonl --out A_PRED.jsonl
     --manifest-out A_PRED.manifest.json
 build_leakage_subsets.py [--data-root data] [--release sponspeech-m1-v2] [--mode {A,B,C}]
     [--split {test,validation}] --out DIR
 
 reporting/build_m3_tables.py [--scores-root results/scores] [--split {validation,test}] [--tau] --out OUT.md
-reporting/build_m3_final_sections.py [--scores-root results/scores] --manifests DIR --out OUT.md
+reporting/build_m3_final_sections.py [--scores-root results/scores] [--manifests DIR] --out OUT.md
 reporting/build_ablation_table.py [--scores-root results/scores] --out OUT.md [--setup TEXT]
 reporting/time_models.py --kind {hmm,crf} --model MODEL --mode {A,B,C} --out OUT.json
     [--data-root data] [--release sponspeech-m1-v2]

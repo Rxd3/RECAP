@@ -88,6 +88,13 @@ improved-feature CRF above, in modes A, B and C. Member 3 wrote both CRF feature
   by why each utterance was excluded ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §8).
 - **Threshold decoding** of the CRF marginals (`scripts/tune_threshold.py`), with τ tuned on validation.
 - **A filler-word cue** (`improved_plus_filler` in `scripts/run_ablations.py`), tested on validation.
+- **Label granularity (B→A):** mode B models projected to the four mode A labels with the D5 mapping,
+  compared with their mode A twins on mode A validation gold
+  ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §11).
+- **Per-class intervals** (`evaluate_models.py compare --class`): paired 95% intervals for single classes,
+  used for hypotheses H2–H4 (EVALUATION_RESULTS_CRF.md, Team hypotheses).
+- **A sensitivity check of the fixed CRF settings:** both presets retrained on the same 50k training
+  sample as the ablations at c1 = c2 ∈ {0.01, 0.1, 1.0} and 100 or 300 iterations (EVALUATION_RESULTS_CRF.md §5).
 - **Joint vs punctuation-only (H1).** Each mode C model, projected to punctuation, is compared with
   its mode A twin on mode A gold over the same 19,936 mode C validation IDs. The training sets
   differ: A uses 142,722 sequences and C uses 141,745.
@@ -206,6 +213,7 @@ package initializer, `<folder>/__init__.py`):
 
 Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM_TASKS.md`
 (work board), `pyproject.toml` and `requirements.txt` (package and dependencies),
+`requirements-lock.txt` (exact `pip freeze` of the tested environment, CPython 3.13.1),
 `requirements-hmm.txt` (the pinned HMM reproduction environment), `.gitignore`, `.gitattributes`.
 
 **Scripts** (run from the repository root; each has `--help` except the two reporting helper modules):

@@ -17,7 +17,9 @@ from the repository root. Each script prints its full options with `--help`; see
 | Scoring and runtime measurement (Member 5) | 3.13.1 | evaluator at the commits named in each report | [EVALUATION_RESULTS.md](EVALUATION_RESULTS.md) §7, [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §10 |
 
 No GPU or pretrained model is needed. `python -m pip install -e ".[dev]"` installs the package,
-its pinned runtime dependencies and pytest.
+its pinned runtime dependencies and pytest. `requirements-lock.txt` is the exact `pip freeze` of the
+tested environment (CPython 3.13.1), including scikit-learn, SciPy and NumPy, through which the pickled
+CRF models load; `python -m pip install -r requirements-lock.txt` recreates it.
 
 **Hardware.** Training the improved CRF peaks at about 14.5 GB of RAM and takes 859–1,388 s per mode
 on Member 3's machine; the basic CRF needs about 7 GB and 335–875 s. Prediction runs on a normal laptop: under 0.67 ms per
@@ -162,6 +164,14 @@ python scripts/evaluate_models.py errors --gold <gold> --ids <ids> --predictions
     --out <report>.json --per-pair 5
 ```
 
+Per-class paired intervals (hypotheses H2–H4) add one `--class` per label to `compare`:
+
+```bash
+python scripts/evaluate_models.py compare --gold <processed>/mode_A/validation.jsonl \
+    --ids <splits>/primary_eval/validation_mode_A.ids --predictions-a <A>.jsonl --predictions-b <B>.jsonl \
+    --bootstrap 1000 --seed 2026 --class COMMA --class QUESTION --out experiments/runs/per_class.json
+```
+
 `score` never overwrites an output and never creates folders.
 
 ## 7. Ablations and threshold decoding (validation only)
@@ -189,7 +199,23 @@ never reads test; score each file with `evaluate_models.py score` (section 6).
 Mode C `tune` also takes `--masks <processed>/masks/case_joint/validation.jsonl`. τ is chosen on
 validation; test is predicted once with the frozen τ.
 
-## 8. Studies: joint vs punctuation-only (H1) and leakage subsets
+**Sensitivity of the fixed CRF settings** ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §5):
+retrain both presets on the 50k sample that `run_ablations.py` wrote, at each setting, then predict and
+score validation only:
+
+```bash
+python scripts/train_crf.py train --mode A --input <processed>/mode_A/train.jsonl \
+    --ids experiments/runs/ablations_A/mode_A/sample.ids --preset improved \
+    --c1 1.0 --c2 1.0 --max-iterations 300 --output experiments/runs/sensitivity/improved_c1.0_i300.joblib
+python scripts/train_crf.py predict --model experiments/runs/sensitivity/improved_c1.0_i300.joblib \
+    --input <processed>/mode_A/validation.jsonl --ids <splits>/primary_eval/validation_mode_A.ids \
+    --output experiments/runs/sensitivity/improved_c1.0_i300.jsonl
+```
+
+Repeat with `--preset basic` and c1 = c2 ∈ {0.01, 0.1, 1.0}, 100 or 300 iterations, then compare each
+improved model with its basic twin (`evaluate_models.py compare --bootstrap 1000`).
+
+## 8. Studies: joint vs punctuation-only (H1), leakage subsets and label granularity
 
 ```bash
 python scripts/project_joint.py --predictions <mode C validation predictions>.jsonl \
@@ -210,17 +236,30 @@ union of the three `excluded_*.ids` lists, for example
 `cat excluded_train_video.ids excluded_other_leak.ids excluded_quality.ids > excluded_all.ids`
 (the three lists are disjoint: 2,706 + 2,130 + 191 = 5,027).
 
+**Label granularity, B→A** ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §11): project each mode B
+model's validation predictions to mode A with the D5 mapping, then compare with its mode A twin:
+
+```bash
+python scripts/project_joint.py --from B --predictions <mode B validation predictions>.jsonl \
+    --gold <processed>/mode_A/validation.jsonl \
+    --out experiments/runs/b_to_a.jsonl --manifest-out experiments/runs/b_to_a.manifest.json
+python scripts/evaluate_models.py compare --gold <processed>/mode_A/validation.jsonl \
+    --ids <splits>/primary_eval/validation_mode_A.ids \
+    --predictions-a <mode A validation predictions>.jsonl --predictions-b experiments/runs/b_to_a.jsonl \
+    --bootstrap 1000 --seed 2026 --class COMMA --class PERIOD --class QUESTION --out experiments/runs/b_to_a_compare.json
+```
+
 ## 9. Tables and runtime
 
 ```bash
 python scripts/reporting/build_m3_tables.py --split test --tau --out experiments/runs/crf_test_tables.md
-python scripts/reporting/build_m3_final_sections.py --manifests results/scores/crf_training_manifests \
-    --out experiments/runs/crf_sections_7_10.md
+python scripts/reporting/build_m3_final_sections.py --out experiments/runs/crf_sections_7_10.md
 python scripts/reporting/build_ablation_table.py --out experiments/runs/ablation_tables.md
 python scripts/reporting/time_models.py --kind crf --model <model>.joblib --mode A --out experiments/runs/runtime_crf_A.json
 ```
 
-The first three read only the committed JSON in `results/scores/` and the committed training manifests;
+The first three read only the committed JSON in `results/scores/` and the committed training manifests
+(`--manifests` defaults to `results/scores/crf_training_manifests`);
 they reproduce the tables of [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) (§1–4 with errors and
 confusion matrices, §7–10, §6). `time_models.py` needs a saved model and the release.
 
