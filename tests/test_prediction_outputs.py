@@ -623,3 +623,79 @@ def test_read_frozen_ids_skips_blanks_and_rejects_missing_empty_and_duplicate_li
         prediction_io.read_frozen_ids(ids)
     with pytest.raises(FileNotFoundError, match="Frozen ID list not found"):
         prediction_io.read_frozen_ids(tmp_path / "ghost.ids")
+
+
+# ---------------------------------------------------------------- path errors stay one line
+
+
+@pytest.mark.parametrize("output", [".", ""])
+def test_crf_train_output_without_a_file_name_is_one_error_line(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], output: str
+) -> None:
+    argv = _train_argv(tmp_path, tmp_path / "placeholder", tmp_path / "unused.json")
+    argv = argv[: argv.index("--manifest-out")] + argv[argv.index("--manifest-out") + 2:]
+    argv[argv.index("--output") + 1] = output  # str(Path("")) would be ".", so set it directly
+    assert "--manifest-out" not in argv
+    assert train_crf.main(argv) == 1
+    line = _one_error_line(capsys.readouterr().err)
+    assert line.startswith("Error: ") and "--output" in line
+
+
+def _lock(monkeypatch: pytest.MonkeyPatch, locked: Path) -> None:
+    """Path.stat raises PermissionError for anything under ``locked`` (an unreadable folder)."""
+    real_stat = Path.stat
+    prefix = os.path.normcase(str(locked))
+
+    def stat(self: Path, *args: Any, **kwargs: Any) -> os.stat_result:
+        if os.path.normcase(str(self)).startswith(prefix):
+            raise PermissionError(13, "Permission denied", str(self))
+        return real_stat(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", stat)
+
+
+def test_check_new_output_paths_turns_a_permission_error_into_one_line(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    locked = tmp_path / "locked"
+    _lock(monkeypatch, locked)
+    with pytest.raises(ValueError, match="--output") as raised:
+        prediction_io.check_new_output_paths({"--output": locked / "p.jsonl"}, {})
+    assert "\n" not in str(raised.value)
+
+
+def test_crf_train_and_predict_report_an_unreadable_output_folder_in_one_line(
+    env: Env, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    locked = tmp_path / "locked"
+    train_argv = _train_argv(tmp_path, locked / "m.joblib", tmp_path / "m.json")
+    _lock(monkeypatch, locked)
+    assert train_crf.main(train_argv) == 1
+    assert "--output" in _one_error_line(capsys.readouterr().err)
+    assert train_crf.main(_crf_argv(env, locked / "p.jsonl")) == 1
+    assert "--output" in _one_error_line(capsys.readouterr().err)
+
+
+def test_crf_predict_reports_an_unreadable_model_folder_in_one_line(
+    env: Env, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    locked = tmp_path / "locked"
+    _lock(monkeypatch, locked)
+    argv = _crf_argv(env, tmp_path / "p.jsonl")
+    argv[argv.index("--model") + 1] = str(locked / "m.joblib")
+    assert train_crf.main(argv) == 1
+    line = _one_error_line(capsys.readouterr().err)
+    assert line.startswith("Error: cannot check m.joblib") and "not found" not in line
+
+
+@pytest.mark.parametrize("flag", ["--model", "--input"])
+def test_crf_predict_reports_a_missing_model_or_input_in_one_line(
+    env: Env, tmp_path: Path, capsys: pytest.CaptureFixture[str], flag: str
+) -> None:
+    argv = _crf_argv(env, tmp_path / "p.jsonl")
+    argv[argv.index(flag) + 1] = str(tmp_path / "ghost")
+    assert train_crf.main(argv) == 1
+    assert "not found" in _one_error_line(capsys.readouterr().err)
+    assert not (tmp_path / "p.jsonl").exists()
