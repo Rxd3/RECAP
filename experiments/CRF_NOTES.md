@@ -2,7 +2,7 @@
 
 **Modules:** `src/punct_restore/models/crf.py`, `scripts/train_crf.py`, `src/punct_restore/features/crf_features.py`
 **CRF Tests:** `tests/test_crf_features.py`, `tests/test_crf_model.py`, `tests/test_train_crf_cli.py`
-**Status:** Six full-data CRF models (modes A, B, C × basic, improved) were trained on the official `sponspeech-m1-v2` `default_train` lists; see [CRF_EXPERIMENTS.md](../docs/CRF_EXPERIMENTS.md) §7. Member 5 reproduced all six validation prediction files byte for byte from the shared models and scored each frozen model once on test and test_amb. Validation chose the HMM smoothing and the threshold τ; the CRF settings (c1 = c2 = 0.1, 100 iterations) were fixed and not tuned; no test result influenced any choice. The final results are the final results are in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md). The test counts below describe the suite at commit `aa232be`.
+**Status:** Six full-data CRF models (modes A, B, C × basic, improved) were trained on the official `sponspeech-m1-v2` `default_train` lists; see [CRF_EXPERIMENTS.md](../docs/CRF_EXPERIMENTS.md) §7. Member 5 reproduced all six validation prediction files byte for byte from the shared models and scored each frozen model once on test and test_amb. Validation chose the HMM smoothing and the threshold τ; the CRF settings (c1 = c2 = 0.1, 100 iterations) were fixed and not tuned; no test result influenced any choice. The final results are in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md). The test counts below describe the suite at commit `aa232be`.
 
 ---
 
@@ -64,12 +64,10 @@ class CRFModel:
     def load_model(cls, path: str | Path) -> CRFModel: ...
 ```
 
-### Integration Interface Recommendation for Member 6
-- **Observation:** Member 6's initial draft in `pipeline.py:ModelAdapter.predict_tokens` calls `self.model.predict(clean_tokens)` passing a raw `List[str]`.
-- **Contract Reality:** [docs/MODEL_CONTRACT.md](../docs/MODEL_CONTRACT.md) specifies a record-oriented signature: `predict(records) -> list[dict]`.
-- **Recommendation:** Member 6 can achieve 100% contract compliance with either of two clean options:
-  1. *Direct adapter call:* `self.model.predict_tokens(clean_tokens)`
-  2. *Standard record packaging:* `self.model.predict([{"sample_id": "demo", "tokens": clean_tokens}])[0]["predicted_labels"]`
+### Integration with the demo (historical note)
+An early draft of `pipeline.py` called `predict` with a bare token list. The final
+`src/punct_restore/pipeline.py` calls `predict_tokens`, as recommended here; see
+[MODEL_CONTRACT.md](../docs/MODEL_CONTRACT.md).
 
 ---
 

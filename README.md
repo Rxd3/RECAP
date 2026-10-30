@@ -237,7 +237,7 @@ Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM
 | `docs/DATA_CONTRACT.md` | Record schema, alignment and approved projections. |
 | `docs/DATA_RELEASE_VALIDATION.md` | Checks and fingerprints of release `sponspeech-m1-v2`. |
 | `docs/DATA_LICENSE.md` | SponSpeech licence and the upstream attribution text. |
-| `docs/DECISIONS.md` | Approved data decisions D1–D6 and the open questions D7–D12. |
+| `docs/DECISIONS.md` | Data decisions D1–D6 and the resolved decisions D7–D12. |
 | `docs/MODEL_CONTRACT.md` | Model inputs, prediction records and manifests. |
 | `docs/EVALUATION_PROTOCOL.md` | Metrics, views, masks, bootstrap and known gold issues. |
 | `docs/EVALUATION_RESULTS.md` | HMM and shortcut results (validation, test, test_amb). |

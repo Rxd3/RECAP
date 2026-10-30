@@ -26,7 +26,6 @@ and [source/build commands](../data/README.md).
 - The fixed `video_metadata_oembed.jsonl` snapshot was fetched on 2026-10-28: 2,408
   videos, 2,333 responses. It flags nine TTS videos (425 records) and supplies channel
   statistics. Do not re-fetch it when reproducing this release.
-- IWSLT 2017/2011 were inspected as earlier candidates and were not selected.
 
 ## Annotation policy m1-v2
 
@@ -140,6 +139,7 @@ counts are in `stats.json` and `leakage_controlled/report.json`.
 - Canonical and native scores use different gold labels; distinguish them.
 - The corrected bundle is on the team Drive next to the superseded v1 folder. Individual consumer
   acknowledgments are not recorded.
-- Member 5 still needs to apply the documented casing/joint masks in the evaluator.
+- The evaluator applies the `case_joint` masks to casing and joint scores
+  (`src/punct_restore/evaluation/inputs.py`; [EVALUATION_PROTOCOL.md](EVALUATION_PROTOCOL.md)).
 
 No model was tuned or officially evaluated as part of this data review.
