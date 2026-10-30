@@ -1,0 +1,1766 @@
+{
+  "split": "test",
+  "modes": [
+    "A",
+    "B",
+    "C"
+  ],
+  "primary_blocks": {
+    "A": "punctuation/all",
+    "B": "punctuation/all",
+    "C": "joint/unmasked"
+  },
+  "models": [
+    "hmm",
+    "crf_basic",
+    "crf_improved"
+  ],
+  "seeds": [
+    2026,
+    2027,
+    2028
+  ],
+  "wers": [
+    "0.05",
+    "0.10",
+    "0.15"
+  ],
+  "clean": {
+    "A": {
+      "hmm": {
+        "macro_f1": 0.351233,
+        "macro_f1_pct": "35.12",
+        "macro_f1_ci": {
+          "low": 0.328044,
+          "high": 0.373138,
+          "low_pct": "32.80",
+          "high_pct": "37.31"
+        }
+      },
+      "crf_basic": {
+        "macro_f1": 0.436548,
+        "macro_f1_pct": "43.65",
+        "macro_f1_ci": {
+          "low": 0.417386,
+          "high": 0.455921,
+          "low_pct": "41.74",
+          "high_pct": "45.59"
+        }
+      },
+      "crf_improved": {
+        "macro_f1": 0.499241,
+        "macro_f1_pct": "49.92",
+        "macro_f1_ci": {
+          "low": 0.479117,
+          "high": 0.520064,
+          "low_pct": "47.91",
+          "high_pct": "52.01"
+        }
+      }
+    },
+    "B": {
+      "hmm": {
+        "macro_f1": 0.16794,
+        "macro_f1_pct": "16.79",
+        "macro_f1_ci": {
+          "low": 0.152847,
+          "high": 0.184894,
+          "low_pct": "15.28",
+          "high_pct": "18.49"
+        }
+      },
+      "crf_basic": {
+        "macro_f1": 0.202497,
+        "macro_f1_pct": "20.25",
+        "macro_f1_ci": {
+          "low": 0.188652,
+          "high": 0.219543,
+          "low_pct": "18.87",
+          "high_pct": "21.95"
+        }
+      },
+      "crf_improved": {
+        "macro_f1": 0.2282,
+        "macro_f1_pct": "22.82",
+        "macro_f1_ci": {
+          "low": 0.214158,
+          "high": 0.24424,
+          "low_pct": "21.42",
+          "high_pct": "24.42"
+        }
+      }
+    },
+    "C": {
+      "hmm": {
+        "macro_f1": 0.374138,
+        "macro_f1_pct": "37.41",
+        "macro_f1_ci": {
+          "low": 0.345565,
+          "high": 0.407143,
+          "low_pct": "34.56",
+          "high_pct": "40.71"
+        }
+      },
+      "crf_basic": {
+        "macro_f1": 0.438472,
+        "macro_f1_pct": "43.85",
+        "macro_f1_ci": {
+          "low": 0.421271,
+          "high": 0.454696,
+          "low_pct": "42.13",
+          "high_pct": "45.47"
+        }
+      },
+      "crf_improved": {
+        "macro_f1": 0.470208,
+        "macro_f1_pct": "47.02",
+        "macro_f1_ci": {
+          "low": 0.449731,
+          "high": 0.490036,
+          "low_pct": "44.97",
+          "high_pct": "49.00"
+        }
+      }
+    }
+  },
+  "v2": {
+    "edit_model": "v2",
+    "vocabulary_source": "default_train",
+    "target_cost_share": {
+      "substitution": 0.45,
+      "deletion": 0.3,
+      "insertion": 0.15,
+      "swap": 0.1
+    },
+    "achieved_by_wer": {
+      "0.05": {
+        "tokens_before": 407750,
+        "budget": 20388,
+        "achieved_wer": 0.05000122624156959,
+        "achieved_wer_pct": "5.00",
+        "tokens_after_mean": 404691.0,
+        "tokens_after_min": 404691,
+        "tokens_after_max": 404691,
+        "cost_share": {
+          "substitution": {
+            "mean": 0.45002,
+            "min": 0.45001961938395135,
+            "max": 0.45001961938395135,
+            "mean_pct": "45.00",
+            "min_pct": "45.00",
+            "max_pct": "45.00",
+            "cell": "45.00 (45.00\u201345.00)"
+          },
+          "deletion": {
+            "mean": 0.300029,
+            "min": 0.300029429075927,
+            "max": 0.300029429075927,
+            "mean_pct": "30.00",
+            "min_pct": "30.00",
+            "max_pct": "30.00",
+            "cell": "30.00 (30.00\u201330.00)"
+          },
+          "insertion": {
+            "mean": 0.14999,
+            "min": 0.14999019030802432,
+            "max": 0.14999019030802432,
+            "mean_pct": "15.00",
+            "min_pct": "15.00",
+            "max_pct": "15.00",
+            "cell": "15.00 (15.00\u201315.00)"
+          },
+          "swap": {
+            "mean": 0.099961,
+            "min": 0.09996076123209731,
+            "max": 0.09996076123209731,
+            "mean_pct": "10.00",
+            "min_pct": "10.00",
+            "max_pct": "10.00",
+            "cell": "10.00 (10.00\u201310.00)"
+          }
+        },
+        "edits_mean": {
+          "substitution": 9175.0,
+          "deletion": 6117.0,
+          "insertion": 3058.0,
+          "swap": 1019.0
+        },
+        "per_seed": {
+          "2026": {
+            "seed": 2026,
+            "wer": 0.05,
+            "achieved_wer": 0.05000122624156959,
+            "achieved_wer_pct": "5.00",
+            "budget": 20388,
+            "tokens_before": 407750,
+            "tokens_after": 404691,
+            "edits": {
+              "substitution": 9175,
+              "deletion": 6117,
+              "insertion": 3058,
+              "swap": 1019
+            },
+            "cost_share": {
+              "substitution": 0.45001961938395135,
+              "deletion": 0.300029429075927,
+              "insertion": 0.14999019030802432,
+              "swap": 0.09996076123209731
+            }
+          },
+          "2027": {
+            "seed": 2027,
+            "wer": 0.05,
+            "achieved_wer": 0.05000122624156959,
+            "achieved_wer_pct": "5.00",
+            "budget": 20388,
+            "tokens_before": 407750,
+            "tokens_after": 404691,
+            "edits": {
+              "substitution": 9175,
+              "deletion": 6117,
+              "insertion": 3058,
+              "swap": 1019
+            },
+            "cost_share": {
+              "substitution": 0.45001961938395135,
+              "deletion": 0.300029429075927,
+              "insertion": 0.14999019030802432,
+              "swap": 0.09996076123209731
+            }
+          },
+          "2028": {
+            "seed": 2028,
+            "wer": 0.05,
+            "achieved_wer": 0.05000122624156959,
+            "achieved_wer_pct": "5.00",
+            "budget": 20388,
+            "tokens_before": 407750,
+            "tokens_after": 404691,
+            "edits": {
+              "substitution": 9175,
+              "deletion": 6117,
+              "insertion": 3058,
+              "swap": 1019
+            },
+            "cost_share": {
+              "substitution": 0.45001961938395135,
+              "deletion": 0.300029429075927,
+              "insertion": 0.14999019030802432,
+              "swap": 0.09996076123209731
+            }
+          }
+        }
+      },
+      "0.10": {
+        "tokens_before": 407750,
+        "budget": 40775,
+        "achieved_wer": 0.1,
+        "achieved_wer_pct": "10.00",
+        "tokens_after_mean": 401633.0,
+        "tokens_after_min": 401633,
+        "tokens_after_max": 401633,
+        "cost_share": {
+          "substitution": {
+            "mean": 0.450031,
+            "min": 0.45003065603923975,
+            "max": 0.45003065603923975,
+            "mean_pct": "45.00",
+            "min_pct": "45.00",
+            "max_pct": "45.00",
+            "cell": "45.00 (45.00\u201345.00)"
+          },
+          "deletion": {
+            "mean": 0.300012,
+            "min": 0.3000122624156959,
+            "max": 0.3000122624156959,
+            "mean_pct": "30.00",
+            "min_pct": "30.00",
+            "max_pct": "30.00",
+            "cell": "30.00 (30.00\u201330.00)"
+          },
+          "insertion": {
+            "mean": 0.149994,
+            "min": 0.14999386879215204,
+            "max": 0.14999386879215204,
+            "mean_pct": "15.00",
+            "min_pct": "15.00",
+            "max_pct": "15.00",
+            "cell": "15.00 (15.00\u201315.00)"
+          },
+          "swap": {
+            "mean": 0.099963,
+            "min": 0.09996321275291233,
+            "max": 0.09996321275291233,
+            "mean_pct": "10.00",
+            "min_pct": "10.00",
+            "max_pct": "10.00",
+            "cell": "10.00 (10.00\u201310.00)"
+          }
+        },
+        "edits_mean": {
+          "substitution": 18350.0,
+          "deletion": 12233.0,
+          "insertion": 6116.0,
+          "swap": 2038.0
+        },
+        "per_seed": {
+          "2026": {
+            "seed": 2026,
+            "wer": 0.1,
+            "achieved_wer": 0.1,
+            "achieved_wer_pct": "10.00",
+            "budget": 40775,
+            "tokens_before": 407750,
+            "tokens_after": 401633,
+            "edits": {
+              "substitution": 18350,
+              "deletion": 12233,
+              "insertion": 6116,
+              "swap": 2038
+            },
+            "cost_share": {
+              "substitution": 0.45003065603923975,
+              "deletion": 0.3000122624156959,
+              "insertion": 0.14999386879215204,
+              "swap": 0.09996321275291233
+            }
+          },
+          "2027": {
+            "seed": 2027,
+            "wer": 0.1,
+            "achieved_wer": 0.1,
+            "achieved_wer_pct": "10.00",
+            "budget": 40775,
+            "tokens_before": 407750,
+            "tokens_after": 401633,
+            "edits": {
+              "substitution": 18350,
+              "deletion": 12233,
+              "insertion": 6116,
+              "swap": 2038
+            },
+            "cost_share": {
+              "substitution": 0.45003065603923975,
+              "deletion": 0.3000122624156959,
+              "insertion": 0.14999386879215204,
+              "swap": 0.09996321275291233
+            }
+          },
+          "2028": {
+            "seed": 2028,
+            "wer": 0.1,
+            "achieved_wer": 0.1,
+            "achieved_wer_pct": "10.00",
+            "budget": 40775,
+            "tokens_before": 407750,
+            "tokens_after": 401633,
+            "edits": {
+              "substitution": 18350,
+              "deletion": 12233,
+              "insertion": 6116,
+              "swap": 2038
+            },
+            "cost_share": {
+              "substitution": 0.45003065603923975,
+              "deletion": 0.3000122624156959,
+              "insertion": 0.14999386879215204,
+              "swap": 0.09996321275291233
+            }
+          }
+        }
+      },
+      "0.15": {
+        "tokens_before": 407750,
+        "budget": 61162,
+        "achieved_wer": 0.1499987737584304,
+        "achieved_wer_pct": "15.00",
+        "tokens_after_mean": 398575.0,
+        "tokens_after_min": 398575,
+        "tokens_after_max": 398575,
+        "cost_share": {
+          "substitution": {
+            "mean": 0.450002,
+            "min": 0.4500016350021255,
+            "max": 0.4500016350021255,
+            "mean_pct": "45.00",
+            "min_pct": "45.00",
+            "max_pct": "45.00",
+            "cell": "45.00 (45.00\u201345.00)"
+          },
+          "deletion": {
+            "mean": 0.300007,
+            "min": 0.300006540008502,
+            "max": 0.300006540008502,
+            "mean_pct": "30.00",
+            "min_pct": "30.00",
+            "max_pct": "30.00",
+            "cell": "30.00 (30.00\u201330.00)"
+          },
+          "insertion": {
+            "mean": 0.149995,
+            "min": 0.14999509499362348,
+            "max": 0.14999509499362348,
+            "mean_pct": "15.00",
+            "min_pct": "15.00",
+            "max_pct": "15.00",
+            "cell": "15.00 (15.00\u201315.00)"
+          },
+          "swap": {
+            "mean": 0.099997,
+            "min": 0.09999672999574899,
+            "max": 0.09999672999574899,
+            "mean_pct": "10.00",
+            "min_pct": "10.00",
+            "max_pct": "10.00",
+            "cell": "10.00 (10.00\u201310.00)"
+          }
+        },
+        "edits_mean": {
+          "substitution": 27523.0,
+          "deletion": 18349.0,
+          "insertion": 9174.0,
+          "swap": 3058.0
+        },
+        "per_seed": {
+          "2026": {
+            "seed": 2026,
+            "wer": 0.15,
+            "achieved_wer": 0.1499987737584304,
+            "achieved_wer_pct": "15.00",
+            "budget": 61162,
+            "tokens_before": 407750,
+            "tokens_after": 398575,
+            "edits": {
+              "substitution": 27523,
+              "deletion": 18349,
+              "insertion": 9174,
+              "swap": 3058
+            },
+            "cost_share": {
+              "substitution": 0.4500016350021255,
+              "deletion": 0.300006540008502,
+              "insertion": 0.14999509499362348,
+              "swap": 0.09999672999574899
+            }
+          },
+          "2027": {
+            "seed": 2027,
+            "wer": 0.15,
+            "achieved_wer": 0.1499987737584304,
+            "achieved_wer_pct": "15.00",
+            "budget": 61162,
+            "tokens_before": 407750,
+            "tokens_after": 398575,
+            "edits": {
+              "substitution": 27523,
+              "deletion": 18349,
+              "insertion": 9174,
+              "swap": 3058
+            },
+            "cost_share": {
+              "substitution": 0.4500016350021255,
+              "deletion": 0.300006540008502,
+              "insertion": 0.14999509499362348,
+              "swap": 0.09999672999574899
+            }
+          },
+          "2028": {
+            "seed": 2028,
+            "wer": 0.15,
+            "achieved_wer": 0.1499987737584304,
+            "achieved_wer_pct": "15.00",
+            "budget": 61162,
+            "tokens_before": 407750,
+            "tokens_after": 398575,
+            "edits": {
+              "substitution": 27523,
+              "deletion": 18349,
+              "insertion": 9174,
+              "swap": 3058
+            },
+            "cost_share": {
+              "substitution": 0.4500016350021255,
+              "deletion": 0.300006540008502,
+              "insertion": 0.14999509499362348,
+              "swap": 0.09999672999574899
+            }
+          }
+        }
+      }
+    },
+    "modes": {
+      "A": {
+        "primary_block": "punctuation/all",
+        "models": {
+          "hmm": {
+            "clean": {
+              "macro_f1": 0.351233,
+              "macro_f1_pct": "35.12",
+              "macro_f1_ci": {
+                "low": 0.328044,
+                "high": 0.373138,
+                "low_pct": "32.80",
+                "high_pct": "37.31"
+              }
+            },
+            "by_wer": {
+              "0.05": {
+                "per_seed": {
+                  "2026": 0.346884,
+                  "2027": 0.346967,
+                  "2028": 0.346726
+                },
+                "mean": 0.346859,
+                "min": 0.346726,
+                "max": 0.346967,
+                "range": 0.000241,
+                "drop_from_clean": 0.004374,
+                "mean_pct": "34.69",
+                "min_pct": "34.67",
+                "max_pct": "34.70",
+                "range_pct": "0.02",
+                "drop_from_clean_pct": "0.44",
+                "cell": "34.69 (34.67\u201334.70)"
+              },
+              "0.10": {
+                "per_seed": {
+                  "2026": 0.342639,
+                  "2027": 0.342723,
+                  "2028": 0.342196
+                },
+                "mean": 0.342519,
+                "min": 0.342196,
+                "max": 0.342723,
+                "range": 0.000527,
+                "drop_from_clean": 0.008714,
+                "mean_pct": "34.25",
+                "min_pct": "34.22",
+                "max_pct": "34.27",
+                "range_pct": "0.05",
+                "drop_from_clean_pct": "0.87",
+                "cell": "34.25 (34.22\u201334.27)"
+              },
+              "0.15": {
+                "per_seed": {
+                  "2026": 0.337462,
+                  "2027": 0.33873,
+                  "2028": 0.338279
+                },
+                "mean": 0.338157,
+                "min": 0.337462,
+                "max": 0.33873,
+                "range": 0.001268,
+                "drop_from_clean": 0.013076,
+                "mean_pct": "33.82",
+                "min_pct": "33.75",
+                "max_pct": "33.87",
+                "range_pct": "0.13",
+                "drop_from_clean_pct": "1.31",
+                "cell": "33.82 (33.75\u201333.87)"
+              }
+            }
+          },
+          "crf_basic": {
+            "clean": {
+              "macro_f1": 0.436548,
+              "macro_f1_pct": "43.65",
+              "macro_f1_ci": {
+                "low": 0.417386,
+                "high": 0.455921,
+                "low_pct": "41.74",
+                "high_pct": "45.59"
+              }
+            },
+            "by_wer": {
+              "0.05": {
+                "per_seed": {
+                  "2026": 0.420441,
+                  "2027": 0.422254,
+                  "2028": 0.420474
+                },
+                "mean": 0.421056,
+                "min": 0.420441,
+                "max": 0.422254,
+                "range": 0.001813,
+                "drop_from_clean": 0.015492,
+                "mean_pct": "42.11",
+                "min_pct": "42.04",
+                "max_pct": "42.23",
+                "range_pct": "0.18",
+                "drop_from_clean_pct": "1.55",
+                "cell": "42.11 (42.04\u201342.23)"
+              },
+              "0.10": {
+                "per_seed": {
+                  "2026": 0.407401,
+                  "2027": 0.408001,
+                  "2028": 0.405935
+                },
+                "mean": 0.407112,
+                "min": 0.405935,
+                "max": 0.408001,
+                "range": 0.002066,
+                "drop_from_clean": 0.029436,
+                "mean_pct": "40.71",
+                "min_pct": "40.59",
+                "max_pct": "40.80",
+                "range_pct": "0.21",
+                "drop_from_clean_pct": "2.94",
+                "cell": "40.71 (40.59\u201340.80)"
+              },
+              "0.15": {
+                "per_seed": {
+                  "2026": 0.392464,
+                  "2027": 0.395137,
+                  "2028": 0.391333
+                },
+                "mean": 0.392978,
+                "min": 0.391333,
+                "max": 0.395137,
+                "range": 0.003804,
+                "drop_from_clean": 0.04357,
+                "mean_pct": "39.30",
+                "min_pct": "39.13",
+                "max_pct": "39.51",
+                "range_pct": "0.38",
+                "drop_from_clean_pct": "4.36",
+                "cell": "39.30 (39.13\u201339.51)"
+              }
+            }
+          },
+          "crf_improved": {
+            "clean": {
+              "macro_f1": 0.499241,
+              "macro_f1_pct": "49.92",
+              "macro_f1_ci": {
+                "low": 0.479117,
+                "high": 0.520064,
+                "low_pct": "47.91",
+                "high_pct": "52.01"
+              }
+            },
+            "by_wer": {
+              "0.05": {
+                "per_seed": {
+                  "2026": 0.473503,
+                  "2027": 0.476429,
+                  "2028": 0.475925
+                },
+                "mean": 0.475286,
+                "min": 0.473503,
+                "max": 0.476429,
+                "range": 0.002926,
+                "drop_from_clean": 0.023955,
+                "mean_pct": "47.53",
+                "min_pct": "47.35",
+                "max_pct": "47.64",
+                "range_pct": "0.29",
+                "drop_from_clean_pct": "2.40",
+                "cell": "47.53 (47.35\u201347.64)"
+              },
+              "0.10": {
+                "per_seed": {
+                  "2026": 0.452041,
+                  "2027": 0.455168,
+                  "2028": 0.453109
+                },
+                "mean": 0.453439,
+                "min": 0.452041,
+                "max": 0.455168,
+                "range": 0.003127,
+                "drop_from_clean": 0.045802,
+                "mean_pct": "45.34",
+                "min_pct": "45.20",
+                "max_pct": "45.52",
+                "range_pct": "0.31",
+                "drop_from_clean_pct": "4.58",
+                "cell": "45.34 (45.20\u201345.52)"
+              },
+              "0.15": {
+                "per_seed": {
+                  "2026": 0.431004,
+                  "2027": 0.438764,
+                  "2028": 0.433894
+                },
+                "mean": 0.434554,
+                "min": 0.431004,
+                "max": 0.438764,
+                "range": 0.00776,
+                "drop_from_clean": 0.064687,
+                "mean_pct": "43.46",
+                "min_pct": "43.10",
+                "max_pct": "43.88",
+                "range_pct": "0.78",
+                "drop_from_clean_pct": "6.47",
+                "cell": "43.46 (43.10\u201343.88)"
+              }
+            }
+          }
+        }
+      },
+      "B": {
+        "primary_block": "punctuation/all",
+        "models": {
+          "hmm": {
+            "clean": {
+              "macro_f1": 0.16794,
+              "macro_f1_pct": "16.79",
+              "macro_f1_ci": {
+                "low": 0.152847,
+                "high": 0.184894,
+                "low_pct": "15.28",
+                "high_pct": "18.49"
+              }
+            },
+            "by_wer": {
+              "0.05": {
+                "per_seed": {
+                  "2026": 0.165232,
+                  "2027": 0.165522,
+                  "2028": 0.16553
+                },
+                "mean": 0.165428,
+                "min": 0.165232,
+                "max": 0.16553,
+                "range": 0.000298,
+                "drop_from_clean": 0.002512,
+                "mean_pct": "16.54",
+                "min_pct": "16.52",
+                "max_pct": "16.55",
+                "range_pct": "0.03",
+                "drop_from_clean_pct": "0.25",
+                "cell": "16.54 (16.52\u201316.55)"
+              },
+              "0.10": {
+                "per_seed": {
+                  "2026": 0.162575,
+                  "2027": 0.163357,
+                  "2028": 0.162457
+                },
+                "mean": 0.162796,
+                "min": 0.162457,
+                "max": 0.163357,
+                "range": 0.0009,
+                "drop_from_clean": 0.005144,
+                "mean_pct": "16.28",
+                "min_pct": "16.25",
+                "max_pct": "16.34",
+                "range_pct": "0.09",
+                "drop_from_clean_pct": "0.51",
+                "cell": "16.28 (16.25\u201316.34)"
+              },
+              "0.15": {
+                "per_seed": {
+                  "2026": 0.159946,
+                  "2027": 0.159716,
+                  "2028": 0.158401
+                },
+                "mean": 0.159354,
+                "min": 0.158401,
+                "max": 0.159946,
+                "range": 0.001545,
+                "drop_from_clean": 0.008586,
+                "mean_pct": "15.94",
+                "min_pct": "15.84",
+                "max_pct": "15.99",
+                "range_pct": "0.15",
+                "drop_from_clean_pct": "0.86",
+                "cell": "15.94 (15.84\u201315.99)"
+              }
+            }
+          },
+          "crf_basic": {
+            "clean": {
+              "macro_f1": 0.202497,
+              "macro_f1_pct": "20.25",
+              "macro_f1_ci": {
+                "low": 0.188652,
+                "high": 0.219543,
+                "low_pct": "18.87",
+                "high_pct": "21.95"
+              }
+            },
+            "by_wer": {
+              "0.05": {
+                "per_seed": {
+                  "2026": 0.193623,
+                  "2027": 0.196019,
+                  "2028": 0.195452
+                },
+                "mean": 0.195031,
+                "min": 0.193623,
+                "max": 0.196019,
+                "range": 0.002396,
+                "drop_from_clean": 0.007466,
+                "mean_pct": "19.50",
+                "min_pct": "19.36",
+                "max_pct": "19.60",
+                "range_pct": "0.24",
+                "drop_from_clean_pct": "0.75",
+                "cell": "19.50 (19.36\u201319.60)"
+              },
+              "0.10": {
+                "per_seed": {
+                  "2026": 0.18547,
+                  "2027": 0.189558,
+                  "2028": 0.18642
+                },
+                "mean": 0.187149,
+                "min": 0.18547,
+                "max": 0.189558,
+                "range": 0.004088,
+                "drop_from_clean": 0.015348,
+                "mean_pct": "18.71",
+                "min_pct": "18.55",
+                "max_pct": "18.96",
+                "range_pct": "0.41",
+                "drop_from_clean_pct": "1.53",
+                "cell": "18.71 (18.55\u201318.96)"
+              },
+              "0.15": {
+                "per_seed": {
+                  "2026": 0.179388,
+                  "2027": 0.182559,
+                  "2028": 0.17715
+                },
+                "mean": 0.179699,
+                "min": 0.17715,
+                "max": 0.182559,
+                "range": 0.005409,
+                "drop_from_clean": 0.022798,
+                "mean_pct": "17.97",
+                "min_pct": "17.72",
+                "max_pct": "18.26",
+                "range_pct": "0.54",
+                "drop_from_clean_pct": "2.28",
+                "cell": "17.97 (17.72\u201318.26)"
+              }
+            }
+          },
+          "crf_improved": {
+            "clean": {
+              "macro_f1": 0.2282,
+              "macro_f1_pct": "22.82",
+              "macro_f1_ci": {
+                "low": 0.214158,
+                "high": 0.24424,
+                "low_pct": "21.42",
+                "high_pct": "24.42"
+              }
+            },
+            "by_wer": {
+              "0.05": {
+                "per_seed": {
+                  "2026": 0.216842,
+                  "2027": 0.219052,
+                  "2028": 0.216445
+                },
+                "mean": 0.217446,
+                "min": 0.216445,
+                "max": 0.219052,
+                "range": 0.002607,
+                "drop_from_clean": 0.010754,
+                "mean_pct": "21.74",
+                "min_pct": "21.64",
+                "max_pct": "21.91",
+                "range_pct": "0.26",
+                "drop_from_clean_pct": "1.08",
+                "cell": "21.74 (21.64\u201321.91)"
+              },
+              "0.10": {
+                "per_seed": {
+                  "2026": 0.205264,
+                  "2027": 0.208187,
+                  "2028": 0.204897
+                },
+                "mean": 0.206116,
+                "min": 0.204897,
+                "max": 0.208187,
+                "range": 0.00329,
+                "drop_from_clean": 0.022084,
+                "mean_pct": "20.61",
+                "min_pct": "20.49",
+                "max_pct": "20.82",
+                "range_pct": "0.33",
+                "drop_from_clean_pct": "2.21",
+                "cell": "20.61 (20.49\u201320.82)"
+              },
+              "0.15": {
+                "per_seed": {
+                  "2026": 0.195014,
+                  "2027": 0.200182,
+                  "2028": 0.196557
+                },
+                "mean": 0.197251,
+                "min": 0.195014,
+                "max": 0.200182,
+                "range": 0.005168,
+                "drop_from_clean": 0.030949,
+                "mean_pct": "19.73",
+                "min_pct": "19.50",
+                "max_pct": "20.02",
+                "range_pct": "0.52",
+                "drop_from_clean_pct": "3.09",
+                "cell": "19.73 (19.50\u201320.02)"
+              }
+            }
+          }
+        }
+      },
+      "C": {
+        "primary_block": "joint/unmasked",
+        "models": {
+          "hmm": {
+            "clean": {
+              "macro_f1": 0.374138,
+              "macro_f1_pct": "37.41",
+              "macro_f1_ci": {
+                "low": 0.345565,
+                "high": 0.407143,
+                "low_pct": "34.56",
+                "high_pct": "40.71"
+              }
+            },
+            "by_wer": {
+              "0.05": {
+                "per_seed": {
+                  "2026": 0.336503,
+                  "2027": 0.337618,
+                  "2028": 0.338818
+                },
+                "mean": 0.337646,
+                "min": 0.336503,
+                "max": 0.338818,
+                "range": 0.002315,
+                "drop_from_clean": 0.036492,
+                "mean_pct": "33.76",
+                "min_pct": "33.65",
+                "max_pct": "33.88",
+                "range_pct": "0.23",
+                "drop_from_clean_pct": "3.65",
+                "cell": "33.76 (33.65\u201333.88)"
+              },
+              "0.10": {
+                "per_seed": {
+                  "2026": 0.320551,
+                  "2027": 0.317387,
+                  "2028": 0.321926
+                },
+                "mean": 0.319955,
+                "min": 0.317387,
+                "max": 0.321926,
+                "range": 0.004539,
+                "drop_from_clean": 0.054183,
+                "mean_pct": "32.00",
+                "min_pct": "31.74",
+                "max_pct": "32.19",
+                "range_pct": "0.45",
+                "drop_from_clean_pct": "5.42",
+                "cell": "32.00 (31.74\u201332.19)"
+              },
+              "0.15": {
+                "per_seed": {
+                  "2026": 0.30239,
+                  "2027": 0.301436,
+                  "2028": 0.309189
+                },
+                "mean": 0.304338,
+                "min": 0.301436,
+                "max": 0.309189,
+                "range": 0.007753,
+                "drop_from_clean": 0.0698,
+                "mean_pct": "30.43",
+                "min_pct": "30.14",
+                "max_pct": "30.92",
+                "range_pct": "0.78",
+                "drop_from_clean_pct": "6.98",
+                "cell": "30.43 (30.14\u201330.92)"
+              }
+            }
+          },
+          "crf_basic": {
+            "clean": {
+              "macro_f1": 0.438472,
+              "macro_f1_pct": "43.85",
+              "macro_f1_ci": {
+                "low": 0.421271,
+                "high": 0.454696,
+                "low_pct": "42.13",
+                "high_pct": "45.47"
+              }
+            },
+            "by_wer": {
+              "0.05": {
+                "per_seed": {
+                  "2026": 0.384661,
+                  "2027": 0.384482,
+                  "2028": 0.385657
+                },
+                "mean": 0.384933,
+                "min": 0.384482,
+                "max": 0.385657,
+                "range": 0.001175,
+                "drop_from_clean": 0.053539,
+                "mean_pct": "38.49",
+                "min_pct": "38.45",
+                "max_pct": "38.57",
+                "range_pct": "0.12",
+                "drop_from_clean_pct": "5.35",
+                "cell": "38.49 (38.45\u201338.57)"
+              },
+              "0.10": {
+                "per_seed": {
+                  "2026": 0.354011,
+                  "2027": 0.353753,
+                  "2028": 0.355757
+                },
+                "mean": 0.354507,
+                "min": 0.353753,
+                "max": 0.355757,
+                "range": 0.002004,
+                "drop_from_clean": 0.083965,
+                "mean_pct": "35.45",
+                "min_pct": "35.38",
+                "max_pct": "35.58",
+                "range_pct": "0.20",
+                "drop_from_clean_pct": "8.40",
+                "cell": "35.45 (35.38\u201335.58)"
+              },
+              "0.15": {
+                "per_seed": {
+                  "2026": 0.331415,
+                  "2027": 0.330987,
+                  "2028": 0.334562
+                },
+                "mean": 0.332321,
+                "min": 0.330987,
+                "max": 0.334562,
+                "range": 0.003575,
+                "drop_from_clean": 0.106151,
+                "mean_pct": "33.23",
+                "min_pct": "33.10",
+                "max_pct": "33.46",
+                "range_pct": "0.36",
+                "drop_from_clean_pct": "10.62",
+                "cell": "33.23 (33.10\u201333.46)"
+              }
+            }
+          },
+          "crf_improved": {
+            "clean": {
+              "macro_f1": 0.470208,
+              "macro_f1_pct": "47.02",
+              "macro_f1_ci": {
+                "low": 0.449731,
+                "high": 0.490036,
+                "low_pct": "44.97",
+                "high_pct": "49.00"
+              }
+            },
+            "by_wer": {
+              "0.05": {
+                "per_seed": {
+                  "2026": 0.414243,
+                  "2027": 0.42853,
+                  "2028": 0.415135
+                },
+                "mean": 0.419303,
+                "min": 0.414243,
+                "max": 0.42853,
+                "range": 0.014287,
+                "drop_from_clean": 0.050905,
+                "mean_pct": "41.93",
+                "min_pct": "41.42",
+                "max_pct": "42.85",
+                "range_pct": "1.43",
+                "drop_from_clean_pct": "5.09",
+                "cell": "41.93 (41.42\u201342.85)"
+              },
+              "0.10": {
+                "per_seed": {
+                  "2026": 0.381251,
+                  "2027": 0.394011,
+                  "2028": 0.378021
+                },
+                "mean": 0.384428,
+                "min": 0.378021,
+                "max": 0.394011,
+                "range": 0.01599,
+                "drop_from_clean": 0.08578,
+                "mean_pct": "38.44",
+                "min_pct": "37.80",
+                "max_pct": "39.40",
+                "range_pct": "1.60",
+                "drop_from_clean_pct": "8.58",
+                "cell": "38.44 (37.80\u201339.40)"
+              },
+              "0.15": {
+                "per_seed": {
+                  "2026": 0.354297,
+                  "2027": 0.368362,
+                  "2028": 0.355374
+                },
+                "mean": 0.359344,
+                "min": 0.354297,
+                "max": 0.368362,
+                "range": 0.014065,
+                "drop_from_clean": 0.110864,
+                "mean_pct": "35.93",
+                "min_pct": "35.43",
+                "max_pct": "36.84",
+                "range_pct": "1.41",
+                "drop_from_clean_pct": "11.09",
+                "cell": "35.93 (35.43\u201336.84)"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "v1": {
+    "edit_model": "v1",
+    "seed_2026_by_wer": {
+      "0.05": {
+        "summary": {
+          "seed": 2026,
+          "wer": 0.05,
+          "achieved_wer": 0.05000122624156959,
+          "achieved_wer_pct": "5.00",
+          "budget": 20388,
+          "tokens_before": 407750,
+          "tokens_after": 402653,
+          "edits": {
+            "substitution": 5097,
+            "deletion": 5097,
+            "swap": 5097
+          },
+          "cost_share": {
+            "substitution": 0.25,
+            "deletion": 0.25,
+            "swap": 0.5
+          }
+        },
+        "modes": {
+          "A": {
+            "hmm": {
+              "macro_f1": 0.351249,
+              "macro_f1_pct": "35.12",
+              "macro_f1_ci": {
+                "low": 0.328023,
+                "high": 0.373174,
+                "low_pct": "32.80",
+                "high_pct": "37.32"
+              }
+            },
+            "crf_basic": {
+              "macro_f1": 0.429355,
+              "macro_f1_pct": "42.94",
+              "macro_f1_ci": {
+                "low": 0.410421,
+                "high": 0.448769,
+                "low_pct": "41.04",
+                "high_pct": "44.88"
+              }
+            },
+            "crf_improved": {
+              "macro_f1": 0.481292,
+              "macro_f1_pct": "48.13",
+              "macro_f1_ci": {
+                "low": 0.461761,
+                "high": 0.501712,
+                "low_pct": "46.18",
+                "high_pct": "50.17"
+              }
+            }
+          },
+          "B": {
+            "hmm": {
+              "macro_f1": 0.167928,
+              "macro_f1_pct": "16.79",
+              "macro_f1_ci": {
+                "low": 0.15273,
+                "high": 0.184752,
+                "low_pct": "15.27",
+                "high_pct": "18.48"
+              }
+            },
+            "crf_basic": {
+              "macro_f1": 0.199257,
+              "macro_f1_pct": "19.93",
+              "macro_f1_ci": {
+                "low": 0.185581,
+                "high": 0.215913,
+                "low_pct": "18.56",
+                "high_pct": "21.59"
+              }
+            },
+            "crf_improved": {
+              "macro_f1": 0.220292,
+              "macro_f1_pct": "22.03",
+              "macro_f1_ci": {
+                "low": 0.206414,
+                "high": 0.236012,
+                "low_pct": "20.64",
+                "high_pct": "23.60"
+              }
+            }
+          },
+          "C": {
+            "hmm": {
+              "macro_f1": 0.372641,
+              "macro_f1_pct": "37.26",
+              "macro_f1_ci": {
+                "low": 0.344158,
+                "high": 0.40557,
+                "low_pct": "34.42",
+                "high_pct": "40.56"
+              }
+            },
+            "crf_basic": {
+              "macro_f1": 0.430766,
+              "macro_f1_pct": "43.08",
+              "macro_f1_ci": {
+                "low": 0.412872,
+                "high": 0.446752,
+                "low_pct": "41.29",
+                "high_pct": "44.68"
+              }
+            },
+            "crf_improved": {
+              "macro_f1": 0.459692,
+              "macro_f1_pct": "45.97",
+              "macro_f1_ci": {
+                "low": 0.439061,
+                "high": 0.480173,
+                "low_pct": "43.91",
+                "high_pct": "48.02"
+              }
+            }
+          }
+        }
+      },
+      "0.10": {
+        "summary": {
+          "seed": 2026,
+          "wer": 0.1,
+          "achieved_wer": 0.1,
+          "achieved_wer_pct": "10.00",
+          "budget": 40775,
+          "tokens_before": 407750,
+          "tokens_after": 397555,
+          "edits": {
+            "substitution": 10194,
+            "deletion": 10195,
+            "swap": 10193
+          },
+          "cost_share": {
+            "substitution": 0.2500061312078479,
+            "deletion": 0.25003065603923974,
+            "swap": 0.49996321275291233
+          }
+        },
+        "modes": {
+          "A": {
+            "hmm": {
+              "macro_f1": 0.35161,
+              "macro_f1_pct": "35.16",
+              "macro_f1_ci": {
+                "low": 0.328391,
+                "high": 0.373328,
+                "low_pct": "32.84",
+                "high_pct": "37.33"
+              }
+            },
+            "crf_basic": {
+              "macro_f1": 0.422877,
+              "macro_f1_pct": "42.29",
+              "macro_f1_ci": {
+                "low": 0.40426,
+                "high": 0.442108,
+                "low_pct": "40.43",
+                "high_pct": "44.21"
+              }
+            },
+            "crf_improved": {
+              "macro_f1": 0.466391,
+              "macro_f1_pct": "46.64",
+              "macro_f1_ci": {
+                "low": 0.447,
+                "high": 0.48697,
+                "low_pct": "44.70",
+                "high_pct": "48.70"
+              }
+            }
+          },
+          "B": {
+            "hmm": {
+              "macro_f1": 0.168508,
+              "macro_f1_pct": "16.85",
+              "macro_f1_ci": {
+                "low": 0.153462,
+                "high": 0.185199,
+                "low_pct": "15.35",
+                "high_pct": "18.52"
+              }
+            },
+            "crf_basic": {
+              "macro_f1": 0.196463,
+              "macro_f1_pct": "19.65",
+              "macro_f1_ci": {
+                "low": 0.182844,
+                "high": 0.212931,
+                "low_pct": "18.28",
+                "high_pct": "21.29"
+              }
+            },
+            "crf_improved": {
+              "macro_f1": 0.214419,
+              "macro_f1_pct": "21.44",
+              "macro_f1_ci": {
+                "low": 0.200959,
+                "high": 0.229591,
+                "low_pct": "20.10",
+                "high_pct": "22.96"
+              }
+            }
+          },
+          "C": {
+            "hmm": {
+              "macro_f1": 0.371854,
+              "macro_f1_pct": "37.19",
+              "macro_f1_ci": {
+                "low": 0.34332,
+                "high": 0.404702,
+                "low_pct": "34.33",
+                "high_pct": "40.47"
+              }
+            },
+            "crf_basic": {
+              "macro_f1": 0.423552,
+              "macro_f1_pct": "42.36",
+              "macro_f1_ci": {
+                "low": 0.404963,
+                "high": 0.439854,
+                "low_pct": "40.50",
+                "high_pct": "43.99"
+              }
+            },
+            "crf_improved": {
+              "macro_f1": 0.450008,
+              "macro_f1_pct": "45.00",
+              "macro_f1_ci": {
+                "low": 0.429509,
+                "high": 0.469256,
+                "low_pct": "42.95",
+                "high_pct": "46.93"
+              }
+            }
+          }
+        }
+      },
+      "0.15": {
+        "summary": {
+          "seed": 2026,
+          "wer": 0.15,
+          "achieved_wer": 0.1499987737584304,
+          "achieved_wer_pct": "15.00",
+          "budget": 61162,
+          "tokens_before": 407750,
+          "tokens_after": 392459,
+          "edits": {
+            "substitution": 15291,
+            "deletion": 15291,
+            "swap": 15290
+          },
+          "cost_share": {
+            "substitution": 0.2500081750106275,
+            "deletion": 0.2500081750106275,
+            "swap": 0.49998364997874495
+          }
+        },
+        "modes": {
+          "A": {
+            "hmm": {
+              "macro_f1": 0.351637,
+              "macro_f1_pct": "35.16",
+              "macro_f1_ci": {
+                "low": 0.328302,
+                "high": 0.373504,
+                "low_pct": "32.83",
+                "high_pct": "37.35"
+              }
+            },
+            "crf_basic": {
+              "macro_f1": 0.416771,
+              "macro_f1_pct": "41.68",
+              "macro_f1_ci": {
+                "low": 0.3981,
+                "high": 0.43657,
+                "low_pct": "39.81",
+                "high_pct": "43.66"
+              }
+            },
+            "crf_improved": {
+              "macro_f1": 0.454215,
+              "macro_f1_pct": "45.42",
+              "macro_f1_ci": {
+                "low": 0.435601,
+                "high": 0.474086,
+                "low_pct": "43.56",
+                "high_pct": "47.41"
+              }
+            }
+          },
+          "B": {
+            "hmm": {
+              "macro_f1": 0.168544,
+              "macro_f1_pct": "16.85",
+              "macro_f1_ci": {
+                "low": 0.153581,
+                "high": 0.185011,
+                "low_pct": "15.36",
+                "high_pct": "18.50"
+              }
+            },
+            "crf_basic": {
+              "macro_f1": 0.192758,
+              "macro_f1_pct": "19.28",
+              "macro_f1_ci": {
+                "low": 0.17939,
+                "high": 0.209772,
+                "low_pct": "17.94",
+                "high_pct": "20.98"
+              }
+            },
+            "crf_improved": {
+              "macro_f1": 0.208722,
+              "macro_f1_pct": "20.87",
+              "macro_f1_ci": {
+                "low": 0.194835,
+                "high": 0.223697,
+                "low_pct": "19.48",
+                "high_pct": "22.37"
+              }
+            }
+          },
+          "C": {
+            "hmm": {
+              "macro_f1": 0.370922,
+              "macro_f1_pct": "37.09",
+              "macro_f1_ci": {
+                "low": 0.342499,
+                "high": 0.404137,
+                "low_pct": "34.25",
+                "high_pct": "40.41"
+              }
+            },
+            "crf_basic": {
+              "macro_f1": 0.418323,
+              "macro_f1_pct": "41.83",
+              "macro_f1_ci": {
+                "low": 0.399664,
+                "high": 0.434712,
+                "low_pct": "39.97",
+                "high_pct": "43.47"
+              }
+            },
+            "crf_improved": {
+              "macro_f1": 0.441181,
+              "macro_f1_pct": "44.12",
+              "macro_f1_ci": {
+                "low": 0.421258,
+                "high": 0.459778,
+                "low_pct": "42.13",
+                "high_pct": "45.98"
+              }
+            }
+          }
+        }
+      }
+    },
+    "wer0.15": {
+      "achieved": {
+        "tokens_before": 407750,
+        "budget": 61162,
+        "achieved_wer": 0.1499987737584304,
+        "achieved_wer_pct": "15.00",
+        "tokens_after_mean": 392459.0,
+        "tokens_after_min": 392459,
+        "tokens_after_max": 392459,
+        "cost_share": {
+          "substitution": {
+            "mean": 0.250008,
+            "min": 0.2500081750106275,
+            "max": 0.2500081750106275,
+            "mean_pct": "25.00",
+            "min_pct": "25.00",
+            "max_pct": "25.00",
+            "cell": "25.00 (25.00\u201325.00)"
+          },
+          "deletion": {
+            "mean": 0.250008,
+            "min": 0.2500081750106275,
+            "max": 0.2500081750106275,
+            "mean_pct": "25.00",
+            "min_pct": "25.00",
+            "max_pct": "25.00",
+            "cell": "25.00 (25.00\u201325.00)"
+          },
+          "swap": {
+            "mean": 0.499984,
+            "min": 0.49998364997874495,
+            "max": 0.49998364997874495,
+            "mean_pct": "50.00",
+            "min_pct": "50.00",
+            "max_pct": "50.00",
+            "cell": "50.00 (50.00\u201350.00)"
+          }
+        },
+        "edits_mean": {
+          "substitution": 15291.0,
+          "deletion": 15291.0,
+          "swap": 15290.0
+        },
+        "per_seed": {
+          "2026": {
+            "seed": 2026,
+            "wer": 0.15,
+            "achieved_wer": 0.1499987737584304,
+            "achieved_wer_pct": "15.00",
+            "budget": 61162,
+            "tokens_before": 407750,
+            "tokens_after": 392459,
+            "edits": {
+              "substitution": 15291,
+              "deletion": 15291,
+              "swap": 15290
+            },
+            "cost_share": {
+              "substitution": 0.2500081750106275,
+              "deletion": 0.2500081750106275,
+              "swap": 0.49998364997874495
+            }
+          },
+          "2027": {
+            "seed": 2027,
+            "wer": 0.15,
+            "achieved_wer": 0.1499987737584304,
+            "achieved_wer_pct": "15.00",
+            "budget": 61162,
+            "tokens_before": 407750,
+            "tokens_after": 392459,
+            "edits": {
+              "substitution": 15291,
+              "deletion": 15291,
+              "swap": 15290
+            },
+            "cost_share": {
+              "substitution": 0.2500081750106275,
+              "deletion": 0.2500081750106275,
+              "swap": 0.49998364997874495
+            }
+          },
+          "2028": {
+            "seed": 2028,
+            "wer": 0.15,
+            "achieved_wer": 0.1499987737584304,
+            "achieved_wer_pct": "15.00",
+            "budget": 61162,
+            "tokens_before": 407750,
+            "tokens_after": 392459,
+            "edits": {
+              "substitution": 15291,
+              "deletion": 15291,
+              "swap": 15290
+            },
+            "cost_share": {
+              "substitution": 0.2500081750106275,
+              "deletion": 0.2500081750106275,
+              "swap": 0.49998364997874495
+            }
+          }
+        }
+      },
+      "modes": {
+        "A": {
+          "primary_block": "punctuation/all",
+          "models": {
+            "hmm": {
+              "per_seed": {
+                "2026": 0.351637,
+                "2027": 0.351907,
+                "2028": 0.351678
+              },
+              "mean": 0.351741,
+              "min": 0.351637,
+              "max": 0.351907,
+              "range": 0.00027,
+              "drop_from_clean": -0.000508,
+              "mean_pct": "35.17",
+              "min_pct": "35.16",
+              "max_pct": "35.19",
+              "range_pct": "0.03",
+              "drop_from_clean_pct": "-0.05",
+              "cell": "35.17 (35.16\u201335.19)"
+            },
+            "crf_basic": {
+              "per_seed": {
+                "2026": 0.416771,
+                "2027": 0.417401,
+                "2028": 0.415216
+              },
+              "mean": 0.416463,
+              "min": 0.415216,
+              "max": 0.417401,
+              "range": 0.002185,
+              "drop_from_clean": 0.020085,
+              "mean_pct": "41.65",
+              "min_pct": "41.52",
+              "max_pct": "41.74",
+              "range_pct": "0.22",
+              "drop_from_clean_pct": "2.01",
+              "cell": "41.65 (41.52\u201341.74)"
+            },
+            "crf_improved": {
+              "per_seed": {
+                "2026": 0.454215,
+                "2027": 0.452683,
+                "2028": 0.454973
+              },
+              "mean": 0.453957,
+              "min": 0.452683,
+              "max": 0.454973,
+              "range": 0.00229,
+              "drop_from_clean": 0.045284,
+              "mean_pct": "45.40",
+              "min_pct": "45.27",
+              "max_pct": "45.50",
+              "range_pct": "0.23",
+              "drop_from_clean_pct": "4.53",
+              "cell": "45.40 (45.27\u201345.50)"
+            }
+          }
+        },
+        "B": {
+          "primary_block": "punctuation/all",
+          "models": {
+            "hmm": {
+              "per_seed": {
+                "2026": 0.168544,
+                "2027": 0.168791,
+                "2028": 0.167981
+              },
+              "mean": 0.168439,
+              "min": 0.167981,
+              "max": 0.168791,
+              "range": 0.00081,
+              "drop_from_clean": -0.000499,
+              "mean_pct": "16.84",
+              "min_pct": "16.80",
+              "max_pct": "16.88",
+              "range_pct": "0.08",
+              "drop_from_clean_pct": "-0.05",
+              "cell": "16.84 (16.80\u201316.88)"
+            },
+            "crf_basic": {
+              "per_seed": {
+                "2026": 0.192758,
+                "2027": 0.192621,
+                "2028": 0.190794
+              },
+              "mean": 0.192058,
+              "min": 0.190794,
+              "max": 0.192758,
+              "range": 0.001964,
+              "drop_from_clean": 0.010439,
+              "mean_pct": "19.21",
+              "min_pct": "19.08",
+              "max_pct": "19.28",
+              "range_pct": "0.20",
+              "drop_from_clean_pct": "1.04",
+              "cell": "19.21 (19.08\u201319.28)"
+            },
+            "crf_improved": {
+              "per_seed": {
+                "2026": 0.208722,
+                "2027": 0.20718,
+                "2028": 0.206
+              },
+              "mean": 0.207301,
+              "min": 0.206,
+              "max": 0.208722,
+              "range": 0.002722,
+              "drop_from_clean": 0.020899,
+              "mean_pct": "20.73",
+              "min_pct": "20.60",
+              "max_pct": "20.87",
+              "range_pct": "0.27",
+              "drop_from_clean_pct": "2.09",
+              "cell": "20.73 (20.60\u201320.87)"
+            }
+          }
+        },
+        "C": {
+          "primary_block": "joint/unmasked",
+          "models": {
+            "hmm": {
+              "per_seed": {
+                "2026": 0.370922,
+                "2027": 0.371359,
+                "2028": 0.369775
+              },
+              "mean": 0.370685,
+              "min": 0.369775,
+              "max": 0.371359,
+              "range": 0.001584,
+              "drop_from_clean": 0.003453,
+              "mean_pct": "37.07",
+              "min_pct": "36.98",
+              "max_pct": "37.14",
+              "range_pct": "0.16",
+              "drop_from_clean_pct": "0.35",
+              "cell": "37.07 (36.98\u201337.14)"
+            },
+            "crf_basic": {
+              "per_seed": {
+                "2026": 0.418323,
+                "2027": 0.421469,
+                "2028": 0.420272
+              },
+              "mean": 0.420021,
+              "min": 0.418323,
+              "max": 0.421469,
+              "range": 0.003146,
+              "drop_from_clean": 0.018451,
+              "mean_pct": "42.00",
+              "min_pct": "41.83",
+              "max_pct": "42.15",
+              "range_pct": "0.31",
+              "drop_from_clean_pct": "1.85",
+              "cell": "42.00 (41.83\u201342.15)"
+            },
+            "crf_improved": {
+              "per_seed": {
+                "2026": 0.441181,
+                "2027": 0.436071,
+                "2028": 0.440009
+              },
+              "mean": 0.439087,
+              "min": 0.436071,
+              "max": 0.441181,
+              "range": 0.00511,
+              "drop_from_clean": 0.031121,
+              "mean_pct": "43.91",
+              "min_pct": "43.61",
+              "max_pct": "44.12",
+              "range_pct": "0.51",
+              "drop_from_clean_pct": "3.11",
+              "cell": "43.91 (43.61\u201344.12)"
+            }
+          }
+        }
+      }
+    }
+  }
+}
