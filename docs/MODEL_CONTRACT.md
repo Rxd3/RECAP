@@ -43,10 +43,32 @@ follow [DATA_CONTRACT.md](DATA_CONTRACT.md); label vocabularies come from
 alone. A `FeatureConfig` selects the `basic` or `improved` preset, the ablation switches and the
 filler cue; the same `CRFModel` trains every preset.
 
-**Threshold decoding.** `decode_with_threshold(marginals, tau)` in
+**CASE helper mode.** `CRFModel(label_mode="CASE")` trains a casing-only CRF whose target is
+`case_labels` (LOWER, FIRST_UPPER, ALL_UPPER); records still need `punct_labels` of token length. It is
+the casing half of the factored pipeline below. It is not a scoring mode: `train_crf.py --mode` and the
+evaluator accept only A, B and C, and `train_crf.py predict` refuses CASE artifacts.
+
+**Threshold decoding.** `decode_with_threshold(marginals, tau, *, priors=None, gamma=0.0)` in
 `src/punct_restore/models/threshold.py` labels a token non-O when 1 − P(O) > τ, where P(O) sums every
-O label (`O` in modes A/B, every `O|*` in mode C), and then takes the most probable non-O label;
-otherwise it takes the most probable O label. `check_tau` accepts a finite τ in [0, 1].
+O label (`O` in modes A/B, every `O|*` in mode C); otherwise it takes the most probable O label. With
+γ = 0 the non-O label is the most probable one. With γ > 0 (prior-adjusted decoding) it is the non-O
+label c that maximises P(c) / prior(c)^γ, with add-one training priors from `label_priors`; the priors
+never move the gate. `check_tau` accepts a finite τ in [0, 1] and `check_gamma` a finite γ ≥ 0.
+
+## Comparison models
+
+Both read only `sample_id` and `tokens` at prediction time and return the same four output fields as
+the HMM and the CRF. Unfitted models raise `RuntimeError`.
+
+| Model | Operations | Artifact |
+| --- | --- | --- |
+| `GapClassifier(label_mode, *, feature_config=FeatureConfig.improved(), C=1.0, max_iter=200, model_name="gap_improved")` (`src/punct_restore/models/gap_classifier.py`) | `fit(records)` with the CRF's record rules (at least two distinct labels); `predict(records)`; `save_model(path)` / `GapClassifier.load_model(path)`. Per-token multinomial logistic regression (scikit-learn, lbfgs) on the CRF feature dicts, with no label transitions; modes A, B and C only; no marginals. | A `joblib` file (a pickle: load trusted files only) holding `schema_version` (1), `model_family` ("gap_classifier"), `model_name`, `label_mode`, `vocabulary`, `feature_config`, `hyperparameters`, `training_summary`, `vectorizer`, `classifier`. |
+| `HiddenEventLM(label_mode, *, order=3, discount=0.75, min_count=1, model_name="hidden_event_lm")` (`src/punct_restore/models/hidden_event_lm.py`) | `fit(records)` (`split` train, matching `label_mode`; mode C also needs `case_labels`); `predict(records)`; `save_model(path)` (never overwrites) / `HiddenEventLM.load_model(path)`. An n-gram LM over words and punctuation-event tokens with interpolated absolute discounting; exact Viterbi picks no event or one event after each word. Mode C adds a `UnigramTruecaser` (most frequent casing per word). No marginals. | One JSON file: `format_version` (1), `model_family` ("hidden_event_lm"), `config` {`label_mode`, `order`, `discount`, `min_count`, `model_name`}, `training`, `words`, `ngrams`, `truecaser` (mode C only, else null). |
+
+**Factored casing pipeline.** `combine(punct_predictions, case_predictions, *, model_name)` in
+`src/punct_restore/models/factored.py` joins mode A predictions with CASE predictions into mode C labels
+(`PUNCT|CASE`), in the order of the punctuation predictions. Missing or extra IDs, length mismatches,
+wrong modes or unknown labels raise `ValueError`. `scripts/factor_predictions.py` wraps it.
 
 ## Prediction JSONL
 
@@ -58,7 +80,8 @@ One JSON object per line, one per sequence:
 
 (Illustrative shape, not a computed prediction.) `model_name` is `hmm`, `crf_basic`, `crf_improved`,
 an ablation name `crf_<variant>`, a threshold-decoded name `<model_name>_tau<τ>` (for example
-`crf_improved_tau0.35`), or a mode C projection `<name>_joint_C`. Records follow the input file's
+`crf_improved_tau0.35`; prior-adjusted runs add `_gamma<γ>`), a mode C projection `<name>_joint_C`, a
+mode B projection `<name>_from_B`, `gap_improved`, `hidden_event_lm` or `factored`. Records follow the input file's
 order; the evaluator matches them by `sample_id`, so order does not affect scores.
 
 ## Prediction manifest
@@ -78,7 +101,8 @@ manifests are separate sidecars, not prediction manifests.
 ## Decoder: labels back to text (`src/punct_restore/pipeline.py`)
 
 - **Loading:** `load_model(path)` dispatches on the suffix: `.json` → `HMMModel.load_model`;
-  `.joblib` or `.pkl` → `CRFModel.load_model`; anything else raises `ValueError`.
+  `.joblib` or `.pkl` → `CRFModel.load_model`; anything else raises `ValueError`. The demo therefore loads
+  the HMM and the CRFs only; a hidden-event LM or gap-classifier artifact is rejected by those loaders.
 - **Input cleaning:** `RestorationPipeline(adapter).process_text(text)` splits on whitespace,
   lowercases each token and strips `,.?!:;-"` from its edges. Internal apostrophes and hyphens stay;
   empty input raises `ValueError`.

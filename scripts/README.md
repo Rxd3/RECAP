@@ -24,6 +24,9 @@ read and write files, and report errors as one line on stderr. Full command sequ
 | `reporting/build_ablation_table.py` | Team (final push) | Reporting | Feature-ablation tables from `results/scores/ablations/`. |
 | `reporting/time_models.py` | Team (final push) | Reporting | Median-of-3 prediction timing after a 200-record warm-up (and an optional HMM fit). |
 | `reporting/build_tables.py`, `reporting/_cli.py` | Team (final push) | Reporting | Shared helpers (half-up percentages, cells, JSON loading) and one-line error handling; not run directly. |
+| `train_hidden_event_lm.py` | Team (final push) | Comparison | `train` fits a Stolcke-style hidden-event LM (mode C adds a unigram truecaser); `predict` writes predictions and, with `--manifest-out`, a manifest. |
+| `factor_predictions.py` | Team (final push) | Comparison | Joins mode A predictions and CASE predictions (a casing-only CRF) into mode C predictions with a manifest. |
+| `simulate_asr_noise.py` | Team (final push) | Robustness | Copies the validation or test inputs of every mode with simulated ASR word errors (deletion, homophone substitution, adjacent swap) at a target WER; labels and casing masks stay aligned. |
 | `run_demo.py` | Member 6 | Demo | Loads a saved HMM (`.json`) or CRF (`.joblib`, `.pkl`) through `src/punct_restore/pipeline.py` and prints the restored text; without `--text` it prompts interactively. |
 
 ## Interfaces
@@ -55,8 +58,11 @@ train_crf.py inspect --model MODEL.joblib
 run_ablations.py --mode {A,B,C} --out DIR [--sample 50000] [--variants V1,V2,...]
     [--data-root data] [--release sponspeech-m1-v2]
     variants: improved, improved_minus_{window2,ngrams,question,clause,casing,position},
-              improved_plus_filler
-tune_threshold.py tune --model M --gold G --ids I [--masks K] [--grid 0.05:0.95:0.05] --out experiments/runs/tau_<mode>.json
+              improved_plus_filler, improved_plus_question2, gap_improved,
+              case_improved and factored (mode C only)
+tune_threshold.py tune --model M --gold G --ids I [--masks K] [--grid 0.05:0.95:0.05]
+    [--train TRAIN.jsonl --train-ids TRAIN.ids] --out experiments/runs/tau_<mode>.json
+    (--train/--train-ids add label priors and search gamma: prior-adjusted decoding)
 tune_threshold.py predict --model M --input JSONL --ids I --tau-file experiments/runs/tau_<mode>.json
     --out PRED --manifest-out MAN
 
@@ -70,6 +76,15 @@ evaluate_models.py errors --gold JSONL --ids IDS --predictions PRED [--masks K] 
 evaluate_models.py baseline --gold JSONL --ids IDS --out PRED.jsonl
 
 run_demo.py --model-path MODEL [--text "some lowercased text"]
+
+train_hidden_event_lm.py train --mode {A,B,C} --input JSONL --ids IDS --output MODEL.json
+    [--order 3] [--discount 0.75] [--min-count 1] [--model-name NAME]
+train_hidden_event_lm.py predict --model MODEL.json --input JSONL [--ids IDS] --output PRED.jsonl
+    [--manifest-out MAN.json]
+factor_predictions.py --punct A_PRED.jsonl --case CASE_PRED.jsonl --gold MODE_C_GOLD.jsonl --out C_PRED.jsonl
+    --manifest-out MAN.json [--model-name factored]
+simulate_asr_noise.py [--data-root data] [--release sponspeech-m1-v2] --split {validation,test} --wer W
+    [--seed 2026] [--masks FILE] --out NEW_DIR
 
 project_joint.py [--from {C,B}] --predictions PRED.jsonl --gold MODE_A_GOLD.jsonl --out A_PRED.jsonl
     --manifest-out A_PRED.manifest.json

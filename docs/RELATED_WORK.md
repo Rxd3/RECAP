@@ -24,6 +24,15 @@ Introduces CRFs as discriminative sequence models that avoid the label bias of H
 *RECAP differs:* we use the linear-chain CRF as the main model and compare it with an HMM on
 identical tokens and splits.
 
+**Stolcke and Shriberg (1996).** Andreas Stolcke, Elizabeth Shriberg. *Automatic linguistic segmentation
+of conversational speech.* ICSLP 1996, pp. 1005–1008, doi:10.21437/ICSLP.1996-259.
+<https://www.isca-archive.org/icslp_1996/stolcke96_icslp.html>
+An n-gram language model over words and boundary events segments conversational speech transcripts using
+word-level information only: the hidden-event language model.
+*RECAP differs:* RECAP's hidden-event LM (`src/punct_restore/models/hidden_event_lm.py`) follows this
+design but predicts every punctuation class of the mode, not only boundaries, and serves as a comparison
+method next to the HMM and the CRFs.
+
 **Gotoh and Renals (2000).** Yoshihiko Gotoh, Steve Renals. *Sentence Boundary Detection in Broadcast
 Speech Transcripts.* Proc. ISCA ITRW on Automatic Speech Recognition (ASR2000), Paris, pp. 228–235.
 <https://www.research.ed.ac.uk/en/publications/sentence-boundary-detection-in-broadcast-speech-transcripts/>
