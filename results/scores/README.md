@@ -6,7 +6,8 @@ All files were written by `scripts/evaluate_models.py` (`score`, `compare`, `err
 - `threshold/tau_<mode>.json` and `threshold_prior/tau_gamma_<mode>.json` come from `scripts/tune_threshold.py tune`;
 - `runtime/` comes from the timing script;
 - `crf_training_manifests/*.manifest.json` come from `scripts/train_crf.py train` (Member 3);
-- `asr_noise/wer<rate>/summary.json` comes from `scripts/simulate_asr_noise.py`.
+- `asr_noise/wer<rate>/summary.json` comes from `scripts/simulate_asr_noise.py`;
+- `gold_noise/*_B_noisy.tsv` (sample ID, exclusion rule) come from the gold-noise check that picked the excluded records.
 
 **Format:**
 - Scores are fractions with six decimals; the docs show them as percentages rounded half-up.

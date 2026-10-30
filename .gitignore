@@ -49,7 +49,6 @@ drive-download-*/
 !/results/**/README.md
 # Evaluator JSON behind every reported number (Member 5); small, text only.
 !/results/scores/**/*.json
-!/results/scores/**/*.tsv
 
 # Models/dataset archives accidentally written elsewhere
 *.pkl
@@ -70,6 +69,8 @@ drive-download-*/
 !/data/sample/*.jsonl
 *.csv
 *.tsv
+# ...except the evaluator's excluded-ID lists (IDs and rule names only)
+!/results/scores/**/*.tsv
 *.zip
 *.tar
 *.tar.gz

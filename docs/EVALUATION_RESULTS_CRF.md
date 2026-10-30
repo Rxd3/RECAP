@@ -593,9 +593,9 @@ Files: `results/scores/asr_noise/wer<rate>/`, including `summary.json` with the 
 
 | Mode | CRF improved | Gap classifier | Difference | non_final difference |
 |---|---|---|---|---|
-| A | 49.96 | 48.69 | -1.27 (-1.93 to -0.66) * | -2.88 (-3.70 to -2.08) * |
-| B | 23.25 | 21.54 | -1.70 (-3.77 to -0.17) * | -1.49 (-3.58 to 0.14) |
-| C | 47.70 | 42.96 | -4.74 (-6.06 to -3.60) * | -3.20 (-4.06 to -2.42) * |
+| A | 49.96 | 48.69 | −1.27 (−1.93 to −0.66) * | −2.88 (−3.70 to −2.08) * |
+| B | 23.25 | 21.54 | −1.70 (−3.77 to −0.17) * | −1.49 (−3.58 to 0.14) |
+| C | 47.70 | 42.96 | −4.74 (−6.06 to −3.60) * | −3.20 (−4.06 to −2.42) * |
 
 The label-to-label transitions are worth 1.3–1.7 points in A and B, and 4.7 points in mode C, where they carry the capital after a sentence end, the mechanism behind H1.
 
@@ -610,9 +610,9 @@ It was trained on all of `default_train`. Order ∈ {2, 3, 4} and discount ∈ {
 
 | Mode | Chosen setting | Validation | Test (95% CI) | Test − HMM | Test − CRF improved |
 |---|---|---|---|---|---|
-| A | order 4, discount 0.9 | 50.41 | 48.38 (46.21–50.62) | +13.26 (12.12 to 14.44) * | -1.54 (-2.28 to -0.73) * |
-| B | order 4, discount 0.75 | 25.07 | 22.51 (21.08–23.98) | +5.71 (4.98 to 6.57) * | -0.31 (-1.05 to 0.50) |
-| C | order 4, discount 0.75 | 46.31 | 41.18 (39.42–42.70) | +3.77 (0.55 to 6.23) * | -5.84 (-7.19 to -4.45) * |
+| A | order 4, discount 0.9 | 50.41 | 48.38 (46.21–50.62) | +13.26 (12.12 to 14.44) * | −1.54 (−2.28 to −0.73) * |
+| B | order 4, discount 0.75 | 25.07 | 22.51 (21.08–23.98) | +5.71 (4.98 to 6.57) * | −0.31 (−1.05 to 0.50) |
+| C | order 4, discount 0.75 | 46.31 | 41.18 (39.42–42.70) | +3.77 (0.55 to 6.23) * | −5.84 (−7.19 to −4.45) * |
 
 Results on test:
 - The LM beats the HMM in every mode.
@@ -656,8 +656,8 @@ This is decision D9. The joint mode C improved CRF is compared with a factored p
 | Block | Joint | Factored | Difference |
 |---|---|---|---|
 | 12-class joint (primary) | 47.70 | 49.78 | +2.08 (1.22 to 2.94) * |
-| punctuation, all positions | 50.55 | 50.40 | -0.15 (-0.52 to 0.25) |
-| punctuation, non_final | 36.57 | 35.75 | -0.83 (-1.36 to -0.28) * |
+| punctuation, all positions | 50.55 | 50.40 | −0.15 (−0.52 to 0.25) |
+| punctuation, non_final | 36.57 | 35.75 | −0.83 (−1.36 to −0.28) * |
 | casing (masked) | 85.33 | 86.82 | +1.49 (0.78 to 2.17) * |
 | casing, non-initial | 82.35 | 83.84 | +1.49 (0.79 to 2.19) * |
 
