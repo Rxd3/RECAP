@@ -33,7 +33,7 @@ utterance for the improved CRF ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_C
 | Data release `sponspeech-m1-v2` | team Drive [`dataset/`](https://drive.google.com/drive/folders/1jVl5pOQ6PvWPQ6MQxXLcbUksJJ1KDo5u), `sponspeech-m1-v2-handoff.zip` | SHA-256 `1e4b4a9504c68cd8…` ([data/README.md](../data/README.md)) |
 | HMM bundle (three selected models and the full study) | team Drive [`Models/`](https://drive.google.com/drive/folders/13bjpo8GLVOwTJFJoOsG97O_wSyVF5rsN), `hmm-sponspeech-v2-20261029.zip` | SHA-256 `4cdc5725b6538d87…`, 27,095,563 bytes ([HMM_RESULTS.md](../experiments/HMM_RESULTS.md)) |
 | CRF models (six `.joblib` files) | [`RECAP_M3_DRIVE_MODELS`](https://drive.google.com/drive/folders/1jSfe5U8yZJxseU7aA9p6ycQNoZCtx7e_), as shared by Member 3, with a `SHA256SUMS` file | per-model SHA-256 in [CRF_EXPERIMENTS.md](CRF_EXPERIMENTS.md) §7 |
-| Evaluator outputs behind every number | committed in `results/scores/` | each JSON records its input SHA-256s ([results/scores/README.md](../results/scores/README.md)) |
+| Evaluator outputs behind every number | committed in `results/scores/` | score, compare and errors JSON record their input SHA-256s; τ files record the model's SHA-256 and runtime files the model file name ([results/scores/README.md](../results/scores/README.md)) |
 
 Code blocks marked `bash` use `\` to continue a line (bash or Git Bash on Windows); blocks marked
 `powershell` use a backtick.
@@ -48,8 +48,9 @@ python -m pytest -q
 ```
 
 On macOS/Linux, activate with `source .venv/bin/activate`. The tests use small fixtures and
-download nothing. Checked on 2026-10-30: a fresh `git clone` of the final branch (commit `f5a4721`) passes
-`python -m pytest -q` (1164 tests) with the pinned dependency versions installed.
+download nothing. Checked on 2026-10-30: a fresh `git clone` of the final `release/final` branch passes
+`python -m pytest -q` (1302 tests) with the pinned dependency versions installed. The lock file was
+produced on Python 3.13.1.
 
 ## 2. Data
 

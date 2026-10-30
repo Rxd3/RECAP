@@ -23,7 +23,7 @@ Every number below comes from an evaluator JSON file in [`results/scores/`](../r
 - CIs are a grouped bootstrap over videos (`metadata.group_id`), 1,000 resamples, seed 2026, 95% percentile intervals, not adjusted for multiple comparisons;
 - the HMM's numbers equal those in its own bundle.
 
-**Raw outputs** stay under the ignored `results/` path, per `results/README.md`, and are shared as a bundle. Every table below was generated from the evaluator's score, compare and errors JSON files. No number was typed by hand.
+**Raw outputs:** the evaluator's score, compare and errors JSON files are committed in `results/scores/`. Every table below was generated from them; no number was typed by hand.
 
 **Metric:**
 

@@ -278,11 +278,10 @@ synthetic noise/alignment; artifacts/CLI/environment; uncertainty/runtime policy
 - [x] Test data was held out for final reporting; selection used validation. (evidence: [HMM_RUNBOOK.md](experiments/HMM_RUNBOOK.md), [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md))
 - [x] Models/predictions are shared as checksummed artifacts, not large Git files. (evidence: [HMM_RUNBOOK.md](experiments/HMM_RUNBOOK.md), [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) Provenance, [.gitignore](.gitignore))
 - [x] No credentials or personal absolute paths are committed. (evidence: `git grep` for absolute user paths finds none, 2026-10-30)
-- [x] Integration tests, documented workflow and demonstration work on a clean setup. (evidence: [REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md) §1 (fresh clone, 1164 tests) and §10 (demo))
+- [x] Integration tests, documented workflow and demonstration work on a clean setup. (evidence: [REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md) §1 (fresh clone, full suite of 1302 tests) and §10 (demo))
 - [ ] Presentation claims/figures trace to real experiments and all owners review them. — partly: the outline's numbers trace to `results/scores/` ([PRESENTATION_OUTLINE.md](docs/PRESENTATION_OUTLINE.md)); owner review is not recorded
 
 ## Final state
 
-Final state at commit `f5a4721` (the final `release/final` content with the final documentation),
-2026-10-30. A ticked item names its evidence; every unticked item gives its reason. Commits
-after it change wording only (this board, REPRODUCIBILITY.md §1 and CONTRIBUTING.md).
+Final state: the head of `release/final`, 2026-10-30. A ticked item names its evidence; every
+unticked item gives its reason.

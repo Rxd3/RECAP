@@ -5,7 +5,7 @@ This is Member 5's evaluation of Member 3's six CRF models (modes A, B and C × 
 **Final results are on the primary test lists.**
 - Validation chose the threshold τ (section 7). Member 3's CRF settings (c1 = c2 = 0.1, 100 iterations) were fixed and not tuned.
 - No test result influenced any choice. Section 5 has the validation tables.
-- Each frozen model predicted the primary test and test_amb lists exactly once.
+- Each frozen model predicted the primary test and test_amb lists exactly once. For the supplementary leakage analysis (section 8), the mode A improved model also predicted the full official test once.
 - Every number comes from an evaluator JSON file in [`results/scores/`](../results/scores/README.md).
 
 ## Provenance
@@ -67,7 +67,7 @@ This is Member 5's evaluation of Member 3's six CRF models (modes A, B and C × 
 4. **Threshold decoding adds a small, consistent gain:** +0.51 (A), +0.41 (B), +0.70 (C).
    - The A and C intervals exclude 0; B's crosses 0.
    - On test_amb the gain is +0.88 / +0.57 / +1.28, and all three intervals exclude 0.
-   - In modes A and C most of it comes from comma recall. In mode B, comma and the rare classes contribute about equally.
+   - Most of it comes from comma recall: COMMA F1 rises by +2.38 to +2.79 in every mode. The rare-class changes are individually within noise.
 5. **Leaked test utterances flatter the CRF, but not the HMM** (section 8).
    - On the 2,706 official test utterances whose video is also in the training set, the improved CRF scores 67.09 against 49.50 on the leak-free test.
    - The HMM scores 33.54 against 34.74.
@@ -86,7 +86,7 @@ The team wrote H1–H6 in its execution plan on 2026-10-29, before any CRF resul
 | # | Hypothesis | Outcome | Evidence |
 |---|---|---|---|
 | H1 | Joint mode C gives higher PERIOD F1 than mode A | **Not supported for PERIOD** (mixed: higher only for CRF improved), but joint training helps inside the utterance | Paired comparison on mode A gold over the 19,936 mode C validation IDs: each mode A model against the same model type trained on mode C, projected to punctuation. PERIOD F1, A vs C: HMM 69.31 vs 68.33, CRF basic 71.57 vs 71.43, CRF improved 72.33 vs 72.63. The joint CRF improved gains +0.42 macro (0.05 to 0.82), mostly on QUESTION (+1.51). Every joint model gains on non-final positions, and all three intervals exclude 0: HMM +8.69, CRF basic +1.59, CRF improved +1.16. Overall, the joint HMM loses 0.62 (−1.20 to −0.03). |
-| H2 | Threshold decoding raises rare-class recall | **Partly supported** (test) | Recall rises for almost every non-O class, but mostly for COMMA (mode A 45.22 → 52.63; mode B 45.36 → 57.80). Per-class F1 changes, threshold − improved, with paired 95% intervals: COMMA +2.38 (1.89 to 2.88) in A, +2.52 (1.88 to 3.22) in B, and `COMMA|LOWER` +2.79 (2.15 to 3.46) in C. PERIOD falls overall (A −0.76, B −1.59) but rises on non-final positions (+1.43, +1.60). Every rare-class interval includes 0 (QUESTION, COLON, SEMICOLON, DASH, EXCLAMATION). Macro F1 gains +0.51 / +0.41 / +0.70 (sections 1–2; the τ grid is in section 7). |
+| H2 | Threshold decoding raises rare-class recall | **Not supported for the rare classes**; it raises COMMA recall (test) | Recall rises for almost every non-O class, but mostly for COMMA (mode A 45.22 → 52.63; mode B 45.36 → 57.80). Per-class F1 changes, threshold − improved, with paired 95% intervals: COMMA +2.38 (1.89 to 2.88) in A, +2.52 (1.88 to 3.22) in B, and `COMMA|LOWER` +2.79 (2.15 to 3.46) in C. PERIOD falls overall (A −0.76, B −1.59) but rises on non-final positions (+1.43, +1.60). Every rare-class interval includes 0 (QUESTION, COLON, SEMICOLON, DASH, EXCLAMATION). Macro F1 gains +0.51 / +0.41 / +0.70 (sections 1–2; the τ grid is in section 7). |
 | H3 | Question cues raise QUESTION F1 | **Supported** (validation ablation) | Removing the question cues changes QUESTION F1 by −4.05 (−5.37 to −2.99) in A and −2.85 (−4.45 to −1.58) in B, and `QUESTION|LOWER` F1 by −5.39 (−6.81 to −4.10) in C. These are paired per-class intervals (`compare --class`). Primary intervals exclude 0 in every mode (section 6). |
 | H4 | Filler and discourse cues raise COMMA F1 | **Partly supported** for fillers, **not supported** for discourse markers (validation) | Adding the filler cue (*um*, *uh*, *er*, *erm*, *like*, *you know*, *i mean*, repeated words) raises COMMA F1 by +0.14 (−0.00 to 0.28) in A and +0.21 (0.06 to 0.37) in B, and `COMMA|LOWER` F1 by +0.25 (0.05 to 0.45) in C. Its primary macro F1 does not change (+0.04 / +0.04 / −0.28, all intervals include 0). Removing the clause cues (conjunctions and discourse markers) changes COMMA F1 by +0.03 (−0.08 to 0.14) in A and +0.05 (−0.08 to 0.18) in B, and `COMMA|LOWER` F1 by −0.18 (−0.34 to −0.03) in C. |
 | H5 | Much of PERIOD F1 comes from the utterance-final token | **Supported** (test) | The shortcut alone reaches PERIOD F1 66.68 in mode A, against the HMM's 67.34. Without the final token, the HMM's primary score falls from 35.12 to 9.13. |
@@ -526,7 +526,7 @@ Each mode B model was projected to mode A with the approved D5 mapping (`scripts
 | CRF basic | 44.54 | 44.30 | −0.24 (−0.44 to −0.04) | −0.15 (−0.40 to 0.12) |
 | CRF improved | 51.18 | 51.44 | +0.25 (0.05 to 0.47) | +0.39 (0.09 to 0.72) |
 
-Training on the finer 8-class labels barely changes 4-class punctuation: the differences are under 0.3 points and go both ways. Per class, the improved CRF trained on mode B gains on QUESTION (+0.90, 0.36 to 1.52) and loses a little on COMMA (−0.25, −0.40 to −0.10). The extended labels cost nothing on the basic task. Files: `results/scores/b_to_a/`.
+Training on the finer 8-class labels barely changes 4-class punctuation: the differences are under 0.3 points and go both ways. Per class, the improved CRF trained on mode B gains on QUESTION (+0.90, 0.36 to 1.52) and loses a little on COMMA (−0.25, −0.40 to −0.10). The extended labels change the basic task by at most a quarter of a point either way; the CRF basic loss of 0.24 has an interval that excludes 0. Files: `results/scores/b_to_a/`.
 
 ## Multiple comparisons (Holm)
 
@@ -557,7 +557,7 @@ The p-values are recomputed from the committed compare JSONs in `results/scores/
 Run every command from the repository root. `<rel>` is `sponspeech-m1-v2`. The shared models are listed in [REPRODUCIBILITY.md](REPRODUCIBILITY.md).
 
 - **Test predictions, once per model:** `python scripts/train_crf.py predict --model crf_mode_<m>_<preset>_full_01.joblib --input data/processed/<rel>/mode_<M>/test.jsonl --ids data/splits/<rel>/primary_eval/test_mode_<M>.ids --output PRED.jsonl --manifest-out PRED.manifest.json`. The same command on validation reproduces Member 3's delivered files byte for byte.
-- **Scores and paired comparisons:** `python scripts/evaluate_models.py score|compare|errors ... --bootstrap 1000 --seed 2026`. Mode C needs `--masks data/processed/<rel>/masks/case_joint/<split>.jsonl`.
+- **Scores and paired comparisons:** `python scripts/evaluate_models.py score|compare ... --bootstrap 1000 --seed 2026`, and `errors ... --per-pair 3` for the error pairs. Mode C needs `--masks data/processed/<rel>/masks/case_joint/<split>.jsonl`.
 - **Threshold decoding (§7):** `python scripts/tune_threshold.py tune ...` on validation, then `predict --tau-file ...` once on test and test_amb.
 - **Ablations and filler cue (§6):** `python scripts/run_ablations.py --mode <M> --out DIR [--variants ...]`, then score as above.
 - **Joint vs punctuation-only (H1):** `python scripts/project_joint.py --predictions C_PRED.jsonl --gold data/processed/<rel>/mode_A/validation.jsonl --out A_PRED.jsonl --manifest-out A_PRED.manifest.json`, then `compare` on mode A gold with `--ids data/splits/<rel>/primary_eval/validation_mode_C.ids`.

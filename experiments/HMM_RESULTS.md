@@ -147,7 +147,7 @@ claims of statistical significance or a globally optimal search.
 - Training support matches the approved subsets. IDs/order/lengths, masks, code,
   data/config/artifact hashes and probability normalization pass.
 - Frozen selections precede final test access. Source code/configuration did not
-  change during the study. No dataset or trained model is committed to Git.
+  change during the study. No dataset files or trained models are committed to Git (only a 10-utterance sample and the release metadata).
 
 [HMM_RUNBOOK.md](HMM_RUNBOOK.md) contains the exact reconstruction commands.
 The ignored run directory holds raw reports, confusion matrices, representative

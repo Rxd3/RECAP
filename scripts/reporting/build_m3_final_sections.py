@@ -5,8 +5,9 @@ Scores come from R (default results/scores): threshold/, crf_validation/, leakag
 runtime/. The CRF fit times and the training machine come from Member 3's training manifests
 crf_mode_<m>_<preset>_full_01.manifest.json in DIR (default R/crf_training_manifests). OUT_MD must not exist.
 
-Every figure quoted in the prose is derived from those files: the standard-decoding scores, the utterance
-count, the leakage gains, the laptop and the speed bounds. Files that must agree (the utterance counts of the
+The figures quoted in the prose are derived from those files (the standard-decoding scores, the utterance
+count, the leakage gains, the laptop and the speed bounds), except three fixed descriptions written into the
+text: the τ grid range, the quality group being one video, and test_amb sharing 25 videos with test. Files that must agree (the utterance counts of the
 two leakage runs, the hardware of the six runtime files, the machine of the six manifests) are checked.
 """
 

@@ -134,7 +134,7 @@ the shortcut and threshold columns are our additions):
   - Without each utterance's final token, mode A scores HMM 9.13, CRF basic 28.30 and CRF improved 36.40 (test).
 - **Threshold decoding** adds +0.51 / +0.41 / +0.70 on test, mostly through comma recall. The B interval includes 0.
 - **The filler-word cue** leaves macro F1 unchanged on validation, but raises comma F1 slightly: +0.21 (B) and +0.25 (C), with both intervals excluding 0.
-- **Training on the 8-class labels costs nothing on the 4-class task.** Mode B models projected to mode A differ from their mode A twins by under 0.3 points on validation ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §11).
+- **Training on the 8-class labels barely changes the 4-class task.** Mode B models projected to mode A differ from their mode A twins by under 0.3 points on validation (HMM +0.10, CRF basic −0.24, CRF improved +0.25) ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §11).
 - **Leakage inflates lexical models.** On test utterances from videos in the training set, the improved CRF scores 67.09 against 49.50 on the leak-free test, while the HMM scores 33.54 against 34.74. See [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §8.
 - **Joint vs punctuation-only (H1, validation, same 19,936 evaluation IDs):** every joint model gains
   on non-final positions (HMM +8.69, CRF basic +1.59, CRF improved +1.16; all intervals exclude 0), but

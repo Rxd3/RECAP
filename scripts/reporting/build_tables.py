@@ -1,6 +1,7 @@
 """Shared Markdown helpers for the reporting scripts.
 
-Every number the scripts print comes from a JSON file written by scripts/evaluate_models.py.
+The table numbers the scripts print come from JSON files written by scripts/evaluate_models.py; a few fixed
+descriptions in the section prose are written into build_m3_final_sections.py.
 """
 
 from __future__ import annotations

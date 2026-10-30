@@ -2,7 +2,7 @@
 """CLI demo: restore punctuation and casing in unpunctuated text with a trained model.
 
 Usage:
-    python scripts/run_demo.py --model-path artifacts/models/<model>.json|.joblib --text "..."
+    python scripts/run_demo.py --model-path <model>.json|.joblib --text "..."
 
 Without --text it starts an interactive prompt (type quit, exit or q to leave).
 Only load trusted artifacts: .joblib/.pkl model files are pickles and can run code on load.

@@ -166,7 +166,7 @@ Speech Transcripts.* Interspeech 2020, pp. 716–720, doi:10.21437/Interspeech.2
 A BERT-based multi-task model with attention between the tasks predicts punctuation and disfluencies
 jointly, beating separate models on IWSLT and Switchboard.
 *RECAP differs:* a single filler-word and repetition cue in a CRF instead of a disfluency task; on
-validation it had no detectable effect.
+validation it left macro F1 unchanged and raised comma F1 slightly (+0.21 in B, +0.25 in C).
 
 **Nguyen et al. (2019).** Binh Nguyen, Vu Bao Hung Nguyen, Hien Nguyen, Pham Ngoc Phuong, The-Loc Nguyen,
 Quoc Truong Do, Luong Chi Mai. *Fast and Accurate Capitalization and Punctuation for Automatic Speech

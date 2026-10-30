@@ -50,8 +50,7 @@ Casing follows the approved D4 precedence ([DECISIONS.md](DECISIONS.md)), applie
 FIRST_UPPER, lowercase → LOWER). Step 4 approximates mixed-case words such as `iPhone`. Those token positions keep
 their label and are listed in a per-release mask (`masks/case_joint/<file>.jsonl`: `sample_id`,
 `excluded_positions`, `reason`), so primary casing and joint metrics can exclude them without changing token
-alignment; punctuation at those positions is still scored. The mask format is a Member 1 proposal that Member 5
-must accept for the evaluation contract. No fourth casing class may be added casually.
+alignment; punctuation at those positions is still scored. The evaluator applies this mask format (`--masks`, see EVALUATION_PROTOCOL.md). No fourth casing class may be added casually.
 
 Define contractions, apostrophes, hyphens, decimals, abbreviations, Unicode dash
 variants, quote/bracket attachment, repeated punctuation, leading punctuation,

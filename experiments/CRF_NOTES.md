@@ -84,7 +84,7 @@ The model uses a single unified CRF engine across all three modes:
 ### Mode C Masking Analysis (Decisions D4 & D9)
 - **Training Labels:** In SponSpeech v2, every token position in `case_labels` has a concrete class (`LOWER`, `FIRST_UPPER`, `ALL_UPPER`). Mixed-case tokens (e.g., *iPhone*, *eBay*) receive a deterministic step-4 heuristic label (*iPhone* $\to$ `LOWER`, *McDonald* $\to$ `FIRST_UPPER`). The CRF is trained on **all** positions in the sequence using the full 12-class Cartesian product targets.
 - **Evaluation Masks:** Member 1 generates sidecar mask files (`masks/case_joint/<file>.jsonl`) documenting approximated token indices. During evaluation, Member 5's scoring pipeline reads these masks and **excludes** those specific token positions from joint and casing metrics. Punctuation at those positions is still evaluated.
-- **Unresolved Decision:** Linear-chain CRFs require fully observed labels at every sequence node during standard maximum conditional likelihood estimation. Supporting partially masked/marginalized loss would require custom forward-backward expectation over latent states. This trade-off is recorded under Decision D9; for Phase 5, the model trains on the complete supervised targets, and Member 5 evaluates on masked subsets.
+- **Training targets:** linear-chain CRFs need a label at every position, and a masked loss would need custom forward-backward code. The models therefore train on the complete targets, and the masks apply at evaluation only (D4).
 
 ---
 
@@ -305,7 +305,7 @@ A teammate reported the following initial benchmark numbers from a local rebuild
 - **Configurable vs Tuned Hyperparameters:** CLI regularization options (`--c1`, `--c2`) are user-configurable runtime arguments. No validation-based hyperparameter tuning has been performed; all six models use c1 = c2 = 0.1 and 100 iterations.
 
 ### 9.5 Follow-up Work (status)
-- **Not done:** a validation grid search over $c_1, c_2$. The CRF settings stayed fixed.
+- **Not done:** a validation grid search over $c_1, c_2$. The CRF settings stayed fixed. A validation sensitivity check (six settings, 50k sample, not used for selection) is in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md) §5.
 - **Done:** feature ablations on **validation only**, never on test: one feature group is removed at a time from the improved preset and trained on a 50k-sequence sample. Results are in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md) §6; `scripts/run_ablations.py --mode {A,B,C} --out DIR` reruns them. The utterance-final shortcut is measured with Member 5's `non_final` view on validation and test.
 
 ---
@@ -362,7 +362,7 @@ Input tokens must be:
 from punct_restore.models.crf import CRFModel
 
 # Load serialized bundle (automatically reconstructs feature config & vocabulary)
-model = CRFModel.load_model("artifacts/models/crf_mode_a_basic.joblib")
+model = CRFModel.load_model("crf_mode_a_basic_full_01.joblib")
 assert model.is_fitted
 print("Loaded model mode:", model.label_mode)
 print("Vocabulary:", model.vocabulary)
