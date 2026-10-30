@@ -152,11 +152,16 @@ python scripts/evaluate_models.py errors --gold <gold> --ids <ids> --predictions
 python scripts/run_ablations.py --mode A --out experiments/runs/ablations_A --sample 50000 \
     --data-root data --release sponspeech-m1-v2
 python scripts/tune_threshold.py tune --model <model>.joblib --gold <processed>/mode_A/validation.jsonl \
-    --ids <splits>/primary_eval/validation_mode_A.ids --grid 0.05:0.95:0.05 --out tau_A.json
+    --ids <splits>/primary_eval/validation_mode_A.ids --grid 0.05:0.95:0.05 --out experiments/runs/tau_A.json
 python scripts/tune_threshold.py predict --model <model>.joblib --input <processed>/mode_A/test.jsonl \
-    --ids <splits>/primary_eval/test_mode_A.ids --tau-file tau_A.json \
-    --out <predictions>.jsonl --manifest-out <predictions>.manifest.json
+    --ids <splits>/primary_eval/test_mode_A.ids --tau-file experiments/runs/tau_A.json \
+    --out experiments/runs/crf_improved_tau_A_test.jsonl \
+    --manifest-out experiments/runs/crf_improved_tau_A_test.manifest.json
 ```
+
+Write every output under the ignored `experiments/runs/` (or `results/`): an untracked file at the
+repository root makes a later HMM `tune` refuse to start, because it requires a clean working tree.
+Modes B and C use `tau_B.json` and `tau_C.json` in the same folder.
 
 `run_ablations.py` takes `--variants` to run a subset (`improved`,
 `improved_minus_{window2,ngrams,question,clause,casing,position}`, `improved_plus_filler`).

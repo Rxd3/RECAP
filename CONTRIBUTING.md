@@ -3,7 +3,6 @@
 Work on your assigned member branch and open focused pull requests into `main`.
 Use [TEAM_TASKS.md](TEAM_TASKS.md) to find owners/reviewers and
 [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) for detailed beginner commands.
-Current code is intentionally unfinished; a placeholder is not a working model.
 
 ## Daily workflow
 
@@ -28,21 +27,24 @@ Follow the README environment setup. The completed HMM study pins PyYAML in
 dependencies with a clear reason and a compatible tested environment in
 implementation PRs.
 
-Member 2's synthetic HMM and CLI tests now run with pytest. The three
-`tests/test_*_contract.py` files still contain shared TODO plans. For unfinished
-components, use structural/configuration checks without claiming functional
-coverage. Original checks are recorded in
-[initial verification](docs/INITIAL_VERIFICATION.md). Run implemented tests with:
+The whole suite runs with pytest from the repository root, on small fixtures only.
+It must pass before you open a pull request and again before it is merged:
 
 ```powershell
-python -m pytest
+python -m pytest -q
 ```
 
-The HMM's full-data training, validation selection, saved-model inference and
-independent reproduction are complete; see [results](experiments/HMM_RESULTS.md)
-and [runbook](experiments/HMM_RUNBOOK.md). Its study uses the pinned Member 5
-scorer in a separate checkout. CRF, ablations and the integrated text-decoding
-workflow remain unfinished on this branch.
+- **One branch per member:** work on your `feat/m<N>-...` branch (owners and branches are in
+  [TEAM_TASKS.md](TEAM_TASKS.md)), not on `main`.
+- **Conventional commit subjects:** `type(scope): summary`, for example
+  `feat(data): add verified preprocessing pipeline` ([GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md)) or
+  `fix(eval): ...`, `docs: ...`, `test: ...`, `chore: ...`.
+- **Merge through pull requests, as merge commits,** so every member keeps their own commits. The
+  integration branch `release/final` merged the member branches in this order: M5 evaluation,
+  M2 HMM, M3 CRF, M6 integration (`git log --merges release/final`).
+
+Completed results and how to rerun them: [REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md),
+[HMM results](experiments/HMM_RESULTS.md) and [CRF results](docs/EVALUATION_RESULTS_CRF.md).
 
 ## Data, artifacts and claims
 

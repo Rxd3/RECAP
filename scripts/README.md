@@ -49,8 +49,9 @@ run_ablations.py --mode {A,B,C} --out DIR [--sample 50000] [--variants V1,V2,...
     [--data-root data] [--release sponspeech-m1-v2]
     variants: improved, improved_minus_{window2,ngrams,question,clause,casing,position},
               improved_plus_filler
-tune_threshold.py tune --model M --gold G --ids I [--masks K] [--grid 0.05:0.95:0.05] --out tau.json
-tune_threshold.py predict --model M --input JSONL --ids I --tau-file tau.json --out PRED --manifest-out MAN
+tune_threshold.py tune --model M --gold G --ids I [--masks K] [--grid 0.05:0.95:0.05] --out experiments/runs/tau_<M>.json
+tune_threshold.py predict --model M --input JSONL --ids I --tau-file experiments/runs/tau_<M>.json
+    --out PRED --manifest-out MAN
 
 evaluate_models.py score --gold JSONL --ids IDS --predictions PRED [--masks K] --out REPORT.json
     [--manifest MAN] [--bootstrap N] [--seed S]
