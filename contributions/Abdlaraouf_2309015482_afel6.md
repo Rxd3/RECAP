@@ -1,8 +1,8 @@
-# Abd Raouf — Member 5: evaluation and error analysis; release integration
+# Abdlaraouf Alkabir (Abd Raouf) — Member 5: evaluation and error analysis; release integration
 
 | Field | Value |
 | --- | --- |
-| Student ID | `<STUDENT_ID>` (filled in by the member) |
+| Student ID | 2309015482 |
 | GitHub | [@afel6](https://github.com/afel6) |
 | Git author name(s) | `Raouf` |
 | Branch | `feat/m5-evaluation`; integration branch `release/final` |
@@ -151,4 +151,4 @@ Merge commits:
 - `src/punct_restore/models/`: `__init__.py` (M in 5002994), `crf.py` (M in fbd8d45), `threshold.py` (A in a930859)
 - `tests/`: 37 files (30 added); commits 01858ae, 31e59f9, 3ca76d5, 4304e4c, 4998b31, 5002994, 54eed84, 6340b59, 6356916, 6507152, 680438f, 766aeb7, 7c75d4e, 9155a7e, a930859, aad6c70, b973981, c575279, ca96025, d3284b9, d4ab315, e7095cf, eb6afa7, ec37d19, f9082a7, fbd8d45
 
-Generated from `git log HEAD --author="Raouf"` at commit `72b9148` (the final `release/final` docs state) on 2026-10-30. Only the member's own commits are listed; later changes by others are not shown. The member fills in the student ID.
+Generated from `git log HEAD --author="Raouf"` at commit `72b9148` (the final `release/final` docs state) on 2026-10-30. Only the member's own commits are listed; later changes by others are not shown.

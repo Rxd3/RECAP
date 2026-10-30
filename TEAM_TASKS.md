@@ -165,7 +165,7 @@ Do not independently rewrite or replace the CRF model.
 **Handoff:** provide Member 3 the versioned extractor/configuration, Member 5 the
 paired run bundles and hypothesis list, and Member 6 feature-loading requirements.
 
-## Member 5 — Evaluation and Error Analysis (Abd Raouf)
+## Member 5 — Evaluation and Error Analysis (Abdlaraouf Alkabir)
 
 **Branch:** `feat/m5-evaluation`
 

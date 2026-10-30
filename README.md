@@ -311,7 +311,7 @@ Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM
 | 2 Raşit (lead) | HMM baseline | `feat/m2-hmm-baseline` | `contributions/Rasit_STUDENT_ID_Rxd3.md` |
 | 3 Omar | CRF model and improved features | `feat/m3-crf-model` | `contributions/Omar_STUDENT_ID_Devinci101.md` |
 | 4 Mohamed | Feature engineering | `feat/m4-feature-engineering` | `contributions/Mohamed_STUDENT_ID_GITHUB.md` |
-| 5 Abd Raouf | Evaluation and error analysis | `feat/m5-evaluation` | `contributions/AbdRaouf_STUDENT_ID_afel6.md` |
+| 5 Abdlaraouf Alkabir | Evaluation and error analysis | `feat/m5-evaluation` | `contributions/Abdlaraouf_2309015482_afel6.md` |
 | 6 Abdulla | Integration and presentation | `feat/m6-integration-presentation` | `contributions/Abdulla_STUDENT_ID_abdu3061.md` |
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch, commit and pull-request rules.
