@@ -268,10 +268,12 @@ Member 5 retrained Member 3's improved preset with one feature group switched of
 
 **Findings:**
 1. **Word pairs help most.** Without them, mode A drops 3.59 points, mode B 1.63, and mode C punctuation 3.74. The mode C joint drop of 1.49 has an interval that crosses 0, but the mode C punctuation non_final drop of 5.25 does not.
-2. **The ±2 window and the question cues also help in every mode.** All three primary intervals exclude 0 for both.
+2. **The ±2 window and the question cues also help in every mode.**
+   - All three primary intervals exclude 0 for both.
+   - The mode C effects (−0.53 and −0.40) do not survive a Holm correction (see Multiple comparisons).
 3. **Clause cues, casing cues and position buckets have small effects of mixed sign.**
    - On the primary metric, every effect is under 1 point.
-   - In mode B, removing clause cues (+0.17) or position buckets (+0.21) slightly *raises* the score.
+   - In mode B, removing clause cues (+0.17) or position buckets (+0.21) slightly *raises* the score; neither survives a Holm correction.
    - In mode C, removing casing cues or position buckets slightly lowers punctuation: non_final −0.42 and −0.45, both intervals excluding 0.
 4. **The casing cues have no measurable effect on casing.** Mode C masked casing changes by −0.08 (−0.29 to 0.11) without them.
 
@@ -499,10 +501,23 @@ Mode C is shown as its punctuation projection and its masked casing projection; 
 | FIRST_UPPER | 9,773 | 31,633 | 30 |
 | ALL_UPPER | 267 | 67 | 628 |
 
+## Multiple comparisons (Holm)
+
+The intervals in this document are not adjusted for the number of comparisons. As a check, two-sided bootstrap p-values were taken from each paired comparison's share of resamples in which B beats A (resolution 0.001), and Holm's step-down correction was applied at α = 0.05 within two families.
+
+- **Test comparisons (12):** improved − basic, basic − HMM and improved − HMM in each mode, plus threshold − improved.
+  - All nine model comparisons survive.
+  - Threshold decoding survives in modes A (p ≤ 0.002) and C (p ≤ 0.004), but not B (p ≤ 0.100).
+- **Ablations (18):** six feature groups in three modes, validation.
+  - Survive: removing word pairs (A, B), the ±2 window (A, B) or the question cues (A, B).
+  - Do not survive: everything in mode C (word pairs p ≤ 0.096, window p ≤ 0.042, question p ≤ 0.032) and the small mode B effects of the clause cues and position buckets.
+
+The p-values are recomputed from the committed compare JSONs in `results/scores/crf_test/`, `results/scores/threshold/` and `results/scores/ablations/`.
+
 ## Limitations
 
 - **CRF settings were not tuned.** Every model uses c1 = c2 = 0.1 and 100 L-BFGS iterations, and every fit stopped at the iteration cap. Only τ was tuned. Member 5's reference CRF, with different code and settings, scored 4.19 points higher on validation for mode A improved, so the gaps may move with tuning.
-- **Intervals cover sample variance only.** Each setting has one fit, and the intervals are not adjusted for the number of comparisons.
+- **Intervals cover sample variance only.** Each setting has one fit. The intervals are not adjusted for the number of comparisons; the Holm check above shows which conclusions survive.
 - **Ablation and filler models use a 50k-sequence sample.** Read only their differences; each comes from one fit.
 - **Rare classes stay low.** In mode B the improved CRF scores under 8 F1 on COLON, DASH, EXCLAMATION and SEMICOLON on test. `QUESTION|ALL_UPPER` has 9 test tokens.
 - **Gold noise.** Leftover speaker labels give false COLON labels; see EVALUATION_RESULTS.md.
@@ -519,7 +534,10 @@ Run every command from the repository root. `<rel>` is `sponspeech-m1-v2`. The s
 - **Threshold decoding (§7):** `python scripts/tune_threshold.py tune ...` on validation, then `predict --tau-file ...` once on test and test_amb.
 - **Ablations and filler cue (§6):** `python scripts/run_ablations.py --mode <M> --out DIR [--variants ...]`, then score as above.
 - **Joint vs punctuation-only (H1):** `python scripts/project_joint.py --predictions C_PRED.jsonl --gold data/processed/<rel>/mode_A/validation.jsonl --out A_PRED.jsonl --manifest-out A_PRED.manifest.json`, then `compare` on mode A gold with `--ids data/splits/<rel>/primary_eval/validation_mode_C.ids`.
-- **Leakage subsets (§8):** `python scripts/build_leakage_subsets.py --mode A --split test --out DIR`. It writes `all`, `kept`, `excluded_train_video`, `excluded_other_leak` and `excluded_quality` ID lists, with counts 17,695 / 12,668 / 2,706 / 2,130 / 191.
+- **Leakage subsets (§8):**
+  - `python scripts/build_leakage_subsets.py --mode A --split test --out DIR` writes the `all`, `kept`, `excluded_train_video`, `excluded_other_leak` and `excluded_quality` ID lists, with counts 17,695 / 12,668 / 2,706 / 2,130 / 191.
+  - Predict the whole official test once: `python scripts/train_crf.py predict --model crf_mode_a_improved_full_01.joblib --input data/processed/<rel>/mode_A/test.jsonl --ids DIR/all.ids --output ALL.jsonl --manifest-out ALL.manifest.json`. Its primary-list predictions are identical to the test run above.
+  - Score once per list: `python scripts/evaluate_models.py score --gold data/processed/<rel>/mode_A/test.jsonl --ids DIR/<list>.ids --predictions ALL.jsonl --bootstrap 1000 --out OUT.json`. For the native rows, use `--gold data/processed/<rel>/benchmark_native/mode_A/test.jsonl`.
 - **Tables in this document:** `python scripts/reporting/build_m3_tables.py --split test --tau --out OUT.md` (§1–4, errors, confusion matrices).
   - `python scripts/reporting/build_m3_final_sections.py --manifests results/scores/crf_training_manifests --out OUT.md` gives §7–10.
   - `python scripts/reporting/build_ablation_table.py --out OUT.md` gives the §6 tables.
