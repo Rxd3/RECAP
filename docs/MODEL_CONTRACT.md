@@ -106,13 +106,16 @@ manifests are separate sidecars, not prediction manifests.
 
   | Suffix | Marker in the file | Class |
   | --- | --- | --- |
-  | `.json` | no `model_family`, and `"model_name": "hmm"` | `HMMModel` |
+  | `.json` | `"model_family": "hmm"`, or no `model_family` and `"model_name": "hmm"` | `HMMModel` |
   | `.json` | `"model_family": "hidden_event_lm"` | `HiddenEventLM` |
   | `.joblib`, `.pkl` | a dict with `"model_family": "crf"` | `CRFModel` |
   | `.joblib`, `.pkl` | a dict with `"model_family": "gap_classifier"` | `GapClassifier` |
 
   A `model_family` field wins over `model_name`. A family from the other suffix's table (for example
   `"crf"` in a `.json` file) is refused. `.joblib` and `.pkl` files are pickles: load trusted files only.
+- **Order of the checks:** suffix, then folder, then missing file, then reading the file, then the
+  family marker. So a folder without a model suffix gets the suffix error
+  (`unsupported model file: <name> (expected .json, .joblib or .pkl)`), not the folder error.
 - **Loading errors** (one line, file name only):
   - another suffix: `ValueError` `unsupported model file: <name> (expected .json, .joblib or .pkl)`;
   - a folder: `IsADirectoryError` `model path is a folder, not a file: <name>`;
