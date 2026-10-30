@@ -16,5 +16,5 @@ built from:
 Rules: label every number with its split and mode. The main numbers are test; validation numbers
 are model selection and must be labelled as such. Never rank mode B against mode C.
 
-Generated figures go under the ignored `presentation/assets/`. Every result graphic must trace to
-an evaluator output file.
+Generated figures stay out of Git (`presentation/assets/` is ignored). Every result graphic must
+trace to an evaluator output file in `results/scores/`.

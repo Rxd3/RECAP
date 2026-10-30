@@ -46,7 +46,6 @@ drive-download-*/
 !/data/**/.gitkeep
 !/artifacts/**/
 !/artifacts/**/README.md
-!/artifacts/**/.gitkeep
 !/experiments/runs/**/
 !/experiments/runs/**/README.md
 !/experiments/runs/**/.gitkeep
@@ -55,9 +54,6 @@ drive-download-*/
 !/results/**/.gitkeep
 # Evaluator JSON behind every reported number (Member 5); small, text only.
 !/results/scores/**/*.json
-!/presentation/assets/**/
-!/presentation/assets/**/README.md
-!/presentation/assets/**/.gitkeep
 
 # Models/dataset archives accidentally written elsewhere
 *.pkl

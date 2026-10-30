@@ -176,34 +176,3 @@ The label mode and `model_name` come from the saved artifact. `--manifest-out` w
    Training uses the `default_train` lists and validation uses the `primary_eval` lists. Those primary lists share no source video, no exact or normalized transcript and no qualifying six-gram with their reference splits ([DATASET_PLAN.md](DATASET_PLAN.md), [DATA_RELEASE_VALIDATION.md](DATA_RELEASE_VALIDATION.md)). Channel overlap remains: 149 of 522 channels span the original splits.
 3. **Mode C Transition Sparsity:**  
    The improved Mode C model serializes 143 transition parameters instead of 144. The transition $(\text{COMMA\|ALL_UPPER} \to \text{QUESTION\|ALL_UPPER})$ occurs 0 times in the training corpus; under L1 regularization ($c_1=0.1$), its weight was driven to exact zero and omitted from the sparse parameter dictionary.
-
----
-
-## 11. Instructions for Member 5 (historical, validation handoff)
-
-*Historical:* this section was written for the validation handoff. Member 5 later also used the six
-`.joblib` models: to reproduce the validation files byte for byte and to predict test and test_amb
-once ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md), Provenance).
-
-Member 5 should score the six prediction files using the official evaluation suite:
-
-### 11.1. Required Evaluation Inputs
-1. **Prediction Files:** Extracted from `recap_m3_handoff_eval/predictions/` (or `recap_m3_handoff_eval.zip`).
-2. **Gold Labels:**
-   - Mode A: `data/processed/sponspeech-m1-v2/mode_A/validation.jsonl`
-   - Mode B: `data/processed/sponspeech-m1-v2/mode_B/validation.jsonl`
-   - Mode C: `data/processed/sponspeech-m1-v2/mode_C/validation.jsonl`
-3. **Official Validation ID Splits:**
-   - Mode A/B: `data/splits/sponspeech-m1-v2/primary_eval/validation_mode_A.ids` (20,040 IDs)
-   - Mode C: `data/splits/sponspeech-m1-v2/primary_eval/validation_mode_C.ids` (19,936 IDs)
-4. **Mode C Casing/Joint Evaluation Mask:**  
-   `data/processed/sponspeech-m1-v2/masks/case_joint/validation.jsonl`  
-   (SHA-256: `6dd419e4f45ebfc91d4bc74eb114e99d5a2798c0410bb4f26453ec3ab832e2f9`).  
-   *Tokens where `eval_mask == False` must be excluded from joint and casing scoring.*
-
-### 11.2. Planned Evaluations & Metrics
-- **Controlled Preset Comparison:** Compare `basic` vs `improved` within each individual mode:
-  - Mode A: Standard Punctuation non-O macro F1 and micro F1.
-  - Mode B: Extended Punctuation non-O macro F1 and micro F1 (8 punctuation classes).
-  - Mode C: Joint punctuation-and-casing macro/micro F1, masked joint F1, and decomposed casing F1.
-- **Scoring inputs:** scoring itself reads only prediction lines and gold label streams; the model weights were needed to produce the test predictions and the threshold-decoded runs.

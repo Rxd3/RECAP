@@ -177,8 +177,8 @@ report `test` and `test_amb` separately (they share 25 videos).
 | `data/` | Ignored local data: `data/raw/`, `data/processed/`, `data/splits/`. `data/README.md` explains how to rebuild or download a release. |
 | `docs/` | Contracts, dataset documentation, decisions, evaluation protocol and results; listed below. Index: `docs/README.md`. |
 | `experiments/` | Model notes and runbooks: `experiments/HMM_NOTES.md`, `experiments/HMM_RUNBOOK.md`, `experiments/HMM_RESULTS.md`, `experiments/CRF_NOTES.md`, `experiments/FEATURE_NOTES.md`. Run outputs go to the ignored `experiments/runs/`. |
-| `presentation/` | Presentation workspace; the outline is `docs/PRESENTATION_OUTLINE.md`. |
-| `results/` | `results/scores/` holds the committed evaluator JSON behind every reported number (`results/scores/README.md`), including Member 3's six CRF training manifests in `results/scores/crf_training_manifests/`. Local outputs in `results/predictions/`, `results/tables/` and `results/figures/` are ignored. |
+| `presentation/` | Presentation workspace (`presentation/README.md`); the outline is `docs/PRESENTATION_OUTLINE.md`. |
+| `results/` | `results/scores/` holds the committed evaluator JSON behind every reported number (`results/scores/README.md`), including Member 3's six CRF training manifests in `results/scores/crf_training_manifests/`. Local outputs in `results/predictions/` and `results/tables/` (kept as empty folders, because the evaluator never creates folders) are ignored. |
 | `scripts/` | Command-line entry points; see the table below and `scripts/README.md`. |
 | `src/punct_restore/` | The Python package; every module is listed in the package table below. |
 | `tests/` | The pytest suite for data, models, features, CLIs and evaluation; fixtures only. |
@@ -246,7 +246,6 @@ Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM
 | `docs/RELATED_WORK.md` | Prior work, checked online, and how RECAP differs. |
 | `docs/REPRODUCIBILITY.md` | Every command, with the environments actually used. |
 | `docs/PRESENTATION_OUTLINE.md` | Four-slide outline with verified numbers. |
-| `docs/GIT_WORKFLOW.md` | Clone, branch, commit, push, pull-request and conflict commands. |
 
 ## Team
 
@@ -259,8 +258,7 @@ Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM
 | 5 Abd Raouf | Evaluation and error analysis | `feat/m5-evaluation` | `contributions/AbdRaouf_STUDENT_ID_afel6.md` |
 | 6 Abdulla | Integration and presentation | `feat/m6-integration-presentation` | `contributions/Abdulla_STUDENT_ID_abdu3061.md` |
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) for the
-branch and pull-request workflow.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch, commit and pull-request rules.
 
 ## Licence
 

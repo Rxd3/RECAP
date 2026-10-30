@@ -1,8 +1,8 @@
 # Local artifacts
 
 Owner: Member 6 coordinates storage; each model owner supplies its artifacts.
-`models/` is empty and ignored apart from its directory marker. Do not commit
-weights, checkpoints, serialized estimators, or downloaded pretrained models.
+Everything here except this README is ignored. Do not commit weights, checkpoints, serialized
+estimators, or downloaded pretrained models.
 
 Handoffs need a versioned artifact location, SHA-256, model family and
 mode, ordered labels, input/preprocessing contract version, feature settings,
