@@ -1,0 +1,22 @@
+{
+ "kind": "hmm",
+ "mode": "B",
+ "model": "model.json",
+ "load_seconds": 0.2049904998857528,
+ "sequences": 20040,
+ "tokens": 618771,
+ "predict_seconds": [
+  7.462609099922702,
+  7.428941899910569,
+  7.750878699822351
+ ],
+ "median_seconds": 7.462609099922702,
+ "tokens_per_second": 82916.17472050215,
+ "ms_per_sequence": 0.3723856836288773,
+ "hardware": {
+  "processor": "Intel64 Family 6 Model 158 Stepping 10, GenuineIntel",
+  "python": "3.13.1"
+ },
+ "fit_seconds": 6.3116947000380605,
+ "fit_sequences": 142722
+}

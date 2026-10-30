@@ -3,8 +3,10 @@
 Owner: Member 5. Reviewers: Members 1–4 and 6. The core of this protocol is
 implemented in `src/punct_restore/evaluation/` and `scripts/evaluate_models.py`
 (2026-10-29), including grouped bootstrap intervals, paired model comparison,
-error-example export, the prediction-manifest check and the data-policy record. The runtime table is
-still planned (see below). No results are recorded in this document.
+error-example export, the prediction-manifest check and the data-policy record. This document holds
+the rules. The results are in [EVALUATION_RESULTS.md](EVALUATION_RESULTS.md) (HMM, shortcut) and
+[EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) (CRF, extensions), and the evaluator outputs behind them are
+in [`results/scores/`](../results/scores/README.md).
 
 ## Data discipline and alignment
 
@@ -178,15 +180,22 @@ talk/document group level where practical; describe dependence and uncertainty.
 - **Error examples:** `errors [--block NAME] [--per-pair K] [--seed S]` counts every wrong position per (gold, predicted) pair. It then draws up to K examples per pair at random with the seed, and writes them as text rebuilt with the gold and with the predicted labels.
 - **Prediction manifest:** `score --manifest predictions.manifest.json` checks that the manifest's `model_name`, `label_mode`, `ordered_labels`, `predictions_sha256` and `input.sha256` match the scored predictions, the vocabulary and the gold file. These are the HMM's field names, which every model should mirror. The manifest's identity is then recorded in the report.
 
-**Runtime table: measured** for the HMM ([EVALUATION_RESULTS.md](EVALUATION_RESULTS.md), section 7).
+**Runtime table: measured** for the HMM ([EVALUATION_RESULTS.md](EVALUATION_RESULTS.md), section 7) and the CRF ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md), section 10).
 - **Method:** the HMM was re-timed on one machine, single process, with no other jobs running: the median of 3 prediction passes over the primary validation set after a warm-up, plus one in-process fit on `default_train`.
-- **Every later model is timed the same way.** The HMM bundle's own `runtime.json` comes from a different machine, so it is not compared directly.
-- **Proposed manifest field for future runs:** `runtime: {fit_seconds, predict_seconds, predicted_tokens, hardware}`.
+- **The CRF prediction speed was timed the same way** with `scripts/reporting/time_models.py`.
+- **Fit times come from different machines.** The CRF fit times come from Member 3's training manifests (his machine), and the HMM bundle's own `runtime.json` comes from another machine. Neither is compared directly with the re-timed rows.
 
-## Required future output bundle
+## Output bundle
 
-For each run: validated prediction JSONL + manifest, metric settings and complete
-class support, tables, confusion matrices, error examples, runtime metadata,
-code/environment/configuration/data hashes, selection record and limitations.
-Store under ignored `results/` paths; share a versioned bundle. All numerical
-result files are absent initially. Never enter scores before an actual run.
+Each run produces these outputs:
+- a validated prediction JSONL with its manifest;
+- metric settings and complete class support;
+- tables, confusion matrices and error examples;
+- runtime metadata;
+- code, environment, configuration and data hashes;
+- the selection record and limitations.
+
+Where each output is kept:
+- The evaluator JSON outputs are committed in [`results/scores/`](../results/scores/README.md).
+- Predictions and trained models are shared through the team Drive with checksums; see [REPRODUCIBILITY.md](REPRODUCIBILITY.md).
+- A score enters a document only after an actual run produced it.
