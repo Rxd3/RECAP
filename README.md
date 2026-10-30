@@ -175,7 +175,7 @@ report `test` and `test_amb` separately (they share 25 videos).
 | `configs/` | `configs/label_sets.yaml` (label vocabularies), `configs/datasets.yaml` (source checklist), `configs/hmm_sponspeech_v2.yaml` (frozen HMM search). |
 | `contributions/` | One file per team member: role, branch, pull request, commits and files. |
 | `data/` | Ignored local data: `data/raw/`, `data/processed/`, `data/splits/`. `data/README.md` explains how to rebuild or download a release. |
-| `docs/` | Contracts, dataset documentation, decisions, evaluation protocol and results; listed below. |
+| `docs/` | Contracts, dataset documentation, decisions, evaluation protocol and results; listed below. Index: `docs/README.md`. |
 | `experiments/` | Model notes and runbooks: `experiments/HMM_NOTES.md`, `experiments/HMM_RUNBOOK.md`, `experiments/HMM_RESULTS.md`, `experiments/CRF_NOTES.md`, `experiments/FEATURE_NOTES.md`. Run outputs go to the ignored `experiments/runs/`. |
 | `presentation/` | Presentation workspace; the outline is `docs/PRESENTATION_OUTLINE.md`. |
 | `results/` | `results/scores/` holds the committed evaluator JSON behind every reported number (`results/scores/README.md`). Local outputs in `results/predictions/`, `results/tables/` and `results/figures/` are ignored. |
