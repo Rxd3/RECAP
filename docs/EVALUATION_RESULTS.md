@@ -268,6 +268,22 @@ Hardware: Intel64 Family 6 Model 158 Stepping 10, GenuineIntel, Python 3.13.1, o
 | HMM | B | 6.3 | 0.20 | 7.46 | 82,916 | 0.372 |
 | HMM | C | 5.4 | 0.14 | 13.30 | 46,383 | 0.667 |
 
+## 8. Supplementary: leakage and the native benchmark (HMM, mode A, test)
+
+**Supplementary rows; the primary result is still section 1.** They use the same frozen HMM test predictions, which cover all 17,695 official test utterances. Numbers are macro F1 % with grouped-bootstrap 95% intervals (1,000 resamples).
+
+| Scored set | Gold labels | Utterances | Macro F1 | non_final |
+|---|---|---|---|---|
+| Official test, all utterances | canonical | 17,695 | 34.98 (33.01–36.83) | 9.06 |
+| Leakage-controlled test | canonical | 12,668 | 34.74 (32.46–36.90) | 9.14 |
+| Excluded part (shared videos and near-duplicates) | canonical | 5,027 | 35.40 (31.47–38.42) | 8.63 |
+| Official test, all utterances | SponSpeech native | 17,695 | 35.10 (33.15–36.95) | 9.19 |
+| Primary test (leakage-controlled, mode A policy) | canonical | 12,321 | 35.12 (32.80–37.31) | 9.13 |
+
+- **What leakage is.** The official test shares videos and near-duplicate texts with train and dev; 5,027 of 17,695 utterances (28.4%) are excluded from the leakage-controlled set.
+- **The HMM barely profits from leakage.** On the excluded utterances it scores 35.40, against 34.74 on the clean ones, and the intervals overlap widely. A first-order HMM has little context to memorise.
+- **Native labels.** Scoring against SponSpeech's own 4-class labels changes the result by +0.12 points. Our canonical label policy is therefore not what drives the HMM's score.
+
 ## Limitations
 
 - **QUESTION|ALL_UPPER** has only 9 test tokens, so it can move mode C's 12-class macro by about 2.8 points. Never rank mode C models on a joint difference smaller than its interval.
@@ -293,3 +309,4 @@ python scripts/evaluate_models.py score --gold data/processed/sponspeech-m1-v2/m
 - **Paired comparisons:** `compare --predictions-a A --predictions-b B --bootstrap 1000`.
 - **Error pairs:** `errors --per-pair 3`.
 - **Report generator and timing script:** shared in the Member 5 results bundle.
+- **Section 8 ID lists:** the "all utterances" list is every `sample_id` in `mode_A/test.jsonl`. The "excluded" list is that list minus `splits/sponspeech-m1-v2/leakage_controlled/test.ids`. The native rows use `--gold data/processed/sponspeech-m1-v2/benchmark_native/mode_A/test.jsonl`.
