@@ -185,7 +185,39 @@ never reads test; score each file with `evaluate_models.py score` (section 6).
 Mode C `tune` also takes `--masks <processed>/masks/case_joint/validation.jsonl`. τ is chosen on
 validation; test is predicted once with the frozen τ.
 
-## 8. Demo
+## 8. Studies: joint vs punctuation-only (H1) and leakage subsets
+
+```text
+python scripts/project_joint.py --predictions <mode C validation predictions>.jsonl \
+    --gold <processed>/mode_A/validation.jsonl \
+    --out experiments/runs/h1_A_from_C.jsonl --manifest-out experiments/runs/h1_A_from_C.manifest.json
+python scripts/evaluate_models.py compare --gold <processed>/mode_A/validation.jsonl \
+    --ids <splits>/primary_eval/validation_mode_C.ids \
+    --predictions-a <mode A validation predictions>.jsonl --predictions-b experiments/runs/h1_A_from_C.jsonl \
+    --bootstrap 1000 --seed 2026 --out experiments/runs/h1_compare.json
+python scripts/build_leakage_subsets.py --mode A --split test --out experiments/runs/leakage_test_A
+```
+
+The leakage command writes `all.ids`, `kept.ids`, `excluded_train_video.ids`, `excluded_other_leak.ids`
+and `excluded_quality.ids` with `counts.json`. For mode A test the counts are 17,695 / 12,668 / 2,706 /
+2,130 / 191 ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §8). Score each list with
+`evaluate_models.py score --ids`.
+
+## 9. Tables and runtime
+
+```text
+python scripts/reporting/build_m3_tables.py --split test --tau --out experiments/runs/crf_test_tables.md
+python scripts/reporting/build_m3_final_sections.py --manifests results/scores/crf_training_manifests \
+    --out experiments/runs/crf_sections_7_10.md
+python scripts/reporting/build_ablation_table.py --out experiments/runs/ablation_tables.md
+python scripts/reporting/time_models.py --kind crf --model <model>.joblib --mode A --out experiments/runs/runtime_crf_A.json
+```
+
+The first three read only the committed JSON in `results/scores/` and the committed training manifests;
+they reproduce the tables of [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) (§1–4 with errors and
+confusion matrices, §7–10, §6). `time_models.py` needs a saved model and the release.
+
+## 10. Demo
 
 The demo takes any saved model. To fit a small HMM `.json` for it (full mode C training list, about
 9 s, with the selected mode C settings), then restore one sentence:
@@ -209,7 +241,8 @@ exits 1 with one `error:` line.
 ## Reproduction levels reached
 
 1. **Recompute metrics from saved predictions.** Every reported table can be recomputed or checked
-   from the evaluator JSON committed in `results/scores/` ([results/scores/README.md](../results/scores/README.md)).
+   from the evaluator JSON committed in `results/scores/` ([results/scores/README.md](../results/scores/README.md)):
+   the `scripts/reporting/` builders regenerate the CRF tables from those files alone (section 9).
    HMM scores equal those in its own bundle ([EVALUATION_RESULTS.md](EVALUATION_RESULTS.md)). For the CRF, an independent from-scratch scorer
    confirmed the validation numbers only ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md), Provenance).
 2. **Rerun inference from saved models.** HMM: every full-split prediction was reproduced

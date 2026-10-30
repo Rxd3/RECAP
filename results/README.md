@@ -3,7 +3,9 @@
 Owner: Member 5. [`scores/`](scores/README.md) holds the committed evaluator JSON behind every
 number in the evaluation documents: HMM, CRF validation and test, threshold decoding, ablations,
 filler cue, H1, leakage and runtime. Each file records the SHA-256 of its inputs, so any table can be
-recomputed or checked from it.
+recomputed or checked from it. `scores/crf_training_manifests/` holds Member 3's six CRF training
+manifests (settings, data hashes, fit time, peak memory, environment). The scripts in
+`scripts/reporting/` rebuild the result tables from these files ([REPRODUCIBILITY.md](../docs/REPRODUCIBILITY.md)).
 
 `predictions/`, `tables/` and `figures/` hold only directory markers in Git. Local prediction JSONL,
 new score files and Markdown summaries written there are ignored; predictions are regenerated from the
