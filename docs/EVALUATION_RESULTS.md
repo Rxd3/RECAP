@@ -282,7 +282,7 @@ Hardware: Intel64 Family 6 Model 158 Stepping 10, GenuineIntel, Python 3.13.1, o
 
 - **What leakage is.** The official test shares videos and near-duplicate texts with train and dev; 5,027 of 17,695 utterances (28.4%) are excluded from the leakage-controlled set.
 - **The HMM barely profits from leakage.** On the excluded utterances it scores 35.40, against 34.74 on the clean ones, and the intervals overlap widely. A first-order HMM has little context to memorise.
-- **Native labels.** Scoring against SponSpeech's own 4-class labels changes the result by +0.12 points. Our canonical label policy is therefore not what drives the HMM's score.
+- **Native labels.** Scoring against SponSpeech's own 4-class labels changes the result by +0.13 points. Our canonical label policy is therefore not what drives the HMM's score.
 
 ## Limitations
 
