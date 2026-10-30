@@ -70,6 +70,8 @@ drive-download-*/
 *.arrow
 *.parquet
 *.jsonl
+# ...except the committed 10-utterance data sample
+!/data/sample/*.jsonl
 *.csv
 *.tsv
 *.zip

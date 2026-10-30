@@ -1,0 +1,149 @@
+{
+ "overlap": {
+  "leakage_controlled:test_amb_vs_test": {
+   "eval_records": 13184,
+   "identical_model_inputs": 576,
+   "identical_texts": 574,
+   "near_duplicates": 1463,
+   "records_in_shared_videos": 1637,
+   "shared_videos": 25
+  },
+  "leakage_controlled:test_amb_vs_train": {
+   "eval_records": 13184,
+   "identical_model_inputs": 0,
+   "identical_texts": 0,
+   "near_duplicates": 0,
+   "records_in_shared_videos": 0,
+   "shared_videos": 0
+  },
+  "leakage_controlled:test_amb_vs_validation": {
+   "eval_records": 13184,
+   "identical_model_inputs": 0,
+   "identical_texts": 0,
+   "near_duplicates": 0,
+   "records_in_shared_videos": 0,
+   "shared_videos": 0
+  },
+  "leakage_controlled:test_vs_train": {
+   "eval_records": 12668,
+   "identical_model_inputs": 0,
+   "identical_texts": 0,
+   "near_duplicates": 0,
+   "records_in_shared_videos": 0,
+   "shared_videos": 0
+  },
+  "leakage_controlled:test_vs_validation": {
+   "eval_records": 12668,
+   "identical_model_inputs": 0,
+   "identical_texts": 0,
+   "near_duplicates": 0,
+   "records_in_shared_videos": 0,
+   "shared_videos": 0
+  },
+  "leakage_controlled:validation_vs_train": {
+   "eval_records": 20532,
+   "identical_model_inputs": 0,
+   "identical_texts": 0,
+   "near_duplicates": 0,
+   "records_in_shared_videos": 0,
+   "shared_videos": 0
+  },
+  "official:test_amb_vs_test": {
+   "eval_records": 16472,
+   "identical_model_inputs": 594,
+   "identical_texts": 587,
+   "near_duplicates": 1521,
+   "records_in_shared_videos": 1664,
+   "shared_videos": 26
+  },
+  "official:test_amb_vs_train": {
+   "eval_records": 16472,
+   "identical_model_inputs": 542,
+   "identical_texts": 531,
+   "near_duplicates": 1311,
+   "records_in_shared_videos": 1420,
+   "shared_videos": 52
+  },
+  "official:test_amb_vs_validation": {
+   "eval_records": 16472,
+   "identical_model_inputs": 544,
+   "identical_texts": 539,
+   "near_duplicates": 1572,
+   "records_in_shared_videos": 1676,
+   "shared_videos": 26
+  },
+  "official:test_vs_train": {
+   "eval_records": 17695,
+   "identical_model_inputs": 998,
+   "identical_texts": 986,
+   "near_duplicates": 2527,
+   "records_in_shared_videos": 2713,
+   "shared_videos": 36
+  },
+  "official:test_vs_validation": {
+   "eval_records": 17695,
+   "identical_model_inputs": 727,
+   "identical_texts": 712,
+   "near_duplicates": 1853,
+   "records_in_shared_videos": 2003,
+   "shared_videos": 13
+  },
+  "official:validation_vs_train": {
+   "eval_records": 25252,
+   "identical_model_inputs": 1700,
+   "identical_texts": 1683,
+   "near_duplicates": 4210,
+   "records_in_shared_videos": 4390,
+   "shared_videos": 54
+  }
+ },
+ "subsets": {
+  "test": {
+   "dropped_by_reason": {
+    "identical_model_input_other_video": 13,
+    "identical_text_other_video": 24,
+    "low_comma_or_tts_source": 191,
+    "near_duplicate_other_video": 83,
+    "shared_video": 4716
+   },
+   "kept": 12668,
+   "kept_videos": 153,
+   "official_records": 17695,
+   "reference": [
+    "train",
+    "validation"
+   ]
+  },
+  "test_amb": {
+   "dropped_by_reason": {
+    "identical_model_input_other_video": 8,
+    "identical_text_other_video": 16,
+    "low_comma_or_tts_source": 79,
+    "near_duplicate_other_video": 89,
+    "shared_video": 3096
+   },
+   "kept": 13184,
+   "kept_videos": 316,
+   "official_records": 16472,
+   "reference": [
+    "train",
+    "validation"
+   ]
+  },
+  "validation": {
+   "dropped_by_reason": {
+    "identical_model_input_other_video": 15,
+    "identical_text_other_video": 29,
+    "low_comma_or_tts_source": 171,
+    "near_duplicate_other_video": 115,
+    "shared_video": 4390
+   },
+   "kept": 20532,
+   "kept_videos": 218,
+   "official_records": 25252,
+   "reference": [
+    "train"
+   ]
+  }
+ }
+}

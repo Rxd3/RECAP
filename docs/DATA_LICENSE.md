@@ -14,8 +14,8 @@ it comes from SponSpeech and keeps SponSpeech's licence.
 
 ## What this repository holds
 
-No dataset files are committed: `data/raw/`, `data/processed/` and `data/splits/` are ignored
-by Git ([data/README.md](../data/README.md)). The release `sponspeech-m1-v2` is rebuilt from the
+No dataset files are committed apart from a 10-utterance sample (`data/sample/`) and small release metadata (`data/release_metadata/`); `results/scores/*.errors.json` contain short SponSpeech excerpts as error examples (CC BY-NC 4.0, attribution in this file). `data/raw/`, `data/processed/` and `data/splits/` are
+ignored by Git ([data/README.md](../data/README.md)). The release `sponspeech-m1-v2` is rebuilt from the
 official archive with `scripts/prepare_data.py`, or shared by the team as an archive.
 
 ## Changes made to the source (CC BY-NC 4.0 asks that changes be indicated)

@@ -8,7 +8,8 @@ All files were written by `scripts/evaluate_models.py` (`score`, `compare`, `err
 
 **Format:**
 - Scores are fractions with six decimals; the docs show them as percentages rounded half-up.
-- Each file records the sha256 of its gold, ID-list, mask and prediction inputs. The predictions themselves are not committed: they can be regenerated from the shared models (see [REPRODUCIBILITY.md](../../docs/REPRODUCIBILITY.md)).
+- The score, compare and errors files record the sha256 of their gold, ID-list, mask and prediction inputs. `threshold/tau_<mode>.json` records only `model_sha256`, and `runtime/*.json` only the model file name. The predictions themselves are not committed: they can be regenerated from the shared models (see [REPRODUCIBILITY.md](../../docs/REPRODUCIBILITY.md)).
+- **Data excerpts:** the `*.errors.json` files contain short SponSpeech excerpts as error examples (gold and predicted text around each error). They are CC BY-NC 4.0, with the upstream attribution in [DATA_LICENSE.md](../../docs/DATA_LICENSE.md).
 
 | Folder | Contents |
 |---|---|

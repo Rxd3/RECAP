@@ -157,7 +157,7 @@ Every command, from rebuilding the data to scoring a model, is in
 ## Data access
 
 - **Upstream:** SponSpeech (Liu & Beigi, 2024, [arXiv:2409.11241](https://arxiv.org/abs/2409.11241)),
-  CC BY-NC 4.0. No data is committed to this repository.
+  CC BY-NC 4.0. No dataset files are committed apart from a 10-utterance sample (`data/sample/`) and small release metadata (`data/release_metadata/`); `results/scores/*.errors.json` contain short SponSpeech excerpts as error examples (CC BY-NC 4.0, attribution in [DATA_LICENSE.md](docs/DATA_LICENSE.md)).
 - **Rebuild from source:** `scripts/prepare_data.py` with `extract` reads only about 97 MB of pinned
   byte ranges from the official archive; `build` creates release `sponspeech-m1-v2`. Steps
   and checksums: [data/README.md](data/README.md).
@@ -178,7 +178,7 @@ report `test` and `test_amb` separately (they share 25 videos).
 | `artifacts/` | Ignored local model and data bundles (handoff ZIPs). Only `artifacts/README.md` is tracked. |
 | `configs/` | `configs/label_sets.yaml` (label vocabularies), `configs/datasets.yaml` (source checklist), `configs/hmm_sponspeech_v2.yaml` (frozen HMM search). |
 | `contributions/` | One file per team member: role, branch, pull request, commits and files. |
-| `data/` | Ignored local data: `data/raw/`, `data/processed/`, `data/splits/`. `data/README.md` explains how to rebuild or download a release. |
+| `data/` | Ignored local data: `data/raw/`, `data/processed/`, `data/splits/`. Committed: a 10-utterance sample in `data/sample/` and release metadata in `data/release_metadata/`. `data/README.md` explains how to rebuild or download a release. |
 | `docs/` | Contracts, dataset documentation, decisions, evaluation protocol and results; listed below. Index: `docs/README.md`. |
 | `experiments/` | Model notes and runbooks: `experiments/HMM_NOTES.md`, `experiments/HMM_RUNBOOK.md`, `experiments/HMM_RESULTS.md`, `experiments/CRF_NOTES.md`, `experiments/FEATURE_NOTES.md`. Run outputs go to the ignored `experiments/runs/`. |
 | `presentation/` | Presentation workspace (`presentation/README.md`); the outline is `docs/PRESENTATION_OUTLINE.md`. |

@@ -2,8 +2,10 @@
 
 Owner: Member 5. [`scores/`](scores/README.md) holds the committed evaluator JSON behind every
 number in the evaluation documents: HMM, CRF validation and test, threshold decoding, ablations,
-filler cue, H1, leakage and runtime. Each file records the SHA-256 of its inputs, so any table can be
-recomputed or checked from it. `scores/crf_training_manifests/` holds Member 3's six CRF training
+filler cue, H1, leakage and runtime. The score, compare and errors files record the SHA-256 of their
+inputs (the τ files record the model hash, the runtime files the model file name), so any table can be
+recomputed or checked from them. The `*.errors.json` files contain short SponSpeech excerpts (CC BY-NC 4.0,
+attribution in [DATA_LICENSE.md](../docs/DATA_LICENSE.md)). `scores/crf_training_manifests/` holds Member 3's six CRF training
 manifests (settings, data hashes, fit time, peak memory, environment). The scripts in
 `scripts/reporting/` rebuild the result tables from these files ([REPRODUCIBILITY.md](../docs/REPRODUCIBILITY.md)).
 
