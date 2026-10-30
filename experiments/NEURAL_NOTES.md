@@ -1,11 +1,26 @@
 # Neural comparisons
 
-Status on 2026-10-30: implementation and CPU checks complete. No real training,
-selection or held-out prediction has run. The requested RTX 5070 is not exposed
-in this workspace: `nvidia-smi` reports an NVIDIA GeForce RTX 4050 Laptop GPU,
-6,141 MiB VRAM, driver 591.74. Access to the RTX 5070 was requested. The Drive
-connector is not connected; uploading a finished handoff and contacting Member 5
-remain pending. The deadline is Saturday 2026-10-31 at 18:00 +03:00.
+Status on 2026-10-30: the study has moved to the requested local Windows PC.
+`nvidia-smi` confirms an NVIDIA GeForce RTX 5070, 12,227 MiB VRAM, driver 617.42.
+The isolated `.venv` uses 64-bit Python 3.13.14 and torch 2.9.1+cu128; a real
+512-by-512 float32 CUDA matrix multiplication matched the CPU calculation
+(maximum absolute error 0.0). The GPU has compute capability 12.0, the wheel
+includes sm_120, and bf16 is supported. The machine has 16 GB physical RAM;
+bootstrap found about 193 GB free disk. Preflight is complete. Finished real
+selections are recorded in the frozen-run entries below; held-out prediction and
+the final handoff remain pending.
+Drive/Gmail account connections for final delivery remain pending; GitHub access
+as Rxd3 works through the PC's existing credential. The deadline is Saturday
+2026-10-31 at 18:00 +03:00.
+
+The supplied ZIP, all six checksummed bundle members, all 27 processed files and
+all 20 split files passed SHA-256 verification. Both release checksum manifests
+match their published repository copies byte for byte. Held-out files were read
+only as bytes for checksums, with no examples inspected. The selected training
+lists contain 142,722 utterances / 4,137,833 words for A and B, and 141,745 /
+4,112,054 for C. No training IDs were removed. Local operational evidence lives
+under ignored `artifacts/neural/`, including `RUN_STATUS.md`, environment freezes,
+CUDA/data verification JSON and durable job logs.
 
 ## Models and fixed settings
 
@@ -91,7 +106,34 @@ The handoff was unpacked under ignored artifact storage; all seven bundle file
 checksums passed, and the processed/split checksum lists match the already
 unpacked release in `data/`.
 
-Verification on Python 3.13.5, Windows: full suite with `.[dev,neural]`:
+RTX 5070 PC verification on Python 3.13.14 / Windows: full `.[dev,neural]` suite
+**1,338 passed in 46.30 s**. A separate clean `tmp/base-test-env` with `.[dev]`
+and torch confirmed absent passed **1,331 tests, 1 skipped in 36.72 s**.
+`pip check` passes. Current neural versions are torch 2.9.1+cu128, transformers
+4.57.3, sentencepiece 0.2.1, tokenizers 0.22.2 and safetensors 0.8.0. Verification
+uses four OpenMP threads; tensor fixtures remain CPU-only. Logs and complete
+environment freezes are retained under ignored `artifacts/neural/`.
+
+Both backbones passed a CUDA memory preflight on the four longest selected mode C
+training utterances (384, 224, 211 and 180 words), with gradient checkpointing,
+batch size 4 and an actual Adam update. Peak allocated memory was 2,227,245,568
+bytes for BERT fp16 and 5,070,731,264 bytes for FLAN-T5-base bf16; peak reserved
+memory was 2,407,530,496 and 5,406,457,856 bytes. BERT's fp16 scaler skipped two
+initial updates before allocating optimizer state; the final check includes that
+state (199 parameter entries; T5 282). Preflight weights were discarded. No
+backbone, batch or decoding fallback was required. Full runs retain batch 4,
+accumulation 4 and four T5 beams. The T5 tokenizer's generic 512-token warning
+does not change the documented untruncated relative-position policy; its
+534-piece preflight batch completed successfully.
+
+Resolved pretrained revisions, fixed for all subsequent real runs:
+`bert-base-uncased` at `86b5e0934494bd15c9632b12f734a8a67f723594`, and
+`google/flan-t5-base` at `7bcac572ce56db69c1ea7c8af255c5d7c9672fc2`.
+The optional download helper hf_xet 1.8.0 is installed in the isolated environment;
+required dependency pins are unchanged. Preliminary memory logs are preserved;
+the final gates are `bert-memory-verified.json` and `t5-memory-verified.json`.
+
+Previous laptop verification on Python 3.13.5, Windows: full suite with `.[dev,neural]`:
 **1,338 passed**. Separate fresh `.[dev]` environment, with torch confirmed absent:
 **1,331 passed, 1 skipped**. Optional tensor tests build a tiny BERT and T5 locally;
 they download no weights/tokenizers and use CPU only. The tiny complete training
@@ -103,9 +145,10 @@ sentencepiece 0.2.1, tokenizers 0.22.2 and safetensors 0.8.0.
 
 ## Limitations and remaining delivery work
 
-No empirical neural scores or GPU runtimes are claimed. Real training, selection,
-18 prediction JSONL files plus 18 manifests, official bootstrap scores, the final
-ZIP, its Drive upload and the link to Abd Raouf remain pending GPU access.
+The frozen-run records below are the source for empirical neural scores and GPU
+runtimes. The complete handoff of 18 prediction JSONL files plus 18 manifests,
+held-out bootstrap scores, the final ZIP, its Drive upload and the link to Abd
+Raouf remain pending.
 The packaging command requires all six frozen selections and all 18 prediction
 pairs, verifies them with the unchanged official scorer and bootstrap 1000, then
 creates a ZIP containing only predictions, manifests and SHA256SUMS.
