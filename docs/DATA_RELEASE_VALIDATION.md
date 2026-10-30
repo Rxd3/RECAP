@@ -73,8 +73,9 @@ in [DATASET_PLAN.md](DATASET_PLAN.md).
 - Local outputs: `data/processed/sponspeech-m1-v2/` and `data/splits/sponspeech-m1-v2/`.
 - Corrected archives, provenance, validation JSON, notes/license and checksums:
   `artifacts/data/sponspeech-m1-v2/`; combined archive: `artifacts/data/sponspeech-m1-v2-handoff.zip`.
-- Data stays outside Git. Upload the new bundle to the existing shared Drive folder;
-  version 2 is **not yet uploaded**. The old v1/rev2 Drive folder is superseded.
+- Data stays outside Git. Update 2026-10-30: version 2 is on the team Drive as
+  `dataset/sponspeech-m1-v2-handoff.zip` (https://drive.google.com/drive/folders/1jVl5pOQ6PvWPQ6MQxXLcbUksJJ1KDo5u); a downloaded copy is 224,632,100 bytes
+  with the SHA-256 in the table above. The old `sponspeech-m1-v1-rev2/` folder beside it is superseded.
 - Consumers must select the mode's `default_train` / `primary_eval` IDs explicitly;
   passing a split-manifest path to the existing HMM CLI only hashes that path.
 - The 174-test integration check verifies implementation compatibility. No official

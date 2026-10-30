@@ -13,11 +13,25 @@ from the repository root. Each script prints its full options with `--help`; see
 | --- | --- | --- | --- |
 | Data release `sponspeech-m1-v2` | CPython 3.13.5, Windows | PyYAML 6.0.3 | [DATA_RELEASE_VALIDATION.md](DATA_RELEASE_VALIDATION.md), [DECISIONS.md](DECISIONS.md) |
 | HMM study and verification | CPython 3.13.5 | PyYAML 6.0.3 (`requirements-hmm.txt`) | [HMM_RESULTS.md](../experiments/HMM_RESULTS.md), [HMM_RUNBOOK.md](../experiments/HMM_RUNBOOK.md) |
-| CRF full-data runs (Member 3) | 3.15.2, as recorded in the delivered training manifests | python-crfsuite 0.9.12, sklearn-crfsuite 0.5.0, joblib 1.6.0 | [CRF_NOTES.md](../experiments/CRF_NOTES.md) §1, [CRF_EXPERIMENTS.md](CRF_EXPERIMENTS.md) §2 |
+| CRF full-data runs (Member 3) | 3.15.2 as recorded by Member 3's manifests; Member 5 used 3.13.1 to reproduce and predict | python-crfsuite 0.9.12, sklearn-crfsuite 0.5.0, joblib 1.6.0 | [CRF_NOTES.md](../experiments/CRF_NOTES.md) §1, [CRF_EXPERIMENTS.md](CRF_EXPERIMENTS.md) §2 |
 | Scoring and runtime measurement (Member 5) | 3.13.1 | evaluator at the commits named in each report | [EVALUATION_RESULTS.md](EVALUATION_RESULTS.md) §7, [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §10 |
 
 No GPU or pretrained model is needed. `python -m pip install -e ".[dev]"` installs the package,
 its pinned runtime dependencies and pytest.
+
+**Hardware.** Training the improved CRF peaks at about 14.5 GB of RAM and takes 859–1,388 s per mode
+on Member 3's machine; the basic CRF needs about 7 GB and 335–875 s. Prediction runs on a normal laptop: under 0.67 ms per
+utterance for the improved CRF ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md), Provenance and
+§10). An HMM fit takes about 9 s ([HMM_RESULTS.md](../experiments/HMM_RESULTS.md)).
+
+## Where the data and trained models are
+
+| Item | Location | Check |
+| --- | --- | --- |
+| Data release `sponspeech-m1-v2` | team Drive [`dataset/`](https://drive.google.com/drive/folders/1jVl5pOQ6PvWPQ6MQxXLcbUksJJ1KDo5u), `sponspeech-m1-v2-handoff.zip` | SHA-256 `1e4b4a9504c68cd8…` ([data/README.md](../data/README.md)) |
+| HMM bundle (three selected models and the full study) | team Drive [`Models/`](https://drive.google.com/drive/folders/13bjpo8GLVOwTJFJoOsG97O_wSyVF5rsN), `hmm-sponspeech-v2-20261029.zip` | SHA-256 `4cdc5725b6538d87…`, 27,095,563 bytes ([HMM_RESULTS.md](../experiments/HMM_RESULTS.md)) |
+| CRF models (six `.joblib` files) | [`RECAP_M3_DRIVE_MODELS`](https://drive.google.com/drive/folders/1jSfe5U8yZJxseU7aA9p6ycQNoZCtx7e_), as shared by Member 3, with a `SHA256SUMS` file | per-model SHA-256 in [CRF_EXPERIMENTS.md](CRF_EXPERIMENTS.md) §7 |
+| Evaluator outputs behind every number | committed in `results/scores/` | each JSON records its input SHA-256s ([results/scores/README.md](../results/scores/README.md)) |
 
 ## 1. Environment and tests
 
@@ -173,17 +187,30 @@ validation; test is predicted once with the frozen τ.
 
 ## 8. Demo
 
+The demo takes any saved model. To fit a small HMM `.json` for it (full mode C training list, about
+9 s, with the selected mode C settings), then restore one sentence:
+
 ```text
-python scripts/run_demo.py --model-path <model.json or model.joblib> --text "hello everyone welcome to our presentation"
+python scripts/train_hmm.py --train data/processed/sponspeech-m1-v2/mode_C/train.jsonl \
+    --train-ids data/splits/sponspeech-m1-v2/default_train/mode_C.ids \
+    --output-dir experiments/runs/hmm_demo_C --label-mode C --smoothing 0.01 --min-token-count 2 \
+    --dataset-release-id sponspeech-m1-v2 --preprocessing-version m1-v2 --tokenizer-version m1-v2 \
+    --label-policy-version m1-v2 --split-manifest data/splits/sponspeech-m1-v2/SHA256SUMS \
+    --release-manifest data/processed/sponspeech-m1-v2/release_manifest.json
+python scripts/run_demo.py --model-path experiments/runs/hmm_demo_C/model.json --text "hello everyone welcome to our presentation"
 ```
+
+Mode C restores casing too; a mode A model (`mode_A` files, `--label-mode A --min-token-count 1`)
+restores punctuation only. A CRF `.joblib` from the Drive folder above works the same way.
 
 Without `--text`, the demo prompts for input. A missing or unsupported model, or unusable text,
 exits 1 with one `error:` line.
 
 ## Reproduction levels reached
 
-1. **Recompute metrics from saved predictions.** HMM scores equal those in its own bundle
-   ([EVALUATION_RESULTS.md](EVALUATION_RESULTS.md)). For the CRF, an independent from-scratch scorer
+1. **Recompute metrics from saved predictions.** Every reported table can be recomputed or checked
+   from the evaluator JSON committed in `results/scores/` ([results/scores/README.md](../results/scores/README.md)).
+   HMM scores equal those in its own bundle ([EVALUATION_RESULTS.md](EVALUATION_RESULTS.md)). For the CRF, an independent from-scratch scorer
    confirmed the validation numbers only ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md), Provenance).
 2. **Rerun inference from saved models.** HMM: every full-split prediction was reproduced
    ([HMM_RUNBOOK.md](../experiments/HMM_RUNBOOK.md)). CRF: all six validation prediction files were

@@ -52,8 +52,8 @@ Member 6 for portable handoff and artifact distribution. No model is required.
 contracts and regression tests. Provide the corrected `sponspeech-m1-v2` bundle
 from `artifacts/data/sponspeech-m1-v2/` through the shared Drive folder, then ask
 Members 2–6 to acknowledge its ID lists, checksums and documented limitations.
-The old `sponspeech-m1-v1-rev2` bundle is superseded. Drive upload and individual
-member acknowledgments remain pending; the team lead authorized this review.
+The old `sponspeech-m1-v1-rev2` bundle is superseded. The v2 handoff ZIP is on the team Drive
+(`dataset/`); individual member acknowledgments remain pending. The team lead authorized this review.
 
 ## Member 2 — HMM Baseline Raşit  
 

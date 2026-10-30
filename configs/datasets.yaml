@@ -58,4 +58,4 @@ release:
   current_release_id: sponspeech-m1-v2
   supersedes_release_id: sponspeech-m1-v1
   shared_location: https://drive.google.com/drive/folders/1ZKDNnRHXsLJf3UjOdKVgQ0bYpo12IQfH?usp=sharing
-  uploaded: false
+  uploaded: true

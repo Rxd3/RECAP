@@ -1,9 +1,13 @@
 # Evaluation outputs
 
-Owner: Member 5. `predictions/`, `tables/` and `figures/` hold only directory markers in Git.
-Evaluator outputs (prediction JSONL, score and compare JSON, Markdown summaries) are written here
-locally and are ignored. They are distributed through the team's shared Drive folder and the
-Member 5 results bundle, with SHA-256 sums. They are not committed.
+Owner: Member 5. [`scores/`](scores/README.md) holds the committed evaluator JSON behind every
+number in the evaluation documents: HMM, CRF validation and test, threshold decoding, ablations,
+filler cue, H1, leakage and runtime. Each file records the SHA-256 of its inputs, so any table can be
+recomputed or checked from it.
+
+`predictions/`, `tables/` and `figures/` hold only directory markers in Git. Local prediction JSONL,
+new score files and Markdown summaries written there are ignored; predictions are regenerated from the
+shared models ([REPRODUCIBILITY.md](../docs/REPRODUCIBILITY.md)).
 
 The reviewed results are tracked as documents:
 

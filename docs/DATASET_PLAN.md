@@ -2,8 +2,8 @@
 
 Owner: Member 1 (Mutasim). D1–D6 were approved by the team lead on 2026-10-28;
 corrections were reviewed on 2026-10-29. Current release **sponspeech-m1-v2** uses
-policy **m1-v2** and supersedes the v1/rev2 handoff. The corrected bundle is staged
-locally; its upload to the team's shared Drive folder remains pending.
+policy **m1-v2** and supersedes the v1/rev2 handoff. The corrected bundle is on the team
+Drive as `dataset/sponspeech-m1-v2-handoff.zip` ([data/README.md](../data/README.md)).
 See [release validation](DATA_RELEASE_VALIDATION.md), [decisions](DECISIONS.md)
 and [source/build commands](../data/README.md).
 
@@ -138,8 +138,8 @@ counts are in `stats.json` and `leakage_controlled/report.json`.
   and duplicate checks do not guarantee independence between every podcast source.
 - Low-comma, TTS, speaker/casing and punctuation rules are documented heuristics.
 - Canonical and native scores use different gold labels; distinguish them.
-- Corrected bundles/checksums are in `artifacts/data/sponspeech-m1-v2/`. Upload them
-  as a new Drive release, retain v1 as superseded, and obtain consumer acknowledgments.
+- The corrected bundle is on the team Drive next to the superseded v1 folder. Individual consumer
+  acknowledgments are not recorded.
 - Member 5 still needs to apply the documented casing/joint masks in the evaluator.
 
 No model was tuned or officially evaluated as part of this data review.

@@ -156,7 +156,7 @@ report `test` and `test_amb` separately (they share 25 videos).
 | `docs/` | Contracts, dataset documentation, decisions, evaluation protocol and results; listed below. |
 | `experiments/` | Model notes and runbooks: `experiments/HMM_NOTES.md`, `experiments/HMM_RUNBOOK.md`, `experiments/HMM_RESULTS.md`, `experiments/CRF_NOTES.md`, `experiments/FEATURE_NOTES.md`. Run outputs go to the ignored `experiments/runs/`. |
 | `presentation/` | Presentation workspace; the outline is `docs/PRESENTATION_OUTLINE.md`. |
-| `results/` | Ignored evaluator outputs: `results/predictions/`, `results/tables/`, `results/figures/`. |
+| `results/` | `results/scores/` holds the committed evaluator JSON behind every reported number (`results/scores/README.md`). Local outputs in `results/predictions/`, `results/tables/` and `results/figures/` are ignored. |
 | `scripts/` | Command-line entry points; see the table below and `scripts/README.md`. |
 | `src/punct_restore/` | The Python package; every module is listed in the package table below. |
 | `tests/` | The pytest suite for data, models, features, CLIs and evaluation; fixtures only. |
