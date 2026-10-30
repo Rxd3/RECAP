@@ -1,49 +1,66 @@
-#!/usr,bin/env python3
+#!/usr/bin/env python3
+"""CLI demo: restore punctuation and casing in unpunctuated text with a trained model.
+
+Usage:
+    python scripts/run_demo.py --model-path artifacts/models/<model>.json|.joblib --text "..."
+
+Without --text it starts an interactive prompt (type quit, exit or q to leave).
+Only load trusted artifacts: .joblib/.pkl model files are pickles and can run code on load.
 """
-CLI Demonstration Runner for Sequence Labeling.
-Usage: python scripts/run_demo.py --model-path artifacts/models/crf.joblib --config configs/mode_a.yaml
-"""
+
+from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from punct_restore.pipeline import ModelAdapter, RestorationPipeline
+
+ROOT = Path(__file__).resolve().parents[1]
+# Support the documented source-checkout command before an editable install.
+sys.path.insert(0, str(ROOT / "src"))
+from punct_restore.pipeline import ModelAdapter, RestorationPipeline  # noqa: E402
 
 
-def main():
-    parser = argparse.ArgumentParser(description="RECAP Punctuation & Casing Restoration CLI Demo")
-    parser.add_argument("--model-path", type=Path, required=True, help="Path to trained model artifact")
-    parser.add_argument("--config-path", type=Path, required=True, help="Path to experiment YAML config")
-    parser.add_argument("--input-text", type=str, default=None, help="Text to process")
-    
-    args = parser.parse_args()
+def _error_line(exc: Exception) -> str:
+    return "error: " + " ".join(str(exc).splitlines())
+
+
+def _interactive(pipeline: RestorationPipeline) -> None:
+    print("Type unpunctuated text (or 'quit' to exit):\n")
+    while True:
+        try:
+            line = input(">> ").strip()
+        except (KeyboardInterrupt, EOFError):
+            return
+        if line.lower() in ("quit", "exit", "q"):
+            return
+        if not line:
+            continue
+        try:
+            print(f"Restored: {pipeline.process_text(line)['restored_text']}\n")
+        except ValueError as exc:
+            print(_error_line(exc), file=sys.stderr)
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="RECAP punctuation and casing restoration demo")
+    parser.add_argument("--model-path", type=Path, required=True, help="trained model (.json, .joblib or .pkl)")
+    parser.add_argument("--text", type=str, default=None, help="text to restore (omit for interactive mode)")
+    args = parser.parse_args(argv)
 
     try:
-        adapter = ModelAdapter(model_artifact_path=args.model_path, config_path=args.config_path)
-        pipeline = RestorationPipeline(adapter=adapter)
-    except Exception as e:
-        print(f"[ERROR] Failed to initialize pipeline: {e}", file=sys.stderr)
-        sys.exit(1)
-
-    print("\n--- RECAP Interactive Demonstration ---")
-    if args.input_text:
-        result = pipeline.process_text(args.input_text)
-        print(f"Input:    {result['input_text']}")
-        print(f"Restored: {result['restored_text']}\n")
-    else:
-        print("Type unpunctuated text (or 'quit' to exit):\n")
-        while True:
-            try:
-                user_input = input(">> ").strip()
-                if user_input.lower() in ("quit", "exit", "q"):
-                    break
-                if not user_input:
-                    continue
-                result = pipeline.process_text(user_input)
-                print(f"Restored: {result['restored_text']}\n")
-            except (KeyboardInterrupt, EOFError):
-                break
+        pipeline = RestorationPipeline(ModelAdapter(args.model_path))
+        if args.text is None:
+            _interactive(pipeline)
+            return 0
+        result = pipeline.process_text(args.text)
+    except (ValueError, OSError) as exc:  # OSError covers FileNotFoundError and directories
+        print(_error_line(exc), file=sys.stderr)
+        return 1
+    print(f"Input:    {result['input_text']}")
+    print(f"Restored: {result['restored_text']}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
