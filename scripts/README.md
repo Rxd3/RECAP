@@ -27,7 +27,7 @@ read and write files, and report errors as one line on stderr. Full command sequ
 | `train_hidden_event_lm.py` | Team (final push) | Comparison | `train` fits a Stolcke-style hidden-event LM (mode C adds a unigram truecaser); `predict` writes predictions and, with `--manifest-out`, a manifest. |
 | `factor_predictions.py` | Team (final push) | Comparison | Joins mode A predictions and CASE predictions (a casing-only CRF) into mode C predictions with a manifest. |
 | `simulate_asr_noise.py` | Team (final push) | Robustness | Copies the validation or test inputs of every mode with simulated ASR word errors (deletion, homophone substitution, adjacent swap) at a target WER; labels and casing masks stay aligned. |
-| `run_demo.py` | Member 6 | Demo | Loads a saved HMM (`.json`) or CRF (`.joblib`, `.pkl`) through `src/punct_restore/pipeline.py` and prints the restored text; without `--text` it prompts interactively. |
+| `run_demo.py` | Member 6 | Demo | Loads a saved HMM or hidden-event LM (`.json`), or a CRF or gap classifier (`.joblib`, `.pkl`), through `src/punct_restore/pipeline.py` (CASE-mode CRFs are refused) and prints the restored text; without `--text` it prompts interactively. |
 
 ## Interfaces
 

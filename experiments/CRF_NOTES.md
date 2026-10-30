@@ -313,7 +313,7 @@ A teammate reported the following initial benchmark numbers from a local rebuild
 ## 10. Team Integration Interface Specification
 
 ### 10.1 Target Consumers
-- **Member 6's demo path:** `src/punct_restore/pipeline.py` loads a saved CRF with `CRFModel.load_model` and calls `predict_tokens`; `scripts/run_demo.py` wraps it. No web application was built.
+- **Member 6's demo path:** `src/punct_restore/pipeline.py` loads a saved CRF (`load_model` dispatches `.joblib`/`.pkl` files with `"model_family": "crf"` to `CRFModel.load_model`) and calls `predict`; `scripts/run_demo.py` wraps it. No web application was built.
 
 ### 10.2 Required Input Representation
 Input tokens must be:

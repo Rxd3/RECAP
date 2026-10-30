@@ -46,7 +46,8 @@ filler cue; the same `CRFModel` trains every preset.
 **CASE helper mode.** `CRFModel(label_mode="CASE")` trains a casing-only CRF whose target is
 `case_labels` (LOWER, FIRST_UPPER, ALL_UPPER); records still need `punct_labels` of token length. It is
 the casing half of the factored pipeline below. It is not a scoring mode: `train_crf.py --mode` and the
-evaluator accept only A, B and C, and `train_crf.py predict` refuses CASE artifacts.
+evaluator accept only A, B and C, and `train_crf.py predict` refuses CASE artifacts. The demo loads
+a CASE artifact but `ModelAdapter` refuses it: `unsupported label mode 'CASE' in model`.
 
 **Threshold decoding.** `decode_with_threshold(marginals, tau, *, priors=None, gamma=0.0)` in
 `src/punct_restore/models/threshold.py` labels a token non-O when 1 − P(O) > τ, where P(O) sums every
@@ -100,14 +101,35 @@ manifests are separate sidecars, not prediction manifests.
 
 ## Decoder: labels back to text (`src/punct_restore/pipeline.py`)
 
-- **Loading:** `load_model(path)` dispatches on the suffix: `.json` → `HMMModel.load_model`;
-  `.joblib` or `.pkl` → `CRFModel.load_model`; anything else raises `ValueError`. The demo therefore loads
-  the HMM and the CRFs only; a hidden-event LM or gap-classifier artifact is rejected by those loaders.
+- **Loading:** `load_model(path)` loads four model families. The suffix (any letter case) picks a
+  table, then a marker inside the file picks the class, which loads the file again:
+
+  | Suffix | Marker in the file | Class |
+  | --- | --- | --- |
+  | `.json` | no `model_family`, and `"model_name": "hmm"` | `HMMModel` |
+  | `.json` | `"model_family": "hidden_event_lm"` | `HiddenEventLM` |
+  | `.joblib`, `.pkl` | a dict with `"model_family": "crf"` | `CRFModel` |
+  | `.joblib`, `.pkl` | a dict with `"model_family": "gap_classifier"` | `GapClassifier` |
+
+  A `model_family` field wins over `model_name`. A family from the other suffix's table (for example
+  `"crf"` in a `.json` file) is refused. `.joblib` and `.pkl` files are pickles: load trusted files only.
+- **Loading errors** (one line, file name only):
+  - another suffix: `ValueError` `unsupported model file: <name> (expected .json, .joblib or .pkl)`;
+  - a folder: `IsADirectoryError` `model path is a folder, not a file: <name>`;
+  - a missing file: `FileNotFoundError` `model file not found: <name>`;
+  - a file that cannot be read: `OSError` `cannot read model file <name>: <reason>`;
+  - invalid JSON or a file that does not unpickle: `ValueError` `unsupported model file: <name> (unreadable)`;
+  - no dict, or a missing or unknown family: `ValueError` `unsupported model file: <name> (unknown model family)`.
+
+  After dispatch, the class loader's own errors pass through unchanged.
+- **Label mode:** `ModelAdapter` accepts models in modes A, B and C only. Any other mode, such as a
+  CASE-mode CRF, raises `ValueError` `unsupported label mode '<mode>' in model`.
 - **Input cleaning:** `RestorationPipeline(adapter).process_text(text)` splits on whitespace,
   lowercases each token and strips `,.?!:;-"` from its edges. Internal apostrophes and hyphens stay;
   empty input raises `ValueError`.
-- **Prediction:** `ModelAdapter(model_path)` builds one gold-free record and checks that the model
-  returns one label per token from the mode's vocabulary.
+- **Prediction:** `ModelAdapter(model_path)` builds one gold-free record
+  (`schema_version` 1, `sample_id`, `tokens`) and checks that the model returns one label per token from
+  the mode's vocabulary.
 - **Reconstruction** (`reconstruct`): a label splits on its first `|` into punctuation and casing (no
   `|` means LOWER). FIRST_UPPER capitalises the first character and ALL_UPPER the whole word. After the
   word, COMMA adds `,`, PERIOD `.`, QUESTION `?`, EXCLAMATION `!`, COLON `:`, SEMICOLON `;` and DASH
