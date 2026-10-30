@@ -516,7 +516,7 @@ The p-values are recomputed from the committed compare JSONs in `results/scores/
 
 ## Limitations
 
-- **CRF settings were not tuned.** Every model uses c1 = c2 = 0.1 and 100 L-BFGS iterations, and every fit stopped at the iteration cap. Only τ was tuned. Member 5's reference CRF, with different code and settings, scored 4.19 points higher on validation for mode A improved, so the gaps may move with tuning.
+- **CRF settings were not tuned.** Every model uses c1 = c2 = 0.1 and 100 L-BFGS iterations, and every fit stopped at the iteration cap. Only τ was tuned, so the gaps may move with other settings.
 - **Intervals cover sample variance only.** Each setting has one fit. The intervals are not adjusted for the number of comparisons; the Holm check above shows which conclusions survive.
 - **Ablation and filler models use a 50k-sequence sample.** Read only their differences; each comes from one fit.
 - **Rare classes stay low.** In mode B the improved CRF scores under 8 F1 on COLON, DASH, EXCLAMATION and SEMICOLON on test. `QUESTION|ALL_UPPER` has 9 test tokens.
