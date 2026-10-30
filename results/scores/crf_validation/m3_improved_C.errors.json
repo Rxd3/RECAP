@@ -1,0 +1,415 @@
+{
+ "block": "punctuation/all",
+ "errors_total": 46999,
+ "examples": [
+  {
+   "gold": "COMMA",
+   "gold_text": "Do they, are they, when these college students, go overseas and say like, We're going to help you. Are the \u2026",
+   "group_id": "DhptH3-KG7o",
+   "position": 7,
+   "pred": "O",
+   "pred_text": "Do they are they, when these college students go overseas and say, like, we're going to help you are the \u2026",
+   "sample_id": "sponspeech:dev:DhptH3-KG7o-209"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 I ended up majoring in communications, which is a great major for lawyers, or, you know, hopeful potential lawyers.",
+   "group_id": "Shetg-_QUpo",
+   "position": 44,
+   "pred": "O",
+   "pred_text": "\u2026 I ended up majoring in communications, which is a great major for lawyers or, you know, hopeful potential lawyers.",
+   "sample_id": "sponspeech:dev:Shetg-_QUpo-27"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 him immediately because we were getting dinged every three months on our fee, because we weren't hiring up. And I said well sir that's me. \u2026",
+   "group_id": "kRsB1irX_5E",
+   "position": 23,
+   "pred": "O",
+   "pred_text": "\u2026 him immediately because we were getting dinged every three months on our fee because we weren't hiring up and I said, Well, Sir, that's me. \u2026",
+   "sample_id": "sponspeech:dev:kRsB1irX_5E-144"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 this show a one hour show once a week, which this one day I thought, well, that'd be a good idea.",
+   "group_id": "Vy_Da5DC35I",
+   "position": 14,
+   "pred": "COMMA",
+   "pred_text": "\u2026 this show a one hour show once a week, which this one day, I thought, well, that'd be a good idea.",
+   "sample_id": "sponspeech:dev:Vy_Da5DC35I-72"
+  },
+  {
+   "gold": "O",
+   "gold_text": "And I tell them I don't do that, because I really hate when somebody does that \u2026",
+   "group_id": "bHncLbZH2A8",
+   "position": 3,
+   "pred": "COMMA",
+   "pred_text": "And I tell them, I don't do that because I really hate when somebody does that \u2026",
+   "sample_id": "sponspeech:dev:bHncLbZH2A8-185"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 podcasts are great, but all the podcasts, books, courses, none of it works unless we put into action, unless we work, right?",
+   "group_id": "vnLZxfRINj4",
+   "position": 30,
+   "pred": "COMMA",
+   "pred_text": "\u2026 podcasts are great, but all the podcasts books courses, none of it works, unless we put into action unless we work, right?",
+   "sample_id": "sponspeech:dev:vnLZxfRINj4-127"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 and maybe write a review because it helps other people find the podcast. And that's how we reach and help as many people as we \u2026",
+   "group_id": "BssWpDVrJvg",
+   "position": 75,
+   "pred": "O",
+   "pred_text": "\u2026 and maybe write a review because it helps other people find the podcast and that's how we reach and help as many people as we \u2026",
+   "sample_id": "sponspeech:dev:BssWpDVrJvg-53"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 all great projects have in common is a certain type of perception feeling. This second measure and equally important I might add to the first, \u2026",
+   "group_id": "KEzjsct_3xE",
+   "position": 16,
+   "pred": "O",
+   "pred_text": "\u2026 all great projects have in common is a certain type of perception feeling this second measure and equally important, I might add to the first \u2026",
+   "sample_id": "sponspeech:dev:KEzjsct_3xE-19"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 it's not about what the company is currently worth, which you can estimate. pretty well based on seed seed rounds um you have to guess \u2026",
+   "group_id": "r1lc2fmU_Rg",
+   "position": 19,
+   "pred": "O",
+   "pred_text": "\u2026 it's not about what the company is currently worth which you can estimate pretty well based on seed seed rounds, um, you have to guess \u2026",
+   "sample_id": "sponspeech:dev:r1lc2fmU_Rg-79"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 if I'm pronouncing that correctly, but it means wind or breath of heaven. So that blew my mind.",
+   "group_id": "OrKk9msRIVc",
+   "position": 15,
+   "pred": "COMMA",
+   "pred_text": "\u2026 if I'm pronouncing that correctly. But it means wind or breath of heaven, so that blew my mind.",
+   "sample_id": "sponspeech:dev:OrKk9msRIVc-161"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 and then the chemical treatment on the nets ruins, ruins the fishing environment. Right.",
+   "group_id": "X4pZA3OFJaI",
+   "position": 44,
+   "pred": "COMMA",
+   "pred_text": "\u2026 and then the chemical treatment on the nets ruins ruins the fishing environment, right?",
+   "sample_id": "sponspeech:dev:X4pZA3OFJaI-441"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "And in that sense, I see it as an area of huge opportunity. And I actually looking forward to some of the people that we're \u2026",
+   "group_id": "_LvWrM_tI7k",
+   "position": 12,
+   "pred": "COMMA",
+   "pred_text": "And in that sense, I see it as an area of huge opportunity, and I actually looking forward to some of the people that we're \u2026",
+   "sample_id": "sponspeech:dev:_LvWrM_tI7k-68"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "And if you've got this really powerful force and raw power, it's completely inaccessible to us.",
+   "group_id": "WGiN_db5hBI",
+   "position": 10,
+   "pred": "PERIOD",
+   "pred_text": "And if you've got this really powerful force and raw power. It's completely inaccessible to us.",
+   "sample_id": "sponspeech:dev:WGiN_db5hBI-70"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 and our relationship, our business model is one where we serve individual institutions, so you know our clients are those institutions. And so we have \u2026",
+   "group_id": "XV9Qlbw_-vg",
+   "position": 27,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 and our relationship our business model is one where we serve individual institutions. So, you know, our clients are those institutions and so we have \u2026",
+   "sample_id": "sponspeech:dev:XV9Qlbw_-vg-71"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 equipment. I'm just going to go ahead and do my Tubal Cain thing, and then I'm going to build my tower. We're going to be \u2026",
+   "group_id": "nCJ_NZ1e2oY",
+   "position": 19,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 equipment. I'm just going to go ahead and do my tubal cain thing. And then I'm going to build my tower, we're going to be \u2026",
+   "sample_id": "sponspeech:dev:nCJ_NZ1e2oY-330"
+  },
+  {
+   "gold": "O",
+   "gold_text": "For example, this coming year in Wichita we've got a new stadium that's being built and we're \u2026",
+   "group_id": "MkDk76ZO594",
+   "position": 4,
+   "pred": "PERIOD",
+   "pred_text": "For example, this coming year. In Wichita, we've got a new stadium, that's being built. And we're \u2026",
+   "sample_id": "sponspeech:dev:MkDk76ZO594-158"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 TV show. It's just naturally what happens to everyone when they get more well. You'll never find a blogger or wellness advocate who didn't need \u2026",
+   "group_id": "qe0QNGDMG18",
+   "position": 17,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 TV show, it's just naturally what happens to everyone when they get more. Well, you'll never find a blogger or wellness advocate who didn't need \u2026",
+   "sample_id": "sponspeech:dev:qe0QNGDMG18-141"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 guys took something away from this and again my email is up there so feel free to email me. All right. Thank you very, very \u2026",
+   "group_id": "wsG3c2H01wI",
+   "position": 16,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 guys took something away from this and again, my email is up there. So feel free to email me all right. Thank you very, very \u2026",
+   "sample_id": "sponspeech:dev:wsG3c2H01wI-315"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 a sense of more time in their day. So other questions or reflections? Yeah.",
+   "group_id": "1StHS716-D0",
+   "position": 37,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 a sense of more time in their day. So other questions or reflections. Yeah.",
+   "sample_id": "sponspeech:dev:1StHS716-D0-213"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 the employee, but it also puts the company in a bad light. Right? Like, it changes your employer brand, because especially if you're laying off \u2026",
+   "group_id": "8TFw_Tew8Wc",
+   "position": 26,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 the employee, but it also puts the company in a bad light. Right. Like it changes your employer brand because, especially if you're laying off \u2026",
+   "sample_id": "sponspeech:dev:8TFw_Tew8Wc-100"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 you now speak fluent Mandarin. Can you use Mandarin to greet our audience?",
+   "group_id": "gGXQwgJ9oZ0",
+   "position": 46,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 you now speak fluent mandarin can you use mandarin to greet our audience.",
+   "sample_id": "sponspeech:dev:gGXQwgJ9oZ0-5"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 solopreneur and an entrepreneur and say, okay, well, what can I give away? What can I delegate to someone else to do so that I \u2026",
+   "group_id": "8TFw_Tew8Wc",
+   "position": 27,
+   "pred": "O",
+   "pred_text": "\u2026 solopreneur and an entrepreneur and say, okay, well, what can I give away what can I delegate to someone else to do so that I \u2026",
+   "sample_id": "sponspeech:dev:8TFw_Tew8Wc-69"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 brood of vipers, who warned you to flee from the wrath to come? Therefore, bear fruits in keeping with repentance, and do not begin to \u2026",
+   "group_id": "AaWpV-_cwHM",
+   "position": 36,
+   "pred": "O",
+   "pred_text": "\u2026 brood of vipers who warned you to flee from the wrath to come therefore bear fruits in keeping with repentance and do not begin to \u2026",
+   "sample_id": "sponspeech:dev:AaWpV-_cwHM-37"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 energy, able to do all of this, to now there's a distinct change? That's not normal. You're having a hormone shift.",
+   "group_id": "Q6wNTi_lKk4",
+   "position": 18,
+   "pred": "O",
+   "pred_text": "\u2026 energy able to do all of this to now there's a distinct change that's not normal you're having a hormone shift.",
+   "sample_id": "sponspeech:dev:Q6wNTi_lKk4-176"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 really change my life? I am surrounded by this normal way of being.",
+   "group_id": "3EAKkh6P_ds",
+   "position": 14,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 really change my life? I am surrounded by this normal way of being?",
+   "sample_id": "sponspeech:dev:3EAKkh6P_ds-111"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 Reich is. REICH It's Reich in his lab at Harvard are actually they.",
+   "group_id": "X4pZA3OFJaI",
+   "position": 14,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 reich is reich. It's reich in his lab at Harvard are actually they?",
+   "sample_id": "sponspeech:dev:X4pZA3OFJaI-857"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 a particular part of their profile and send them a message about that.",
+   "group_id": "r1lc2fmU_Rg",
+   "position": 26,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 a particular part of their profile and send them a message about that?",
+   "sample_id": "sponspeech:dev:r1lc2fmU_Rg-1374"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "Is breakfast really the most important meal of the day? The truth is, it depends. In my opinion, breakfast is probably the \u2026",
+   "group_id": "OM21Lbay5s0",
+   "position": 9,
+   "pred": "COMMA",
+   "pred_text": "Is breakfast really the most important meal of the day, the truth? Is it depends in my opinion, breakfast is probably the \u2026",
+   "sample_id": "sponspeech:dev:OM21Lbay5s0-0"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 actually any better than the machine essentially trying to do the same thing? Like, I think it's kind of the same like. So I think \u2026",
+   "group_id": "X4pZA3OFJaI",
+   "position": 62,
+   "pred": "COMMA",
+   "pred_text": "\u2026 actually any better than the machine essentially trying to do the same thing, like, I think it's kind of the same like. So I think \u2026",
+   "sample_id": "sponspeech:dev:X4pZA3OFJaI-91"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "Oh, did I miss a question? What course do you recommend for me?",
+   "group_id": "yn2WCxTE3CM",
+   "position": 5,
+   "pred": "COMMA",
+   "pred_text": "Oh, did I miss a question, what course do you recommend for me.",
+   "sample_id": "sponspeech:dev:yn2WCxTE3CM-257"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "Where'd you come from, buddy? Ah I live here. Do you?",
+   "group_id": "M2D3hNC8lGA",
+   "position": 3,
+   "pred": "QUESTION",
+   "pred_text": "Where'd you come from? Buddy. Ah, I live here. Do you.",
+   "sample_id": "sponspeech:dev:M2D3hNC8lGA-74"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 career is dealing with, if your volunteer crew tends to skew older, right, and you are more maybe the early end or mid-career area, do \u2026",
+   "group_id": "PZ7gsDD2KTY",
+   "position": 46,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 career is dealing with, if your volunteer crew tends to skew older, right? And you are more maybe the early end or mid-career area. Do \u2026",
+   "sample_id": "sponspeech:dev:PZ7gsDD2KTY-433"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "One of the things that people don't understand is why, Oh, they keep changing science.",
+   "group_id": "bFsRrNn8YIs",
+   "position": 9,
+   "pred": "QUESTION",
+   "pred_text": "One of the things that people don't understand is why? Oh, they keep changing science.",
+   "sample_id": "sponspeech:dev:bFsRrNn8YIs-105"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 to be part of those committees will let all that you know what that's how that's going to be structured. So now we're close the \u2026",
+   "group_id": "K_DQfaqY7_0",
+   "position": 26,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 to be part of those committees will let all that, you know what? That's how that's going to be structured. So now we're close the \u2026",
+   "sample_id": "sponspeech:dev:K_DQfaqY7_0-39"
+  },
+  {
+   "gold": "O",
+   "gold_text": "Okay. Even though right the opportunity to have food on your table. One today even today, \u2026",
+   "group_id": "K_DQfaqY7_0",
+   "position": 3,
+   "pred": "QUESTION",
+   "pred_text": "Okay, even though right? The opportunity to have food on your table one today even today \u2026",
+   "sample_id": "sponspeech:dev:K_DQfaqY7_0-58"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 really like research, and have to pay out of pocket for it, then no, it's probably not worth it. So it's hard to really give \u2026",
+   "group_id": "r1lc2fmU_Rg",
+   "position": 18,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 really like research and have to pay out of pocket for it, then? No, it's probably not worth it. So it's hard to really give \u2026",
+   "sample_id": "sponspeech:dev:r1lc2fmU_Rg-344"
+  }
+ ],
+ "inputs": {
+  "gold": {
+   "path": "data/processed/sponspeech-m1-v2/mode_C/validation.jsonl",
+   "sha256": "d097635bf9744c5b8547c6cd5e6d199a53021c3e9719dc5012ba3792f777391d"
+  },
+  "ids": {
+   "path": "data/splits/sponspeech-m1-v2/primary_eval/validation_mode_C.ids",
+   "sha256": "c7300a84a715ccb83315303cb513c674ce373b9b8a10e6a16291ecc63149d03f"
+  },
+  "masks": {
+   "path": "data/processed/sponspeech-m1-v2/masks/case_joint/validation.jsonl",
+   "sha256": "6dd419e4f45ebfc91d4bc74eb114e99d5a2798c0410bb4f26453ec3ab832e2f9"
+  },
+  "predictions": {
+   "path": "predictions/crf_mode_c_improved_full_01_val_predictions.jsonl",
+   "sha256": "7bb0d788d0eadd77e78779b51a162ab16d71bfb200c44ca40320a2689cb3124d"
+  }
+ },
+ "label_mode": "C",
+ "model_name": "crf_improved",
+ "pair_counts": [
+  {
+   "count": 21073,
+   "gold": "COMMA",
+   "pred": "O"
+  },
+  {
+   "count": 7596,
+   "gold": "O",
+   "pred": "COMMA"
+  },
+  {
+   "count": 5385,
+   "gold": "PERIOD",
+   "pred": "O"
+  },
+  {
+   "count": 3808,
+   "gold": "PERIOD",
+   "pred": "COMMA"
+  },
+  {
+   "count": 3731,
+   "gold": "COMMA",
+   "pred": "PERIOD"
+  },
+  {
+   "count": 2119,
+   "gold": "O",
+   "pred": "PERIOD"
+  },
+  {
+   "count": 1704,
+   "gold": "QUESTION",
+   "pred": "PERIOD"
+  },
+  {
+   "count": 604,
+   "gold": "QUESTION",
+   "pred": "O"
+  },
+  {
+   "count": 376,
+   "gold": "PERIOD",
+   "pred": "QUESTION"
+  },
+  {
+   "count": 352,
+   "gold": "QUESTION",
+   "pred": "COMMA"
+  },
+  {
+   "count": 138,
+   "gold": "COMMA",
+   "pred": "QUESTION"
+  },
+  {
+   "count": 113,
+   "gold": "O",
+   "pred": "QUESTION"
+  }
+ ],
+ "per_pair": 3,
+ "schema": "recap-errors-v1",
+ "seed": 2026
+}

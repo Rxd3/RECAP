@@ -1,0 +1,31 @@
+# Abdulla Jamal — Member 6: integration, reproducibility and presentation
+
+| Field | Value |
+| --- | --- |
+| Student ID | `<STUDENT_ID>` (filled in by the member) |
+| GitHub | [@abdu3061](https://github.com/abdu3061) |
+| Git author name(s) | `Abdullah Gamal` (the commit author name; the member is Abdulla Jamal) |
+| Branch | `feat/m6-integration-presentation` |
+| Pull request | [#3](https://github.com/Rxd3/RECAP/pull/3) — feat(m6): implement integration pipeline, cli demo runner, and contra… (title truncated on GitHub) (open on 2026-10-30; merged into `release/final` by ddba805) |
+
+## Contributions in this repository
+
+- Added the first integration pipeline, the CLI demo runner and contract tests: `src/punct_restore/pipeline.py`, `scripts/run_demo.py`, `tests/test_model_contract.py`, with updates to `docs/REPRODUCIBILITY.md` and `docs/PRESENTATION_OUTLINE.md` (397bdf3).
+- Updated the presentation outline with HMM benchmarks and the CRF handoff status (672d15d).
+- In the final push, `pipeline.py` and `run_demo.py` were rewritten to load the real HMM and CRF models (4304e4c, by Raouf).
+
+## Commits
+
+| Commit | Date | Subject |
+| --- | --- | --- |
+| `672d15d` | 2026-10-30 | docs: update presentation outline with HMM benchmarks and CRF handoff status |
+| `397bdf3` | 2026-10-29 | feat(m6): implement integration pipeline, cli demo runner, and contract tests |
+
+## Files added or changed
+
+- `docs/`: `PRESENTATION_OUTLINE.md` (M in 672d15d, 397bdf3), `REPRODUCIBILITY.md` (M in 397bdf3)
+- `scripts/`: `run_demo.py` (M in 397bdf3)
+- `src/punct_restore/`: `pipeline.py` (M in 397bdf3)
+- `tests/`: `test_model_contract.py` (M in 397bdf3)
+
+Generated from `git log HEAD --author="Abdullah Gamal"` at commit `72b9148` (the final `release/final` docs state) on 2026-10-30. Only the member's own commits are listed; later changes by others are not shown. The member fills in the student ID.

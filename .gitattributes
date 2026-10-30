@@ -6,3 +6,5 @@
 *.txt text eol=lf
 .gitignore text eol=lf
 .gitattributes text eol=lf
+data/sample/** text eol=lf
+data/release_metadata/** text eol=lf

@@ -1,8 +1,8 @@
 # Decision register
 
 Record proposal, rationale, affected contracts, reviewers, resolution evidence,
-policy version and PR link. Pending entries are not defaults. No deadlines are
-assigned. Members must discuss shared interface changes before implementation.
+policy version and PR link. All decisions D1–D12 are resolved. Members must discuss shared
+interface changes before implementation.
 
 ## Established scaffold choices
 
@@ -33,19 +33,46 @@ it does not impersonate individual reviewer sign-offs. Verification is recorded 
 | D5 | Canonical B → A projection as in `configs/label_sets.yaml` (EXCLAMATION, SEMICOLON → PERIOD; COLON, DASH → COMMA); canonical modes A and C use it. Native SponSpeech four-class labels are kept as a separate, versioned benchmark view; canonical and native scores are never compared as if their gold labels were the same | One consistent standard target; native view for original-benchmark comparison | `configs/label_sets.yaml`, EVALUATION_PROTOCOL cross-mode comparison | 2, 3, 5 |
 | D6 | Original split membership kept; `dev` → `validation`; test-amb in its own file with `split: "test"` and `metadata.source_split`; overlap unit = source video ID; exact original-text and lowercased token-tuple checks (including short sequences), near-duplicate (≥ 50% shared word 6-grams) and shared-video audits; leakage-controlled validation/test subsets frozen before model selection and used for primary evaluation; full official splits for supplementary reporting | Upstream splits share videos; primary results must not depend on leaked content | DATA_CONTRACT splits, `data/splits/` manifests | 5, 6 |
 
-## Open decisions requiring agreement
+## Resolved model, evaluation and distribution decisions (D7–D12)
 
-| ID | Pending question | Lead and required reviewers | Blocks |
+These were open questions until the CRF and the evaluation were built; the outcomes below are what
+the repository implements.
+
+| ID | Question | Outcome | Evidence |
 | --- | --- | --- | --- |
-| D7 | CRF extractor injection, feature names, basic/improved presets and available context | 3 and 4; 6 | CRF feature implementation |
-| D8 | HMM smoothing/OOV/state boundaries and CRF backend/tuning protocol | 2 and 3; 5 | Reproducible training |
-| D9 | Separate casing versus joint study and compatible comparison target | 3 and 4; 1, 5 | Casing ablation design |
-| D10 | Real ASR availability versus synthetic noise; alignment and reporting unit | 1 and 5; 6 | Noisy evaluation |
-| D11 | Artifact distribution, environment locking and CLI flags (team lead prefers the shared Google Drive folder for data releases) | 6; 1, 2, 3, 5 | Reproducible integration |
-| D12 | Optional confidence intervals, group-resampling unit and runtime measurement settings | 5; 1, 2, 3, 6 | Uncertainty/runtime report |
+| D7 | CRF feature injection, feature names, basic/improved presets | `extract_sequence_features(tokens, *, config)` with a `FeatureConfig` in `src/punct_restore/features/crf_features.py`; the basic and improved presets were written by Member 3 (`aa232be`). Member 5 later added the filler-cue and question-lookback switches, off in both presets. | [FEATURE_NOTES.md](../experiments/FEATURE_NOTES.md) |
+| D8 | CRF backend and tuning protocol | `sklearn-crfsuite` 0.5.0 over `python-crfsuite` 0.9.12, L-BFGS; c1 = c2 = 0.1 and 100 iterations, fixed and not tuned (every fit reached the iteration cap). HMM choices are recorded below. | [CRF_EXPERIMENTS.md](CRF_EXPERIMENTS.md) §2, §6 |
+| D9 | Separate casing versus joint study | Two studies. (1) Joint mode C vs punctuation-only mode A (H1): each mode C model, projected to punctuation, is scored against its mode A twin on mode A gold over the same 19,936 mode C validation IDs; the training sets differ (A 142,722 sequences, C 141,745), and a controlled check retrains on the mode C IDs. (2) Factored vs joint: a mode A CRF plus a casing-only CRF (helper mode `CASE`), joined into mode C labels, against the joint mode C CRF trained on the same 50k-sequence training sample and scored on validation (exploratory). | [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md), Team hypotheses and §14.5 |
+| D10 | Real ASR versus synthetic noise | No real ASR condition: SponSpeech ships no ASR transcripts, and the main results use the reference transcripts. A simulated ASR-noise check (deletions, homophone substitutions and swaps at 5, 10 and 15% WER on the test inputs; exploratory) is evaluated separately. | [DATASET_PLAN.md](DATASET_PLAN.md), [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §13 |
+| D11 | Artifact distribution, environment and CLI flags | Data, HMM bundle and CRF models are shared on the team Google Drive, each with SHA-256 sums; the CRF dependencies are pinned in `pyproject.toml` and the HMM environment in `requirements-hmm.txt`; CLI flags are documented per script. | [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [scripts/README.md](../scripts/README.md) |
+| D12 | Confidence intervals, resampling unit, runtime settings | Grouped bootstrap by video (`metadata.group_id`), 1,000 resamples, seed 2026, 95% percentile intervals, paired for comparisons. Runtime: median of 3 passes after a 200-record warm-up, model loading excluded. | [EVALUATION_PROTOCOL.md](EVALUATION_PROTOCOL.md), [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §10 |
 
 Do not add label classes to avoid an annotation decision. Preserve the agreed
 4/8/12 target spaces; review and version any explicit mapping/exclusion policy.
+
+## Member 2 implementation record (2026-10-29)
+
+The team lead authorized completing and double-checking the HMM baseline.
+This records implementation and experimental evidence; it does not substitute
+for individual teammates' review or resolve CRF and integration choices.
+
+- D8, HMM: supervised counts, additive smoothing, learned START/END boundaries,
+  log-space Viterbi and a training-frequency UNK bucket. Validation selected
+  alpha 0.01 in A/B/C, rare-word cutoff 1 in A/B and 2 in C from the declared
+  nine-candidate grid per mode. No validation data enters parameter estimation.
+- D11, HMM: versioned JSON artifacts, explicit training/prediction IDs and an
+  authenticated release manifest. CPython 3.13.5 / PyYAML 6.0.3 passed isolated
+  reproduction. The checksummed handoff is on the team Drive
+  (`Models/hmm-sponspeech-v2-20261029.zip`); teammate receipt is not recorded.
+- D12, HMM measurement: common validation tokens, one model thread, 200 warmup
+  sequences, three in-memory prediction repetitions and a separate decode
+  latency pass. Hardware, timing scope and raw repetitions are preserved. No
+  confidence intervals or statistical-significance claims are made.
+
+See [HMM notes](../experiments/HMM_NOTES.md),
+[configuration](../configs/hmm_sponspeech_v2.yaml) and
+[verified results](../experiments/HMM_RESULTS.md). The shared scorer is pinned
+at `3044a58e777200bcac64e6e3364922404be359bf` (Member 5 PR #2).
 
 ## Policy m1-v2 corrections (2026-10-29)
 

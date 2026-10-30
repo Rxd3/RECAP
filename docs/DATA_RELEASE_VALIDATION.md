@@ -68,13 +68,36 @@ The manifest records the Python version and exact checksums for every generated 
 Corrected subset counts/distributions and remaining source limitations are recorded
 in [DATASET_PLAN.md](DATASET_PLAN.md).
 
+## Gold-noise rules (2026-10-30)
+
+`scripts/find_gold_noise.py` (rules in `src/punct_restore/data/gold_noise.py`) flags three known sources of
+noise on the primary mode B lists:
+- leftover speaker labels (a name before ':' at the utterance start, after a sentence end or after a turn dash; after ', ' only a name that is a label in at least 3 records of the same video; a numbered role such as 'SPEAKER 2:' anywhere);
+- subtitle cue residue (block number and timestamp in the original text);
+- the two auto-caption-style videos `732fql_jhJQ` and `JNxcznsrRb8`.
+
+| Rule | Validation | Test | test_amb | `default_train` |
+|---|---|---|---|---|
+| Speaker label | 134 | 22 | 63 | 291 |
+| Cue residue | 1 | 8 | 0 | 4 |
+| Auto-caption video | 135 | 46 | 0 | 0 |
+| Records flagged (any rule) | 270 | 76 | 63 | 295 |
+| Speaker-label COLONs / all gold COLONs | 144 / 425 | 23 / 166 | 76 / 273 | 319 / 3,385 |
+
+Counts from `results/scores/gold_noise/*_B_summary.json`. They are an upper estimate: a few single-word
+headings such as "Disclaimer:" also match the speaker-label rule. The release was not changed: the flagged IDs are listed in
+`results/scores/gold_noise/*_B_noisy.tsv` and the effect on scores is in
+[EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §12. The rules are heuristics; a 100-record hand audit
+of them is in progress.
+
 ## Handoff
 
 - Local outputs: `data/processed/sponspeech-m1-v2/` and `data/splits/sponspeech-m1-v2/`.
 - Corrected archives, provenance, validation JSON, notes/license and checksums:
   `artifacts/data/sponspeech-m1-v2/`; combined archive: `artifacts/data/sponspeech-m1-v2-handoff.zip`.
-- Data stays outside Git. Upload the new bundle to the existing shared Drive folder;
-  version 2 is **not yet uploaded**. The old v1/rev2 Drive folder is superseded.
+- Data stays outside Git. Update 2026-10-30: version 2 is on the team Drive as
+  `dataset/sponspeech-m1-v2-handoff.zip` (https://drive.google.com/drive/folders/1jVl5pOQ6PvWPQ6MQxXLcbUksJJ1KDo5u); a downloaded copy is 224,632,100 bytes
+  with the SHA-256 in the table above. The old `sponspeech-m1-v1-rev2/` folder beside it is superseded.
 - Consumers must select the mode's `default_train` / `primary_eval` IDs explicitly;
   passing a split-manifest path to the existing HMM CLI only hashes that path.
 - The 174-test integration check verifies implementation compatibility. No official

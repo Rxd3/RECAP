@@ -1,7 +1,7 @@
-# Shared data contract — proposed schema v1
+# Shared data contract — schema v1 (final)
 
-Owner: Member 1. Reviewers: all members. All future implementations use this
-contract; annotation policies marked pending require agreement before release.
+Owner: Member 1. Reviewers: all members. Release `sponspeech-m1-v2` (policy `m1-v2`) follows this
+contract; every annotation policy it relies on is approved in [DECISIONS.md](DECISIONS.md) (D1–D6).
 
 ## Serialization and fields
 
@@ -38,7 +38,7 @@ audited separately from identifier uniqueness.
 
 ## Tokens, normalization and casing
 
-Proposed baseline input policy: derive labels from original text first, retain
+Input policy (D2): derive labels from original text first, retain
 word alignment/offsets, remove target boundary punctuation according to the
 approved policy, and apply Python `str.lower()` to input word tokens. Do not use
 `casefold()` interchangeably. Version this policy before producing a release.
@@ -50,8 +50,7 @@ Casing follows the approved D4 precedence ([DECISIONS.md](DECISIONS.md)), applie
 FIRST_UPPER, lowercase → LOWER). Step 4 approximates mixed-case words such as `iPhone`. Those token positions keep
 their label and are listed in a per-release mask (`masks/case_joint/<file>.jsonl`: `sample_id`,
 `excluded_positions`, `reason`), so primary casing and joint metrics can exclude them without changing token
-alignment; punctuation at those positions is still scored. The mask format is a Member 1 proposal that Member 5
-must accept for the evaluation contract. No fourth casing class may be added casually.
+alignment; punctuation at those positions is still scored. The evaluator applies this mask format (`--masks`, see EVALUATION_PROTOCOL.md). No fourth casing class may be added casually.
 
 Define contractions, apostrophes, hyphens, decimals, abbreviations, Unicode dash
 variants, quote/bracket attachment, repeated punctuation, leading punctuation,
@@ -110,19 +109,16 @@ only after the B → A policy has been approved and casing has been validated.
 
 ## Validation, splitting and malformed input
 
-Future validators reject invalid JSON, missing/wrongly typed fields, unknown
-labels/modes, empty sequences, empty tokens, duplicate IDs, mismatched lengths,
-and split-map conflicts. Keep rejection reasons/counts and source identifiers in
-an audit log; fail the release validation on unhandled records. Blank lines are
+`src/punct_restore/data/validation.py` rejects invalid JSON, blank lines, missing or wrongly typed
+fields, unknown labels, splits and modes, empty sequences and tokens, tokens that are not lowercased,
+duplicate IDs, mismatched lengths, and records whose split or mode differs from their file. Rejection reasons, counts and source
+identifiers are kept in an audit log; fail the release validation on unhandled records. Blank lines are
 malformed, not silently skipped. Exclusion after review must be documented and
 counted. Never truncate labels or drop individual tokens to repair a record.
 
-Fix shared train/validation/test assignments once, grouped by talk/document (or
-an approved equivalent). Audit exact and near duplicates before freezing, across
-splits, source configurations, and IWSLT years; mirrored translation directions
-may repeat the same English text. Keep duplicates/paired variants in the same
-group. Respect existing benchmark split semantics where possible; conflicts
-require an explicit decision and a new version, not hidden resplitting.
+Train/validation/test assignments are fixed once and audited for exact and near duplicates
+across splits before freezing. Existing benchmark split semantics are kept; a conflict needs an
+explicit decision and a new version, not hidden resplitting.
 For SponSpeech (D6) the overlap unit is the source video ID. `dev` becomes
 `validation`; the second test set test-amb keeps `split: "test"`, records its
 origin in `metadata.source_split` and is written to its own file, never merged

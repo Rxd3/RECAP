@@ -29,6 +29,7 @@ secrets/
 *.local.yaml
 
 # Local downloads, processed data, split outputs and model artifacts
+drive-download-*/
 /data/raw/**
 /data/processed/**
 /data/splits/**
@@ -42,19 +43,12 @@ secrets/
 # Preserve directory documentation/markers, including nested directories
 !/data/**/
 !/data/**/README.md
-!/data/**/.gitkeep
 !/artifacts/**/
 !/artifacts/**/README.md
-!/artifacts/**/.gitkeep
-!/experiments/runs/**/
-!/experiments/runs/**/README.md
-!/experiments/runs/**/.gitkeep
 !/results/**/
 !/results/**/README.md
-!/results/**/.gitkeep
-!/presentation/assets/**/
-!/presentation/assets/**/README.md
-!/presentation/assets/**/.gitkeep
+# Evaluator JSON behind every reported number (Member 5); small, text only.
+!/results/scores/**/*.json
 
 # Models/dataset archives accidentally written elsewhere
 *.pkl
@@ -71,8 +65,12 @@ secrets/
 *.arrow
 *.parquet
 *.jsonl
+# ...except the committed 10-utterance data sample
+!/data/sample/*.jsonl
 *.csv
 *.tsv
+# ...except the evaluator's excluded-ID lists (IDs and rule names only)
+!/results/scores/**/*.tsv
 *.zip
 *.tar
 *.tar.gz

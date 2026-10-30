@@ -1,0 +1,391 @@
+{
+ "blocks": {
+  "punctuation/all": {
+   "accuracy": 0.907552,
+   "confusion": [
+    [
+     338254,
+     4921,
+     1489,
+     26,
+     1,
+     29,
+     0,
+     8
+    ],
+    [
+     18297,
+     9318,
+     1464,
+     33,
+     6,
+     12,
+     1,
+     2
+    ],
+    [
+     5329,
+     1782,
+     13009,
+     112,
+     4,
+     6,
+     1,
+     2
+    ],
+    [
+     630,
+     162,
+     1173,
+     209,
+     0,
+     1,
+     0,
+     0
+    ],
+    [
+     103,
+     54,
+     42,
+     1,
+     3,
+     1,
+     0,
+     0
+    ],
+    [
+     127,
+     20,
+     11,
+     1,
+     0,
+     7,
+     0,
+     0
+    ],
+    [
+     77,
+     20,
+     22,
+     0,
+     0,
+     0,
+     1,
+     0
+    ],
+    [
+     600,
+     108,
+     74,
+     0,
+     0,
+     1,
+     0,
+     1
+    ]
+   ],
+   "empty_support": false,
+   "labels": [
+    "O",
+    "COMMA",
+    "PERIOD",
+    "QUESTION",
+    "EXCLAMATION",
+    "COLON",
+    "SEMICOLON",
+    "DASH"
+   ],
+   "macro_f1": 0.196463,
+   "macro_f1_ci": {
+    "groups": 153,
+    "high": 0.212931,
+    "level": 0.95,
+    "low": 0.182844,
+    "resamples": 1000,
+    "seed": 2026,
+    "unit": "group_id"
+   },
+   "macro_over": [
+    "COMMA",
+    "PERIOD",
+    "QUESTION",
+    "EXCLAMATION",
+    "COLON",
+    "SEMICOLON",
+    "DASH"
+   ],
+   "micro": {
+    "f1": 0.518553,
+    "precision": 0.660496,
+    "recall": 0.426827
+   },
+   "per_class": {
+    "COLON": {
+     "f1": 0.06278,
+     "precision": 0.122807,
+     "predicted": 57,
+     "recall": 0.042169,
+     "support": 166
+    },
+    "COMMA": {
+     "f1": 0.40942,
+     "precision": 0.568691,
+     "predicted": 16385,
+     "recall": 0.319843,
+     "support": 29133
+    },
+    "DASH": {
+     "f1": 0.002509,
+     "precision": 0.076923,
+     "predicted": 13,
+     "recall": 0.001276,
+     "support": 784
+    },
+    "EXCLAMATION": {
+     "f1": 0.027523,
+     "precision": 0.214286,
+     "predicted": 14,
+     "recall": 0.014706,
+     "support": 204
+    },
+    "O": {
+     "f1": 0.955324,
+     "precision": 0.93076,
+     "predicted": 363417,
+     "recall": 0.98122,
+     "support": 344728
+    },
+    "PERIOD": {
+     "f1": 0.693277,
+     "precision": 0.752661,
+     "predicted": 17284,
+     "recall": 0.642578,
+     "support": 20245
+    },
+    "QUESTION": {
+     "f1": 0.163473,
+     "precision": 0.54712,
+     "predicted": 382,
+     "recall": 0.096092,
+     "support": 2175
+    },
+    "SEMICOLON": {
+     "f1": 0.01626,
+     "precision": 0.333333,
+     "predicted": 3,
+     "recall": 0.008333,
+     "support": 120
+    }
+   },
+   "scored_positions": 397555
+  },
+  "punctuation/non_final": {
+   "accuracy": 0.907469,
+   "confusion": [
+    [
+     338254,
+     4921,
+     1489,
+     26,
+     1,
+     29,
+     0,
+     8
+    ],
+    [
+     18297,
+     9318,
+     1463,
+     33,
+     6,
+     12,
+     1,
+     2
+    ],
+    [
+     5325,
+     1782,
+     1945,
+     40,
+     4,
+     6,
+     1,
+     2
+    ],
+    [
+     630,
+     162,
+     143,
+     59,
+     0,
+     1,
+     0,
+     0
+    ],
+    [
+     103,
+     54,
+     42,
+     1,
+     3,
+     1,
+     0,
+     0
+    ],
+    [
+     127,
+     20,
+     11,
+     1,
+     0,
+     7,
+     0,
+     0
+    ],
+    [
+     77,
+     20,
+     22,
+     0,
+     0,
+     0,
+     1,
+     0
+    ],
+    [
+     600,
+     108,
+     74,
+     0,
+     0,
+     1,
+     0,
+     1
+    ]
+   ],
+   "empty_support": false,
+   "labels": [
+    "O",
+    "COMMA",
+    "PERIOD",
+    "QUESTION",
+    "EXCLAMATION",
+    "COLON",
+    "SEMICOLON",
+    "DASH"
+   ],
+   "macro_f1": 0.127544,
+   "macro_f1_ci": {
+    "groups": 153,
+    "high": 0.1433,
+    "level": 0.95,
+    "low": 0.114329,
+    "resamples": 1000,
+    "seed": 2026,
+    "unit": "group_id"
+   },
+   "macro_over": [
+    "COMMA",
+    "PERIOD",
+    "QUESTION",
+    "EXCLAMATION",
+    "COLON",
+    "SEMICOLON",
+    "DASH"
+   ],
+   "micro": {
+    "f1": 0.363695,
+    "precision": 0.519408,
+    "recall": 0.27981
+   },
+   "per_class": {
+    "COLON": {
+     "f1": 0.06278,
+     "precision": 0.122807,
+     "predicted": 57,
+     "recall": 0.042169,
+     "support": 166
+    },
+    "COMMA": {
+     "f1": 0.409429,
+     "precision": 0.568691,
+     "predicted": 16385,
+     "recall": 0.319854,
+     "support": 29132
+    },
+    "DASH": {
+     "f1": 0.002509,
+     "precision": 0.076923,
+     "predicted": 13,
+     "recall": 0.001276,
+     "support": 784
+    },
+    "EXCLAMATION": {
+     "f1": 0.027523,
+     "precision": 0.214286,
+     "predicted": 14,
+     "recall": 0.014706,
+     "support": 204
+    },
+    "O": {
+     "f1": 0.95533,
+     "precision": 0.93077,
+     "predicted": 363413,
+     "recall": 0.98122,
+     "support": 344728
+    },
+    "PERIOD": {
+     "f1": 0.272142,
+     "precision": 0.374831,
+     "predicted": 5189,
+     "recall": 0.213619,
+     "support": 9105
+    },
+    "QUESTION": {
+     "f1": 0.102165,
+     "precision": 0.36875,
+     "predicted": 160,
+     "recall": 0.059296,
+     "support": 995
+    },
+    "SEMICOLON": {
+     "f1": 0.01626,
+     "precision": 0.333333,
+     "predicted": 3,
+     "recall": 0.008333,
+     "support": 120
+    }
+   },
+   "scored_positions": 385234
+  }
+ },
+ "counts": {
+  "ignored_prediction_ids": 0,
+  "sequences": 12321,
+  "tokens": 397555
+ },
+ "inputs": {
+  "gold": {
+   "path": "mode_B/test.jsonl",
+   "sha256": "fb8968f49b479b467364dfa94a710e85880585f29767c7fc2e94a9eaf9585885"
+  },
+  "ids": {
+   "path": "wer0.10/test_mode_B.ids",
+   "sha256": "207f414dbc649808729aeb92ee160c9a9bb57e066260d207c4a643cbfe75c3a1"
+  },
+  "masks": null,
+  "predictions": {
+   "path": "wer0.10/crf_basic_B.jsonl",
+   "sha256": "930ae21adeb321a3310d69f0cea765a928fb3bd9034dd3d9bc86a82caa8d8399"
+  }
+ },
+ "label_mode": "B",
+ "model_name": "crf_basic",
+ "policy_version": "m1-v2",
+ "primary": {
+  "block": "punctuation/all",
+  "metric": "macro_f1",
+  "value": 0.196463
+ },
+ "schema": "recap-eval-v1"
+}

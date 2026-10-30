@@ -1,0 +1,391 @@
+{
+ "blocks": {
+  "punctuation/all": {
+   "accuracy": 0.90972,
+   "confusion": [
+    [
+     410953,
+     4655,
+     1181,
+     29,
+     2,
+     32,
+     1,
+     7
+    ],
+    [
+     21527,
+     11371,
+     1792,
+     40,
+     1,
+     1,
+     2,
+     4
+    ],
+    [
+     7563,
+     2786,
+     14331,
+     169,
+     3,
+     4,
+     1,
+     4
+    ],
+    [
+     953,
+     259,
+     1262,
+     260,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     80,
+     39,
+     29,
+     0,
+     2,
+     0,
+     0,
+     0
+    ],
+    [
+     145,
+     28,
+     13,
+     0,
+     0,
+     6,
+     0,
+     0
+    ],
+    [
+     88,
+     32,
+     19,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     447,
+     107,
+     53,
+     1,
+     0,
+     1,
+     0,
+     0
+    ]
+   ],
+   "empty_support": false,
+   "labels": [
+    "O",
+    "COMMA",
+    "PERIOD",
+    "QUESTION",
+    "EXCLAMATION",
+    "COLON",
+    "SEMICOLON",
+    "DASH"
+   ],
+   "macro_f1": 0.188045,
+   "macro_f1_ci": {
+    "groups": 314,
+    "high": 0.200509,
+    "level": 0.95,
+    "low": 0.176699,
+    "resamples": 1000,
+    "seed": 2026,
+    "unit": "group_id"
+   },
+   "macro_over": [
+    "COMMA",
+    "PERIOD",
+    "QUESTION",
+    "EXCLAMATION",
+    "COLON",
+    "SEMICOLON",
+    "DASH"
+   ],
+   "micro": {
+    "f1": 0.509465,
+    "precision": 0.674073,
+    "recall": 0.409473
+   },
+   "per_class": {
+    "COLON": {
+     "f1": 0.050847,
+     "precision": 0.136364,
+     "predicted": 44,
+     "recall": 0.03125,
+     "support": 192
+    },
+    "COMMA": {
+     "f1": 0.421031,
+     "precision": 0.589874,
+     "predicted": 19277,
+     "recall": 0.327336,
+     "support": 34738
+    },
+    "DASH": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "predicted": 15,
+     "recall": 0.0,
+     "support": 609
+    },
+    "EXCLAMATION": {
+     "f1": 0.025316,
+     "precision": 0.25,
+     "predicted": 8,
+     "recall": 0.013333,
+     "support": 150
+    },
+    "O": {
+     "f1": 0.957245,
+     "precision": 0.930271,
+     "predicted": 441756,
+     "recall": 0.98583,
+     "support": 416860
+    },
+    "PERIOD": {
+     "f1": 0.658276,
+     "precision": 0.767184,
+     "predicted": 18680,
+     "recall": 0.576445,
+     "support": 24861
+    },
+    "QUESTION": {
+     "f1": 0.160841,
+     "precision": 0.521042,
+     "predicted": 499,
+     "recall": 0.095099,
+     "support": 2734
+    },
+    "SEMICOLON": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "predicted": 4,
+     "recall": 0.0,
+     "support": 139
+    }
+   },
+   "scored_positions": 480283
+  },
+  "punctuation/non_final": {
+   "accuracy": 0.909748,
+   "confusion": [
+    [
+     410953,
+     4655,
+     1181,
+     29,
+     2,
+     32,
+     1,
+     7
+    ],
+    [
+     21527,
+     11371,
+     1792,
+     40,
+     1,
+     1,
+     2,
+     4
+    ],
+    [
+     7555,
+     2786,
+     2978,
+     62,
+     3,
+     4,
+     1,
+     4
+    ],
+    [
+     953,
+     259,
+     220,
+     99,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     80,
+     39,
+     29,
+     0,
+     2,
+     0,
+     0,
+     0
+    ],
+    [
+     145,
+     28,
+     13,
+     0,
+     0,
+     6,
+     0,
+     0
+    ],
+    [
+     88,
+     32,
+     19,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     447,
+     107,
+     53,
+     1,
+     0,
+     1,
+     0,
+     0
+    ]
+   ],
+   "empty_support": false,
+   "labels": [
+    "O",
+    "COMMA",
+    "PERIOD",
+    "QUESTION",
+    "EXCLAMATION",
+    "COLON",
+    "SEMICOLON",
+    "DASH"
+   ],
+   "macro_f1": 0.13032,
+   "macro_f1_ci": {
+    "groups": 314,
+    "high": 0.143191,
+    "level": 0.95,
+    "low": 0.119843,
+    "resamples": 1000,
+    "seed": 2026,
+    "unit": "group_id"
+   },
+   "macro_over": [
+    "COMMA",
+    "PERIOD",
+    "QUESTION",
+    "EXCLAMATION",
+    "COLON",
+    "SEMICOLON",
+    "DASH"
+   ],
+   "micro": {
+    "f1": 0.377362,
+    "precision": 0.558924,
+    "recall": 0.284836
+   },
+   "per_class": {
+    "COLON": {
+     "f1": 0.050847,
+     "precision": 0.136364,
+     "predicted": 44,
+     "recall": 0.03125,
+     "support": 192
+    },
+    "COMMA": {
+     "f1": 0.421031,
+     "precision": 0.589874,
+     "predicted": 19277,
+     "recall": 0.327336,
+     "support": 34738
+    },
+    "DASH": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "predicted": 15,
+     "recall": 0.0,
+     "support": 609
+    },
+    "EXCLAMATION": {
+     "f1": 0.025316,
+     "precision": 0.25,
+     "predicted": 8,
+     "recall": 0.013333,
+     "support": 150
+    },
+    "O": {
+     "f1": 0.957254,
+     "precision": 0.930288,
+     "predicted": 441748,
+     "recall": 0.98583,
+     "support": 416860
+    },
+    "PERIOD": {
+     "f1": 0.302673,
+     "precision": 0.473827,
+     "predicted": 6285,
+     "recall": 0.222355,
+     "support": 13393
+    },
+    "QUESTION": {
+     "f1": 0.112372,
+     "precision": 0.428571,
+     "predicted": 231,
+     "recall": 0.064664,
+     "support": 1531
+    },
+    "SEMICOLON": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "predicted": 4,
+     "recall": 0.0,
+     "support": 139
+    }
+   },
+   "scored_positions": 467612
+  }
+ },
+ "counts": {
+  "ignored_prediction_ids": 63,
+  "sequences": 12671,
+  "tokens": 480283
+ },
+ "inputs": {
+  "gold": {
+   "path": "data/processed/sponspeech-m1-v2/mode_B/test_amb.jsonl",
+   "sha256": "a25d57177ea8c0497a8ec92f9077bad3a83138da4c32a82bc7267057ff7a5c81"
+  },
+  "ids": {
+   "path": "gold_noise_rerun/test_amb_B_clean.ids",
+   "sha256": "816b55b95d995febd440904d6581e862e8fa9becc96ce583225261731d36e551"
+  },
+  "masks": null,
+  "predictions": {
+   "path": "RECAP_m3_final/crf_mode_b_basic_full_01_test_amb.jsonl",
+   "sha256": "c64b01dac67c88cf7afca4ed68e0f17668c1b85f6e114c7ad039e3bd66590196"
+  }
+ },
+ "label_mode": "B",
+ "model_name": "crf_basic",
+ "policy_version": "m1-v2",
+ "primary": {
+  "block": "punctuation/all",
+  "metric": "macro_f1",
+  "value": 0.188045
+ },
+ "schema": "recap-eval-v1"
+}

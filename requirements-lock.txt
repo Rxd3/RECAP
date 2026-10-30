@@ -1,0 +1,21 @@
+# Exact pip freeze of the tested environment (CPython 3.13.1, Windows); the CRF models are pickles that load through scikit-learn, scipy and numpy. Install: python -m pip install -r requirements-lock.txt
+cloudpickle==3.1.2
+colorama==0.4.6
+coverage==7.17.0
+iniconfig==2.3.1
+joblib==1.6.0
+narwhals==2.28.0
+numpy==2.5.4
+packaging==26.3
+pluggy==1.7.0
+Pygments==2.21.0
+pytest==9.2.0
+python-crfsuite==0.9.12
+PyYAML==6.0.3
+ruff==0.17.3
+scikit-learn==1.9.1
+scipy==1.18.1
+sklearn-crfsuite==0.5.0
+tabulate==0.10.0
+threadpoolctl==3.7.0
+tqdm==4.70.1
