@@ -48,12 +48,16 @@ record format and alignment.
 
 ## Models
 
-| Architecture | Trained model | Settings | Source |
+| Architecture | Implementation | Specific model | Settings |
 | --- | --- | --- | --- |
-| First-order HMM, Viterbi decoding | HMM, one per mode | additive smoothing α = 0.01 in A/B/C; rare-word cutoff 1 (A, B) and 2 (C); chosen on validation from 9 candidates per mode | [HMM_RESULTS.md](experiments/HMM_RESULTS.md) |
-| Linear-chain CRF (`sklearn-crfsuite`, L-BFGS) | CRF basic preset | ±1 window, affixes, token shape, utterance boundaries; c1 = c2 = 0.1, 100 iterations, fixed | [CRF_EXPERIMENTS.md](docs/CRF_EXPERIMENTS.md) §3, §6 |
-| Linear-chain CRF (`sklearn-crfsuite`, L-BFGS) | CRF improved preset | basic plus ±2 window, word pairs, question, clause, casing and position cues; same settings | [CRF_EXPERIMENTS.md](docs/CRF_EXPERIMENTS.md) §3 |
-| Linear-chain CRF + threshold decoding (ours) | CRF improved + τ | a token is non-O when 1 − P(O) > τ; τ = 0.40 (A), 0.30 (B), 0.35 (C), chosen on validation | [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §7 |
+| First-order HMM + Viterbi | own code, `src/punct_restore/models/hmm.py` | `hmm-sponspeech-v2-20261029` bundle, one model per mode | additive smoothing α = 0.01 (A, B, C); rare-word cutoff 1 (A, B) and 2 (C); chosen on validation from 9 candidates per mode |
+| Linear-chain CRF | CRFsuite via `sklearn-crfsuite` 0.5.0, L-BFGS; `src/punct_restore/models/crf.py` | `crf_mode_<a\|b\|c>_basic_full_01` (basic preset: ±1 window, affixes, token shape, utterance boundaries) | c1 = c2 = 0.1, 100 iterations, fixed |
+| Linear-chain CRF | same | `crf_mode_<a\|b\|c>_improved_full_01` (improved preset: adds ±2 window, word pairs, question, clause, casing and position cues) | c1 = c2 = 0.1, 100 iterations, fixed |
+| + threshold decoding (ours) | `src/punct_restore/models/threshold.py` on the improved CRF's marginals | improved CRF + τ: a token is non-O when 1 − P(O) > τ | τ = 0.40 (A), 0.30 (B), 0.35 (C), chosen on validation |
+
+Sources: [HMM_RESULTS.md](experiments/HMM_RESULTS.md), [CRF_EXPERIMENTS.md](docs/CRF_EXPERIMENTS.md) §3, §6–7
+and [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §7. Where to download each model:
+[REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md).
 
 ## What is new
 
@@ -241,6 +245,7 @@ Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM
 | `docs/MODEL_CONTRACT.md` | Model inputs, prediction records and manifests. |
 | `docs/EVALUATION_PROTOCOL.md` | Metrics, views, masks, bootstrap and known gold issues. |
 | `docs/EVALUATION_RESULTS.md` | HMM and shortcut results (validation, test, test_amb). |
+| `docs/HYPOTHESES.md` | The six team hypotheses, written before any CRF result existed (outcomes in the CRF results). |
 | `docs/EVALUATION_RESULTS_CRF.md` | CRF test results, validation selection, ablations, threshold decoding, filler cue, leakage, runtime. |
 | `docs/CRF_EXPERIMENTS.md` | The six CRF runs: features, settings, hashes, commands. |
 | `docs/RELATED_WORK.md` | Prior work, checked online, and how RECAP differs. |

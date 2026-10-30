@@ -147,6 +147,36 @@ doi:10.18653/v1/2020.wnut-1.18. <https://aclanthology.org/2020.wnut-1.18>
 Transformer models with data augmentation for English and Bangla punctuation restoration.
 *RECAP differs:* no pretrained models; our extension is the joint casing task and the leakage audit.
 
+## Team methods
+
+The team's additions build on these ideas, not on these exact models.
+
+**Lipton, Elkan and Naryanaswamy (2014).** Zachary C. Lipton, Charles Elkan, Balakrishnan Naryanaswamy.
+*Optimal Thresholding of Classifiers to Maximize F1 Measure.* ECML PKDD 2014, Lecture Notes in Computer
+Science 8725, pp. 225–239, doi:10.1007/978-3-662-44851-9_15.
+<https://link.springer.com/chapter/10.1007/978-3-662-44851-9_15> (preprint: <https://arxiv.org/abs/1402.1892>)
+Relates a classifier's best achievable F1 to the decision threshold that reaches it; for calibrated
+probabilities the F1-optimal threshold is half the optimal F1.
+*RECAP differs:* the threshold is applied per token to CRF marginals (1 − P(O) > τ), tuned on validation
+for macro F1, and frozen before test.
+
+**Lin and Wang (2020).** Binghuai Lin, Liyuan Wang. *Joint Prediction of Punctuation and Disfluency in
+Speech Transcripts.* Interspeech 2020, pp. 716–720, doi:10.21437/Interspeech.2020-1277.
+<https://www.isca-archive.org/interspeech_2020/lin20c_interspeech.html>
+A BERT-based multi-task model with attention between the tasks predicts punctuation and disfluencies
+jointly, beating separate models on IWSLT and Switchboard.
+*RECAP differs:* a single filler-word and repetition cue in a CRF instead of a disfluency task; on
+validation it had no detectable effect.
+
+**Nguyen et al. (2019).** Binh Nguyen, Vu Bao Hung Nguyen, Hien Nguyen, Pham Ngoc Phuong, The-Loc Nguyen,
+Quoc Truong Do, Luong Chi Mai. *Fast and Accurate Capitalization and Punctuation for Automatic Speech
+Recognition Using Transformer and Chunk Merging.* 2019 22nd Conference of the Oriental COCOSDA
+(O-COCOSDA), pp. 1–5, doi:10.1109/O-COCOSDA46868.2019.9041202. <https://arxiv.org/abs/1908.02404>
+One Transformer restores capitalization and punctuation in long, unsegmented ASR text by predicting
+overlapping chunks and merging them.
+*RECAP differs:* each SponSpeech utterance is labelled whole, without sentence segmentation or chunking,
+and the utterance-final shortcut that this creates is measured separately (`non_final`).
+
 ## Summary: where RECAP sits
 
 RECAP's models are not new. HMM, maximum-entropy and CRF taggers for punctuation (Huang and Zweig 2002;
