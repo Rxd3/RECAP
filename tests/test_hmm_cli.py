@@ -115,6 +115,14 @@ def test_cli_round_trip_manifests_and_predictions(tmp_path, mode):
     assert manifest["ordered_labels"] == list(model.labels)
 
 
+def test_cli_points_to_the_evaluator_for_scoring(tmp_path):
+    args, _, _, _ = setup_run(tmp_path)
+    result = subprocess.run(args, cwd=tmp_path, text=True, capture_output=True, check=False)
+    assert result.returncode == 0, result.stderr
+    assert "scripts/evaluate_models.py score" in result.stdout
+    assert "when available" not in result.stdout
+
+
 def test_cli_does_not_overwrite_an_existing_run(tmp_path):
     args, _, _, output = setup_run(tmp_path)
     output.mkdir()
