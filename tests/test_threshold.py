@@ -7,7 +7,7 @@ import hashlib
 import json
 import math
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -210,6 +210,12 @@ def mode_c(tmp_path_factory: pytest.TempPathFactory) -> Fixture:
     return _build_fixture(tmp_path_factory.mktemp("mode_c"), "C")
 
 
+@pytest.fixture(scope="module")
+def case_fixture(tmp_path_factory: pytest.TempPathFactory) -> Fixture:
+    """A saved casing-helper (label mode CASE) model: it loads, but it is not a scoring mode."""
+    return _build_fixture(tmp_path_factory.mktemp("case"), "CASE")
+
+
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -280,6 +286,16 @@ def test_tune_rejects_gold_mode_different_from_model_mode(
     assert err.startswith("error: ") and len(err.splitlines()) == 1 and "mode" in err
 
 
+def test_tune_rejects_a_casing_helper_model(
+    mode_a: Fixture, case_fixture: Fixture, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    out = tmp_path / "tau.json"
+    assert tune_threshold.main(_tune_argv(replace(mode_a, model=case_fixture.model), out)) == 1
+    assert not out.exists()
+    err = capsys.readouterr().err
+    assert err.startswith("error: ") and len(err.splitlines()) == 1 and "CASE" in err and "scoring mode" in err
+
+
 def test_tune_mode_c_without_masks_is_a_friendly_error(
     mode_c: Fixture, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -333,6 +349,17 @@ def test_predict_end_to_end_is_thresholded_and_manifest_valid(
     assert [p["predicted_labels"] for p in predictions] == expected
 
     check_manifest(man, load_bundle(mode_a.gold, mode_a.ids, out, None, vocab), vocab)
+
+
+def test_predict_rejects_a_casing_helper_model(
+    case_fixture: Fixture, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    tau_file = _write_tau_file(tmp_path / "tau.json", 0.35, _sha256(case_fixture.model))
+    out, man = tmp_path / "preds.jsonl", tmp_path / "preds.man.json"
+    assert tune_threshold.main(_predict_argv(case_fixture, tau_file, out, man)) == 1
+    assert not out.exists() and not man.exists()
+    err = capsys.readouterr().err
+    assert err.startswith("error: ") and len(err.splitlines()) == 1 and "CASE" in err and "scoring mode" in err
 
 
 def test_predict_tau_of_negative_zero_is_named_tau0(mode_a: Fixture, tmp_path: Path) -> None:

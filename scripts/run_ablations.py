@@ -3,7 +3,7 @@
 Usage:
     python scripts/run_ablations.py --mode {A,B,C} --out DIR [--sample 50000]
         [--variants improved,improved_minus_window2,...,improved_plus_filler,
-         improved_plus_question2,gap_improved]
+         improved_plus_question2,gap_improved,case_improved,factored]
         [--data-root DATA] [--release sponspeech-m1-v2]
 
 Trains this repository's CRFModel (c1 = c2 = 0.1, 100 L-BFGS iterations) on a fixed seeded sample
@@ -15,6 +15,13 @@ same improved features and the same sample, so its difference from improved isol
 label transitions. Primary-validation predictions are written to
 DIR/mode_<M>/<variant>/validation.jsonl, and the sampled training IDs to DIR/mode_<M>/sample.ids.
 Test data is never read.
+
+Two variants exist for --mode C only, to compare the joint CRF (improved) with a factored one on the same
+sample. case_improved trains a casing-only CRF (label mode CASE, from the records' case_labels).
+factored trains a mode A improved CRF on the same records (their punct_labels), writes its predictions to
+factored/punct_A.jsonl, and joins them with the case_improved predictions into mode C labels
+(factored/validation.jsonl); it needs case_improved earlier in --variants. Without --variants, modes A and B
+run the first ten variants and mode C runs all twelve.
 """
 
 from __future__ import annotations
@@ -34,6 +41,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from punct_restore.features.crf_features import FeatureConfig
 from punct_restore.models.crf import CRFModel
+from punct_restore.models.factored import combine
 from punct_restore.models.gap_classifier import GapClassifier
 
 SEED = 2026
@@ -47,12 +55,17 @@ GROUPS: dict[str, dict[str, Any]] = {
     "position": {"use_positional_buckets": False},
 }
 GAP_VARIANT = "gap_improved"
+CASE_VARIANT = "case_improved"
+FACTORED_VARIANT = "factored"
+C_ONLY_VARIANTS = (CASE_VARIANT, FACTORED_VARIANT)
 VARIANTS: dict[str, dict[str, Any]] = {
     "improved": {},
     **{f"improved_minus_{group}": override for group, override in GROUPS.items()},
     "improved_plus_filler": {"use_filler_cues": True},
     "improved_plus_question2": {"use_question_lookback": True},
     GAP_VARIANT: {},  # improved features, trained with GapClassifier instead of the CRF
+    CASE_VARIANT: {},  # mode C only: casing-only CRF
+    FACTORED_VARIANT: {},  # mode C only: mode A CRF + the case_improved predictions -> joint labels
 }
 
 
@@ -83,10 +96,27 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     parser.add_argument("--mode", choices=["A", "B", "C"], required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--sample", type=positive_int, default=50000)
-    parser.add_argument("--variants", type=variant_list, default=list(VARIANTS))
+    parser.add_argument("--variants", type=variant_list, default=None)
     parser.add_argument("--data-root", type=Path, default=ROOT / "data")
     parser.add_argument("--release", default="sponspeech-m1-v2")
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    problem = variants_problem(args.mode, args.variants)
+    if problem:
+        parser.error(f"--variants: {problem}")
+    if args.variants is None:
+        args.variants = [v for v in VARIANTS if args.mode == "C" or v not in C_ONLY_VARIANTS]
+    return args
+
+
+def variants_problem(mode: str, variants: list[str] | None) -> str | None:
+    """Why an explicit --variants list does not fit --mode, or None (the C-only variants need mode C)."""
+    names = variants or []
+    for name in names:
+        if name in C_ONLY_VARIANTS and mode != "C":
+            return f"{name} is only valid with --mode C"
+    if FACTORED_VARIANT in names and CASE_VARIANT not in names[: names.index(FACTORED_VARIANT)]:
+        return f"{FACTORED_VARIANT} needs {CASE_VARIANT} earlier in --variants"
+    return None
 
 
 def read_ids(path: Path) -> set[str]:
@@ -138,6 +168,40 @@ def load_inputs(
     return sample, [train[i] for i in sample], gold_free
 
 
+def build_crf(label_mode: str, feature_config: FeatureConfig, model_name: str) -> CRFModel:
+    return CRFModel(
+        label_mode=label_mode,
+        c1=0.1,
+        c2=0.1,
+        max_iterations=100,
+        feature_config=feature_config,
+        model_name=model_name,
+    )
+
+
+def write_predictions(path: Path, preds: list[dict[str, Any]]) -> None:
+    with open(path, "w", encoding="utf-8", newline="\n") as handle:
+        handle.writelines(json.dumps(pred) + "\n" for pred in preds)
+
+
+def run_factored(
+    records: list[dict[str, Any]],
+    gold_free: list[dict[str, Any]],
+    out_dir: Path,
+    feature_config: FeatureConfig,
+) -> None:
+    """Mode A CRF on the mode C sample, joined with the case_improved predictions already on disk."""
+    punct_model = build_crf("A", feature_config, "crf_improved_on_C_sample")
+    punct_model.fit(records)
+    punct = punct_model.predict(gold_free)
+    out_dir.mkdir()
+    write_predictions(out_dir / "punct_A.jsonl", punct)
+    ids = [row["sample_id"] for row in gold_free]
+    case_rows = read_records(out_dir.parent / CASE_VARIANT / "validation.jsonl", set(ids))
+    joint = combine(punct, [case_rows[i] for i in ids], model_name="crf_factored")
+    write_predictions(out_dir / "validation.jsonl", joint)
+
+
 def run_variant(
     mode: str,
     variant: str,
@@ -146,23 +210,18 @@ def run_variant(
     out_dir: Path,
 ) -> None:
     feature_config = FeatureConfig.improved(**VARIANTS[variant])
+    if variant == FACTORED_VARIANT:
+        run_factored(records, gold_free, out_dir, feature_config)
+        return
     model: CRFModel | GapClassifier
     if variant == GAP_VARIANT:
         model = GapClassifier(mode, feature_config=feature_config, C=1.0, max_iter=200, model_name=variant)
     else:
-        model = CRFModel(
-            label_mode=mode,
-            c1=0.1,
-            c2=0.1,
-            max_iterations=100,
-            feature_config=feature_config,
-            model_name=f"crf_{variant}",
-        )
+        model = build_crf("CASE" if variant == CASE_VARIANT else mode, feature_config, f"crf_{variant}")
     model.fit(records)
     preds = model.predict(gold_free)
     out_dir.mkdir()
-    with open(out_dir / "validation.jsonl", "w", encoding="utf-8", newline="\n") as handle:
-        handle.writelines(json.dumps(pred) + "\n" for pred in preds)
+    write_predictions(out_dir / "validation.jsonl", preds)
     del model, preds
     gc.collect()
 

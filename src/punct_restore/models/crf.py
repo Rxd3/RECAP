@@ -10,6 +10,8 @@ Adheres strictly to the shared model contract (docs/MODEL_CONTRACT.md):
     * Mode A (4 standard punctuation classes)
     * Mode B (8 extended punctuation classes)
     * Mode C (12 joint punctuation and casing classes: 4 punct x 3 casing)
+    * Helper mode CASE (3 casing classes, trained from a mode C record's case_labels; it is a
+      building block for factored joint prediction, not a scoring mode)
 """
 
 from __future__ import annotations
@@ -34,13 +36,21 @@ from punct_restore.features.crf_features import (
 CASING_VOCABULARY: tuple[str, ...] = ("LOWER", "FIRST_UPPER", "ALL_UPPER")
 
 MODEL_SCHEMA_VERSION = 1
+SCORING_MODES: tuple[str, ...] = ("A", "B", "C")
+LABEL_MODES: tuple[str, ...] = (*SCORING_MODES, "CASE")
+
+
+def require_scoring_mode(label_mode: str) -> None:
+    """Raise ValueError unless label_mode is a scoring mode; the casing helper 'CASE' is not one."""
+    if label_mode not in SCORING_MODES:
+        raise ValueError(f"Unsupported label_mode: {label_mode!r}. Must be 'A', 'B' or 'C' (a scoring mode).")
 
 
 def get_mode_vocabulary(label_mode: str, *, config_path: str | Path | None = None) -> list[str]:
     """Retrieve the authoritative ordered label vocabulary for a given mode from configs/label_sets.yaml.
 
     Args:
-        label_mode: 'A', 'B', or 'C'.
+        label_mode: 'A', 'B', 'C', or the casing helper mode 'CASE'.
         config_path: Optional path to label_sets.yaml (defaults to repository configuration).
 
     Returns:
@@ -50,18 +60,18 @@ def get_mode_vocabulary(label_mode: str, *, config_path: str | Path | None = Non
         ValueError: If label_mode is unsupported or configuration structure is invalid.
         FileNotFoundError: If configuration file does not exist.
     """
-    if label_mode not in ("A", "B", "C"):
-        raise ValueError(f"Unsupported label_mode: {label_mode!r}. Must be 'A', 'B', or 'C'.")
+    if label_mode not in LABEL_MODES:
+        raise ValueError(f"Unsupported label_mode: {label_mode!r}. Must be 'A', 'B', 'C', or 'CASE'.")
 
     label_sets = load_label_sets(str(config_path)) if config_path is not None else load_label_sets()
-    return list(label_sets[label_mode])
+    return list(label_sets["casing" if label_mode == "CASE" else label_mode])
 
 
 class CRFModel:
     """Production-quality Linear-chain Conditional Random Field for sequence labeling.
 
     Attributes:
-        label_mode: Active label mode ('A', 'B', or 'C').
+        label_mode: Active label mode ('A', 'B', 'C', or the casing helper 'CASE').
         vocabulary: Exact ordered list of permitted target labels.
         algorithm: Optimization algorithm (default: 'lbfgs').
         c1: L1 regularization coefficient.
@@ -128,8 +138,8 @@ class CRFModel:
         c2: float,
         max_iterations: int,
     ) -> None:
-        if label_mode not in ("A", "B", "C"):
-            raise ValueError(f"Invalid label_mode: {label_mode!r}. Must be 'A', 'B', or 'C'.")
+        if label_mode not in LABEL_MODES:
+            raise ValueError(f"Invalid label_mode: {label_mode!r}. Must be 'A', 'B', 'C', or 'CASE'.")
         if not isinstance(algorithm, str) or not algorithm.strip():
             raise ValueError("algorithm must be a non-empty string.")
         if not isinstance(c1, (int, float)) or math.isnan(c1) or math.isinf(c1) or c1 < 0:
@@ -138,6 +148,86 @@ class CRFModel:
             raise ValueError(f"c2 must be a non-negative finite float, got {c2!r}")
         if not isinstance(max_iterations, int) or max_iterations <= 0:
             raise ValueError(f"max_iterations must be a positive integer, got {max_iterations!r}")
+
+    @staticmethod
+    def _checked_case_labels(
+        rec: Mapping[str, Any], where: str, sample_id: str, seq_len: int
+    ) -> list[str]:
+        """Return the record's case_labels as a new list after checking length and vocabulary."""
+        case_labels = rec.get("case_labels")
+        if not isinstance(case_labels, list) or len(case_labels) != seq_len:
+            raise ValueError(
+                f"{where} ({sample_id}): case_labels length ({len(case_labels) if isinstance(case_labels, list) else None}) "
+                f"does not match tokens length ({seq_len})."
+            )
+        unknown_cases = [c for c in case_labels if c not in CASING_VOCABULARY]
+        if unknown_cases:
+            raise ValueError(f"{where} ({sample_id}): unknown case_labels {unknown_cases!r}.")
+        return list(case_labels)
+
+    def _target_sequence(
+        self, rec: Mapping[str, Any], where: str, sample_id: str, seq_len: int
+    ) -> list[str]:
+        """Derive the per-token training targets of the active label mode from one record."""
+        punct_labels = rec.get("punct_labels")
+        if not isinstance(punct_labels, list) or len(punct_labels) != seq_len:
+            raise ValueError(
+                f"{where} ({sample_id}): punct_labels length ({len(punct_labels) if isinstance(punct_labels, list) else None}) "
+                f"does not match tokens length ({seq_len})."
+            )
+        vocab_set = set(self.vocabulary)
+
+        if self.label_mode in ("A", "B"):
+            unknown_labels = [lbl for lbl in punct_labels if lbl not in vocab_set]
+            if unknown_labels:
+                raise ValueError(
+                    f"{where} ({sample_id}): unknown punct_labels {unknown_labels!r} "
+                    f"for Mode {self.label_mode}."
+                )
+            return list(punct_labels)
+
+        if self.label_mode == "CASE":
+            return self._checked_case_labels(rec, where, sample_id, seq_len)
+
+        if self.label_mode == "C":
+            case_labels = self._checked_case_labels(rec, where, sample_id, seq_len)
+            try:
+                target_sequence = join_labels(punct_labels, case_labels, separator="|")
+            except Exception as e:
+                raise ValueError(f"{where} ({sample_id}): failed to derive Mode C targets: {e}") from e
+            unknown_joint = [lbl for lbl in target_sequence if lbl not in vocab_set]
+            if unknown_joint:
+                raise ValueError(
+                    f"{where} ({sample_id}): derived joint labels {unknown_joint!r} "
+                    f"outside Mode C vocabulary."
+                )
+            return target_sequence
+
+        raise ValueError(f"Unsupported label_mode: {self.label_mode}")
+
+    @staticmethod
+    def _checked_training_record(rec: Any, where: str, seen_ids: set[str]) -> tuple[str, list[str]]:
+        """sample_id (recorded in ``seen_ids``) and tokens of one training record; leakage-safe split check."""
+        if not isinstance(rec, Mapping):
+            raise TypeError(f"{where} must be a Mapping, got {type(rec).__name__}")
+        sample_id = rec.get("sample_id")
+        if not isinstance(sample_id, str) or not sample_id.strip():
+            raise ValueError(f"{where}: sample_id must be a non-empty string.")
+        if sample_id in seen_ids:
+            raise ValueError(f"{where}: duplicate sample_id {sample_id!r} detected.")
+        seen_ids.add(sample_id)
+        split = rec.get("split")  # prevent training on non-train data (leakage prevention)
+        if split is not None and split != "train":
+            raise ValueError(
+                f"{where} ({sample_id}): cannot train on record with split={split!r}. "
+                "Training data must have split='train'."
+            )
+        tokens = rec.get("tokens")
+        if not isinstance(tokens, list) or len(tokens) == 0:
+            raise ValueError(f"{where} ({sample_id}): tokens must be a non-empty list.")
+        if any(not isinstance(t, str) or not t.strip() for t in tokens):
+            raise ValueError(f"{where} ({sample_id}): tokens must contain non-empty strings.")
+        return sample_id, tokens
 
     def _validate_training_records(
         self, records: Sequence[Mapping[str, Any]]
@@ -152,82 +242,11 @@ class CRFModel:
         X: list[list[dict[str, Any]]] = []
         y: list[list[str]] = []
 
-        vocab_set = set(self.vocabulary)
-        casing_set = set(CASING_VOCABULARY)
-
         for idx, rec in enumerate(records):
             where = f"Record at index {idx}"
-            if not isinstance(rec, Mapping):
-                raise TypeError(f"{where} must be a Mapping, got {type(rec).__name__}")
-
-            # Validate sample_id
-            sample_id = rec.get("sample_id")
-            if not isinstance(sample_id, str) or not sample_id.strip():
-                raise ValueError(f"{where}: sample_id must be a non-empty string.")
-            if sample_id in seen_ids:
-                raise ValueError(f"{where}: duplicate sample_id {sample_id!r} detected.")
-            seen_ids.add(sample_id)
-
-            # Prevent training on non-train data (leakage prevention)
-            split = rec.get("split")
-            if split is not None and split != "train":
-                raise ValueError(
-                    f"{where} ({sample_id}): cannot train on record with split={split!r}. "
-                    "Training data must have split='train'."
-                )
-
-            # Validate tokens
-            tokens = rec.get("tokens")
-            if not isinstance(tokens, list) or len(tokens) == 0:
-                raise ValueError(f"{where} ({sample_id}): tokens must be a non-empty list.")
-            if any(not isinstance(t, str) or not t.strip() for t in tokens):
-                raise ValueError(f"{where} ({sample_id}): tokens must contain non-empty strings.")
-
+            sample_id, tokens = self._checked_training_record(rec, where, seen_ids)
             seq_len = len(tokens)
-
-            # Derive targets based on mode
-            punct_labels = rec.get("punct_labels")
-            if not isinstance(punct_labels, list) or len(punct_labels) != seq_len:
-                raise ValueError(
-                    f"{where} ({sample_id}): punct_labels length ({len(punct_labels) if isinstance(punct_labels, list) else None}) "
-                    f"does not match tokens length ({seq_len})."
-                )
-
-            if self.label_mode in ("A", "B"):
-                unknown_labels = [lbl for lbl in punct_labels if lbl not in vocab_set]
-                if unknown_labels:
-                    raise ValueError(
-                        f"{where} ({sample_id}): unknown punct_labels {unknown_labels!r} "
-                        f"for Mode {self.label_mode}."
-                    )
-                target_sequence = list(punct_labels)
-
-            elif self.label_mode == "C":
-                case_labels = rec.get("case_labels")
-                if not isinstance(case_labels, list) or len(case_labels) != seq_len:
-                    raise ValueError(
-                        f"{where} ({sample_id}): case_labels length ({len(case_labels) if isinstance(case_labels, list) else None}) "
-                        f"does not match tokens length ({seq_len})."
-                    )
-                unknown_cases = [c for c in case_labels if c not in casing_set]
-                if unknown_cases:
-                    raise ValueError(
-                        f"{where} ({sample_id}): unknown case_labels {unknown_cases!r}."
-                    )
-
-                try:
-                    target_sequence = join_labels(punct_labels, case_labels, separator="|")
-                except Exception as e:
-                    raise ValueError(f"{where} ({sample_id}): failed to derive Mode C targets: {e}") from e
-
-                unknown_joint = [lbl for lbl in target_sequence if lbl not in vocab_set]
-                if unknown_joint:
-                    raise ValueError(
-                        f"{where} ({sample_id}): derived joint labels {unknown_joint!r} "
-                        f"outside Mode C vocabulary."
-                    )
-            else:
-                raise ValueError(f"Unsupported label_mode: {self.label_mode}")
+            target_sequence = self._target_sequence(rec, where, sample_id, seq_len)
 
             # Extract features strictly using observable tokens (gold leakage prevention)
             features = self._feature_extractor(tokens, config=self.feature_config)
@@ -254,7 +273,7 @@ class CRFModel:
 
         Args:
             training_records: Sequence of validated training records.
-            label_mode: Optional label mode override ('A', 'B', or 'C').
+            label_mode: Optional label mode override ('A', 'B', 'C', or 'CASE').
             config: Optional hyperparameters/feature configuration overrides.
             feature_extractor: Optional callable for feature extraction.
 
@@ -263,7 +282,7 @@ class CRFModel:
         """
         # Apply runtime overrides if provided
         if label_mode is not None:
-            if label_mode not in ("A", "B", "C"):
+            if label_mode not in LABEL_MODES:
                 raise ValueError(f"Invalid label_mode: {label_mode!r}")
             self.label_mode = label_mode
             self.vocabulary = get_mode_vocabulary(label_mode, config_path=self._config_path)
@@ -537,7 +556,7 @@ class CRFModel:
             raise ValueError(f"Incompatible model family: {family!r}, expected 'crf'")
 
         label_mode = bundle.get("label_mode")
-        if label_mode not in ("A", "B", "C"):
+        if label_mode not in LABEL_MODES:
             raise ValueError(f"Invalid label_mode in artifact: {label_mode!r}")
 
         hp = bundle.get("hyperparameters", {})

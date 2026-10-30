@@ -108,6 +108,12 @@ def test_bad_label_mode_is_a_value_error(label_mode):
         GapClassifier(label_mode)
 
 
+def test_casing_helper_mode_is_not_a_gap_classifier_mode():
+    # CRFModel/get_mode_vocabulary accept "CASE", but this model's own loader only knows A, B and C
+    with pytest.raises(ValueError, match=r"label_mode.*'CASE'.*'A', 'B' or 'C'"):
+        GapClassifier("CASE")
+
+
 @pytest.mark.parametrize("value", [0, -1.0, float("nan"), float("inf"), "1", None, True])
 def test_bad_C_is_a_value_error(value):
     with pytest.raises(ValueError, match="C"):
@@ -446,6 +452,7 @@ def test_load_non_dict_is_a_value_error(tmp_path):
         {"model_family": "crf"},
         {"schema_version": 2},
         {"label_mode": "Z"},
+        {"label_mode": "CASE", "vocabulary": ["LOWER", "FIRST_UPPER", "ALL_UPPER"]},
         {"vocabulary": ["O", "COMMA"]},
         {"model_name": ""},
         {"feature_config": "improved"},

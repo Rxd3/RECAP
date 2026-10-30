@@ -878,6 +878,24 @@ class TestPredictManifestAndProvenance:
         assert not Path(manifest["input"]["path"]).is_absolute()
         assert manifest["predictions_sha256"] == train_crf.sha256_file(preds)
 
+    def test_predict_rejects_a_casing_helper_model(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        records = [{"sample_id": f"c{i}", "split": "train", "label_mode": "C", "tokens": ["we", "agree"],
+                    "punct_labels": ["O", "PERIOD"], "case_labels": ["FIRST_UPPER", "LOWER"]}
+                   for i in range(3)]
+        model = tmp_path / "case.joblib"
+        CRFModel(label_mode="CASE", max_iterations=5).fit(records).save_model(model)
+        inp, out, man = tmp_path / "in.jsonl", tmp_path / "p.jsonl", tmp_path / "p.man.json"
+        inp.write_text(json.dumps({"sample_id": "s1", "tokens": ["hello"]}) + "\n", encoding="utf-8")
+
+        ret = train_crf.main(["predict", "-m", str(model), "-i", str(inp), "-o", str(out),
+                              "--manifest-out", str(man)])
+        assert ret == 1
+        assert not out.exists() and not man.exists()
+        err = capsys.readouterr().err
+        assert len(err.splitlines()) == 1 and "CASE" in err and "scoring mode" in err
+
     def test_predict_refuses_existing_manifest(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:

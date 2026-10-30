@@ -23,7 +23,12 @@ from sklearn.feature_extraction import DictVectorizer
 from sklearn.linear_model import LogisticRegression
 
 from punct_restore.features.crf_features import FeatureConfig
-from punct_restore.models.crf import CRFModel, get_mode_vocabulary
+from punct_restore.models.crf import (
+    SCORING_MODES,
+    CRFModel,
+    get_mode_vocabulary,
+    require_scoring_mode,
+)
 
 SCHEMA_VERSION = 1
 MODEL_FAMILY = "gap_classifier"
@@ -110,7 +115,7 @@ def _bundle_problem(bundle: Any) -> str | None:
     for key, kind in _BUNDLE_PARTS.items():
         if not isinstance(bundle.get(key), kind):
             return f"{key!r} is missing or invalid"
-    if bundle["label_mode"] not in ("A", "B", "C"):
+    if bundle["label_mode"] not in SCORING_MODES:
         return f"unknown label mode {bundle['label_mode']!r}"
     if bundle["vocabulary"] != get_mode_vocabulary(bundle["label_mode"]):
         return "vocabulary does not match the label mode"
@@ -150,7 +155,8 @@ class GapClassifier:
         max_iter: int = 200,
         model_name: str = "gap_improved",
     ) -> None:
-        self.vocabulary = get_mode_vocabulary(label_mode)  # ValueError for anything but A/B/C
+        require_scoring_mode(label_mode)  # get_mode_vocabulary also accepts the casing helper "CASE"
+        self.vocabulary = get_mode_vocabulary(label_mode)
         if not isinstance(feature_config, FeatureConfig):
             raise TypeError(f"feature_config must be a FeatureConfig, got {type(feature_config).__name__}")
         _check_hyperparameters(C, max_iter, model_name)

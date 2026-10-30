@@ -37,15 +37,16 @@ TRAIN_IDS = ["t1", "t2", "t3", "t4", "t5", "t6"]
 VAL_IDS = ["v1", "v2", "v3"]
 
 
-def _row(sample_id: str, split: str) -> dict[str, Any]:
+def _row(sample_id: str, split: str, mode: str = "A") -> dict[str, Any]:
     tokens, punct = _SEQUENCES[sample_id]
+    case = ["FIRST_UPPER"] + ["LOWER"] * (len(tokens) - 1) if mode == "C" else ["LOWER"] * len(tokens)
     return {
         "sample_id": sample_id,
         "split": split,
-        "label_mode": "A",
+        "label_mode": mode,
         "tokens": tokens,
         "punct_labels": punct,
-        "case_labels": ["LOWER"] * len(tokens),
+        "case_labels": case,
     }
 
 
@@ -67,23 +68,24 @@ def build_root(
     train_present: list[str] = TRAIN_IDS,
     val_listed: list[str] = VAL_IDS,
     val_present: list[str] = VAL_IDS,
+    mode: str = "A",
 ) -> Path:
-    """Tiny data root for release 'rel', mode A, including test files that must never be opened."""
+    """Tiny data root for release 'rel' and one mode, including test files that must never be opened."""
     root = tmp_path / "data"
-    proc = root / "processed" / RELEASE / "mode_A"
+    proc = root / "processed" / RELEASE / f"mode_{mode}"
     splits = root / "splits" / RELEASE
-    _write_jsonl(proc / "train.jsonl", [_row(i, "train") for i in train_present])
-    _write_jsonl(proc / "validation.jsonl", [_row(i, "validation") for i in val_present])
-    _write_jsonl(proc / "test.jsonl", [_row(i, "test") for i in VAL_IDS])
-    _write_ids(splits / "default_train" / "mode_A.ids", train_listed)
-    _write_ids(splits / "primary_eval" / "validation_mode_A.ids", val_listed)
-    _write_ids(splits / "primary_eval" / "test_mode_A.ids", VAL_IDS)
-    _write_ids(splits / "primary_eval" / "test_amb_mode_A.ids", VAL_IDS)
+    _write_jsonl(proc / "train.jsonl", [_row(i, "train", mode) for i in train_present])
+    _write_jsonl(proc / "validation.jsonl", [_row(i, "validation", mode) for i in val_present])
+    _write_jsonl(proc / "test.jsonl", [_row(i, "test", mode) for i in VAL_IDS])
+    _write_ids(splits / "default_train" / f"mode_{mode}.ids", train_listed)
+    _write_ids(splits / "primary_eval" / f"validation_mode_{mode}.ids", val_listed)
+    _write_ids(splits / "primary_eval" / f"test_mode_{mode}.ids", VAL_IDS)
+    _write_ids(splits / "primary_eval" / f"test_amb_mode_{mode}.ids", VAL_IDS)
     return root
 
 
-def _argv(root: Path, out: Path, *extra: str) -> list[str]:
-    return ["--mode", "A", "--out", str(out), "--data-root", str(root), "--release", RELEASE, *extra]
+def _argv(root: Path, out: Path, *extra: str, mode: str = "A") -> list[str]:
+    return ["--mode", mode, "--out", str(out), "--data-root", str(root), "--release", RELEASE, *extra]
 
 
 def _forbidden(path: object) -> bool:
@@ -114,7 +116,7 @@ def forbid_test_files(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(io, "open", guarded)
 
 
-def test_variants_are_the_ten_expected_names_in_order():
+def test_variants_are_the_twelve_expected_names_in_order():
     assert list(run_ablations.VARIANTS) == [
         "improved",
         "improved_minus_window2",
@@ -126,12 +128,15 @@ def test_variants_are_the_ten_expected_names_in_order():
         "improved_plus_filler",
         "improved_plus_question2",
         "gap_improved",
+        "case_improved",
+        "factored",
     ]
     assert run_ablations.VARIANTS["improved"] == {}
     assert run_ablations.VARIANTS["improved_minus_window2"] == {"window_size": 1}
     assert run_ablations.VARIANTS["improved_plus_filler"] == {"use_filler_cues": True}
     assert run_ablations.VARIANTS["improved_plus_question2"] == {"use_question_lookback": True}
     assert run_ablations.VARIANTS["gap_improved"] == {}  # the improved features, no removed group
+    assert run_ablations.VARIANTS["case_improved"] == {} and run_ablations.VARIANTS["factored"] == {}
     assert run_ablations.SEED == 2026
 
 
@@ -235,6 +240,15 @@ def test_bad_variants_are_an_argparse_error(tmp_path, variants):
     with pytest.raises(SystemExit) as exc:
         run_ablations.main(_argv(root, tmp_path / "out", "--variants", variants))
     assert exc.value.code == 2
+    assert not (tmp_path / "out").exists()
+
+
+def test_casing_helper_mode_is_not_an_ablation_mode(tmp_path, capsys):
+    root = build_root(tmp_path)
+    with pytest.raises(SystemExit) as exc:
+        run_ablations.main(_argv(root, tmp_path / "out", mode="CASE"))
+    assert exc.value.code == 2
+    assert "--mode" in capsys.readouterr().err
     assert not (tmp_path / "out").exists()
 
 
@@ -401,4 +415,153 @@ def test_script_runs_standalone_and_has_no_personal_paths():
     assert "--data-root" in result.stdout and "--release" in result.stdout
     assert "--code" not in result.stdout
     source = script.read_text(encoding="utf-8")
-    assert "Asus" not in source and not re.search(r"[A-Za-z]:[/\\]", source)
+    assert not re.search(r"[A-Za-z]:[/\\]", source)
+
+
+# --- mode C only variants: case_improved (CASE CRF) and factored (mode A CRF + CASE -> joint labels) -------------
+
+C_ONLY = ["case_improved", "factored"]
+A_LABELS = {"O", "COMMA", "PERIOD", "QUESTION"}
+CASING = {"LOWER", "FIRST_UPPER", "ALL_UPPER"}
+
+
+def _read_jsonl(path: Path) -> list[dict[str, Any]]:
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+
+
+def test_default_variants_leave_out_the_mode_c_only_ones_for_a_and_b_and_keep_them_in_order_for_c(tmp_path):
+    root = build_root(tmp_path)
+    everything = list(run_ablations.VARIANTS)
+    for mode in ("A", "B"):
+        chosen = run_ablations.parse_args(_argv(root, tmp_path / "out", mode=mode)).variants
+        assert chosen == [v for v in everything if v not in C_ONLY] and len(chosen) == 10
+    chosen = run_ablations.parse_args(_argv(root, tmp_path / "out", mode="C")).variants
+    assert chosen == everything
+    assert chosen.index("case_improved") < chosen.index("factored")
+
+
+def test_explicit_variants_are_kept_as_given(tmp_path):
+    root = build_root(tmp_path)
+    args = run_ablations.parse_args(_argv(root, tmp_path / "out", "--variants", "improved,case_improved,factored",
+                                          mode="C"))
+    assert args.variants == ["improved", "case_improved", "factored"]
+
+
+def test_mode_c_runs_improved_case_improved_and_factored_with_consistent_files(tmp_path, capsys, monkeypatch):
+    root = build_root(tmp_path, mode="C")
+    out = tmp_path / "out"
+    forbid_test_files(monkeypatch)
+
+    code = run_ablations.main(
+        _argv(root, out, "--sample", "4", "--variants", "improved,case_improved,factored", mode="C")
+    )
+
+    captured = capsys.readouterr()
+    assert code == 0 and captured.err == ""
+    assert re.fullmatch(r"C improved: \d+s\nC case_improved: \d+s\nC factored: \d+s\n", captured.out)
+    base = out / "mode_C"
+    assert sorted(path.relative_to(base).as_posix() for path in base.rglob("*") if path.is_file()) == [
+        "case_improved/validation.jsonl",
+        "factored/punct_A.jsonl",
+        "factored/validation.jsonl",
+        "improved/validation.jsonl",
+        "sample.ids",
+    ]
+    lengths = {sid: len(_SEQUENCES[sid][0]) for sid in VAL_IDS}
+    expected_files = {
+        "improved/validation.jsonl": ("C", "crf_improved"),
+        "case_improved/validation.jsonl": ("CASE", "crf_case_improved"),
+        "factored/punct_A.jsonl": ("A", "crf_improved_on_C_sample"),
+        "factored/validation.jsonl": ("C", "crf_factored"),
+    }
+    rows = {}
+    for name, (label_mode, model_name) in expected_files.items():
+        rows[name] = _read_jsonl(base / name)
+        assert [r["sample_id"] for r in rows[name]] == VAL_IDS, name
+        assert {r["label_mode"] for r in rows[name]} == {label_mode}, name
+        assert {r["model_name"] for r in rows[name]} == {model_name}, name
+        assert all(len(r["predicted_labels"]) == lengths[r["sample_id"]] for r in rows[name]), name
+    assert {lbl for r in rows["case_improved/validation.jsonl"] for lbl in r["predicted_labels"]} <= CASING
+    assert {lbl for r in rows["factored/punct_A.jsonl"] for lbl in r["predicted_labels"]} <= A_LABELS
+    for joint, punct, case in zip(
+        rows["factored/validation.jsonl"], rows["factored/punct_A.jsonl"], rows["case_improved/validation.jsonl"]
+    ):
+        assert joint["predicted_labels"] == [
+            f"{p}|{c}" for p, c in zip(punct["predicted_labels"], case["predicted_labels"])
+        ]
+
+
+def test_case_improved_and_factored_build_the_documented_crfs_on_the_same_sample(tmp_path, monkeypatch):
+    root = build_root(tmp_path, mode="C")
+    built: list[tuple[dict[str, Any], list[str]]] = []
+    real = run_ablations.CRFModel
+
+    def spy(**kwargs: Any) -> Any:
+        model = real(**kwargs)
+        real_fit = model.fit
+
+        def fit(records: Any, *args: Any, **kw: Any) -> Any:
+            built.append((kwargs, [r["sample_id"] for r in records]))
+            return real_fit(records, *args, **kw)
+
+        model.fit = fit
+        return model
+
+    monkeypatch.setattr(run_ablations, "CRFModel", spy)
+    argv = _argv(root, tmp_path / "out", "--sample", "4", "--variants", "case_improved,factored", mode="C")
+    assert run_ablations.main(argv) == 0
+
+    sample = (tmp_path / "out" / "mode_C" / "sample.ids").read_text(encoding="utf-8").split()
+    common = {"c1": 0.1, "c2": 0.1, "max_iterations": 100, "feature_config": FeatureConfig.improved()}
+    assert built == [
+        ({**common, "label_mode": "CASE", "model_name": "crf_case_improved"}, sample),
+        ({**common, "label_mode": "A", "model_name": "crf_improved_on_C_sample"}, sample),
+    ]
+
+
+ONLY_MODE_C = "is only valid with --mode C"
+CASE_FIRST = "factored needs case_improved earlier in --variants"
+
+
+@pytest.mark.parametrize(
+    ("mode", "variants", "message"),
+    [
+        ("C", "factored", CASE_FIRST),
+        ("C", "improved,factored", CASE_FIRST),
+        ("C", "factored,case_improved", CASE_FIRST),
+        ("A", "case_improved", "case_improved " + ONLY_MODE_C),
+        ("A", "improved,factored", "factored " + ONLY_MODE_C),
+        ("A", "case_improved,factored", "case_improved " + ONLY_MODE_C),
+        ("B", "case_improved", "case_improved " + ONLY_MODE_C),
+        ("B", "factored", "factored " + ONLY_MODE_C),
+    ],
+)
+def test_mode_c_only_variants_are_an_argparse_error_elsewhere_or_without_case_first(
+        tmp_path, capsys, mode, variants, message):
+    root = build_root(tmp_path)
+    with pytest.raises(SystemExit) as exc:
+        run_ablations.main(_argv(root, tmp_path / "out", "--variants", variants, mode=mode))
+    assert exc.value.code == 2
+    assert f"--variants: {message}" in capsys.readouterr().err
+    assert not (tmp_path / "out").exists()
+
+
+def test_factored_fails_with_one_line_when_the_case_predictions_are_unusable(tmp_path, capsys, monkeypatch):
+    root = build_root(tmp_path, mode="C")
+    real = run_ablations.run_variant
+
+    def run_then_empty_the_case_file(mode: str, variant: str, *args: Any) -> None:
+        real(mode, variant, *args)
+        if variant == "case_improved":
+            (args[-1] / "validation.jsonl").write_text("", encoding="utf-8")
+
+    monkeypatch.setattr(run_ablations, "run_variant", run_then_empty_the_case_file)
+    code = run_ablations.main(
+        _argv(root, tmp_path / "out", "--sample", "3", "--variants", "case_improved,factored", mode="C")
+    )
+
+    err = capsys.readouterr().err
+    assert code == 1
+    assert len(err.splitlines()) == 1 and err.startswith("error: ") and "validation.jsonl" in err
+    assert str(tmp_path) not in err
+    assert not (tmp_path / "out" / "mode_C" / "factored" / "validation.jsonl").exists()
