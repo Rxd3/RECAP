@@ -81,7 +81,7 @@ This is Member 5's evaluation of Member 3's six CRF models (modes A, B and C × 
 
 ## Team hypotheses
 
-The team wrote H1–H6 in its execution plan on 2026-10-29, before any CRF result existed. Each one is reported whatever its outcome.
+The team wrote H1–H6 in its execution plan on 2026-10-29, before any CRF result existed; the original text is in [HYPOTHESES.md](HYPOTHESES.md). Each one is reported whatever its outcome.
 
 | # | Hypothesis | Outcome | Evidence |
 |---|---|---|---|
