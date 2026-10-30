@@ -97,6 +97,32 @@ def test_requirements_txt_lists_exactly_the_pyproject_pins() -> None:
     assert set(listed) == set(pins["runtime"]) | set(pins["dev"])
 
 
+def _lock_pins() -> dict[str, str]:
+    """PEP 503 normalised name -> version for every line of requirements-lock.txt (comments skipped)."""
+    lines = (ROOT / "requirements-lock.txt").read_text(encoding="utf-8").splitlines()
+    pins = [line.strip().partition("==") for line in lines if line.strip() and not line.strip().startswith("#")]
+    return {_distribution(name): version for name, _, version in pins}
+
+
+def test_requirements_lock_is_plain_name_equals_version_lines() -> None:
+    lines = (ROOT / "requirements-lock.txt").read_text(encoding="utf-8").splitlines()
+    pins = [line for line in lines if line.strip() and not line.startswith("#")]
+    assert pins and [line for line in pins if not PIN.match(line)] == []
+    assert len(_lock_pins()) == len(pins), "a package is pinned twice in requirements-lock.txt"
+
+
+def test_requirements_lock_pins_every_direct_dependency_to_the_same_version() -> None:
+    wanted = {_distribution(name): version
+              for specs in _pyproject_pins().values() for name, _, version in (s.partition("==") for s in specs)}
+    locked = _lock_pins()
+    assert {name: locked.get(name) for name in wanted} == wanted
+
+
+def test_requirements_lock_pins_what_the_pickled_crf_models_load_through() -> None:
+    """The CRF .joblib models unpickle through these; the lock exists to fix their versions."""
+    assert {"scikit-learn", "scipy", "numpy"} <= set(_lock_pins())
+
+
 def test_every_third_party_import_is_declared() -> None:
     declared = {_distribution(re.match(r"[A-Za-z0-9._-]+", spec)[0]) for spec in _pyproject_pins()["runtime"]}
     imports = _third_party(_top_level_imports(_shipped_files()), _first_party_names())

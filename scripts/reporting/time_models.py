@@ -21,11 +21,14 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).parent))
-sys.path.insert(0, str(ROOT / "src"))
-from _cli import run
+from _cli import check_out, name_only, run, write_new_text  # puts ROOT/src on sys.path
 
 REPS, WARMUP = 3, 200
 FIT_OPTIONS = ("fit_train", "fit_ids", "smoothing", "min_token_count")
+
+
+def usable_tokens(tokens: Any) -> bool:
+    return isinstance(tokens, list) and bool(tokens) and all(isinstance(t, str) and t for t in tokens)
 
 
 def records(path: str | Path, ids_path: str | Path) -> list[dict[str, Any]]:
@@ -37,6 +40,8 @@ def records(path: str | Path, ids_path: str | Path) -> list[dict[str, Any]]:
         raise ValueError(f"{Path(path).name}: {exc}") from exc
     if any(not isinstance(r, dict) or not isinstance(r.get("sample_id"), str) for r in rows):
         raise ValueError(f"{Path(path).name}: every record must be an object with a sample_id")
+    if any(not usable_tokens(r.get("tokens")) for r in rows):
+        raise ValueError(f"{Path(path).name}: every record needs a non-empty tokens list")
     return [r for r in rows if r["sample_id"] in keep]
 
 
@@ -49,10 +54,15 @@ def model_class(kind: str) -> Any:
 
 
 def load_model(model_cls: Any, path: str) -> Any:
+    model_path = Path(path)
+    if model_path.is_dir():
+        raise ValueError(f"{model_path.name}: is a folder, not a file")
+    if not model_path.is_file():
+        raise ValueError(f"{model_path.name}: model file not found")
     try:
         return model_cls.load_model(path)
-    except ValueError as exc:
-        raise ValueError(f"{Path(path).name}: {exc}") from exc
+    except (OSError, ValueError) as exc:  # the loaders quote the whole path: keep the file name only
+        raise ValueError(f"{model_path.name}: {name_only(str(exc), model_path)}") from exc
 
 
 def time_predictions(model: Any, recs: list[dict[str, Any]]) -> list[float]:
@@ -101,7 +111,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--kind", choices=("hmm", "crf"), required=True)
     parser.add_argument("--model", required=True, help="saved model: HMM .json or CRF .joblib")
     parser.add_argument("--mode", choices=("A", "B", "C"), required=True)
-    parser.add_argument("--out", required=True, help="JSON file to write")
+    parser.add_argument("--out", required=True, help="JSON file to create (must not exist)")
     parser.add_argument("--data-root", type=Path, default=ROOT / "data")
     parser.add_argument("--release", default="sponspeech-m1-v2")
     parser.add_argument("--fit-train", help="HMM only: training records to time a fit on")
@@ -122,9 +132,13 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
 
 
 def write_report(args: argparse.Namespace) -> None:
-    out = measure(args)
-    Path(args.out).write_text(json.dumps(out, indent=1) + "\n", encoding="utf-8")
-    print(f"{args.kind} {args.mode}: {out['tokens_per_second']:,.0f} tok/s, fit {out.get('fit_seconds', '-')}")
+    fit_files = {"--fit-train": args.fit_train, "--fit-ids": args.fit_ids}
+    inputs = {"--model": Path(args.model)} | {flag: Path(name) for flag, name in fit_files.items() if name}
+    out = Path(args.out)
+    check_out(out, inputs)  # before loading or timing anything
+    result = measure(args)
+    write_new_text(out, json.dumps(result, indent=1) + "\n")
+    print(f"{args.kind} {args.mode}: {result['tokens_per_second']:,.0f} tok/s, fit {result.get('fit_seconds', '-')}")
 
 
 def main(argv: Sequence[str] | None = None) -> int:

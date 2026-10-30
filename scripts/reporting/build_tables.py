@@ -40,3 +40,13 @@ def diff_cell(block: dict[str, Any]) -> str:
     sign = "+" if block["difference"] >= 0 else ""
     excl = "" if c["low"] <= 0 <= c["high"] else " *"
     return f"{sign}{pct(block['difference'])} ({pct(c['low'])} to {pct(c['high'])}){excl}"
+
+
+def half_up(x: float | str | Decimal, places: int = 0, *, grouping: bool = False) -> str:
+    """``x`` rounded half-up to ``places`` decimals, like ``pct``: the shortest decimal of a float, not its binary
+    value.
+
+    ``grouping=True`` adds thousands separators (``f"{x:,.{places}f}"`` without the binary-float tie errors).
+    """
+    value = Decimal(repr(x)) if isinstance(x, float) else Decimal(x)
+    return format(value.quantize(Decimal(1).scaleb(-places), rounding=ROUND_HALF_UP), "," if grouping else "")

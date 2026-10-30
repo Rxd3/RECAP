@@ -295,7 +295,8 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
         parser.error(str(exc))
     print(f"Saved HMM to {args.output_dir / 'model.json'}")
-    print("No evaluation metrics calculated; use the shared evaluation pipeline when available.")
+    print("No evaluation metrics calculated; score the predictions with: "
+          "python scripts/evaluate_models.py score --gold ... --ids ... --predictions ... --out ...")
     return 0
 
 

@@ -6,7 +6,7 @@ import io
 import json
 import subprocess
 import sys
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -228,3 +228,126 @@ def test_script_runs_standalone_without_an_installed_package(case: Case) -> None
     assert (done.returncode, done.stderr) == (0, "")
     assert done.stdout.strip() == "projected 2 predictions to a_pred.jsonl"
     assert case.out.is_file() and case.man.is_file()
+
+
+# --- --from B: mode B predictions projected with the approved D5 mapping read from configs/label_sets.yaml ---
+
+B_PREDS = {"s1": ["EXCLAMATION", "COLON", "SEMICOLON", "DASH"], "s2": ["O", "COMMA", "QUESTION"]}
+B_ALL = ["O", "COMMA", "PERIOD", "QUESTION", "EXCLAMATION", "COLON", "SEMICOLON", "DASH"]
+B_ALL_AS_A = ["O", "COMMA", "PERIOD", "QUESTION", "PERIOD", "COMMA", "PERIOD", "COMMA"]
+Change = Callable[[dict[str, Any]], dict[str, Any]]
+
+
+def _from_b(case: Case, rows: list[Any] | None = None, flags: Sequence[str] = ("--from", "B")) -> list[str]:
+    """Write mode B predictions (B_PREDS by default) as the case's predictions; the argv gets ``flags``."""
+    default = [pred_row(sid, "B", labels, MODEL) for sid, labels in B_PREDS.items()]
+    _preds(case.preds, default if rows is None else rows)
+    return [*case.argv(), *flags]
+
+
+def _written(case: Case) -> list[dict[str, Any]]:
+    return [json.loads(line) for line in case.out.read_text(encoding="utf-8").splitlines()]
+
+
+def _remap(**edits: str) -> Change:
+    return lambda projection: {**projection, "mapping": {**projection["mapping"], **edits}}
+
+
+def _patch_projection(monkeypatch: pytest.MonkeyPatch, change: Change) -> None:
+    real = project_joint.load_label_sets
+
+    def patched() -> dict[str, Any]:
+        label_sets = real()
+        return {**label_sets, "projection": change(label_sets["projection"])}
+
+    monkeypatch.setattr(project_joint, "load_label_sets", patched)
+
+
+def test_from_b_projects_all_eight_labels_with_the_approved_mapping(case: Case, capsys) -> None:
+    argv = _from_b(case, [pred_row("s1", "B", B_ALL, MODEL)])
+    code, out, err = _run(capsys, argv)
+    assert (code, err) == (0, "") and out == "projected 1 predictions to a_pred.jsonl\n"
+    assert _written(case) == [{"sample_id": "s1", "model_name": "crf_joint_from_B", "label_mode": "A",
+                               "predicted_labels": B_ALL_AS_A}]
+    assert list(_written(case)[0]) == ["sample_id", "model_name", "label_mode", "predicted_labels"]
+
+
+def test_from_c_default_keeps_the_joint_c_suffix_and_explicit_from_c_is_the_same(case: Case, capsys) -> None:
+    assert _run(capsys, [*case.argv(), "--from", "C"])[0] == 0
+    assert {row["model_name"] for row in _written(case)} == {"crf_joint_joint_C"}
+
+
+def test_from_b_manifest_passes_the_evaluator_check_against_the_mode_a_gold(case: Case, capsys) -> None:
+    assert _run(capsys, _from_b(case))[0] == 0
+    assert [row["predicted_labels"] for row in _written(case)] == [["PERIOD", "COMMA", "PERIOD", "COMMA"],
+                                                                   ["O", "COMMA", "QUESTION"]]
+    vocab = load_vocab()
+    check_manifest(case.man, load_bundle(case.gold, case.ids, case.out, None, vocab), vocab)
+    manifest = json.loads(case.man.read_text(encoding="utf-8"))
+    assert manifest["input"]["sha256"] == sha256_file(case.gold)
+    assert manifest["model_name"] == "crf_joint_from_B" and manifest["label_mode"] == "A"
+
+
+BAD_B_RECORDS = [
+    ("mode C", [pred_row("s1", "C", ["O|LOWER"], MODEL)], "line 1: label_mode is 'C', expected 'B'"),
+    ("mode A", [pred_row("s1", "A", ["O"], MODEL)], "line 1: label_mode is 'A', expected 'B'"),
+    ("joint label", [pred_row("s1", "B", ["O|LOWER"], MODEL)], "line 1: a mode B label must be one of the mode B"),
+    ("unknown label", [pred_row("s1", "B", ["DASHH"], MODEL)], "line 1: a mode B label must be one of the mode B"),
+    ("non-string label", [pred_row("s1", "B", [["O"]], MODEL)], "line 1: a mode B label must be one of the mode B"),
+]
+
+
+@pytest.mark.parametrize(("records", "expected"), [pytest.param(r, e, id=i) for i, r, e in BAD_B_RECORDS])
+def test_from_b_refuses_other_modes_and_unknown_labels_with_one_error_line(
+        case: Case, capsys, tmp_path: Path, records: list[Any], expected: str) -> None:
+    err = _assert_refused(capsys, tmp_path, _from_b(case, records))
+    assert expected in err
+    assert not case.out.exists() and not case.man.exists()
+
+
+@pytest.mark.parametrize("flags", [(), ("--from", "C")], ids=["default", "explicit"])
+def test_from_c_refuses_mode_b_input(case: Case, capsys, tmp_path: Path, flags: tuple[str, ...]) -> None:
+    err = _assert_refused(capsys, tmp_path, _from_b(case, None, flags))
+    assert "line 1: label_mode is 'B', expected 'C'" in err
+    assert not case.out.exists() and not case.man.exists()
+
+
+UNAPPROVED = "the B -> A projection is not approved"
+BAD_PROJECTIONS = [
+    pytest.param(lambda p: {**p, "approved": False}, UNAPPROVED, id="unapproved"),
+    pytest.param(lambda p: None, UNAPPROVED, id="projection-is-null"),
+    pytest.param(lambda p: [p], UNAPPROVED, id="projection-is-a-list"),
+    pytest.param(lambda p: {**p, "approved": "true"}, UNAPPROVED, id="approved-not-a-bool"),
+    pytest.param(lambda p: {k: v for k, v in p.items() if k != "approved"}, UNAPPROVED, id="no-approved-key"),
+    pytest.param(lambda p: {**p, "mapping": {k: v for k, v in p["mapping"].items() if k != "SEMICOLON"}},
+                 "must cover exactly the mode B labels", id="missing-b-label"),
+    pytest.param(_remap(BOGUS="O"), "must cover exactly the mode B labels", id="extra-key"),
+    pytest.param(_remap(DASH="BOGUS"), "must map to mode A labels", id="value-outside-mode-a"),
+]
+
+
+@pytest.mark.parametrize(("change", "expected"), BAD_PROJECTIONS)
+def test_from_b_refuses_an_unapproved_or_incomplete_projection_in_the_config(
+        case: Case, capsys, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, change: Change, expected: str) -> None:
+    _patch_projection(monkeypatch, change)
+    err = _assert_refused(capsys, tmp_path, _from_b(case))
+    assert expected in err and "label_sets.yaml" in err
+    assert not case.out.exists() and not case.man.exists()
+
+
+def test_from_b_follows_the_mapping_in_the_config_not_a_built_in_one(
+        case: Case, capsys, monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_projection(monkeypatch, _remap(DASH="PERIOD", COLON="QUESTION"))
+    assert _run(capsys, _from_b(case))[0] == 0
+    assert [row["predicted_labels"] for row in _written(case)] == [["PERIOD", "QUESTION", "PERIOD", "PERIOD"],
+                                                                   ["O", "COMMA", "QUESTION"]]
+
+
+def test_from_option_is_documented_and_limited_to_b_and_c(case: Case, capsys) -> None:
+    with pytest.raises(SystemExit) as stop:
+        project_joint.main(["--help"])
+    assert stop.value.code == 0
+    assert "--from {C,B}" in capsys.readouterr().out
+    with pytest.raises(SystemExit) as stop:
+        project_joint.main([*case.argv(), "--from", "A"])
+    assert stop.value.code == 2 and "--from" in capsys.readouterr().err

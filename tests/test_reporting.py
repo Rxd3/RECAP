@@ -7,11 +7,27 @@ from __future__ import annotations
 
 import json
 import statistics
+from decimal import Decimal
 from pathlib import Path
 from types import ModuleType
 
 import pytest
-from reporting_fixtures import dump, write_manifests, write_scores_root
+import reporting_fixtures
+from reporting_fixtures import (
+    RELEASE,
+    TRAIN,
+    assert_one_error_line,
+    dump,
+    output_lines,
+    run_main,
+    set_json,
+    time_argv,
+    tiny_data_root,
+    tiny_hmm,
+    train_rows,
+    write_jsonl,
+    write_manifests,
+)
 
 from punct_restore.models.crf import CRFModel
 from punct_restore.models.hmm import HMMModel
@@ -23,6 +39,7 @@ from scripts.reporting import (
     time_models,
 )
 
+scores = reporting_fixtures.scores  # the fixture is defined once, there; pytest finds it by this name
 ROOT = Path(__file__).resolve().parents[1]
 MINUS, EN, ARROW = "\u2212", "\u2013", "\u2192"
 STAR_UP = "+10.00 (5.00 to 15.00) *"
@@ -32,33 +49,20 @@ def cell_text(macro: str, low: str, high: str) -> str:
     return f"{macro} ({low}{EN}{high})"
 
 
-def run_main(module: ModuleType, capsys: pytest.CaptureFixture[str], *argv: object) -> tuple[int, str, str]:
-    code = module.main([str(arg) for arg in argv])
-    captured = capsys.readouterr()
-    return code, captured.out, captured.err
-
-
-def output_lines(path: Path) -> list[str]:
-    return path.read_text(encoding="utf-8").splitlines()
-
-
-def assert_one_error_line(err: str, *needles: str) -> None:
-    assert err.startswith("error: ") and err.endswith("\n") and err.count("\n") == 1, repr(err)
-    assert "Traceback" not in err
-    for needle in needles:
-        assert needle in err
-
-
-@pytest.fixture
-def scores(tmp_path: Path) -> Path:
-    return write_scores_root(tmp_path / "scores")
-
-
 # ---------------------------------------------------------------- shared helpers (build_tables)
 @pytest.mark.parametrize(("value", "text"), [(0.5118449, "51.18"), (0.51185, "51.19"), (0.67985, "67.99"),
                                               (0.0, "0.00"), (1, "100.00"), (-0.02, "-2.00")])
 def test_pct_rounds_half_up_on_the_stored_decimal(value: float, text: str) -> None:
     assert build_tables.pct(value) == text  # 0.67985 * 100 is 67.98499... in float, so float rounding gives 67.98
+
+
+@pytest.mark.parametrize(("value", "places", "grouping", "text"), [
+    (0.125, 2, False, "0.13"), (0.305, 2, False, "0.31"), (2.5, 0, False, "3"), (1234.5, 0, True, "1,235"),
+    (1234.5, 1, False, "1234.5"), (50, 0, False, "50"), (Decimal("62.5"), 0, False, "63"),
+    ("0.0005", 3, False, "0.001")])
+def test_half_up_rounds_the_shortest_decimal_half_up(
+        value: float | str | Decimal, places: int, grouping: bool, text: str) -> None:
+    assert build_tables.half_up(value, places, grouping=grouping) == text  # f"{0.125:.2f}" gives 0.12, f"{2.5:.0f}" 2
 
 
 def test_ci_and_cell_show_the_interval_or_na() -> None:
@@ -112,6 +116,25 @@ def test_validation_tables_end_to_end(scores: Path, tmp_path: Path, capsys: pyte
     assert f"| A | 200 | O{ARROW}COMMA 50 (25%); COMMA{ARROW}O 30 (15%) |" in lines
     assert "## Confusion matrices, M3 CRFs (validation)" in lines
     assert not any("threshold" in line for line in lines)
+
+
+def test_error_shares_are_rounded_half_up(scores: Path, tmp_path: Path) -> None:
+    dump(scores / "crf_validation" / "m3_improved_A.errors.json",
+         {"errors_total": 8, "pair_counts": [{"gold": "O", "pred": "COMMA", "count": 1}]})  # 12.5%: f"{12.5:.0f}" is 12
+    out = tmp_path / "m3.md"
+    assert build_m3_tables.main(["--scores-root", str(scores), "--out", str(out)]) == 0
+    assert f"| A | 8 | O{ARROW}COMMA 1 (13%) |" in output_lines(out)
+
+
+@pytest.mark.parametrize("total", [0, -3])
+def test_a_non_positive_error_total_is_refused_by_file_name(
+        total: int, scores: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    set_json(scores / "crf_validation" / "m3_improved_A.errors.json", ("errors_total",), total)
+    out = tmp_path / "m3.md"
+    code, stdout, err = run_main(build_m3_tables, capsys, "--scores-root", scores, "--out", out)
+    assert (code, stdout) == (1, "")  # not the vague "wrong type" line, and no division by zero
+    assert_one_error_line(err, "m3_improved_A.errors.json: errors_total must be positive")
+    assert not out.exists()
 
 
 def test_class_tables_list_every_label_and_escape_the_pipe_of_joint_labels(scores: Path, tmp_path: Path) -> None:
@@ -214,10 +237,129 @@ def test_final_sections_runtime_rows_use_the_manifests_and_round_half_up(scores:
     assert "| CRF improved | C | 6,000.5 | 2.50 | 61,728 | 0.500 |" in lines
 
 
-def test_final_sections_need_the_manifests_argument(scores: Path, tmp_path: Path) -> None:
-    with pytest.raises(SystemExit) as raised:
-        build_m3_final_sections.main(["--scores-root", str(scores), "--out", str(tmp_path / "x.md")])
-    assert raised.value.code == 2
+def test_final_sections_read_the_manifests_next_to_the_scores_by_default(
+        scores: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    write_manifests(scores / "crf_training_manifests")
+    code, _, err = run_main(build_m3_final_sections, capsys, "--scores-root", scores, "--out", tmp_path / "x.md")
+    assert (code, err) == (0, "")
+    assert "| CRF basic | A | 1,234.6 |" in (tmp_path / "x.md").read_text(encoding="utf-8")
+
+
+def test_final_sections_without_manifests_in_the_default_folder_name_the_missing_file(
+        scores: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    code, _, err = run_main(build_m3_final_sections, capsys, "--scores-root", scores, "--out", tmp_path / "x.md")
+    assert code == 1
+    assert_one_error_line(err, "crf_mode_a_basic_full_01.manifest.json")
+
+
+def final_text(scores: Path, tmp_path: Path) -> str:
+    out = tmp_path / "final.md"
+    manifests = write_manifests(tmp_path / "m")
+    assert build_m3_final_sections.main(["--scores-root", str(scores), "--manifests", str(manifests),
+                                         "--out", str(out)]) == 0
+    return out.read_text(encoding="utf-8")
+
+
+def test_final_sections_quote_the_viterbi_scores_from_the_validation_files(scores: Path, tmp_path: Path) -> None:
+    for mode, value, block in (("A", 0.30125, "punctuation/all"), ("B", 0.2, "punctuation/all"),
+                               ("C", 0.44444, "joint/unmasked")):
+        set_json(scores / "crf_validation" / f"m3_improved_{mode}.json", ("blocks", block, "macro_f1"), value)
+    assert "standard Viterbi decoding scores A 30.13, B 20.00, C 44.44):" in final_text(scores, tmp_path)
+
+
+def test_final_sections_leakage_prose_comes_from_the_leakage_files(scores: Path, tmp_path: Path) -> None:
+    text = final_text(scores, tmp_path)
+    assert "predicted all 1,234 official test utterances once" in text
+    assert ("the improved CRF scores about 18 points higher than on the leak-free set; the HMM does not gain at "
+            "all. Reporting the official test as-is would overstate the CRF by about 3 points.") in text
+
+
+def test_final_sections_leakage_gains_are_rounded_half_up(scores: Path, tmp_path: Path) -> None:
+    macro = ("blocks", "punctuation/all", "macro_f1")
+    set_json(scores / "leakage" / "crf_A_test_train_video.json", macro, 0.555)  # 18.5 points over leak-free 0.37
+    set_json(scores / "leakage" / "crf_A_test_official_all.json", macro, 0.415)  # 4.5 points
+    set_json(scores / "leakage" / "hmm_A_test_train_video.json", macro, 0.255)  # 4.5 points over leak-free 0.21
+    text = final_text(scores, tmp_path)
+    assert "scores about 19 points higher than on the leak-free set; the HMM gains about 5 points. " in text
+    assert "would overstate the CRF by about 5 points." in text
+
+
+MACRO = ("blocks", "punctuation/all", "macro_f1")
+
+
+def leakage_sentence(scores: Path, tmp_path: Path, **macro_f1: float) -> str:
+    """The prose paragraph of section 8 after setting leakage macro F1 values (hmm_train, crf_train, crf_official)."""
+    files = {"hmm_train": "hmm_A_test_train_video", "crf_train": "crf_A_test_train_video",
+             "crf_official": "crf_A_test_official_all"}
+    for name, value in macro_f1.items():
+        set_json(scores / "leakage" / f"{files[name]}.json", MACRO, value)
+    text = final_text(scores, tmp_path)
+    start = text.index("On utterances from videos it was trained on")
+    return text[start:text.index("\n", start)]
+
+
+@pytest.mark.parametrize(("hmm_train", "phrase"), [
+    (0.213, "the HMM does not gain at all."),    # +0.3 points rounds to 0: not "gains about 0 points"
+    (0.2149, "the HMM does not gain at all."),   # +0.49
+    (0.2, "the HMM does not gain at all."),      # -1 point
+    (0.215, "the HMM gains about 1 point."),     # +0.5 rounds half-up to 1, singular
+    (0.25, "the HMM gains about 4 points.")])
+def test_the_hmm_gain_is_judged_on_the_rounded_whole_points(
+        hmm_train: float, phrase: str, scores: Path, tmp_path: Path) -> None:
+    assert f"; {phrase} Reporting" in leakage_sentence(scores, tmp_path, hmm_train=hmm_train)
+
+
+@pytest.mark.parametrize(("crf_train", "crf_official", "trained", "official"), [
+    (0.32, 0.35, "scores about 5 points lower than on the leak-free set", "would understate the CRF by about 2 points"),
+    (0.37, 0.372, "scores about the same as on the leak-free set", "would not change the CRF's score"),
+    (0.373, 0.366, "scores about the same as on the leak-free set", "would not change the CRF's score"),
+    (0.38, 0.38, "scores about 1 point higher than on the leak-free set", "would overstate the CRF by about 1 point"),
+    (0.36, 0.36, "scores about 1 point lower than on the leak-free set", "would understate the CRF by about 1 point"),
+    (0.55, 0.4, "scores about 18 points higher than on the leak-free set",
+     "would overstate the CRF by about 3 points")],
+    ids=["loss", "zero", "tiny-either-way", "one-up", "one-down", "committed-gains"])
+def test_the_crf_prose_follows_the_sign_of_the_rounded_gain(
+        crf_train: float, crf_official: float, trained: str, official: str, scores: Path, tmp_path: Path) -> None:
+    sentence = leakage_sentence(scores, tmp_path, crf_train=crf_train, crf_official=crf_official)
+    assert sentence == (f"On utterances from videos it was trained on, the improved CRF {trained}; the HMM does not "
+                        f"gain at all. Reporting the official test as-is {official}.")
+
+
+def test_final_sections_hardware_comes_from_the_runtime_files_and_manifests(scores: Path, tmp_path: Path) -> None:
+    text = final_text(scores, tmp_path)
+    assert "Prediction speed on one laptop (Test CPU Family 9, Python 3.99.1, one process, no other jobs)" in text
+    assert "measured on Member 3's machine (TESTBOX, 8 logical CPUs)" in text
+
+
+def test_final_sections_runtime_prose_for_the_fixture_speeds(scores: Path, tmp_path: Path) -> None:
+    assert ("predicts at about half the basic preset's speed: under 0.24 ms per utterance for basic, "
+            "under 0.51 ms for improved.") in final_text(scores, tmp_path)
+
+
+def test_final_sections_runtime_bounds_are_the_slowest_mode_rounded_half_up_plus_a_margin(
+        scores: Path, tmp_path: Path) -> None:
+    for preset, speeds in (("basic", (0.1, 0.145, 0.12)), ("improved", (0.4, 0.9, 0.45))):
+        for mode, ms in zip("ABC", speeds, strict=True):
+            set_json(scores / "runtime" / f"crf_{preset}_{mode}.json", ("ms_per_sequence",), ms)
+    # 0.145 rounds half-up to 0.15 (half-even gives 0.14); 0.9 is the slowest improved mode; each gets +0.01
+    assert "under 0.16 ms per utterance for basic, under 0.91 ms for improved." in final_text(scores, tmp_path)
+
+
+def test_final_sections_quote_the_speed_ratios_when_they_are_not_about_half(scores: Path, tmp_path: Path) -> None:
+    set_json(scores / "runtime" / "crf_improved_A.json", ("tokens_per_second",), 30000.0)  # 24% of basic
+    assert "predicts at 24%–50% of the basic preset's speed: under" in final_text(scores, tmp_path)
+
+
+@pytest.mark.parametrize(("improved_speed", "phrase"), [
+    (40000.0, "about half the basic preset's speed"),    # exactly 0.4 and 0.6 are inside "about half"
+    (60000.0, "about half the basic preset's speed"),
+    (39000.0, "39%–50% of the basic preset's speed"),    # just outside either end: quote the range
+    (61000.0, "50%–61% of the basic preset's speed"),
+    (24500.0, "25%–50% of the basic preset's speed")])   # 24.5% rounds half-up (format(0.245, ".0%") gives 24%)
+def test_final_sections_speed_ratio_edges(improved_speed: float, phrase: str, scores: Path, tmp_path: Path) -> None:
+    set_json(scores / "runtime" / "crf_basic_A.json", ("tokens_per_second",), 100000.0)
+    set_json(scores / "runtime" / "crf_improved_A.json", ("tokens_per_second",), improved_speed)
+    assert f"The improved preset predicts at {phrase}: under" in final_text(scores, tmp_path)
 
 
 def test_a_missing_manifest_is_reported_by_name(scores: Path, tmp_path: Path,
@@ -313,7 +455,7 @@ def test_an_unwritable_out_path_is_reported_by_name(scores: Path, tmp_path: Path
     code, stdout, err = run_main(build_m3_tables, capsys, "--scores-root", scores,
                                  "--out", tmp_path / "no_such_folder" / "o.md")
     assert (code, stdout) == (1, "")
-    assert_one_error_line(err, "o.md")
+    assert_one_error_line(err, "o.md", "folder no_such_folder not found")
 
 
 @pytest.mark.parametrize("module", [build_m3_tables, build_ablation_table, time_models])
@@ -331,8 +473,7 @@ def test_split_must_be_validation_or_test(scores: Path, tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("module", [build_m3_tables, build_m3_final_sections, build_ablation_table])
 def test_scores_root_defaults_to_the_committed_tree(module: ModuleType) -> None:
-    args = module.build_parser().parse_args(["--manifests", "m", "--out", "o.md"]
-                                            if module is build_m3_final_sections else ["--out", "o.md"])
+    args = module.build_parser().parse_args(["--out", "o.md"])
     assert args.scores_root == ROOT / "results" / "scores"
 
 
@@ -343,45 +484,8 @@ def test_reporting_sources_hold_no_personal_absolute_paths() -> None:
 
 
 # ---------------------------------------------------------------- time_models
-RELEASE = "sponspeech-m1-v2"
 KEYS = ["kind", "mode", "model", "load_seconds", "sequences", "tokens", "predict_seconds", "median_seconds",
         "tokens_per_second", "ms_per_sequence", "hardware"]
-TRAIN = [("t1", ["hello", "there", "everyone"], ["O", "COMMA", "PERIOD"]),
-         ("t2", ["is", "it", "you"], ["O", "O", "QUESTION"]),
-         ("t3", ["yes", "we", "can"], ["COMMA", "O", "PERIOD"])]
-VALIDATION = [("v1", ["hello", "there", "everyone"]), ("v2", ["is", "it"]), ("v3", ["we", "can"])]
-
-
-def train_rows() -> list[dict[str, object]]:
-    return [{"schema_version": 1, "sample_id": sid, "split": "train", "label_mode": "A", "source": "synthetic",
-             "tokens": tokens, "punct_labels": punct, "case_labels": ["LOWER"] * len(tokens)}
-            for sid, tokens, punct in TRAIN]
-
-
-def write_jsonl(path: Path, rows: list[dict[str, object]]) -> Path:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
-    return path
-
-
-def tiny_hmm(folder: Path) -> Path:
-    labels = ["O", "COMMA", "PERIOD", "QUESTION"]
-    model = HMMModel(label_mode="A", labels=labels, smoothing=0.1, min_token_count=1).fit(train_rows())
-    model.save_model(folder / "hmm.json")
-    return folder / "hmm.json"
-
-
-def tiny_data_root(folder: Path, release: str = RELEASE) -> Path:
-    rows = [{"schema_version": 1, "sample_id": sid, "tokens": tokens} for sid, tokens in VALIDATION]
-    write_jsonl(folder / "processed" / release / "mode_A" / "validation.jsonl", rows)
-    ids = folder / "splits" / release / "primary_eval" / "validation_mode_A.ids"
-    ids.parent.mkdir(parents=True, exist_ok=True)
-    ids.write_text("v1\nv2\n", encoding="utf-8")  # v3 is not on the primary list
-    return folder
-
-
-def time_argv(model: Path, out: Path, data: Path, *extra: str, kind: str = "hmm") -> list[str]:
-    return ["--kind", kind, "--model", str(model), "--mode", "A", "--out", str(out), "--data-root", str(data), *extra]
 
 
 def test_time_models_times_a_tiny_hmm(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -446,6 +550,15 @@ def test_time_models_reports_a_missing_model_by_name(tmp_path: Path, capsys: pyt
     assert time_models.main(argv) == 1
     assert_one_error_line(capsys.readouterr().err, "gone.json")
     assert not out.exists()
+
+
+def test_time_models_reports_a_folder_given_as_the_model(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    folder, out = tmp_path / "model_dir", tmp_path / "t.json"
+    folder.mkdir()
+    assert time_models.main(time_argv(folder, out, tiny_data_root(tmp_path / "data"))) == 1
+    err = capsys.readouterr().err
+    assert_one_error_line(err, "model_dir: is a folder, not a file")  # not "model file not found"
+    assert str(tmp_path) not in err and not out.exists()
 
 
 def test_time_models_reports_a_corrupt_model_by_name(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
