@@ -3,17 +3,17 @@
 **Workstream:** Member 3 (CRF Architecture, Feature Engineering, Training & Reproducibility)  
 **Author:** Omar Alzyod  
 **Branch:** `feat/m3-crf-model`  
-**Last Verified Commit:** `aa232be`  
+**Last Verified Commit:** `c3b0f8a`  
 **Status:** Pre-Evaluation Handoff Complete (Pending Official Benchmark Evaluation by Member 5)  
 
 ---
 
 ## 1. Member 3 Responsibilities & Scope
 
-Member 3 owns the Conditional Random Field (CRF) modeling subsystem for RECAP Project 2 (Turkish Speech Punctuation and Casing Restoration):
+Member 3 owns the Conditional Random Field (CRF) modeling subsystem for RECAP Project 2 (English Speech Punctuation and Casing Restoration):
 
 - **Architecture & Implementation:** Design and implementation of linear-chain CRF models using `sklearn-crfsuite` / `python-crfsuite`.
-- **Feature Engineering:** Development of both the baseline (`basic`) and enriched (`improved`) feature extraction presets for Turkish text.
+- **Feature Engineering:** Development of both the baseline (`basic`) and enriched (`improved`) feature extraction presets for English text.
 - **Model Training:** Execution and performance tracking of all six full-data CRF models across Modes A, B, and C.
 - **Prediction Streaming:** Deterministic export of primary validation predictions adhering strictly to the shared JSONL evaluation contract.
 - **Scientific Reproducibility:** Cryptographic verification of model artifacts, manifests, prediction streams, and handoff packaging.
@@ -33,7 +33,7 @@ Member 3 owns the Conditional Random Field (CRF) modeling subsystem for RECAP Pr
 
 ## 3. Feature Configurations: Basic vs Improved Presets
 
-Feature extraction is implemented in [`src/punct_restore/features/crf_features.py`](file:///d:/isntinye/_Istenye%20uni_/TERM%207/Natural%20Language%20Processing/RECAP/src/punct_restore/features/crf_features.py):
+Feature extraction is implemented in ``src/punct_restore/features/crf_features.py``:
 
 ### 3.1. Basic Baseline Preset (`basic` / `v1-basic`)
 A compact, low-latency token-level feature set designed as a fast baseline:
@@ -68,7 +68,7 @@ An enriched feature set implementing linguistically motivated contextual signals
 
 ## 4. Label Vocabularies Across Modes A, B, and C
 
-All label definitions conform strictly to [`configs/label_sets.yaml`](file:///d:/isntinye/_Istenye%20uni_/TERM%207/Natural%20Language%20Processing/RECAP/configs/label_sets.yaml):
+All label definitions conform strictly to ``configs/label_sets.yaml``:
 
 | Mode | Task Type | Class Count | Label Vocabulary | Description |
 |:---:|:---:|:---:|---|---|
@@ -81,7 +81,7 @@ All label definitions conform strictly to [`configs/label_sets.yaml`](file:///d:
 ## 5. Dataset Releases & Frozen Partition Selections
 
 - **Dataset Release:** `sponspeech-m1-v2` (Policy version: `m1-v2`).
-- **Source Transcripts:** SponSpeech Turkish conversational speech transcripts.
+- **Source Transcripts:** SponSpeech English conversational speech transcripts.
 - **Training Sets:**
   - **Modes A & B:** 142,722 sequences, 4,137,833 tokens (`data/splits/sponspeech-m1-v2/default_train/mode_A.ids`, SHA-256: `593196fea62d...`).
   - **Mode C:** 141,745 sequences, 4,112,054 tokens (`data/splits/sponspeech-m1-v2/default_train/mode_C.ids`, SHA-256: `02df8b60422d...`).  
@@ -137,7 +137,7 @@ All generated artifacts adhere to standard directory structures and schemas:
 
 ## 9. Reproducibility Commands
 
-To reproduce any training run or prediction export from a clean checkout at commit `aa232be`:
+To reproduce any training run or prediction export from a clean checkout at commit `c3b0f8a`:
 
 ### 9.1. Training Command Template
 ```powershell
@@ -157,13 +157,12 @@ To reproduce any training run or prediction export from a clean checkout at comm
 
 ### 9.2. Primary Validation Prediction Export Template
 ```powershell
-.\.venv\Scripts\python.exe scripts/export_crf_predictions.py `
+python scripts/train_crf.py predict `
   --model experiments/runs/<run_dir>/<run_id>.joblib `
   --input data/processed/sponspeech-m1-v2/mode_<A|B|C>/validation.jsonl `
   --ids data/splits/sponspeech-m1-v2/primary_eval/validation_mode_<A|C>.ids `
   --output experiments/runs/<run_dir>/<run_id>_val_predictions.jsonl `
-  --mode <A|B|C> `
-  --model-name <crf_basic|crf_improved>
+  --overwrite
 ```
 
 ---
@@ -202,4 +201,12 @@ Member 5 should score the six prediction files using the official evaluation sui
   - Mode A: Standard Punctuation non-O macro F1 and micro F1.
   - Mode B: Extended Punctuation non-O macro F1 and micro F1 (8 punctuation classes).
   - Mode C: Joint punctuation-and-casing macro/micro F1, masked joint F1, and decomposed casing F1.
-- **Independence:** Model weights (`.joblib` files) are not required by Member 5. Scoring operates entirely on streamed prediction lines and gold label streams.
+- **Independence:** All six model weights (`.joblib` files) are included in this complete handoff package. Member 5 explicitly requires the trained models to perform validation reproduction, held-out primary `test` inference, ambiguity `test_amb` inference, and probability-based decoding.
+
+
+## 12. Dataset Licensing, Non-Commercial Restrictions & Attribution
+
+- **SponSpeech Benchmark Dataset:** Licensed under Creative Commons Attribution-NonCommercial 4.0 International (**CC BY-NC 4.0**).
+- **Non-Commercial Restriction:** All use of transcripts, models, and derivative predictions is strictly restricted to academic and non-commercial research.
+- **YouTube Source Content Distinction:** The original video audio/transcripts were sourced from public YouTube videos governed by respective creator terms and YouTube Standard / Creative Commons licenses. Raw audio is not redistributed.
+- **Attribution:** Citations must reference Liu & Beigi (2024), *SponSpeech: A Large-Scale Spontaneous Speech Benchmark for English*, arXiv:2409.11241.
