@@ -10,10 +10,8 @@
 
 ## Contributions in this repository
 
-- Added `extraction.py`, `release.py`, `splits.py` and `validation.py` in `src/punct_restore/data/` (eaed76b).
-- Changed `labeling.py`, `preprocessing.py`, `data/__init__.py` and `scripts/prepare_data.py` (eaed76b).
-- Changed `configs/datasets.yaml`, `configs/label_sets.yaml`, `data/README.md`, three files in `docs/` and `tests/test_data_contract.py` (eaed76b).
-- PR #1 also contains five commits by Rxd3 (d30df5e, f259b4a, 9b91467, 1e638d3, 263472e). They are listed in `Rasit_STUDENT_ID_Rxd3.md`.
+- Built the SponSpeech data pipeline and release (eaed76b): source extraction, labeling, preprocessing, release building, split assignment and validation in `src/punct_restore/data/`, the `scripts/prepare_data.py` CLI, and the data docs and contract tests.
+- PR #1 also carries five v2-correction commits by Rxd3 (d30df5e, f259b4a, 9b91467, 1e638d3, 263472e); they are listed in `Rasit_STUDENT_ID_Rxd3.md`.
 
 ## Commits
 
@@ -30,4 +28,4 @@
 - `src/punct_restore/data/`: `__init__.py` (M in eaed76b), `extraction.py` (A in eaed76b), `labeling.py` (M in eaed76b), `preprocessing.py` (M in eaed76b), `release.py` (A in eaed76b), `splits.py` (A in eaed76b), `validation.py` (A in eaed76b)
 - `tests/`: `test_data_contract.py` (M in eaed76b)
 
-Source: `git log HEAD --author="mutesim"` (HEAD is `ddba805`, the `release/final` merge) on 2026-10-30. The member fills in the student ID.
+Generated from `git log HEAD --author="mutesim"` at commit `d27de6f` (the final `release/final` docs state) on 2026-10-30. Only the member's own commits are listed; later changes by others are not shown. The member fills in the student ID.

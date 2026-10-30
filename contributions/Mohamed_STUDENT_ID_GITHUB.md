@@ -12,7 +12,7 @@
 
 - His feature work is not on GitHub and is not in this repository.
 - The improved CRF features in the repository were implemented by Omar (Member 3, commit aa232be).
-- The branch `feat/m4-feature-engineering` holds only two commits, both by Rxd3: 71e55ae and 56babb9 (the project scaffold). It has no commit by him.
+- The branch `feat/m4-feature-engineering` holds only the two scaffold commits by Rxd3 (71e55ae, 56babb9).
 - His assigned role is feature engineering and improvement (Member 4).
 
 ## Commits
@@ -23,4 +23,4 @@ None in this repository.
 
 None in this repository.
 
-Source: `git log HEAD --author="Mohamed\|Kamal"` returns no commits (HEAD is `ddba805`), and `git log origin/feat/m4-feature-engineering --format='%h %an %s'` returns only 56babb9 and 71e55ae, both by Rxd3, on 2026-10-30. The member fills in the student ID and the GitHub login.
+Generated from `git log HEAD` at commit `d27de6f` (the final `release/final` docs state) on 2026-10-30. Only the member's own commits are listed; later changes by others are not shown. The member fills in the student ID.

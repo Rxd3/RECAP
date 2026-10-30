@@ -6,15 +6,14 @@
 | GitHub | [@Rxd3](https://github.com/Rxd3) |
 | Git author name(s) | `Rxd3`, `Rasit isaoglu` |
 | Branch | `feat/m2-hmm-baseline` |
-| Pull request | [#4](https://github.com/Rxd3/RECAP/pull/4) — Complete validated HMM baseline and SponSpeech v2 experiments (open on 2026-10-30) |
+| Pull request | [#4](https://github.com/Rxd3/RECAP/pull/4) — Complete validated HMM baseline and SponSpeech v2 experiments (open on 2026-10-30; merged into `release/final` by 0790467) |
 
 ## Contributions in this repository
 
-- Created the project scaffold: 67 files added in 71e55ae. Commit 56babb9 then changed 6 files (subject: name project RECAP and prepare GitHub publication).
-- Wrote the HMM baseline: `models/hmm.py`, `scripts/train_hmm.py`, `tests/test_hmm.py`, `tests/test_hmm_cli.py` (2b530a2).
-- Added the HMM selection, experiment and reproduction workflow: `models/hmm_workflow.py`, `scripts/predict_hmm.py`, `scripts/run_hmm_experiments.py`, `scripts/verify_hmm_experiments.py`, `configs/hmm_sponspeech_v2.yaml`, `requirements-hmm.txt` (e4c3183). Added `experiments/HMM_RESULTS.md`, `docs/MEMBER2_COMPLETION.md` and `scripts/package_hmm_handoff.py` (34849b9). Changed 9 files in 10bbaa8, including `experiments/HMM_RESULTS.md` and `docs/MEMBER2_COMPLETION.md`.
-- Made the v2 data-release corrections on `feat/m1-data-preprocessing` (d30df5e, f259b4a, 9b91467, 1e638d3, 263472e). These five commits are part of PR #1.
-- Merged PR #1 (1810c48) and merged that result into the HMM branch (7d735f1).
+- Created the project scaffold (71e55ae) and prepared it for GitHub (56babb9).
+- Wrote the HMM baseline: `src/punct_restore/models/hmm.py`, `scripts/train_hmm.py` and their tests (2b530a2).
+- Added the validated HMM selection, experiment and reproduction workflow: `hmm_workflow.py`, `predict_hmm.py`, `run_hmm_experiments.py`, `verify_hmm_experiments.py`, `configs/hmm_sponspeech_v2.yaml`, `requirements-hmm.txt` (e4c3183); recorded the verified results and the handoff packager (34849b9, 10bbaa8). The completion audit he added in 34849b9 was later folded into `experiments/HMM_RESULTS.md` and removed in 766aeb7.
+- Made the v2 data-release corrections that shipped in PR #1 (d30df5e, f259b4a, 9b91467, 1e638d3, 263472e) and merged PR #1 (1810c48).
 
 ## Commits
 
@@ -41,12 +40,12 @@ Merge commits:
 
 ## Files added or changed
 
-- `71e55ae`: 67 files, all status A (project scaffold). Later changes to those files are shown below as M.
+- `71e55ae`: the project scaffold, 67 files added (not listed one by one)
 - repository root: `CONTRIBUTING.md` (M in 10bbaa8, 2b530a2), `README.md` (M in 34849b9, e4c3183, 1e638d3, 2b530a2, 56babb9), `TEAM_TASKS.md` (M in 34849b9, 1e638d3, 2b530a2), `pyproject.toml` (M in 1e638d3, 56babb9), `requirements-hmm.txt` (A in e4c3183)
 - `artifacts/`: `README.md` (M in 10bbaa8)
 - `configs/`: `datasets.yaml` (M in d30df5e), `hmm_sponspeech_v2.yaml` (A in e4c3183), `label_sets.yaml` (M in d30df5e)
 - `data/`: `README.md` (M in 1e638d3)
-- `docs/`: `ARCHITECTURE.md` (M in 10bbaa8, 2b530a2), `DATASET_PLAN.md` (M in 1e638d3), `DATA_CONTRACT.md` (M in 1e638d3), `DATA_RELEASE_VALIDATION.md` (A in 1e638d3; M in 263472e), `DECISIONS.md` (M in 34849b9, 1e638d3), `GIT_WORKFLOW.md` (M in 10bbaa8, 56babb9), `INITIAL_VERIFICATION.md` (M in 56babb9), `MEMBER2_COMPLETION.md` (A in 34849b9; M in 10bbaa8), `MODEL_CONTRACT.md` (M in 34849b9, 2b530a2), `PROJECT_SCOPE.md` (M in 10bbaa8, 2b530a2, 56babb9), `README.md` (M in 1e638d3), `REPRODUCIBILITY.md` (M in 34849b9, 2b530a2)
+- `docs/`: 12 files (2 added); commits 10bbaa8, 1e638d3, 263472e, 2b530a2, 34849b9, 56babb9
 - `experiments/`: `HMM_NOTES.md` (M in 34849b9, e4c3183, 2b530a2), `HMM_RESULTS.md` (A in 34849b9; M in 10bbaa8), `HMM_RUNBOOK.md` (A in e4c3183; M in 34849b9), `README.md` (M in 34849b9)
 - `presentation/`: `README.md` (M in 10bbaa8)
 - `results/`: `README.md` (M in 10bbaa8)
@@ -56,4 +55,4 @@ Merge commits:
 - `src/punct_restore/models/`: `__init__.py` (M in 2b530a2), `hmm.py` (M in 2b530a2), `hmm_workflow.py` (A in e4c3183)
 - `tests/`: `README.md` (M in e4c3183, 1e638d3, 2b530a2), `test_data_contract.py` (M in d30df5e), `test_data_release_regressions.py` (A in d30df5e; M in f259b4a), `test_hmm.py` (A in 2b530a2), `test_hmm_cli.py` (A in 2b530a2; M in e4c3183), `test_hmm_experiments.py` (A in e4c3183), `test_hmm_workflow.py` (A in e4c3183), `test_model_contract.py` (M in 2b530a2)
 
-Source: `git log HEAD --author="Rxd3\|Rasit"` (HEAD is `ddba805`, the `release/final` merge) on 2026-10-30. The member fills in the student ID.
+Generated from `git log HEAD --author="Rxd3\|Rasit"` at commit `d27de6f` (the final `release/final` docs state) on 2026-10-30. Only the member's own commits are listed; later changes by others are not shown. The member fills in the student ID.
