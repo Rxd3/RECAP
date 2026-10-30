@@ -42,6 +42,9 @@ _BUNDLE_PARTS: dict[str, type] = {
     "vectorizer": DictVectorizer,
     "classifier": LogisticRegression,
 }
+# Opt-in switches added to FeatureConfig after the first gap models were saved. An older bundle lacks
+# them, which means "off" (the field default), so a missing key is tolerated for these only.
+_OPTIONAL_CONFIG_KEYS = frozenset({"use_question_lookback"})
 
 
 def _flat(sequences: Iterable[Iterable[dict[str, Any]]]) -> Iterator[dict[str, Any]]:
@@ -87,6 +90,15 @@ def _check_hyperparameters(c: Any, max_iter: Any, model_name: Any) -> None:
         raise ValueError("model_name must be a non-empty string.")
 
 
+def _config_is_sound(config: Mapping[str, Any]) -> bool:
+    """True when config has no unknown key, lacks only optional keys, and every present key round-trips."""
+    fields = FeatureConfig.__dataclass_fields__.keys()  # type: ignore[attr-defined]
+    if config.keys() - fields or (fields - config.keys()) - _OPTIONAL_CONFIG_KEYS:
+        return False
+    rebuilt = FeatureConfig.from_dict(config).to_dict()
+    return all(rebuilt[key] == value for key, value in config.items())
+
+
 def _bundle_problem(bundle: Any) -> str | None:
     """Describe the first inconsistency in a loaded bundle, or None when it is sound."""
     if not isinstance(bundle, dict):
@@ -102,8 +114,7 @@ def _bundle_problem(bundle: Any) -> str | None:
         return f"unknown label mode {bundle['label_mode']!r}"
     if bundle["vocabulary"] != get_mode_vocabulary(bundle["label_mode"]):
         return "vocabulary does not match the label mode"
-    config = bundle["feature_config"]
-    if FeatureConfig.from_dict(config).to_dict() != config:  # from_dict drops unknown keys and fills missing ones
+    if not _config_is_sound(bundle["feature_config"]):
         return "feature_config has unknown or missing keys"
     hyper = bundle["hyperparameters"]
     try:

@@ -490,6 +490,51 @@ def test_load_reports_every_inconsistent_part_as_a_corrupt_artifact(tmp_path, ch
         GapClassifier.load_model(path)
 
 
+_LEGACY = {k: v for k, v in _IMPROVED.items() if k != "use_question_lookback"}  # saved before the switch
+
+
+def test_load_accepts_a_feature_config_saved_before_the_question_lookback_switch(tmp_path):
+    model, path = _saved(tmp_path)
+    _rewrite(path, feature_config=_LEGACY)
+
+    loaded = GapClassifier.load_model(path)
+
+    assert loaded.feature_config == FeatureConfig.improved()
+    assert loaded.feature_config.use_question_lookback is False
+    assert loaded.predict(GOLD_FREE) == model.predict(GOLD_FREE)
+
+
+def test_load_still_refuses_an_unknown_key_next_to_a_legacy_feature_config(tmp_path):
+    _, path = _saved(tmp_path)
+    _rewrite(path, feature_config={**_LEGACY, "bogus": True})
+    with pytest.raises(ValueError, match=r"Corrupt model artifact gap\.joblib: .*feature_config"):
+        GapClassifier.load_model(path)
+
+
+def test_load_refuses_a_feature_config_missing_a_key_that_is_not_a_later_addition(tmp_path):
+    _, path = _saved(tmp_path)
+    _rewrite(path, feature_config={k: v for k, v in _LEGACY.items() if k != "window_size"})
+    with pytest.raises(ValueError, match=r"Corrupt model artifact gap\.joblib: .*feature_config"):
+        GapClassifier.load_model(path)
+
+
+def test_load_refuses_a_present_key_that_does_not_round_trip(tmp_path):
+    _, path = _saved(tmp_path)
+    _rewrite(path, feature_config={**_IMPROVED, "window_size": float("nan")})  # nan != nan after rebuild
+    with pytest.raises(ValueError, match=r"Corrupt model artifact gap\.joblib: .*feature_config"):
+        GapClassifier.load_model(path)
+
+
+def test_save_load_round_trip_with_the_question_lookback_switch_on(tmp_path):
+    config = FeatureConfig.improved(use_question_lookback=True)
+    _, path = _saved(tmp_path, feature_config=config)
+
+    loaded = GapClassifier.load_model(path)
+
+    assert loaded.feature_config == config
+    assert joblib.load(path)["feature_config"]["use_question_lookback"] is True
+
+
 def test_load_rejects_classes_outside_the_vocabulary(tmp_path):
     path = tmp_path / "b.joblib"
     GapClassifier("B").fit(MODE_B).save_model(path)  # trained on EXCLAMATION, COLON, ...

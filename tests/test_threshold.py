@@ -46,7 +46,7 @@ def test_all_mass_on_o_returns_best_o_label() -> None:
     assert decode_with_threshold([token], 0) == ["O|FIRST_UPPER"]
 
 
-@pytest.mark.parametrize("tau", [-0.1, 1.1, math.nan, math.inf, True, "0.5", None])
+@pytest.mark.parametrize("tau", [-0.1, 1.1, math.nan, math.inf, True, "0.5", None, 10**400])
 def test_rejects_tau_out_of_range(tau: Any) -> None:
     with pytest.raises(ValueError, match="tau"):
         decode_with_threshold([{"O": 1.0}], tau)
@@ -236,7 +236,8 @@ def test_tune_picks_best_tau_on_fixture(
     assert tune_threshold.main(_tune_argv(mode_a, out)) == 0
 
     written = json.loads(out.read_text(encoding="utf-8"))
-    assert set(written) == {"tau", "grid", "model_sha256"}
+    assert set(written) == {"tau", "gamma", "grid", "model_sha256"}
+    assert written["gamma"] == 0 and all(point["gamma"] == 0 for point in written["grid"])
     assert [point["tau"] for point in written["grid"]] == [0.1, 0.3, 0.5, 0.7, 0.9]
     assert all(0.0 <= point["macro_f1"] <= 1.0 for point in written["grid"])
     assert len({point["macro_f1"] for point in written["grid"]}) > 1  # a scorer ignoring tau fails
@@ -245,7 +246,7 @@ def test_tune_picks_best_tau_on_fixture(
     assert [path.name for path in out.parent.iterdir()] == ["tau.json"]  # temp dir cleaned up
 
     line = capsys.readouterr().out.strip()
-    assert re.fullmatch(r"tau=\S+ macro_f1=\d\.\d{6} \(5 values scored\)", line)
+    assert re.fullmatch(r"tau=\S+ gamma=0 macro_f1=\d\.\d{6} \(5 values scored\)", line)
 
 
 def test_tune_mode_c_with_masks(mode_c: Fixture, tmp_path: Path) -> None:

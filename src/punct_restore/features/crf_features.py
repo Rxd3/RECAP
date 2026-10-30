@@ -18,6 +18,9 @@ from dataclasses import asdict, dataclass, field
 import json
 from typing import Any, Mapping, Sequence
 
+# =============================================================================================
+# COURSE presets (basic, improved): Member 3's original feature groups.
+# =============================================================================================
 # Lexical word lists for linguistic feature extraction (all lowercased)
 WH_WORDS: frozenset[str] = frozenset({
     "what", "why", "when", "where", "who", "whom", "whose", "how", "which"
@@ -54,9 +57,18 @@ DAYS_AND_MONTHS: frozenset[str] = frozenset({
     "september", "october", "november", "december"
 })
 
+# =============================================================================================
+# TEAM EXTENSIONS (filler cues, question lookback): opt-in switches, off in both course presets.
+# =============================================================================================
 FILLERS: frozenset[str] = frozenset({"um", "uh", "er", "erm", "like"})
 
 FILLER_BIGRAMS: frozenset[tuple[str, str]] = frozenset({("you", "know"), ("i", "mean")})
+
+# Question lookback: a wh-word + auxiliary pair anywhere in the last LOOKBACK_WINDOW tokens
+# (current one included), and tag-question endings ("..., isn't it", "..., right").
+LOOKBACK_WINDOW = 12
+TAG_CUE_WORDS: frozenset[str] = frozenset({"right", "correct", "huh", "eh"})
+TAG_CUE_PRONOUNS: frozenset[str] = frozenset({"it", "they", "you", "we", "he", "she", "there"})
 
 
 @dataclass(frozen=True)
@@ -76,7 +88,9 @@ class FeatureConfig:
         include_utterance_boundaries: Include BOS and EOS flags (allows shortcut ablation).
         use_positional_buckets: Include relative position in utterance (early/mid/late).
         use_filler_cues: Extract spoken-filler flags (um/uh/like, "you know", "i mean") and
-            immediate word repeats.
+            immediate word repeats. Team extension.
+        use_question_lookback: Extract wh_aux_lookback (wh-word + auxiliary within the last 12
+            tokens) and is_tag_question_cue (tag-question endings). Team extension.
         version: Version identifier for reproducibility.
     """
     preset: str = "basic"
@@ -90,7 +104,9 @@ class FeatureConfig:
     use_casing_cues: bool = False
     include_utterance_boundaries: bool = True
     use_positional_buckets: bool = False
+    # --- team extensions (off in both course presets) ---
     use_filler_cues: bool = False
+    use_question_lookback: bool = False
     version: str = "v1"
 
     @classmethod
@@ -109,6 +125,7 @@ class FeatureConfig:
             "include_utterance_boundaries": True,
             "use_positional_buckets": False,
             "use_filler_cues": False,
+            "use_question_lookback": False,
             "version": "v1-basic",
         }
         defaults.update(overrides)
@@ -130,6 +147,7 @@ class FeatureConfig:
             "include_utterance_boundaries": True,
             "use_positional_buckets": True,
             "use_filler_cues": False,
+            "use_question_lookback": False,
             "version": "v1-improved",
         }
         defaults.update(overrides)
@@ -181,6 +199,18 @@ def _filler_features(tokens: Sequence[str], i: int) -> dict[str, bool]:
         "starts_filler_bigram": i + 1 < n and (tokens[i], tokens[i + 1]) in FILLER_BIGRAMS,
         "+1:starts_filler_bigram": i + 2 < n and (tokens[i + 1], tokens[i + 2]) in FILLER_BIGRAMS,
         "is_repeat": i > 0 and tokens[i] == tokens[i - 1],
+    }
+    return {name: True for name, on in flags.items() if on}
+
+
+def _question_lookback_features(tokens: Sequence[str], i: int) -> dict[str, bool]:
+    """Question-lookback flags for position i; only the true flags are returned."""
+    start = max(0, i - (LOOKBACK_WINDOW - 1))
+    wh_aux = any(tokens[j] in WH_WORDS and tokens[j + 1] in AUXILIARY_VERBS for j in range(start, i))
+    tag_pronoun = tokens[i] in TAG_CUE_PRONOUNS and i > 0 and tokens[i - 1].endswith("n't")
+    flags = {
+        "wh_aux_lookback": wh_aux,
+        "is_tag_question_cue": tokens[i] in TAG_CUE_WORDS or tag_pronoun,
     }
     return {name: True for name, on in flags.items() if on}
 
@@ -345,8 +375,11 @@ def extract_sequence_features(
             if tokens[0] in AUXILIARY_VERBS:
                 token_feats["utt_starts_aux"] = True
 
+        # Team extensions (off unless switched on)
         if cfg.use_filler_cues:
             token_feats.update(_filler_features(tokens, i))
+        if cfg.use_question_lookback:
+            token_feats.update(_question_lookback_features(tokens, i))
 
         seq_features.append(token_feats)
 
