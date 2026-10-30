@@ -38,7 +38,7 @@ from punct_restore.evaluation.inputs import (  # noqa: E402
     sha256_file,
 )
 from punct_restore.evaluation.report import evaluate  # noqa: E402
-from punct_restore.models.crf import CRFModel  # noqa: E402
+from punct_restore.models.crf import CRFModel, require_scoring_mode  # noqa: E402
 from punct_restore.models.threshold import (  # noqa: E402
     check_gamma,
     check_priors,
@@ -225,6 +225,7 @@ def cmd_tune(args: argparse.Namespace) -> int:
     )
     _refuse_existing(out)
     model = CRFModel.load_model(args.model)
+    require_scoring_mode(model.label_mode)
     vocab = load_vocab()
     mode, gold = load_scored_gold(args.gold, args.ids, vocab)
     if mode != model.label_mode:
@@ -304,6 +305,7 @@ def cmd_predict(args: argparse.Namespace) -> int:
     )
     _refuse_existing(out, manifest_out)
     model = CRFModel.load_model(model_path)
+    require_scoring_mode(model.label_mode)
     settings = _read_tau_file(tau_path, model_path)
     observations = read_observations(input_path, ids_path)
     marginals = model.predict_marginals(observations)

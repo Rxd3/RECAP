@@ -14,6 +14,7 @@ import pytest
 from punct_restore import pipeline
 from punct_restore.data import labeling
 from punct_restore.data.labeling import load_label_sets
+from punct_restore.models.crf import CRFModel
 from punct_restore.models.hmm import HMMModel
 from punct_restore.pipeline import (
     ModelAdapter,
@@ -129,6 +130,19 @@ def test_process_text_rejects_model_label_count_mismatch(hmm_json: Path) -> None
 
     with pytest.raises(ValueError, match="1 labels for 2 tokens"):
         RestorationPipeline(adapter).process_text("hello world")
+
+
+def test_adapter_rejects_a_casing_helper_model(tmp_path: Path) -> None:
+    records = [
+        {"sample_id": f"c{index}", "split": "train", "tokens": ["we", "agree"],
+         "punct_labels": ["O", "PERIOD"], "case_labels": ["FIRST_UPPER", "LOWER"]}
+        for index in range(3)
+    ]
+    path = tmp_path / "case.joblib"
+    CRFModel(label_mode="CASE", max_iterations=5).fit(records).save_model(path)
+
+    with pytest.raises(ValueError, match="unsupported label mode 'CASE'"):
+        ModelAdapter(path)
 
 
 def test_end_to_end_with_saved_hmm(hmm_json: Path) -> None:

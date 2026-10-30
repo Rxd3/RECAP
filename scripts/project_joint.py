@@ -17,8 +17,6 @@ read and validated before anything is written, and an existing output is never o
 from __future__ import annotations
 
 import argparse
-import json
-import os
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -28,7 +26,13 @@ ROOT = Path(__file__).resolve().parents[1]
 # Support the documented source-checkout command before an editable install.
 sys.path.insert(0, str(ROOT / "src"))
 from punct_restore.data.labeling import load_label_sets
-from punct_restore.prediction_io import check_new_output_paths, write_prediction_outputs
+from punct_restore.prediction_io import (
+    check_script_paths,
+    one_line_error,
+    read_prediction_lines,
+    reconfigure_stdout,
+    write_prediction_outputs,
+)
 
 SEPARATOR = "|"
 SOURCES = {  # --from: (model_name suffix, what a valid input label looks like)
@@ -62,10 +66,8 @@ def project(record: Mapping[str, Any], source: str, mapping: Mapping[str, str]) 
     }
 
 
-def _check_record(record: Any, where: str, source: str, mapping: Mapping[str, str]) -> None:
+def _check_record(record: dict[str, Any], where: str, source: str, mapping: Mapping[str, str]) -> None:
     """Raise ValueError unless ``record`` is a well-formed prediction of mode ``source``."""
-    if not isinstance(record, dict):
-        raise ValueError(f"{where}: not a JSON object")  # noqa: TRY004 - main() reports ValueError only
     for field in ("sample_id", "model_name"):
         if not isinstance(record.get(field), str) or not record[field]:
             raise ValueError(f"{where}: {field} must be a non-empty string")
@@ -79,26 +81,12 @@ def _check_record(record: Any, where: str, source: str, mapping: Mapping[str, st
             raise ValueError(f"{where}: a mode {source} label must be {SOURCES[source][1]}, got {label!r}")
 
 
-def _parse_line(line: str, where: str) -> Any:
-    try:
-        return json.loads(line)
-    except ValueError as exc:
-        raise ValueError(f"{where}: not valid JSON") from exc
-
-
 def read_predictions(path: Path, source: str, mapping: Mapping[str, str]) -> list[dict[str, Any]]:
     """Every record of a mode ``source`` predictions file, validated; ValueError names the file and line."""
-    try:
-        text = path.read_text(encoding="utf-8")
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"{path.name}: not valid UTF-8") from exc
     records: list[dict[str, Any]] = []
     seen: set[str] = set()
-    for number, line in enumerate(text.split("\n"), 1):
-        if not line.strip():
-            continue
+    for number, record in read_prediction_lines(path):
         where = f"{path.name} line {number}"
-        record = _parse_line(line, where)
         _check_record(record, where, source, mapping)
         if record["sample_id"] in seen:
             raise ValueError(f"{where}: duplicate sample_id {record['sample_id']!r}")
@@ -107,25 +95,12 @@ def read_predictions(path: Path, source: str, mapping: Mapping[str, str]) -> lis
                              f"{records[0]['model_name']!r}")
         seen.add(record["sample_id"])
         records.append(record)
-    if not records:
-        raise ValueError(f"{path.name}: no predictions found")
     return records
-
-
-def _check_paths(out: Path, man: Path, preds: Path, gold: Path) -> None:
-    """Refuse collisions, unwritable outputs and existing outputs, then require both inputs to exist."""
-    check_new_output_paths({"--out": out, "--manifest-out": man}, {"--predictions": preds, "--gold": gold})
-    for flag, path in (("--out", out), ("--manifest-out", man)):
-        if os.path.lexists(path):
-            raise ValueError(f"{flag}: {path.name} already exists, refusing to overwrite it")
-    for flag, path in (("--predictions", preds), ("--gold", gold)):
-        if not path.is_file():
-            raise ValueError(f"{flag}: {path.name} is not an existing file")
 
 
 def _run(args: argparse.Namespace) -> str:
     preds, gold, out, man = Path(args.predictions), Path(args.gold), Path(args.out), Path(args.manifest_out)
-    _check_paths(out, man, preds, gold)
+    check_script_paths({"--out": out, "--manifest-out": man}, {"--predictions": preds, "--gold": gold})
     label_sets = load_label_sets()
     mapping = label_map(args.source, label_sets)
     records = read_predictions(preds, args.source, mapping)
@@ -133,16 +108,6 @@ def _run(args: argparse.Namespace) -> str:
     write_prediction_outputs(projected, out, man, input_path=gold, model_name=projected[0]["model_name"],
                              label_mode="A", ordered_labels=label_sets["A"])
     return f"projected {len(projected)} predictions to {out.name}"
-
-
-def _one_line(exc: ValueError | OSError) -> str:
-    """The message on one line; an OSError names its file by name only (its text carries the full path)."""
-    text = str(exc)
-    if isinstance(exc, OSError) and exc.strerror:
-        text = exc.strerror
-        if exc.filename is not None:
-            text = f"{Path(os.fsdecode(exc.filename)).name}: {text}"
-    return " ".join(text.splitlines())
 
 
 def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
@@ -158,14 +123,12 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    reconfigure = getattr(sys.stdout, "reconfigure", None)
-    if reconfigure is not None:
-        reconfigure(errors="backslashreplace")
+    reconfigure_stdout()
     args = _parse_args(argv)
     try:
         summary = _run(args)
     except (ValueError, OSError) as exc:
-        print(f"error: {_one_line(exc)}", file=sys.stderr)
+        print(f"error: {one_line_error(exc)}", file=sys.stderr)
         return 1
     print(summary)
     return 0

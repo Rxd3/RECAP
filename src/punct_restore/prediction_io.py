@@ -1,11 +1,13 @@
-"""Gold-free prediction input/output shared by train_crf.py and tune_threshold.py."""
+"""Gold-free prediction input/output shared by the prediction scripts (train_crf, tune_threshold, project_joint,
+factor_predictions)."""
 
 from __future__ import annotations
 
 import contextlib
 import json
 import os
-from collections.abc import Mapping, Sequence
+import sys
+from collections.abc import Iterator, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -224,3 +226,65 @@ def check_new_output_paths(
                 raise ValueError(f"{flag} and {other_flag} are the same file")
     for flag, path in targets:
         _check_creatable(flag, path)
+
+
+def check_script_paths(outputs: Mapping[str, Path], inputs: Mapping[str, Path]) -> None:
+    """Raise a one-line ValueError for a path collision, an unwritable or already existing output, or a missing input.
+
+    Keys are the flag names used in the message. Nothing is read or written, so a script can call this first.
+    """
+    check_new_output_paths(outputs, inputs)
+    for flag, path in outputs.items():
+        if os.path.lexists(path):
+            raise ValueError(f"{flag}: {path.name} already exists, refusing to overwrite it")
+    for flag, path in inputs.items():
+        if not path.is_file():
+            raise ValueError(f"{flag}: {path.name} is not an existing file")
+
+
+def read_prediction_lines(path: Path) -> Iterator[tuple[int, dict[str, Any]]]:
+    """Yield ``(line number, JSON object)`` for every non-blank line of a predictions JSONL file.
+
+    Blank lines count in the numbering. The caller checks each record as it arrives.
+
+    Raises:
+        ValueError: One line naming the file (and line) only: invalid UTF-8, invalid JSON, a line that is not a
+            JSON object, or a file without any record.
+        OSError: If the file cannot be read.
+    """
+    try:
+        text = path.read_text(encoding="utf-8-sig")  # a leading BOM is dropped, as the evaluator's reader does
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"{path.name}: not valid UTF-8") from exc
+    found = False
+    for number, line in enumerate(text.split("\n"), 1):
+        if not line.strip():
+            continue
+        where = f"{path.name} line {number}"
+        try:
+            record = json.loads(line)
+        except (ValueError, RecursionError) as exc:  # RecursionError: a line nested too deeply
+            raise ValueError(f"{where}: not valid JSON") from exc
+        if not isinstance(record, dict):
+            raise ValueError(f"{where}: not a JSON object")  # noqa: TRY004 - scripts report ValueError only
+        found = True
+        yield number, record
+    if not found:
+        raise ValueError(f"{path.name}: no predictions found")
+
+
+def one_line_error(exc: ValueError | OSError) -> str:
+    """The message on one line; an OSError names its file by name only (its text carries the full path)."""
+    text = str(exc)
+    if isinstance(exc, OSError) and exc.strerror:
+        text = exc.strerror
+        if exc.filename is not None:
+            text = f"{Path(os.fsdecode(exc.filename)).name}: {text}"
+    return " ".join(text.splitlines())
+
+
+def reconfigure_stdout() -> None:
+    """Print unencodable characters as backslash escapes instead of failing; a stdout that cannot is left alone."""
+    reconfigure = getattr(sys.stdout, "reconfigure", None)
+    if reconfigure is not None:
+        reconfigure(errors="backslashreplace")
