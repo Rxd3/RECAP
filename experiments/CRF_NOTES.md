@@ -18,7 +18,7 @@
 
 ## 2. Model Architecture & API Signatures
 
-The public class `CRFModel` in `src/punct_restore/models/crf.py` implements the shared model contract ([docs/MODEL_CONTRACT.md](docs/MODEL_CONTRACT.md)):
+The public class `CRFModel` in `src/punct_restore/models/crf.py` implements the shared model contract ([docs/MODEL_CONTRACT.md](../docs/MODEL_CONTRACT.md)):
 
 ```python
 class CRFModel:
@@ -66,7 +66,7 @@ class CRFModel:
 
 ### Integration Interface Recommendation for Member 6
 - **Observation:** Member 6's initial draft in `pipeline.py:ModelAdapter.predict_tokens` calls `self.model.predict(clean_tokens)` passing a raw `List[str]`.
-- **Contract Reality:** [docs/MODEL_CONTRACT.md](docs/MODEL_CONTRACT.md) specifies a record-oriented signature: `predict(records) -> list[dict]`.
+- **Contract Reality:** [docs/MODEL_CONTRACT.md](../docs/MODEL_CONTRACT.md) specifies a record-oriented signature: `predict(records) -> list[dict]`.
 - **Recommendation:** Member 6 can achieve 100% contract compliance with either of two clean options:
   1. *Direct adapter call:* `self.model.predict_tokens(clean_tokens)`
   2. *Standard record packaging:* `self.model.predict([{"sample_id": "demo", "tokens": clean_tokens}])[0]["predicted_labels"]`

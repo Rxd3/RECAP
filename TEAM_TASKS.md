@@ -1,10 +1,10 @@
 # Six-member project board
 
-**Status:** Member 1 data preparation and Member 2's trained HMM baseline are
-verified. The corrected release is documented in
-[release validation](docs/DATA_RELEASE_VALIDATION.md). Real-data HMM training,
-selection, scoring and independent reproduction are complete; see
-[HMM results](experiments/HMM_RESULTS.md). No deadlines are assumed. Every
+**Status (2026-10-30):** the data release and the HMM baseline are verified
+([release validation](docs/DATA_RELEASE_VALIDATION.md), [HMM results](experiments/HMM_RESULTS.md)).
+The six CRF models are trained and scored on validation
+([CRF results](docs/EVALUATION_RESULTS_CRF.md)); CRF test predictions are pending. A ticked item
+names its evidence in the repository; an unticked one is not done or has no such evidence. Every
 member must understand their component's assumptions, label schemes, leakage
 risks, evaluation choices and the overall methodology.
 
@@ -23,16 +23,16 @@ and `tests/test_data_contract.py`. Label policy changes require Member 5 review.
 
 **Tasks:**
 
-- [x] Inspect source configurations, fields, revision, access, annotations and license.
-- [x] Agree and document cleaning, tokenization, lowercasing and edge-case policies.
-- [x] Extract punctuation boundaries and casing from original English text.
-- [x] Prepare aligned A (4), B (8) and C (4×3=12) representations without pipeline copies.
-- [x] Verify the approved B→A mapping and retain a separate native benchmark view.
-- [x] Audit duplicate English text across source configs/years and talk/document groups.
-- [x] Freeze reproducible training/validation/test assignments and checksums.
-- [x] Calculate actual data/length statistics, exclusions and class distributions.
-- [x] Validate every release against the shared contract and add tiny fixture tests.
-- [x] Verify clean/ASR availability and alignment without labeling synthetic noise as ASR.
+- [x] Inspect source configurations, fields, revision, access, annotations and license. (evidence: [DATASET_PLAN.md](docs/DATASET_PLAN.md), [configs/datasets.yaml](configs/datasets.yaml))
+- [x] Agree and document cleaning, tokenization, lowercasing and edge-case policies. (evidence: [DECISIONS.md](docs/DECISIONS.md) D2–D4, [DATASET_PLAN.md](docs/DATASET_PLAN.md))
+- [x] Extract punctuation boundaries and casing from original English text. (evidence: [labeling.py](src/punct_restore/data/labeling.py), [tests/test_data_contract.py](tests/test_data_contract.py))
+- [x] Prepare aligned A (4), B (8) and C (4×3=12) representations without pipeline copies. (evidence: [DATA_CONTRACT.md](docs/DATA_CONTRACT.md), [data/README.md](data/README.md))
+- [x] Verify the approved B→A mapping and retain a separate native benchmark view. (evidence: [DATA_RELEASE_VALIDATION.md](docs/DATA_RELEASE_VALIDATION.md), [tests/test_data_contract.py](tests/test_data_contract.py))
+- [x] Audit duplicate English text across source configs/years and talk/document groups. (evidence: [DATASET_PLAN.md](docs/DATASET_PLAN.md) leakage tables, [splits.py](src/punct_restore/data/splits.py))
+- [x] Freeze reproducible training/validation/test assignments and checksums. (evidence: [DATA_RELEASE_VALIDATION.md](docs/DATA_RELEASE_VALIDATION.md) fingerprints)
+- [x] Calculate actual data/length statistics, exclusions and class distributions. (evidence: [DATASET_PLAN.md](docs/DATASET_PLAN.md))
+- [x] Validate every release against the shared contract and add tiny fixture tests. (evidence: [validation.py](src/punct_restore/data/validation.py), [tests/test_data_contract.py](tests/test_data_contract.py), [tests/test_data_release_regressions.py](tests/test_data_release_regressions.py))
+- [x] Verify clean/ASR availability and alignment without labeling synthetic noise as ASR. (evidence: [DATASET_PLAN.md](docs/DATASET_PLAN.md) Source and provenance)
 
 **Deliverables:** working preprocessing pipeline; reproducible processed-data
 release and split manifest; annotation policy; provenance/download guide;
@@ -43,9 +43,9 @@ Member 6 for portable handoff and artifact distribution. No model is required.
 
 **Definition of Done:**
 
-- [x] Approved policies cover ambiguous punctuation/casing and rejected records.
-- [x] IDs, lengths, labels and splits validate; primary subsets pass video, raw/normalized exact and six-gram overlap checks against their reference splits.
-- [x] Regeneration command, source revision, environment and hashes are recorded.
+- [x] Approved policies cover ambiguous punctuation/casing and rejected records. (evidence: [DECISIONS.md](docs/DECISIONS.md) D3–D4, [DATASET_PLAN.md](docs/DATASET_PLAN.md))
+- [x] IDs, lengths, labels and splits validate; primary subsets pass video, raw/normalized exact and six-gram overlap checks against their reference splits. (evidence: [DATA_RELEASE_VALIDATION.md](docs/DATA_RELEASE_VALIDATION.md))
+- [x] Regeneration command, source revision, environment and hashes are recorded. (evidence: [data/README.md](data/README.md), [DATA_RELEASE_VALIDATION.md](docs/DATA_RELEASE_VALIDATION.md))
 - [ ] Members 2, 3, 5 and 6 acknowledge the same distributed release without retokenizing/resplitting.
 
 **Handoff:** [PR #1](https://github.com/Rxd3/RECAP/pull/1) contains the pipeline,
@@ -64,14 +64,14 @@ member acknowledgments remain pending; the team lead authorized this review.
 
 **Tasks:**
 
-- [x] Specify HMM assumptions, states per mode and sequence start/end handling.
-- [x] Implement initial, transition and emission estimation from training only; approved real-data counts verified.
-- [x] Implement numerically stable Viterbi decoding and an unseen-word strategy.
-- [x] Select smoothing/settings on shared validation data and record them (27 candidates; all modes frozen before test).
-- [x] Support agreed label modes through configuration and the common model interface.
-- [x] Train on the shared release; save reproducible metadata and artifacts (all three independent refits byte-identical).
-- [x] Implement prediction export preserving IDs, order and one label per token; all full-split predictions reproduced.
-- [x] Document baseline limitations and observed behavior after actual experiments.
+- [x] Specify HMM assumptions, states per mode and sequence start/end handling. (evidence: [HMM_NOTES.md](experiments/HMM_NOTES.md))
+- [x] Implement initial, transition and emission estimation from training only; approved real-data counts verified. (evidence: [hmm.py](src/punct_restore/models/hmm.py), [tests/test_hmm.py](tests/test_hmm.py), [HMM_RESULTS.md](experiments/HMM_RESULTS.md))
+- [x] Implement numerically stable Viterbi decoding and an unseen-word strategy. (evidence: [hmm.py](src/punct_restore/models/hmm.py), [tests/test_hmm.py](tests/test_hmm.py))
+- [x] Select smoothing/settings on shared validation data and record them (27 candidates; all modes frozen before test). (evidence: [HMM_RESULTS.md](experiments/HMM_RESULTS.md), [configs/hmm_sponspeech_v2.yaml](configs/hmm_sponspeech_v2.yaml))
+- [x] Support agreed label modes through configuration and the common model interface. (evidence: [tests/test_hmm.py](tests/test_hmm.py))
+- [x] Train on the shared release; save reproducible metadata and artifacts (all three independent refits byte-identical). (evidence: [HMM_RESULTS.md](experiments/HMM_RESULTS.md))
+- [x] Implement prediction export preserving IDs, order and one label per token; all full-split predictions reproduced. (evidence: [predict_hmm.py](scripts/predict_hmm.py), [tests/test_hmm_cli.py](tests/test_hmm_cli.py), [HMM_RESULTS.md](experiments/HMM_RESULTS.md))
+- [x] Document baseline limitations and observed behavior after actual experiments. (evidence: [HMM_RESULTS.md](experiments/HMM_RESULTS.md), [EVALUATION_RESULTS.md](docs/EVALUATION_RESULTS.md))
 
 **Deliverables:** trained HMM baseline; reproducible training command/config;
 standard prediction bundle; model-specific notes and meaningful tests.
@@ -82,10 +82,10 @@ the shared record contract; integrated demo acceptance remains Member 6's work.
 
 **Definition of Done:**
 
-- [x] Tiny hand-checkable sequences verify probability/Viterbi and OOV behavior.
-- [x] HMM input/output contract, gold-invariance and save/load hold on synthetic tests and real data; integrated demo review remains pending.
-- [x] Artifact, data/mode/configuration hashes and actual commands are recorded.
-- [x] Member 5's pinned shared scorer validates prediction alignment and computes the baseline scores; an independent counter verifies them.
+- [x] Tiny hand-checkable sequences verify probability/Viterbi and OOV behavior. (evidence: [tests/test_hmm.py](tests/test_hmm.py))
+- [x] HMM input/output contract, gold-invariance and save/load hold on synthetic tests and real data; integrated demo review remains pending. (evidence: [tests/test_hmm.py](tests/test_hmm.py), [tests/test_hmm_workflow.py](tests/test_hmm_workflow.py), [HMM_RESULTS.md](experiments/HMM_RESULTS.md))
+- [x] Artifact, data/mode/configuration hashes and actual commands are recorded. (evidence: [HMM_RUNBOOK.md](experiments/HMM_RUNBOOK.md), [HMM_RESULTS.md](experiments/HMM_RESULTS.md))
+- [x] Member 5's pinned shared scorer validates prediction alignment and computes the baseline scores; an independent counter verifies them. (evidence: [HMM_RESULTS.md](experiments/HMM_RESULTS.md), [EVALUATION_RESULTS.md](docs/EVALUATION_RESULTS.md))
 
 **Handoff:** the leader receives the local, checksummed bundle
 `artifacts/hmm/hmm-sponspeech-v2-20261029.zip`, containing selected models, all
@@ -107,13 +107,13 @@ Member 4's feature module is a coordinated contribution, not overlapping ownersh
 **Tasks:**
 
 - [ ] Agree the injected feature interface with Member 4 before implementing it.
-- [ ] Choose a linear-chain CRF backend and document assumptions/optimizer settings.
-- [ ] Define a basic token-feature preset with Member 4 through one reviewed PR.
-- [ ] Implement fit/predict/save/load under the common contract.
-- [ ] Support configurable A/B/C targets with explicit artifact compatibility.
-- [ ] Train and select settings on the fixed training/validation release.
-- [ ] Export standard predictions and complete configuration/run records.
-- [ ] Compare against the HMM within the same mode using Member 5's evaluation.
+- [x] Choose a linear-chain CRF backend and document assumptions/optimizer settings. (evidence: [CRF_EXPERIMENTS.md](docs/CRF_EXPERIMENTS.md) §2, §6)
+- [ ] Define a basic token-feature preset with Member 4 through one reviewed PR. — basic preset written by Member 3 alone in `aa232be`; no PR with Member 4
+- [x] Implement fit/predict/save/load under the common contract. (evidence: [crf.py](src/punct_restore/models/crf.py), [tests/test_crf_model.py](tests/test_crf_model.py))
+- [x] Support configurable A/B/C targets with explicit artifact compatibility. (evidence: [tests/test_train_crf_cli.py](tests/test_train_crf_cli.py) (modes A, B, C; mode mismatch rejected))
+- [ ] Train and select settings on the fixed training/validation release. — six models trained ([CRF_EXPERIMENTS.md](docs/CRF_EXPERIMENTS.md) §7); settings not tuned
+- [ ] Export standard predictions and complete configuration/run records. — validation predictions delivered; test predictions and prediction manifests pending
+- [x] Compare against the HMM within the same mode using Member 5's evaluation. (evidence: [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §1–2, validation)
 
 **Deliverables:** working basic CRF; reproducible training procedure;
 common-format prediction/artifact bundles; experiment records and contract tests.
@@ -124,10 +124,10 @@ for integration. CRF implementation need not wait for HMM training.
 
 **Definition of Done:**
 
-- [ ] Feature/token alignment and model persistence pass meaningful tiny tests.
-- [ ] One CRF implementation supports both basic and improved feature injection.
-- [ ] No gold casing/punctuation or test-derived information enters features.
-- [ ] Selected validation settings and actual evidence are reproducible.
+- [x] Feature/token alignment and model persistence pass meaningful tiny tests. (evidence: [tests/test_crf_features.py](tests/test_crf_features.py), [tests/test_crf_model.py](tests/test_crf_model.py))
+- [x] One CRF implementation supports both basic and improved feature injection. (evidence: [crf.py](src/punct_restore/models/crf.py), [CRF_EXPERIMENTS.md](docs/CRF_EXPERIMENTS.md) §3, §7)
+- [x] No gold casing/punctuation or test-derived information enters features. (evidence: [tests/test_crf_features.py](tests/test_crf_features.py) `test_gold_free_integrity`)
+- [ ] Selected validation settings and actual evidence are reproducible. — mode A basic reproduced byte for byte; improved models not re-run; settings not tuned ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md))
 
 **Handoff:** give Member 4 the stable CRF adapter/extractor signature and basic
 preset; give Members 5 and 6 compatible artifacts, predictions and provenance.
@@ -141,14 +141,14 @@ preset; give Members 5 and 6 compatible artifacts, predictions and provenance.
 
 **Tasks:**
 
-- [ ] Agree a feature interface with Member 3 and version its configuration.
-- [ ] Develop improved context-window, neighbor, prefix and suffix features.
-- [ ] Investigate question-detection patterns and observable capitalization cues.
-- [ ] Explicitly account for lowercased input; never use hidden gold casing.
-- [ ] Compare basic versus improved features through Member 3's CRF implementation.
-- [ ] Design separate punctuation/casing versus joint experiments with Members 3 and 5.
-- [ ] Run controlled one-change ablations with fixed splits and selection rules.
-- [ ] Document useful, ineffective and uncertain features based on actual evidence.
+- [ ] Agree a feature interface with Member 3 and version its configuration. — implemented by Member 3 (see [contributions](contributions/Omar_STUDENT_ID_Devinci101.md))
+- [ ] Develop improved context-window, neighbor, prefix and suffix features. — implemented by Member 3 (see [contributions](contributions/Omar_STUDENT_ID_Devinci101.md))
+- [ ] Investigate question-detection patterns and observable capitalization cues. — implemented by Member 3 (see [contributions](contributions/Omar_STUDENT_ID_Devinci101.md))
+- [ ] Explicitly account for lowercased input; never use hidden gold casing. — implemented by Member 3 (see [contributions](contributions/Omar_STUDENT_ID_Devinci101.md))
+- [ ] Compare basic versus improved features through Member 3's CRF implementation. — done by Member 5 ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §1)
+- [ ] Design separate punctuation/casing versus joint experiments with Members 3 and 5. — joint vs punctuation-only comparison done by Member 5 ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md), H1)
+- [ ] Run controlled one-change ablations with fixed splits and selection rules. — done by Member 5 ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §5, validation)
+- [ ] Document useful, ineffective and uncertain features based on actual evidence. — documented by Member 5 ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §5) and in [FEATURE_NOTES.md](experiments/FEATURE_NOTES.md)
 
 **Deliverables:** improved extractors; reproducible ablation configuration and
 run records; feature comparison tables from real evaluation; technical explanation.
@@ -159,10 +159,10 @@ Do not independently rewrite or replace the CRF model.
 
 **Definition of Done:**
 
-- [ ] Extractors return one feature dictionary per input token with no gold access.
-- [ ] Basic and improved variants share model/data/evaluation code.
-- [ ] Ablations change declared factors only and select on validation.
-- [ ] Gains or negative findings have reproducible evidence and support counts.
+- [ ] Extractors return one feature dictionary per input token with no gold access. — implemented by Member 3 (see [contributions](contributions/Omar_STUDENT_ID_Devinci101.md))
+- [ ] Basic and improved variants share model/data/evaluation code. — implemented by Member 3 (see [contributions](contributions/Omar_STUDENT_ID_Devinci101.md))
+- [ ] Ablations change declared factors only and select on validation. — done by Member 5 ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §5)
+- [ ] Gains or negative findings have reproducible evidence and support counts. — done by Member 5 ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §5)
 
 **Handoff:** provide Member 3 the versioned extractor/configuration, Member 5 the
 paired run bundles and hypothesis list, and Member 6 feature-loading requirements.
@@ -177,16 +177,16 @@ paired run bundles and hypothesis list, and Member 6 feature-loading requirement
 
 **Tasks:**
 
-- [ ] Agree complete vocabularies, target projections and split checks with Member 1.
-- [ ] Validate prediction IDs, mode, token alignment and provenance before scoring.
-- [ ] Implement token precision/recall/F1 and class-wise support/predicted counts.
-- [ ] Report non-O macro F1 as primary; label inclusion/exclusion of O everywhere.
-- [ ] Use zero_division=0; keep accuracy secondary and absent-class support visible.
-- [ ] Evaluate C jointly and after punctuation/casing projections; compare tasks fairly.
-- [ ] Produce confusion matrices, rare-label/class-imbalance and sequence error analysis.
-- [ ] Compare runtime with common hardware/input/measurement conditions.
-- [ ] Support group-aware paired confidence intervals if practical and documented.
-- [ ] Reserve validation for selection and test for final reporting; never fabricate results.
+- [x] Agree complete vocabularies, target projections and split checks with Member 1. (evidence: [DECISIONS.md](docs/DECISIONS.md) D3–D6 (Member 5 reviewer), [EVALUATION_PROTOCOL.md](docs/EVALUATION_PROTOCOL.md))
+- [x] Validate prediction IDs, mode, token alignment and provenance before scoring. (evidence: [inputs.py](src/punct_restore/evaluation/inputs.py), [manifest.py](src/punct_restore/evaluation/manifest.py), [tests/test_evaluation_inputs.py](tests/test_evaluation_inputs.py))
+- [x] Implement token precision/recall/F1 and class-wise support/predicted counts. (evidence: [metrics.py](src/punct_restore/evaluation/metrics.py), [tests/test_evaluation_metrics.py](tests/test_evaluation_metrics.py))
+- [x] Report non-O macro F1 as primary; label inclusion/exclusion of O everywhere. (evidence: [EVALUATION_PROTOCOL.md](docs/EVALUATION_PROTOCOL.md), [EVALUATION_RESULTS.md](docs/EVALUATION_RESULTS.md))
+- [x] Use zero_division=0; keep accuracy secondary and absent-class support visible. (evidence: [EVALUATION_PROTOCOL.md](docs/EVALUATION_PROTOCOL.md))
+- [x] Evaluate C jointly and after punctuation/casing projections; compare tasks fairly. (evidence: [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §3, H1, [tests/test_evaluation_views.py](tests/test_evaluation_views.py))
+- [x] Produce confusion matrices, rare-label/class-imbalance and sequence error analysis. (evidence: [EVALUATION_RESULTS.md](docs/EVALUATION_RESULTS.md) §3–6, [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md))
+- [ ] Compare runtime with common hardware/input/measurement conditions. — HMM only so far ([EVALUATION_RESULTS.md](docs/EVALUATION_RESULTS.md) §7); CRF runtime row pending
+- [x] Support group-aware paired confidence intervals if practical and documented. (evidence: [uncertainty.py](src/punct_restore/evaluation/uncertainty.py), [comparison.py](src/punct_restore/evaluation/comparison.py), [EVALUATION_PROTOCOL.md](docs/EVALUATION_PROTOCOL.md))
+- [x] Reserve validation for selection and test for final reporting; never fabricate results. (evidence: [HMM_RUNBOOK.md](experiments/HMM_RUNBOOK.md) (selection froze before test access), [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) (validation only))
 
 **Deliverables:** evaluation pipeline; verified comparison tables/visualizations;
 confusion matrices; error-analysis report; runtime comparison and optional intervals.
@@ -197,10 +197,10 @@ and tiny fixture tests can be prepared before trained models exist.
 
 **Definition of Done:**
 
-- [ ] Hand-checkable metric fixtures cover O mistakes, absent classes and projections.
-- [ ] Incompatible/misaligned predictions fail explicitly; no examples are silently lost.
-- [ ] Every score identifies data, mode, support, averaging and O policy.
-- [ ] Reported numbers/figures derive from real runs and traceable artifacts.
+- [x] Hand-checkable metric fixtures cover O mistakes, absent classes and projections. (evidence: [tests/test_evaluation_metrics.py](tests/test_evaluation_metrics.py), [tests/test_evaluation_views.py](tests/test_evaluation_views.py))
+- [x] Incompatible/misaligned predictions fail explicitly; no examples are silently lost. (evidence: [tests/test_evaluation_inputs.py](tests/test_evaluation_inputs.py))
+- [x] Every score identifies data, mode, support, averaging and O policy. (evidence: [report.py](src/punct_restore/evaluation/report.py), [EVALUATION_PROTOCOL.md](docs/EVALUATION_PROTOCOL.md))
+- [x] Reported numbers/figures derive from real runs and traceable artifacts. (evidence: [EVALUATION_RESULTS.md](docs/EVALUATION_RESULTS.md) Provenance, [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) Provenance)
 
 **Handoff:** provide Member 6 verified tables/figures with source hashes,
 representative errors, selection/test separation and limitations; return failure
@@ -222,10 +222,10 @@ cases to Members 1–4 for analysis without silently changing the frozen test.
 - [ ] Route identical gold-free token sequences to each trained model.
 - [ ] Integrate approved punctuation/casing reconstruction and error handling.
 - [ ] Build a command-line demonstration; add interactive UI only if later agreed.
-- [ ] Document exact preparation, training, prediction and evaluation commands as built.
+- [x] Document exact preparation, training, prediction and evaluation commands as built. (evidence: [REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md))
 - [ ] Record dependency locks, seeds, code/data/artifact hashes and hardware needs.
 - [ ] Run a tiny end-to-end reproduction in a clean environment.
-- [ ] Collect verified evidence and limitations from every member for the presentation.
+- [x] Collect verified evidence and limitations from every member for the presentation. (evidence: [PRESENTATION_OUTLINE.md](docs/PRESENTATION_OUTLINE.md))
 - [ ] Rehearse the demo and verify the final integrated release with all owners.
 
 **Deliverables:** integrated inference workflow and demo; reproducibility runbook;
@@ -254,7 +254,7 @@ This is a technical integration role, not only slide preparation.
 - [ ] M2 — Member 1 data release validated; all consumers agree identical IDs/splits.
 - [ ] M3 — HMM and basic CRF contract tests pass; Member 5 scores validation bundles;
   Member 6 verifies shared-input inference and save/load compatibility.
-- [ ] M4 — Improved CRF and ablations reviewed on fixed validation settings.
+- [x] M4 — Improved CRF and ablations reviewed on fixed validation settings. (evidence: [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §1, §5)
 - [ ] M5 — Freeze settings; Member 5 runs final held-out evaluation and error analysis.
 - [ ] M6 — Member 6 verifies clean-environment reproduction, demo and presentation;
   all members review assumptions and evidence before the final release.
@@ -273,12 +273,12 @@ synthetic noise/alignment; artifacts/CLI/environment; uncertainty/runtime policy
 ## Final project readiness
 
 - [ ] Every member can explain their assumptions and the shared methodology.
-- [ ] All data sources/policies, labels and split manifests are verified/versioned.
-- [ ] All models use common contracts, frozen splits and gold-free inference.
+- [x] All data sources/policies, labels and split manifests are verified/versioned. (evidence: [DATA_RELEASE_VALIDATION.md](docs/DATA_RELEASE_VALIDATION.md), [DATASET_PLAN.md](docs/DATASET_PLAN.md))
+- [x] All models use common contracts, frozen splits and gold-free inference. (evidence: [MODEL_CONTRACT.md](docs/MODEL_CONTRACT.md), [scripts/train_crf.py](scripts/train_crf.py) predict passes only sample_id and tokens, [HMM_RESULTS.md](experiments/HMM_RESULTS.md), [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) Provenance)
 - [ ] Results and projections are compatible, supported and reproducible.
-- [ ] O policy, zero division, class imbalance and limitations are reported.
-- [ ] Test data was held out for final reporting; selection used validation.
-- [ ] Models/predictions are shared as checksummed artifacts, not large Git files.
-- [ ] No credentials or personal absolute paths are committed.
+- [x] O policy, zero division, class imbalance and limitations are reported. (evidence: [EVALUATION_PROTOCOL.md](docs/EVALUATION_PROTOCOL.md), [EVALUATION_RESULTS.md](docs/EVALUATION_RESULTS.md) §3 and Limitations)
+- [x] Test data was held out for final reporting; selection used validation. (evidence: [HMM_RUNBOOK.md](experiments/HMM_RUNBOOK.md), [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md))
+- [x] Models/predictions are shared as checksummed artifacts, not large Git files. (evidence: [HMM_RUNBOOK.md](experiments/HMM_RUNBOOK.md), [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) Provenance, [.gitignore](.gitignore))
+- [x] No credentials or personal absolute paths are committed. (evidence: `git grep` for absolute user paths finds none, 2026-10-30)
 - [ ] Integration tests, documented workflow and demonstration work on a clean setup.
 - [ ] Presentation claims/figures trace to real experiments and all owners review them.

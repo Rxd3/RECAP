@@ -15,6 +15,7 @@
 - Fixed the manifest check for the HMM bundle's nested `inputs.input` (9155a7e) and the Markdown percentage rounding (6340b59).
 - Added `docs/EVALUATION_RESULTS.md` (51bd400) and `docs/EVALUATION_RESULTS_CRF.md` (255fc68); changed `docs/EVALUATION_PROTOCOL.md` (680438f, 6356916, ec37d19, 51bd400, 255fc68).
 - Created six merge commits: four into `release/final` (ddba805, 611f3f4, 0790467, 097c87b), 3044a58 (main into `feat/m5-evaluation`) and aca40c6 (into `feat/m5-eval-uncertainty`).
+- Prepared the `release/final` integration branch: merged the four member branches (M5, M2 HMM, M3 CRF, M6; merge commits 097c87b, 0790467, 611f3f4, ddba805) and applied repo-wide fixes on that branch.
 
 ## Commits
 
