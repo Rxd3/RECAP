@@ -242,7 +242,7 @@ def test_tune_picks_best_tau_on_fixture(
     assert tune_threshold.main(_tune_argv(mode_a, out)) == 0
 
     written = json.loads(out.read_text(encoding="utf-8"))
-    assert set(written) == {"tau", "gamma", "grid", "model_sha256"}
+    assert set(written) == {"tau", "gamma", "grid", "model_sha256", "split", "inputs"}
     assert written["gamma"] == 0 and all(point["gamma"] == 0 for point in written["grid"])
     assert [point["tau"] for point in written["grid"]] == [0.1, 0.3, 0.5, 0.7, 0.9]
     assert all(0.0 <= point["macro_f1"] <= 1.0 for point in written["grid"])
