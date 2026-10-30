@@ -487,5 +487,25 @@
       "macro_f1": 0.188088
     }
   ],
-  "model_sha256": "dbac5712db7d14406d676f212905684ae0d70ebc74dfbba2ae2f63cc973a6f98"
+  "model_sha256": "dbac5712db7d14406d676f212905684ae0d70ebc74dfbba2ae2f63cc973a6f98",
+  "split": "validation",
+  "inputs": {
+    "gold": {
+      "path": "data/processed/sponspeech-m1-v2/mode_B/validation.jsonl",
+      "sha256": "efbc877efa64abb85579889c1c08ef5faf89b0b22a0eb3e629ca76c73f690fb0"
+    },
+    "ids": {
+      "path": "data/splits/sponspeech-m1-v2/primary_eval/validation_mode_B.ids",
+      "sha256": "15e43a80088a2189f0f0d34c6e1fc5dd867a2ee42637fc5e80d106c7eed487db"
+    },
+    "masks": null,
+    "train": {
+      "path": "data/processed/sponspeech-m1-v2/mode_B/train.jsonl",
+      "sha256": "b10a75e5eb126c97fbacdf69b0edf93ae0cbec3704620ab5c5f03d4a3882779d"
+    },
+    "train_ids": {
+      "path": "data/splits/sponspeech-m1-v2/default_train/mode_B.ids",
+      "sha256": "593196fea62d7aa6eb9eb3bea6649f06f5cc43dab91f048943efa0d9d590492a"
+    }
+  }
 }

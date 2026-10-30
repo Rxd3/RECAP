@@ -171,7 +171,7 @@ utterance-final shortcut reported separately.
 using Transformer Models for High-and Low-Resource Languages.* W-NUT 2020, pp. 132–142,
 doi:10.18653/v1/2020.wnut-1.18. <https://aclanthology.org/2020.wnut-1.18>
 Transformer models with data augmentation for English and Bangla punctuation restoration.
-*RECAP differs:* no pretrained models; our extension is the joint casing task and the leakage audit.
+*RECAP differs:* no pretrained models; it adds the course's joint punctuation and casing task (mode C, with labels we derived from SponSpeech) and a leakage audit.
 
 ## Team methods
 

@@ -483,5 +483,25 @@
       "macro_f1": 0.39416
     }
   ],
-  "model_sha256": "f9e50d34528432507fcdb2f1c570408ffce743aa94ecc5a2024e00a0687a6b55"
+  "model_sha256": "f9e50d34528432507fcdb2f1c570408ffce743aa94ecc5a2024e00a0687a6b55",
+  "split": "validation",
+  "inputs": {
+    "gold": {
+      "path": "data/processed/sponspeech-m1-v2/mode_A/validation.jsonl",
+      "sha256": "7ececedac4e58c307df0daaf6190b61b2ea715344b72a2910d9541e07b1ecf27"
+    },
+    "ids": {
+      "path": "data/splits/sponspeech-m1-v2/primary_eval/validation_mode_A.ids",
+      "sha256": "15e43a80088a2189f0f0d34c6e1fc5dd867a2ee42637fc5e80d106c7eed487db"
+    },
+    "masks": null,
+    "train": {
+      "path": "data/processed/sponspeech-m1-v2/mode_A/train.jsonl",
+      "sha256": "9412866dd8ae1aaf86e18611f47b1ee8da888792808da0a525ecd61c4bd7c56e"
+    },
+    "train_ids": {
+      "path": "data/splits/sponspeech-m1-v2/default_train/mode_A.ids",
+      "sha256": "593196fea62d7aa6eb9eb3bea6649f06f5cc43dab91f048943efa0d9d590492a"
+    }
+  }
 }

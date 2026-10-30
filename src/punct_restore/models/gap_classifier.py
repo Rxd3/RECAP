@@ -2,9 +2,10 @@
 
 GapClassifier trains on EXACTLY the per-token feature dicts that CRFModel uses (same validation, same
 extractor, same FeatureConfig) and predicts every token independently of its neighbours' labels. Its
-role is a controlled comparison against the ``improved`` CRF on identical features and data: the two
-models differ only in whether labels are scored jointly with label-to-label transitions, so the gap
-between them isolates the value of those transitions.
+role is a comparison against the ``improved`` CRF on identical features and data: the two models differ
+in whether labels are scored jointly with label-to-label transitions and in their training (L2 logistic
+regression, C = 1.0, 200 lbfgs iterations vs the CRF's c1 = c2 = 0.1, 100 iterations), so the gap between
+them is the value of the transitions plus those training differences.
 
 Persistence follows the CRF's bundle style: a joblib file holding a plain dict. joblib is pickle, so
 load only artifacts you produced yourself.

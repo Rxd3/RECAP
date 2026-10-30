@@ -58,7 +58,7 @@ record format and alignment.
 | Hidden-event n-gram LM + Viterbi (ours, exploratory) | own code, `src/punct_restore/models/hidden_event_lm.py`; mode C adds a unigram truecaser | one model per mode | order 4 with discount 0.9 (A), 0.75 (B, C), chosen on validation from order ∈ {2, 3, 4} × discount ∈ {0.5, 0.75, 0.9} |
 
 Sources: [HMM_RESULTS.md](experiments/HMM_RESULTS.md), [CRF_EXPERIMENTS.md](docs/CRF_EXPERIMENTS.md) §3, §6–7
-and [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §7. Where to download each model:
+and [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §7, §14.2–14.3. Where to download each model:
 [REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md).
 
 ## What is new
@@ -144,7 +144,7 @@ the shortcut, hidden-event LM and threshold columns are our additions):
 
 **Exploratory comparison methods** (added on 2026-10-30 after the first test report; settings chosen on validation; each test list predicted once):
 
-- **Prior-adjusted threshold decoding** gives +1.42 / +1.43 / +2.74 over the improved CRF on test, all surviving a Holm correction. It lifts rare marks such as QUESTION (A 26.23 → 30.24) and EXCLAMATION (B 1.85 → 5.45) (point estimates; it was not compared pairwise with the plain threshold). A plain threshold adds only +0.51 / +0.41 / +0.70. H2 (single τ) not supported; prior-adjusted decoding is an exploratory follow-up.
+- **Prior-adjusted threshold decoding** gives +1.42 / +1.43 / +2.74 over the improved CRF on test, all surviving a Holm correction. It lifts rare marks such as QUESTION (A 26.23 → 30.24; +4.00, 1.88 to 6.13) and EXCLAMATION (B 1.85 → 5.45; +3.60, 1.21 to 6.33), and beats the plain threshold by +0.91 / +1.03 / +2.04 on test, every interval excluding 0 (exploratory comparisons, not Holm-corrected). A plain threshold adds only +0.51 / +0.41 / +0.70. H2 (single τ) not supported; prior-adjusted decoding is an exploratory follow-up.
 - **A classic hidden-event language model** (Stolcke-style, n-gram) comes close to the improved CRF on punctuation: −1.54 in A and a tie in B on test. It is 5.84 points behind in mode C, where its unigram truecaser is weak.
 - **A gap classifier** (the same features without label-to-label transitions) loses 1.27 / 1.70 / 4.74 to the improved CRF on validation (50k sample). The gap is transitions plus training differences: the gap classifier is an L2 logistic regression with C = 1.0 and 200 iterations, while the CRF uses c1 = c2 = 0.1 and 100 iterations.
 - **Question-lookback features** (a wh-word plus an auxiliary anywhere in the last 12 words, and tag questions) raise QUESTION F1 by 6–7 points in every mode on validation (+6.11 / +7.12 / +6.01, every interval excludes 0).
@@ -215,7 +215,7 @@ report `test` and `test_amb` separately (they share 25 videos).
 | `results/` | `results/scores/` holds the committed evaluator JSON behind every reported number (`results/scores/README.md`), including Member 3's six CRF training manifests in `results/scores/crf_training_manifests/`. Local evaluator outputs go to the ignored folders results/predictions/ and results/tables/; create them with `mkdir -p` first, because the evaluator never creates folders. |
 | `scripts/` | Command-line entry points; see the table below and `scripts/README.md`. |
 | `src/punct_restore/` | The Python package; every module is listed in the package table below. |
-| `tests/` | The pytest suite for data, models, features, CLIs and evaluation; fixtures only. Groups are listed in `tests/README.md`; the comparison-method tests are `tests/test_gap_classifier.py`, `tests/test_hidden_event_lm.py`, `tests/test_train_hidden_event_lm_cli.py`, `tests/test_factored.py`, `tests/test_factor_predictions.py`, `tests/test_crf_case_mode.py`, `tests/test_threshold_priors.py`, `tests/test_asr_noise.py`, `tests/test_simulate_asr_noise.py`, `tests/test_prediction_io_helpers.py`. |
+| `tests/` | The pytest suite for data, models, features, CLIs and evaluation; fixtures only. Groups are listed in `tests/README.md`; the comparison-method and robustness tests are `tests/test_gap_classifier.py`, `tests/test_hidden_event_lm.py`, `tests/test_train_hidden_event_lm_cli.py`, `tests/test_factored.py`, `tests/test_factor_predictions.py`, `tests/test_crf_case_mode.py`, `tests/test_threshold_priors.py`, `tests/test_asr_noise.py`, `tests/test_simulate_asr_noise.py`, `tests/test_prediction_io_helpers.py`, `tests/test_gold_noise.py`, `tests/test_find_gold_noise.py`, `tests/test_threshold_provenance.py`, `tests/test_crf_convergence.py`, `tests/test_length_position.py`. |
 
 **Evaluator outputs** (`results/scores/`, one folder per study; details in `results/scores/README.md`):
 

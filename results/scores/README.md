@@ -13,7 +13,7 @@ All files were written by `scripts/evaluate_models.py` (`score`, `compare`, `err
 
 **Format:**
 - Scores are fractions with six decimals; the docs show them as percentages rounded half-up.
-- The score, compare and errors files record the sha256 of their gold, ID-list, mask and prediction inputs. The committed `threshold/tau_<mode>.json` and `threshold_prior/tau_gamma_<mode>.json` record only `model_sha256` (they predate the change that makes `tune_threshold.py tune` also record the split and the input sha256 values), and `runtime/*.json` only the model file name. The predictions themselves are not committed: they can be regenerated from the shared models (see [REPRODUCIBILITY.md](../../docs/REPRODUCIBILITY.md)).
+- The score, compare and errors files record the sha256 of their gold, ID-list, mask and prediction inputs. `threshold/tau_<mode>.json` and `threshold_prior/tau_gamma_<mode>.json` record the model sha256, the split and the sha256 of every input (gold, ID list, masks, and the training data for the priors); they were regenerated with this provenance on 2026-10-30 and gave the same τ, γ and grid scores as before. `runtime/*.json` record only the model file name. The predictions themselves are not committed: they can be regenerated from the shared models (see [REPRODUCIBILITY.md](../../docs/REPRODUCIBILITY.md)).
 - **Intentional copies:** `filler/mode_A/improved.json`, `filler/mode_B/improved.json`, `filler/mode_C/improved.json` and `factored/improved_C.json` are byte-identical to `ablations/mode_<M>/improved.json`, the shared 50k-sample baseline. They are kept so that each study folder stands alone.
 - **Data excerpts:** the `*.errors.json` files contain short SponSpeech excerpts as error examples (gold and predicted text around each error). They are CC BY-NC 4.0, with the upstream attribution in [DATA_LICENSE.md](../../docs/DATA_LICENSE.md).
 
@@ -23,7 +23,7 @@ All files were written by `scripts/evaluate_models.py` (`score`, `compare`, `err
 | `crf_validation/` | Member 3's six CRFs on validation (model selection); paired comparisons against the basic CRF and the HMM; error pairs |
 | `crf_test/` | The same six CRFs on test and test_amb, each predicted once; paired comparisons; error pairs |
 | `threshold/` | τ grids tuned on validation; threshold-decoded test and test_amb scores; paired comparisons against the plain improved CRF |
-| `threshold_prior/` | τ × γ prior-adjusted decoding: grids tuned on validation (`tau_gamma_<mode>.json`), test and test_amb scores, paired comparisons against the plain improved CRF |
+| `threshold_prior/` | τ × γ prior-adjusted decoding: grids tuned on validation (`tau_gamma_<mode>.json`), test and test_amb scores, paired comparisons against the plain improved CRF (`tg_vs_improved_*`) and against the plain threshold (`tg_vs_tau_*`) |
 | `gap/` | Gap classifier (the improved CRF's features without transitions) vs the improved CRF on validation, same 50k sample |
 | `hidden_event_lm/` | Hidden-event LM: order × discount grid on validation, chosen setting on test and test_amb, paired comparisons against the HMM and the improved CRF |
 | `question2/` | Improved CRF with vs without the question-lookback features on validation (50k sample), with QUESTION per-class intervals |

@@ -11,8 +11,8 @@ of default_train, once with the full improved preset, once per removed feature g
 the filler cues added and once with the question-lookback features added (improved_plus_question2:
 wh_aux_lookback and is_tag_question_cue). The last variant, gap_improved, trains GapClassifier
 ("CRF without transitions": per-token logistic regression, C = 1, 200 L-BFGS iterations) on the
-same improved features and the same sample, so its difference from improved isolates the value of
-label transitions. Primary-validation predictions are written to
+same improved features and the same sample, so its difference from improved measures label
+transitions together with the different training settings. Primary-validation predictions are written to
 DIR/mode_<M>/<variant>/validation.jsonl, and the sampled training IDs to DIR/mode_<M>/sample.ids.
 Test data is never read.
 

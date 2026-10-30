@@ -385,7 +385,7 @@ test_amb, and `default_train_B_summary.json`; score each list without its noisy 
 `evaluate_models.py score` ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §12).
 `crf_convergence.py` reads pickles: trusted `.joblib` files only. `tune_threshold.py tune` now records the
 split (`--split`, default the gold file's name without extension) and the sha256 of every input in its tau file; the committed
-tau files predate this.
+tau files were regenerated with it and gave the same τ, γ and grid scores.
 
 ## Reproduction levels reached
 

@@ -72,7 +72,7 @@ in [DATASET_PLAN.md](DATASET_PLAN.md).
 
 `scripts/find_gold_noise.py` (rules in `src/punct_restore/data/gold_noise.py`) flags three known sources of
 noise on the primary mode B lists:
-- leftover speaker labels (a name before ':' at the utterance start, after a sentence end, after ', ' or after a turn dash);
+- leftover speaker labels (a name before ':' at the utterance start, after a sentence end or after a turn dash; after ', ' only a name that is a label in at least 3 records of the same video; a numbered role such as 'SPEAKER 2:' anywhere);
 - subtitle cue residue (block number and timestamp in the original text);
 - the two auto-caption-style videos `732fql_jhJQ` and `JNxcznsrRb8`.
 

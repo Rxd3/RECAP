@@ -19,8 +19,8 @@ The course-baseline settings (HMM smoothing, CRF settings, the plain threshold ฯ
 
 ## Out of scope
 
-- Audio, prosody and speech-recognition (ASR) output: RECAP uses the transcripts only, and no ASR
-  condition was evaluated.
+- Audio, prosody and real speech-recognition (ASR) output: RECAP uses the transcripts only, and there is no
+  real-ASR condition (a simulated ASR-noise check is in [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) ยง13).
 - Neural models (for example BiLSTM-CRF or transformers), GPU frameworks and pretrained-model
   downloads.
 - An interactive application beyond the command-line demo (`scripts/run_demo.py`).

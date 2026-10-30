@@ -489,5 +489,28 @@
       "macro_f1": 0.407518
     }
   ],
-  "model_sha256": "632671bb24430df39f7c9a5d210cedffa0df6312a824343114cb76a4588a161c"
+  "model_sha256": "632671bb24430df39f7c9a5d210cedffa0df6312a824343114cb76a4588a161c",
+  "split": "validation",
+  "inputs": {
+    "gold": {
+      "path": "data/processed/sponspeech-m1-v2/mode_C/validation.jsonl",
+      "sha256": "d097635bf9744c5b8547c6cd5e6d199a53021c3e9719dc5012ba3792f777391d"
+    },
+    "ids": {
+      "path": "data/splits/sponspeech-m1-v2/primary_eval/validation_mode_C.ids",
+      "sha256": "c7300a84a715ccb83315303cb513c674ce373b9b8a10e6a16291ecc63149d03f"
+    },
+    "masks": {
+      "path": "data/processed/sponspeech-m1-v2/masks/case_joint/validation.jsonl",
+      "sha256": "6dd419e4f45ebfc91d4bc74eb114e99d5a2798c0410bb4f26453ec3ab832e2f9"
+    },
+    "train": {
+      "path": "data/processed/sponspeech-m1-v2/mode_C/train.jsonl",
+      "sha256": "44a1eb64fc23abf0631561763f1952a328cc9c1548084c0685f5ad9f220bac9a"
+    },
+    "train_ids": {
+      "path": "data/splits/sponspeech-m1-v2/default_train/mode_C.ids",
+      "sha256": "02df8b60422de81315272a658b1c3c418394066839d5c3cad1800659c8150ab6"
+    }
+  }
 }
