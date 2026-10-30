@@ -1,4 +1,6 @@
-"""Inference pipeline: load a trained HMM/CRF, clean raw text, predict labels, rebuild text.
+"""Inference pipeline: load a trained model, clean raw text, predict labels, rebuild text.
+
+Loadable models: HMM and hidden-event LM (.json), CRF and gap classifier (.joblib/.pkl).
 
 Member 6 — Integration & Reproducibility (Abdullah Jamal)
 
@@ -10,12 +12,19 @@ turned back into punctuated, cased text. Only load model artifacts you trust:
 
 from __future__ import annotations
 
+import json
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+import joblib
+
 from punct_restore.data.labeling import LABEL_SETS_PATH, load_label_sets
 from punct_restore.models.crf import CRFModel
+from punct_restore.models.gap_classifier import MODEL_FAMILY as GAP_CLASSIFIER_FAMILY
+from punct_restore.models.gap_classifier import GapClassifier
+from punct_restore.models.hidden_event_lm import MODEL_FAMILY as HIDDEN_EVENT_LM_FAMILY
+from punct_restore.models.hidden_event_lm import HiddenEventLM
 from punct_restore.models.hmm import HMMModel
 
 STRIP_CHARS = ',.?!:;-"'
@@ -31,15 +40,58 @@ PUNCT_MAP = {
 _MODES = ("A", "B", "C")
 
 
-def load_model(path: Path) -> HMMModel | CRFModel:
-    """Load a saved model, choosing the family from the file suffix."""
+# crf.py and hmm.py define no family constant: the CRF bundle says "crf", an HMM artifact has no
+# model_family and is recognised by its model_name.
+_HMM_FAMILY = "hmm"
+_CRF_FAMILY = "crf"
+_JSON_FAMILIES = {_HMM_FAMILY: HMMModel, HIDDEN_EVENT_LM_FAMILY: HiddenEventLM}
+_JOBLIB_FAMILIES = {_CRF_FAMILY: CRFModel, GAP_CLASSIFIER_FAMILY: GapClassifier}
+_FAMILIES_BY_SUFFIX = {".json": _JSON_FAMILIES, ".joblib": _JOBLIB_FAMILIES, ".pkl": _JOBLIB_FAMILIES}
+
+
+def _unsupported(path: Path, why: str) -> ValueError:
+    return ValueError(f"unsupported model file: {path.name} ({why})")
+
+
+def _read_payload(path: Path) -> Any:
+    """Parse the artifact only to read its family marker; the class loader parses it again."""
+    try:
+        if path.suffix.lower() == ".json":
+            return json.loads(path.read_text(encoding="utf-8"))
+        return joblib.load(path)  # pickle: load trusted files only (see the module docstring)
+    except OSError as exc:  # the file exists but cannot be read: an OS problem, not a bad artifact
+        raise OSError(f"cannot read model file {path.name}: {exc.strerror or 'read error'}") from exc
+    except Exception as exc:  # a corrupt or foreign file; the reason is not shown to the user
+        raise _unsupported(path, "unreadable") from exc
+
+
+def _family_of(payload: Any) -> Any:
+    """The family marker of a parsed artifact, or None when it is not a dict with one."""
+    if not isinstance(payload, dict):
+        return None
+    family = payload.get("model_family")
+    if family is None and payload.get("model_name") == _HMM_FAMILY:
+        return _HMM_FAMILY
+    return family
+
+
+def load_model(path: Path) -> HMMModel | CRFModel | HiddenEventLM | GapClassifier:
+    """Load a saved model: the suffix narrows the choice, the family marker inside the file decides."""
     path = Path(path)
-    suffix = path.suffix.lower()
-    if suffix == ".json":
-        return HMMModel.load_model(path)
-    if suffix in (".joblib", ".pkl"):
-        return CRFModel.load_model(path)
-    raise ValueError(f"unsupported model file: {path.name}")
+    families = _FAMILIES_BY_SUFFIX.get(path.suffix.lower())
+    if families is None:
+        raise _unsupported(path, "expected .json, .joblib or .pkl")
+    if path.is_dir():
+        raise IsADirectoryError(f"model path is a folder, not a file: {path.name}")
+    if not path.is_file():
+        raise FileNotFoundError(f"model file not found: {path.name}")
+    family = _family_of(_read_payload(path))
+    loader = families.get(family) if isinstance(family, str) else None
+    if loader is None:
+        raise _unsupported(path, "unknown model family")
+    # ponytail: the file is read twice (peek, then the class loader), so big artifacts are parsed
+    # twice; upgrade path is class loaders that accept an already parsed payload.
+    return loader.load_model(path)
 
 
 def clean_tokens(tokens: Sequence[str]) -> list[str]:
