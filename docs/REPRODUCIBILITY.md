@@ -1,4 +1,4 @@
-# Reproducibility and integration runbook — planned
+# Reproducibility & Environment Guide
 
 Owner: Member 6, with all producing members. Member 2's HMM training/export
 command is implemented and documented in [HMM notes](../experiments/HMM_NOTES.md).
@@ -7,27 +7,17 @@ and exact prediction reproduction; see [HMM results](../experiments/HMM_RESULTS.
 and the [HMM runbook](../experiments/HMM_RUNBOOK.md). Other task commands remain
 unfinished on this branch; the integrated workflow below is still a plan.
 
-## Future workflow and evidence
+## Environment Specification
+- **Python**: 3.11+
+- **Setup**: `pip install -e ".[dev]"`
+- **Hardware Target**: CPU
 
-| Stage | Future entry point | Required handoff |
-| --- | --- | --- |
-| Prepare | `scripts/prepare_data.py` | Verified sources, policy version, data validation, immutable splits/checksums |
-| Train HMM | `scripts/train_hmm.py` | Training config, seed, selected validation settings, model artifact |
-| Train CRF | `scripts/train_crf.py` | Same data/mode, basic or improved injected feature version, artifact |
-| Ablate | `scripts/run_ablations.py` | Controlled feature changes and full resolved configurations |
-| Evaluate | `scripts/evaluate_models.py` | Gold release + verified predictions, frozen metric/projection settings |
-| Demonstrate | `scripts/run_demo.py` | Compatible artifact, shared observable input and versioned text decoder |
+## Reproduction Steps
 
 Member 6 will coordinate remaining flags and integration commands as adapters
 arrive. Data preparation and HMM train/predict/search/verification/packaging
 commands are implemented. The HMM study uses the pinned Member 5 evaluator in
 a separate checkout. Do not infer other working command-line arguments from filenames.
-
-For every real run, capture code commit/dirty status, full command, resolved
-configuration, source revisions, preprocessing and tokenizer versions, split
-manifest/checksums, ordered labels, feature version, random seeds, Python/package
-versions, OS/hardware/threads and measured duration. Use repository-relative
-paths and distinct run IDs. Share artifact and prediction hashes with consumers.
 
 HMM reproduction uses CPython 3.13.5 and the pinned PyYAML in
 `requirements-hmm.txt`; all three reproduction levels below passed in an isolated
