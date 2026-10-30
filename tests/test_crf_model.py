@@ -222,6 +222,38 @@ def test_predict_tokens_adapter_convenience(synth_mode_a_data):
     assert all(lbl in model.vocabulary for lbl in labels)
 
 
+def test_predict_marginals_sums_to_one_and_matches_predict(synth_mode_a_data, synth_mode_c_data):
+    model = CRFModel(label_mode="A", max_iterations=50).fit(synth_mode_a_data)
+    records = [{"sample_id": r["sample_id"], "tokens": r["tokens"]} for r in synth_mode_a_data]
+    marginals = model.predict_marginals(records)
+    predicted = model.predict(records)
+
+    assert len(marginals) == len(predicted) == len(records)
+    for seq, pred in zip(marginals, predicted):
+        assert len(seq) == len(pred["predicted_labels"])
+        for token_probs, label in zip(seq, pred["predicted_labels"]):
+            assert abs(sum(token_probs.values()) - 1.0) <= 1e-6
+            assert list(token_probs) == model.vocabulary
+            assert max(token_probs, key=token_probs.get) == label
+
+    # Mode C: 12 joint labels, labels never seen in training get 0.0 but stay present.
+    model_c = CRFModel(label_mode="C", max_iterations=20).fit(synth_mode_c_data)
+    c_records = [{"sample_id": "c1", "tokens": ["today", "we", "learn"]}]
+    for token_probs in model_c.predict_marginals(c_records)[0]:
+        assert abs(sum(token_probs.values()) - 1.0) <= 1e-6
+        assert list(token_probs) == model_c.vocabulary
+        assert len(token_probs) == 12
+
+
+def test_predict_marginals_requires_fitted_model():
+    model = CRFModel(label_mode="A")
+    records = [{"sample_id": "s1", "tokens": ["hello"]}]
+    with pytest.raises(RuntimeError) as predict_error:
+        model.predict(records)
+    with pytest.raises(type(predict_error.value), match="CRFModel is not fitted"):
+        model.predict_marginals(records)
+
+
 # -------------------------------------------------------------------------------------------------
 # Category D: Feature Integration (Basic vs Improved)
 # -------------------------------------------------------------------------------------------------

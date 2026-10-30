@@ -19,6 +19,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import subprocess
 import sys
 import time
 from typing import Any, Mapping, Sequence
@@ -26,6 +27,7 @@ from typing import Any, Mapping, Sequence
 import joblib
 import sklearn_crfsuite
 
+from punct_restore.evaluation.inputs import file_identity
 from punct_restore.features.crf_features import FeatureConfig
 from punct_restore.models.crf import CRFModel, get_mode_vocabulary
 
@@ -277,6 +279,120 @@ def load_and_filter_training_records(
     return selected_records, frozen_ids
 
 
+def _parse_observation_line(line_str: str, line_num: int, input_path: Path) -> dict[str, Any]:
+    """Parse one JSONL line into a record with a valid sample_id."""
+    try:
+        rec = json.loads(line_str)
+    except ValueError as e:
+        raise ValueError(f"Corrupt JSON at line {line_num}: {e}") from e
+    if not isinstance(rec, dict):
+        raise ValueError(f"Line {line_num} in {input_path} is not a JSON object")
+    s_id = rec.get("sample_id")
+    if not isinstance(s_id, str) or not s_id.strip():
+        raise ValueError(f"Line {line_num} has missing or empty sample_id")
+    return rec
+
+
+def _gold_free_observation(rec: Mapping[str, Any], line_num: int) -> dict[str, Any]:
+    """Keep only sample_id and validated observable tokens (strictly gold-free)."""
+    s_id = rec["sample_id"]
+    tokens = rec.get("tokens")
+    if not tokens or not isinstance(tokens, list):
+        raise ValueError(f"Invalid tokens at line {line_num} for ID {s_id!r}")
+    if any(not isinstance(t, str) or not t.strip() for t in tokens):
+        raise ValueError(f"Tokens contain invalid elements at line {line_num} for ID {s_id!r}")
+    return {"sample_id": s_id, "tokens": list(tokens)}
+
+
+def read_observations(input_path: Path, ids_path: Path | None) -> list[dict[str, Any]]:
+    """Read gold-free ``{"sample_id", "tokens"}`` records in INPUT FILE order.
+
+    When ``ids_path`` is given, only the listed IDs are kept and every one must be present.
+
+    Raises:
+        FileNotFoundError: If the input JSONL or the ID list does not exist.
+        ValueError: On corrupt, duplicate or invalid records, or IDs missing from the input.
+    """
+    if not input_path.is_file():
+        raise FileNotFoundError(f"Input JSONL not found at {input_path}")
+    target_ids = read_frozen_ids(ids_path) if ids_path is not None else None
+    target_set = set(target_ids) if target_ids is not None else None
+
+    observations: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    with open(input_path, "r", encoding="utf-8") as f:
+        for line_num, line in enumerate(f, 1):
+            line_str = line.strip()
+            if not line_str:
+                continue
+            rec = _parse_observation_line(line_str, line_num, input_path)
+            s_id = rec["sample_id"]
+            if s_id in seen_ids:
+                raise ValueError(f"Duplicate sample_id {s_id!r} encountered at line {line_num}")
+            seen_ids.add(s_id)
+            if target_set is None or s_id in target_set:
+                observations.append(_gold_free_observation(rec, line_num))
+
+    if target_ids is not None:
+        missing_ids = set(target_ids) - {o["sample_id"] for o in observations}
+        if missing_ids:
+            raise ValueError(
+                f"Missing {len(missing_ids)} selected IDs from input file {input_path}. "
+                f"Examples: {sorted(missing_ids)[:5]}"
+            )
+        if len(observations) != len(target_ids):
+            raise ValueError(
+                f"Found {len(observations)} matching records, expected {len(target_ids)} from ID list."
+            )
+    return observations
+
+
+def write_predictions_jsonl(predictions: Sequence[Mapping[str, Any]], path: Path) -> None:
+    """Write one JSON object per line with the platform newline (byte-stable across the team)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.writelines(json.dumps(pred, ensure_ascii=False) + "\n" for pred in predictions)
+
+
+def write_prediction_manifest(
+    manifest_path: Path,
+    *,
+    predictions_path: Path,
+    input_path: Path,
+    model_name: str,
+    label_mode: str,
+    ordered_labels: Sequence[str],
+) -> None:
+    """Write the evaluator-facing sidecar manifest for a predictions file."""
+    manifest: dict[str, Any] = {
+        "model_name": model_name,
+        "label_mode": label_mode,
+        "ordered_labels": list(ordered_labels),
+        "predictions_sha256": sha256_file(predictions_path),
+        "input": file_identity(input_path),
+    }
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(manifest_path, "w", encoding="utf-8") as f:
+        json.dump(manifest, f, indent=2, sort_keys=True)
+
+
+def git_status_porcelain() -> str:
+    """Return ``git status --porcelain`` of the repository, or ``"unknown"`` if unavailable."""
+    repo_root = Path(__file__).resolve().parent.parent
+    try:
+        result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return "unknown"
+    return result.stdout if result.returncode == 0 else "unknown"
+
+
 def cmd_train(args: argparse.Namespace) -> int:
     """Execute CRF training with frozen ID enforcement and provenance recording."""
     input_path = Path(args.input)
@@ -437,10 +553,7 @@ def cmd_train(args: argparse.Namespace) -> int:
         },
         "code_fingerprint": compute_code_fingerprint(),
         "fingerprinted_files": get_fingerprinted_files(),
-        "reproducibility_warning": (
-            "Local uncommitted modifications present on feat/m3-crf-model. "
-            "Artifact represents verified local state."
-        ),
+        "reproducibility_warning": git_status_porcelain(),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -452,20 +565,50 @@ def cmd_train(args: argparse.Namespace) -> int:
     return 0
 
 
+def _predict_path_error(args: argparse.Namespace, manifest_path: Path | None) -> str | None:
+    """Return a one-line error for missing inputs or unprotected existing outputs, else None."""
+    model_path, input_path, output_path = Path(args.model), Path(args.input), Path(args.output)
+    if not model_path.is_file():
+        return f"Error: Model artifact not found at {model_path}"
+    if not input_path.is_file():
+        return f"Error: Input JSONL not found at {input_path}"
+    if output_path.exists() and not args.overwrite:
+        return f"Error: Output file already exists at {output_path}. Use --overwrite to replace."
+    if manifest_path is not None and manifest_path.exists() and not args.overwrite:
+        return f"Error: Manifest already exists at {manifest_path}. Use --overwrite to replace."
+    return None
+
+
+def _write_prediction_outputs(
+    model: CRFModel,
+    predictions: Sequence[Mapping[str, Any]],
+    input_path: Path,
+    output_path: Path,
+    manifest_path: Path | None,
+) -> None:
+    """Write the predictions JSONL and, when requested, its sidecar manifest."""
+    write_predictions_jsonl(predictions, output_path)
+    print(f"[RECAP CRF] Predictions exported to {output_path}")
+    if manifest_path is not None:
+        write_prediction_manifest(
+            manifest_path,
+            predictions_path=output_path,
+            input_path=input_path,
+            model_name=model.model_name,
+            label_mode=model.label_mode,
+            ordered_labels=model.vocabulary,
+        )
+        print(f"[RECAP CRF] Manifest written to {manifest_path}")
+
+
 def cmd_predict(args: argparse.Namespace) -> int:
     """Generate contract-compliant predictions from a saved CRF model artifact."""
-    model_path = Path(args.model)
-    input_path = Path(args.input)
-    output_path = Path(args.output)
+    model_path, input_path, output_path = Path(args.model), Path(args.input), Path(args.output)
+    manifest_path = Path(args.manifest_out) if args.manifest_out else None
 
-    if not model_path.is_file():
-        sys.stderr.write(f"Error: Model artifact not found at {model_path}\n")
-        return 1
-    if not input_path.is_file():
-        sys.stderr.write(f"Error: Input JSONL not found at {input_path}\n")
-        return 1
-    if output_path.exists() and not args.overwrite:
-        sys.stderr.write(f"Error: Output file already exists at {output_path}. Use --overwrite to replace.\n")
+    path_error = _predict_path_error(args, manifest_path)
+    if path_error:
+        sys.stderr.write(path_error + "\n")
         return 1
 
     print(f"[RECAP CRF] Loading model from {model_path}...")
@@ -475,75 +618,14 @@ def cmd_predict(args: argparse.Namespace) -> int:
         sys.stderr.write(f"Failed to load model: {e}\n")
         return 1
 
-    # Optional ID filtering for prediction
-    target_ids: list[str] | None = None
-    target_id_set: set[str] | None = None
-    if args.ids:
-        ids_path = Path(args.ids)
-        try:
-            target_ids = read_frozen_ids(ids_path)
-            target_id_set = set(target_ids)
-            print(f"[RECAP CRF] Restricting inference to {len(target_ids):,} IDs from {ids_path.name}...")
-        except Exception as e:
-            sys.stderr.write(f"Error reading IDs file: {e}\n")
-            return 1
-
-    # Read gold-free observation records
-    records_to_predict: list[dict[str, Any]] = []
-    seen_ids: set[str] = set()
-    found_target_ids: set[str] = set()
-
-    with open(input_path, "r", encoding="utf-8") as f:
-        for line_num, line in enumerate(f, 1):
-            line_str = line.strip()
-            if not line_str:
-                continue
-            try:
-                rec = json.loads(line_str)
-            except Exception as e:
-                sys.stderr.write(f"Corrupt JSON at line {line_num}: {e}\n")
-                return 1
-
-            if not isinstance(rec, dict):
-                sys.stderr.write(f"Line {line_num} in {input_path} is not a JSON object\n")
-                return 1
-
-            s_id = rec.get("sample_id")
-            if not isinstance(s_id, str) or not s_id.strip():
-                sys.stderr.write(f"Line {line_num} has missing or empty sample_id\n")
-                return 1
-
-            if s_id in seen_ids:
-                sys.stderr.write(f"Duplicate sample_id {s_id!r} encountered at line {line_num}\n")
-                return 1
-            seen_ids.add(s_id)
-
-            if target_id_set is None or s_id in target_id_set:
-                # Strictly gold-free: extract only sample_id and observable tokens
-                tokens = rec.get("tokens")
-                if not tokens or not isinstance(tokens, list):
-                    sys.stderr.write(f"Invalid tokens at line {line_num} for ID {s_id!r}\n")
-                    return 1
-                if any(not isinstance(t, str) or not t.strip() for t in tokens):
-                    sys.stderr.write(f"Tokens contain invalid elements at line {line_num} for ID {s_id!r}\n")
-                    return 1
-                records_to_predict.append({"sample_id": s_id, "tokens": tokens})
-                if target_id_set is not None:
-                    found_target_ids.add(s_id)
-
-    if target_id_set is not None:
-        missing_ids = target_id_set - found_target_ids
-        if missing_ids:
-            sample_missing = sorted(missing_ids)[:5]
-            sys.stderr.write(
-                f"Error: Missing {len(missing_ids)} selected IDs from input file {input_path}. Examples: {sample_missing}\n"
-            )
-            return 1
-        if len(records_to_predict) != len(target_ids):
-            sys.stderr.write(
-                f"Error: Found {len(records_to_predict)} matching records, expected {len(target_ids)} from ID list.\n"
-            )
-            return 1
+    ids_path = Path(args.ids) if args.ids else None
+    try:
+        records_to_predict = read_observations(input_path, ids_path)
+    except (OSError, ValueError) as e:
+        sys.stderr.write(f"Error: {e}\n")
+        return 1
+    if ids_path is not None:
+        print(f"[RECAP CRF] Restricting inference to {len(records_to_predict):,} IDs from {ids_path.name}...")
 
     print(f"[RECAP CRF] Running batch inference on {len(records_to_predict):,} sequences...")
     start_time = time.perf_counter()
@@ -557,13 +639,11 @@ def cmd_predict(args: argparse.Namespace) -> int:
     tok_per_sec = total_tokens / duration if duration > 0 else 0.0
     print(f"[RECAP CRF] Inferred {len(predictions):,} sequences ({total_tokens:,} tokens) in {duration:.2f}s ({tok_per_sec:.1f} tok/s).")
 
-    # Export prediction JSONL
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as f:
-        for pred in predictions:
-            f.write(json.dumps(pred, ensure_ascii=False) + "\n")
-
-    print(f"[RECAP CRF] Predictions exported to {output_path}")
+    try:
+        _write_prediction_outputs(model, predictions, input_path, output_path, manifest_path)
+    except OSError as e:
+        sys.stderr.write(f"Error: Could not write prediction outputs: {e}\n")
+        return 1
     return 0
 
 
@@ -667,7 +747,8 @@ def build_cli_parser() -> argparse.ArgumentParser:
     p_pred.add_argument("--input", "-i", required=True, help="Path to input JSONL records.")
     p_pred.add_argument("--output", "-o", required=True, help="Path to write prediction JSONL.")
     p_pred.add_argument("--ids", default=None, help="Optional frozen evaluation ID list to filter input records.")
-    p_pred.add_argument("--overwrite", action="store_true", help="Overwrite existing output prediction file.")
+    p_pred.add_argument("--manifest-out", default=None, help="Optional path for the prediction sidecar manifest JSON (checked by the evaluator).")
+    p_pred.add_argument("--overwrite", action="store_true", help="Overwrite existing output prediction file and manifest.")
 
     # Subcommand: inspect
     p_insp = subparsers.add_parser("inspect", help="Inspect metadata of a saved model artifact.")

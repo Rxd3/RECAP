@@ -54,6 +54,10 @@ DAYS_AND_MONTHS: frozenset[str] = frozenset({
     "september", "october", "november", "december"
 })
 
+FILLERS: frozenset[str] = frozenset({"um", "uh", "er", "erm", "like"})
+
+FILLER_BIGRAMS: frozenset[tuple[str, str]] = frozenset({("you", "know"), ("i", "mean")})
+
 
 @dataclass(frozen=True)
 class FeatureConfig:
@@ -71,6 +75,8 @@ class FeatureConfig:
         use_casing_cues: Extract lexical triggers for Mode C capitalization (I, days, titles).
         include_utterance_boundaries: Include BOS and EOS flags (allows shortcut ablation).
         use_positional_buckets: Include relative position in utterance (early/mid/late).
+        use_filler_cues: Extract spoken-filler flags (um/uh/like, "you know", "i mean") and
+            immediate word repeats.
         version: Version identifier for reproducibility.
     """
     preset: str = "basic"
@@ -84,6 +90,7 @@ class FeatureConfig:
     use_casing_cues: bool = False
     include_utterance_boundaries: bool = True
     use_positional_buckets: bool = False
+    use_filler_cues: bool = False
     version: str = "v1"
 
     @classmethod
@@ -101,6 +108,7 @@ class FeatureConfig:
             "use_casing_cues": False,
             "include_utterance_boundaries": True,
             "use_positional_buckets": False,
+            "use_filler_cues": False,
             "version": "v1-basic",
         }
         defaults.update(overrides)
@@ -121,6 +129,7 @@ class FeatureConfig:
             "use_casing_cues": True,
             "include_utterance_boundaries": True,
             "use_positional_buckets": True,
+            "use_filler_cues": False,
             "version": "v1-improved",
         }
         defaults.update(overrides)
@@ -161,6 +170,19 @@ def _position_bucket(index: int, total: int) -> str:
     if rel > 0.66:
         return "late"
     return "middle"
+
+
+def _filler_features(tokens: Sequence[str], i: int) -> dict[str, bool]:
+    """Spoken-disfluency flags for position i; only the true flags are returned."""
+    n = len(tokens)
+    flags = {
+        "is_filler": tokens[i] in FILLERS,
+        "+1:is_filler": i + 1 < n and tokens[i + 1] in FILLERS,
+        "starts_filler_bigram": i + 1 < n and (tokens[i], tokens[i + 1]) in FILLER_BIGRAMS,
+        "+1:starts_filler_bigram": i + 2 < n and (tokens[i + 1], tokens[i + 2]) in FILLER_BIGRAMS,
+        "is_repeat": i > 0 and tokens[i] == tokens[i - 1],
+    }
+    return {name: True for name, on in flags.items() if on}
 
 
 def _extract_token_features(token: str, config: FeatureConfig) -> dict[str, str | int | float | bool]:
@@ -322,6 +344,9 @@ def extract_sequence_features(
                 token_feats["utt_starts_wh"] = True
             if tokens[0] in AUXILIARY_VERBS:
                 token_feats["utt_starts_aux"] = True
+
+        if cfg.use_filler_cues:
+            token_feats.update(_filler_features(tokens, i))
 
         seq_features.append(token_feats)
 
