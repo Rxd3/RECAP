@@ -1,15 +1,19 @@
 # Presentation workspace
 
-Owner: Member 6, with technical contributions from all members. This contains a
-plan only; no PowerPoint deck or presentation figures have been produced.
-Member 2's verified [HMM results](../experiments/HMM_RESULTS.md) and
-[completion audit](../docs/MEMBER2_COMPLETION.md) are ready as source evidence.
+Owner: Member 6, with technical input from every member.
 
-Use [PRESENTATION_OUTLINE.md](../docs/PRESENTATION_OUTLINE.md). Keep future
-reviewed slides here and generated media under ignored `assets/`. Add small
-verified assets deliberately through a reviewed ignore-rule change if needed.
-Every result graphic must trace to a genuine Member 5 evaluation bundle.
+The team makes the slide deck after the repository freeze, so no deck is committed. The deck is
+built from:
 
-TODO: collect data/policy summary (1), HMM explanation (2), CRF explanation (3),
-feature/ablation evidence (4), verified results/errors (5), and integrated demo
-and reproduction instructions (6). Record actual deck tool and format later.
+- [PRESENTATION_OUTLINE.md](../docs/PRESENTATION_OUTLINE.md): four 30-second slides with numbers
+  taken from Member 5's verified evaluation;
+- [EVALUATION_RESULTS.md](../docs/EVALUATION_RESULTS.md) (HMM and shortcut) and
+  [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md) (CRF and ablations, validation);
+- [HMM_RESULTS.md](../experiments/HMM_RESULTS.md) and [CRF_EXPERIMENTS.md](../docs/CRF_EXPERIMENTS.md)
+  for model settings.
+
+Rules: label every number with its split and mode. Keep CRF numbers marked "validation" until the
+CRF test predictions are scored. Never rank mode B against mode C.
+
+Generated figures go under the ignored `presentation/assets/`. Every result graphic must trace to
+an evaluator output file.

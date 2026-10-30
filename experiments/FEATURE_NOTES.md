@@ -2,7 +2,7 @@
 
 **Module:** `src/punct_restore/features/crf_features.py`
 **Test Suite:** `tests/test_crf_features.py` (23 passed)
-**Status:** Architecture and interface finalized; synthetic unit tests verified; integrated with CRFModel and training CLI. Ablation experiments pending verified dataset distribution.
+**Status:** The feature code, both presets included, was written by Member 3 (Omar) in commit `aa232be` and used for the six full-data CRF models ([CRF_EXPERIMENTS.md](../docs/CRF_EXPERIMENTS.md)). Member 4's branch `feat/m4-feature-engineering` has no commits beyond the project scaffold ([contributions](../contributions/Mohamed_STUDENT_ID_GITHUB.md)). The feature ablations were run on **validation only** by Member 5: [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md) §5. `scripts/run_ablations.py` reruns them.
 
 ---
 
@@ -74,21 +74,35 @@ FeatureConfig(include_utterance_boundaries=False)
 ```
 When set to `False`, all boundary flags (`BOS`, `EOS`, `[-1:BOS]`, `[+1:EOS]`) are suppressed.
 
-**Planned Controlled Comparison:**
-1. **Full Improved CRF:** Evaluated across the entire test set.
-2. **Boundary-Ablated CRF:** Trained and evaluated without utterance-boundary indicators.
-3. **Cross-Check with Member 5 View:** Member 5's evaluation suite implements a `non_final` view that scores only internal tokens $t < T - 1$. We will evaluate our model against Member 5's `non_final` metric to report clean, shortcut-free F1 scores.
+**Comparison as run (validation only; test is never used for feature decisions):**
+1. **Full improved CRF:** scored on the primary validation lists, with and without the utterance-final token. Mode A primary 51.18, `non_final` 36.99 ([EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md) §1, §3).
+2. **Boundary-ablated CRF** (`--no-utterance-boundaries`): not run.
+3. **Member 5's `non_final` view** scores only internal tokens $t < T - 1$. Mode A validation: HMM 8.63, CRF basic 27.92, CRF improved 36.99 (§3), so the CRF does learn punctuation inside the utterance.
 
 ---
 
-## 4. Planned Ablation Matrix (Controlled Factors)
+## 4. Ablations as Run (validation only)
 
-| Experiment ID | Feature Configuration | Factor Tested | Baseline Comparison |
-| :--- | :--- | :--- | :--- |
-| `ABL-01` | `basic` | Baseline (window $\pm 1$, affixes, shape) | Reference |
-| `ABL-02` | `basic` + window $\pm 2$ | Impact of context window expansion | vs `ABL-01` |
-| `ABL-03` | `basic` + token bigrams | Impact of phrase collocations | vs `ABL-01` |
-| `ABL-04` | `basic` + question indicators | Question F1 recovery | vs `ABL-01` |
-| `ABL-05` | `basic` + conjunctions & discourse | Comma F1 recovery | vs `ABL-01` |
-| `ABL-06` | `improved` (full) | Cumulative combination | vs `ABL-01` |
-| `ABL-07` | `improved` w/o boundaries | Utterance-final shortcut isolation | vs `ABL-06` |
+The additive plan `ABL-01`–`ABL-07` (basic plus one group at a time) was not run. It was replaced by a one-group-removed design on the improved preset:
+- Member 5 retrained Member 3's code (`aa232be`) with c1 = c2 = 0.1 and 100 iterations.
+- Each variant trained on a fixed 50,000-sequence `default_train` sample (seed 2026), with one fit per row.
+- Every variant was scored on the primary validation lists.
+
+Change in primary macro F1 when the group is removed (without − with, points; * = paired 95% interval excludes 0). Source: [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md) §5.
+
+| Removed group | A | B | C (joint) |
+| :--- | ---: | ---: | ---: |
+| word pairs (`ngrams`) | −3.59 * | −1.63 * | −1.49 |
+| ±2 window (`window2`) | −1.34 * | −0.76 * | −0.53 * |
+| question cues | −1.35 * | −0.44 * | −0.40 * |
+| clause cues | −0.07 | +0.17 * | −0.29 |
+| position buckets | −0.20 | +0.21 * | +0.83 |
+| casing cues | +0.01 | −0.04 | −0.08 |
+
+**Findings:**
+- Word pairs, the wider window and the question cues help.
+- Clause, position and casing cues have small effects of mixed sign.
+- Removing the casing cues does not measurably change mode C casing (−0.08).
+- Removing the clause cues changes COMMA F1 by +0.03 (A), +0.05 (B) and −0.20 (C), so hypothesis H4 is not supported.
+
+Rerun with `scripts/run_ablations.py --mode {A,B,C} --out DIR [--sample 50000] [--variants ...]`. The variants are `improved`, `improved_minus_{window2,ngrams,question,clause,casing,position}` and `improved_plus_filler`. The filler-cue variant is a final-push team extension, evaluated on the same validation-only sample; its results are pending.

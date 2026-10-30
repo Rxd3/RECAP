@@ -4,16 +4,16 @@
 **Author:** Omar Alzyod  
 **Branch:** `feat/m3-crf-model`  
 **Last Verified Commit:** `aa232be`  
-**Status:** Pre-Evaluation Handoff Complete (Pending Official Benchmark Evaluation by Member 5)  
+**Status:** Validation predictions evaluated by Member 5 in [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md); test predictions pending.
 
 ---
 
 ## 1. Member 3 Responsibilities & Scope
 
-Member 3 owns the Conditional Random Field (CRF) modeling subsystem for RECAP Project 2 (Turkish Speech Punctuation and Casing Restoration):
+Member 3 owns the Conditional Random Field (CRF) modeling subsystem for RECAP Project 2 (English punctuation and casing restoration on speech transcripts):
 
 - **Architecture & Implementation:** Design and implementation of linear-chain CRF models using `sklearn-crfsuite` / `python-crfsuite`.
-- **Feature Engineering:** Development of both the baseline (`basic`) and enriched (`improved`) feature extraction presets for Turkish text.
+- **Feature Engineering:** Development of both the baseline (`basic`) and enriched (`improved`) feature extraction presets for English text.
 - **Model Training:** Execution and performance tracking of all six full-data CRF models across Modes A, B, and C.
 - **Prediction Streaming:** Deterministic export of primary validation predictions adhering strictly to the shared JSONL evaluation contract.
 - **Scientific Reproducibility:** Cryptographic verification of model artifacts, manifests, prediction streams, and handoff packaging.
@@ -33,7 +33,7 @@ Member 3 owns the Conditional Random Field (CRF) modeling subsystem for RECAP Pr
 
 ## 3. Feature Configurations: Basic vs Improved Presets
 
-Feature extraction is implemented in [`src/punct_restore/features/crf_features.py`](file:///d:/isntinye/_Istenye%20uni_/TERM%207/Natural%20Language%20Processing/RECAP/src/punct_restore/features/crf_features.py):
+Feature extraction is implemented in [`src/punct_restore/features/crf_features.py`](../src/punct_restore/features/crf_features.py):
 
 ### 3.1. Basic Baseline Preset (`basic` / `v1-basic`)
 A compact, low-latency token-level feature set designed as a fast baseline:
@@ -68,7 +68,7 @@ An enriched feature set implementing linguistically motivated contextual signals
 
 ## 4. Label Vocabularies Across Modes A, B, and C
 
-All label definitions conform strictly to [`configs/label_sets.yaml`](file:///d:/isntinye/_Istenye%20uni_/TERM%207/Natural%20Language%20Processing/RECAP/configs/label_sets.yaml):
+All label definitions conform strictly to [`configs/label_sets.yaml`](../configs/label_sets.yaml):
 
 | Mode | Task Type | Class Count | Label Vocabulary | Description |
 |:---:|:---:|:---:|---|---|
@@ -81,7 +81,7 @@ All label definitions conform strictly to [`configs/label_sets.yaml`](file:///d:
 ## 5. Dataset Releases & Frozen Partition Selections
 
 - **Dataset Release:** `sponspeech-m1-v2` (Policy version: `m1-v2`).
-- **Source Transcripts:** SponSpeech Turkish conversational speech transcripts.
+- **Source Transcripts:** SponSpeech English informal (podcast-style) speech transcripts.
 - **Training Sets:**
   - **Modes A & B:** 142,722 sequences, 4,137,833 tokens (`data/splits/sponspeech-m1-v2/default_train/mode_A.ids`, SHA-256: `593196fea62d...`).
   - **Mode C:** 141,745 sequences, 4,112,054 tokens (`data/splits/sponspeech-m1-v2/default_train/mode_C.ids`, SHA-256: `02df8b60422d...`).  
@@ -156,14 +156,14 @@ To reproduce any training run or prediction export from a clean checkout at comm
 ```
 
 ### 9.2. Primary Validation Prediction Export Template
+The label mode and `model_name` come from the saved artifact. `--manifest-out` writes the prediction manifest that `evaluate_models.py score --manifest` checks.
 ```powershell
-.\.venv\Scripts\python.exe scripts/export_crf_predictions.py `
+.\.venv\Scripts\python.exe scripts/train_crf.py predict `
   --model experiments/runs/<run_dir>/<run_id>.joblib `
   --input data/processed/sponspeech-m1-v2/mode_<A|B|C>/validation.jsonl `
   --ids data/splits/sponspeech-m1-v2/primary_eval/validation_mode_<A|C>.ids `
   --output experiments/runs/<run_dir>/<run_id>_val_predictions.jsonl `
-  --mode <A|B|C> `
-  --model-name <crf_basic|crf_improved>
+  --manifest-out experiments/runs/<run_dir>/<run_id>_val_predictions.manifest.json
 ```
 
 ---
@@ -173,7 +173,7 @@ To reproduce any training run or prediction export from a clean checkout at comm
 1. **Optimizer Budget vs Convergence:**  
    All six models reached the maximum iteration budget limit (`max_iterations = 100`) without achieving asymptotic numerical convergence (`converged = False`). While the models trained stably to completion and yield well-formed predictions, formal convergence cannot be claimed.
 2. **Dataset Partitioning (Source/Video Overlap):**  
-   The official SponSpeech v2 dataset partitions splits at the speaker turn level. Turns from the same recording session or video may appear in both the training and validation partitions. This is an intrinsic property of the corpus and should be considered during error analysis.
+   Training uses the `default_train` lists and validation uses the `primary_eval` lists. Those primary lists share no source video, no exact or normalized transcript and no qualifying six-gram with their reference splits ([DATASET_PLAN.md](DATASET_PLAN.md), [DATA_RELEASE_VALIDATION.md](DATA_RELEASE_VALIDATION.md)). Channel overlap remains: 149 of 522 channels span the original splits.
 3. **Mode C Transition Sparsity:**  
    The improved Mode C model serializes 143 transition parameters instead of 144. The transition $(\text{COMMA\|ALL_UPPER} \to \text{QUESTION\|ALL_UPPER})$ occurs 0 times in the training corpus; under L1 regularization ($c_1=0.1$), its weight was driven to exact zero and omitted from the sparse parameter dictionary.
 

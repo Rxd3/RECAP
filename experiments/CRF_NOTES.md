@@ -2,7 +2,7 @@
 
 **Modules:** `src/punct_restore/models/crf.py`, `scripts/train_crf.py`, `src/punct_restore/features/crf_features.py`
 **CRF Test Suite:** 94 tests passed (23 feature, 48 model, 23 CLI) | **Total Project Suite:** 209 tests passed
-**Status:** Verified modular CRF architecture, deterministic feature engineering, frozen ID filtering, gold-free prediction, and provenance tracking verified via synthetic unit and contract tests. Full-data training and empirical evaluation remain deferred pending official dataset release distribution.
+**Status:** Six full-data CRF models (modes A, B, C × basic, improved) were trained on the official `sponspeech-m1-v2` `default_train` lists; see [CRF_EXPERIMENTS.md](../docs/CRF_EXPERIMENTS.md) §7. Member 5 scored their primary-validation predictions in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md); test predictions are pending. The test counts below describe the suite at commit `aa232be`.
 
 ---
 
@@ -10,7 +10,7 @@
 
 - **CRF Backend Engine:** `python-crfsuite` (v0.9.12), wrapped via `sklearn-crfsuite` (v0.5.0).
 - **Core C++ Library:** CRFsuite by Naoaki Okazaki (fast C++ implementation of first-order linear-chain CRFs).
-- **Optimizer:** L-BFGS (Limited-memory Broydenâ€“Fletcherâ€“Goldfarbâ€“Shanno).
+- **Optimizer:** L-BFGS (Limited-memory Broyden–Fletcher–Goldfarb–Shanno).
 - **Runtime Environment:** Windows x64, Python 3.15.2 (`.venv`), compiled natively via MSVC.
 - **Serialization:** `joblib` (v1.6.0).
 
@@ -18,7 +18,7 @@
 
 ## 2. Model Architecture & API Signatures
 
-The public class `CRFModel` in `src/punct_restore/models/crf.py` implements the shared model contract ([docs/MODEL_CONTRACT.md](docs/MODEL_CONTRACT.md)):
+The public class `CRFModel` in `src/punct_restore/models/crf.py` implements the shared model contract ([docs/MODEL_CONTRACT.md](../docs/MODEL_CONTRACT.md)):
 
 ```python
 class CRFModel:
@@ -66,7 +66,7 @@ class CRFModel:
 
 ### Integration Interface Recommendation for Member 6
 - **Observation:** Member 6's initial draft in `pipeline.py:ModelAdapter.predict_tokens` calls `self.model.predict(clean_tokens)` passing a raw `List[str]`.
-- **Contract Reality:** [docs/MODEL_CONTRACT.md](docs/MODEL_CONTRACT.md) specifies a record-oriented signature: `predict(records) -> list[dict]`.
+- **Contract Reality:** [docs/MODEL_CONTRACT.md](../docs/MODEL_CONTRACT.md) specifies a record-oriented signature: `predict(records) -> list[dict]`.
 - **Recommendation:** Member 6 can achieve 100% contract compliance with either of two clean options:
   1. *Direct adapter call:* `self.model.predict_tokens(clean_tokens)`
   2. *Standard record packaging:* `self.model.predict([{"sample_id": "demo", "tokens": clean_tokens}])[0]["predicted_labels"]`
@@ -137,7 +137,7 @@ Passing all 48 synthetic unit tests proves the **software correctness** and **co
 - Optimal hyperparameter selection ($c_1, c_2$).
 - Superiority over the HMM baseline.
 
-Real-world scientific performance will be measured and documented once models are trained on the frozen SponSpeech v2 partitions.
+Real-data performance is measured by Member 5, not by these unit tests: validation results for the six full-data models are in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md).
 
 ---
 
@@ -304,23 +304,21 @@ A teammate reported the following initial benchmark numbers from a local rebuild
   - Mode B: **12.14%**
   - Mode C: **18.53%**
 - **Confidence Intervals:** Reported as video-grouped 95% CIs, but actual numeric interval bounds were not supplied.
-- *Status:* External reference figures only. Not verified by Member 3.
+- *Status:* External reference figures only. Not verified by Member 3. The untuned HMM figures are superseded by the tuned HMM (validation A 36.54, B 18.47, C 40.89) in [EVALUATION_RESULTS.md](../docs/EVALUATION_RESULTS.md).
 
-### 9.4 Unverified Claims & Prohibitions
-- **No CRF Benchmark Claims:** The CRF has **not** yet been trained on real SponSpeech v2 data. Any claim that the CRF outperforms the HMM or achieves a specific validation F1 score is unverified and scientifically invalid.
-- **Configurable vs Tuned Hyperparameters:** CLI regularization options (`--c1`, `--c2`) are user-configurable runtime arguments. No validation-based hyperparameter tuning has been performed.
+### 9.4 Result Claims & Prohibitions
+- **CRF Benchmark Claims:** The six CRF models were trained on the full official training lists ([CRF_EXPERIMENTS.md](../docs/CRF_EXPERIMENTS.md) §7). Benchmark numbers come only from Member 5's evaluator: validation in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md); test results are pending and none may be claimed before they are scored.
+- **Configurable vs Tuned Hyperparameters:** CLI regularization options (`--c1`, `--c2`) are user-configurable runtime arguments. No validation-based hyperparameter tuning has been performed; all six models use c1 = c2 = 0.1 and 100 iterations.
 
 ### 9.5 Future Planned Work
-- Step-by-step controlled real-data smoke test on a small slice of verified SponSpeech v2 Mode A.
-- Full-scale training on official frozen partitions.
 - Systematic validation grid search for optimal L1/L2 regularization penalties ($c_1, c_2$).
-- Ablation experiments (`ABL-01` through `ABL-07`) comparing basic vs improved features and utterance-final shortcut isolation.
+- Feature ablations run on **validation only**, never on test: one feature group is removed at a time from the improved preset and trained on a 50k-sequence sample. Results are in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md) §5; `scripts/run_ablations.py --mode {A,B,C} --out DIR` reruns them. The utterance-final shortcut is measured with Member 5's `non_final` view on validation.
 
 ---
 
 ## 10. Official SponSpeech v2 Dataset Verification Protocol
 
-When the official handoff archive is distributed, Member 3 will execute this 13-point audit protocol before any training:
+When the official handoff archive is distributed, Member 3 will execute this 13-point audit protocol before any training. The status column was written before the full-data runs and was not updated; the training manifests' input and ID hashes match the release ([EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md), Provenance).
 
 | Check # | Audit Item | Target / Reference Standard | Status |
 | :---: | :--- | :--- | :---: |
