@@ -16,6 +16,10 @@
 - Added `docs/EVALUATION_RESULTS.md` (51bd400) and `docs/EVALUATION_RESULTS_CRF.md` (255fc68); changed `docs/EVALUATION_PROTOCOL.md` (680438f, 6356916, ec37d19, 51bd400, 255fc68).
 - Created six merge commits: four into `release/final` (ddba805, 611f3f4, 0790467, 097c87b), 3044a58 (main into `feat/m5-evaluation`) and aca40c6 (into `feat/m5-eval-uncertainty`).
 - Prepared the `release/final` integration branch: merged the four member branches (M5, M2 HMM, M3 CRF, M6; merge commits 097c87b, 0790467, 611f3f4, ddba805) and applied repo-wide fixes on that branch.
+- Final push, on `release/final` (see `docs/EVALUATION_RESULTS_CRF.md`):
+  - regenerated Member 3's six validation prediction files byte for byte from the shared models, then scored the CRFs once on test and test_amb (§1–4, §9);
+  - added threshold decoding (`src/punct_restore/models/threshold.py`, `scripts/tune_threshold.py`; a930859; §7) and the filler-cue experiment (`use_filler_cues`, `scripts/run_ablations.py`; e7095cf; §6). This code was written during the release integration;
+  - ran the leakage analysis, official vs leak-free test (§8), and the CRF runtime comparison (§10).
 
 ## Commits
 

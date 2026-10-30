@@ -16,8 +16,9 @@ team's shared Drive folder, the HMM handoff ZIP and the Member 5 results bundle,
 Results:
 
 - HMM and shortcut, validation and test: [EVALUATION_RESULTS.md](../docs/EVALUATION_RESULTS.md).
-- CRF basic and improved, plus the feature ablations, on validation:
-  [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md). CRF test results are pending.
+- CRF basic and improved, threshold decoding, leakage, test_amb and runtime:
+  [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md). Test results are final; the
+  validation selection is in §5 and the feature ablations (validation) in §6.
 - The six CRF runs, their settings and hashes: [CRF_EXPERIMENTS.md](../docs/CRF_EXPERIMENTS.md).
 
 To rerun anything, use [REPRODUCIBILITY.md](../docs/REPRODUCIBILITY.md). Select settings on

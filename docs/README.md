@@ -9,7 +9,8 @@ The [root README](../README.md) maps every folder, script and guide. By topic:
 - **Models:** [MODEL_CONTRACT.md](MODEL_CONTRACT.md), [CRF_EXPERIMENTS.md](CRF_EXPERIMENTS.md); the HMM
   notes and runbook are in [experiments/](../experiments/).
 - **Evaluation:** [EVALUATION_PROTOCOL.md](EVALUATION_PROTOCOL.md), [EVALUATION_RESULTS.md](EVALUATION_RESULTS.md)
-  (HMM and shortcut), [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) (CRF, validation).
+  (HMM and shortcut), [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) (CRF: test results final,
+  validation selection in §5).
 - **Prior work:** [RELATED_WORK.md](RELATED_WORK.md).
 - **Running and presenting:** [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [PRESENTATION_OUTLINE.md](PRESENTATION_OUTLINE.md),
   [GIT_WORKFLOW.md](GIT_WORKFLOW.md).

@@ -15,6 +15,7 @@
 - Added `tests/test_crf_features.py`, `tests/test_crf_model.py` and `tests/test_train_crf_cli.py`; changed `experiments/CRF_NOTES.md` and `experiments/FEATURE_NOTES.md` (aa232be).
 - Added `docs/CRF_EXPERIMENTS.md` and `experiments/runs/recap_m3_handoff_eval/README.md` (c3b0f8a).
 - Updated `TEAM_TASKS.md` (9015b62).
+- Shared the six trained CRF models (`.joblib`, with a `SHA256SUMS` file that verified). Member 5 reproduced all six validation prediction files from them byte for byte and used them for the test and test_amb predictions (`docs/EVALUATION_RESULTS_CRF.md`, Provenance).
 
 ## Commits
 

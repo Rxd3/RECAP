@@ -2,7 +2,7 @@
 
 **Modules:** `src/punct_restore/models/crf.py`, `scripts/train_crf.py`, `src/punct_restore/features/crf_features.py`
 **CRF Test Suite:** 94 tests passed (23 feature, 48 model, 23 CLI) | **Total Project Suite:** 209 tests passed
-**Status:** Six full-data CRF models (modes A, B, C × basic, improved) were trained on the official `sponspeech-m1-v2` `default_train` lists; see [CRF_EXPERIMENTS.md](../docs/CRF_EXPERIMENTS.md) §7. Member 5 scored their primary-validation predictions in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md); test predictions are pending. The test counts below describe the suite at commit `aa232be`.
+**Status:** Six full-data CRF models (modes A, B, C × basic, improved) were trained on the official `sponspeech-m1-v2` `default_train` lists; see [CRF_EXPERIMENTS.md](../docs/CRF_EXPERIMENTS.md) §7. Member 5 reproduced all six validation prediction files byte for byte from the shared models, chose every setting on validation (§5) and scored each frozen model once on test and test_amb; the final results are in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md). The test counts below describe the suite at commit `aa232be`.
 
 ---
 
@@ -307,18 +307,18 @@ A teammate reported the following initial benchmark numbers from a local rebuild
 - *Status:* External reference figures only. Not verified by Member 3. The untuned HMM figures are superseded by the tuned HMM (validation A 36.54, B 18.47, C 40.89) in [EVALUATION_RESULTS.md](../docs/EVALUATION_RESULTS.md).
 
 ### 9.4 Result Claims & Prohibitions
-- **CRF Benchmark Claims:** The six CRF models were trained on the full official training lists ([CRF_EXPERIMENTS.md](../docs/CRF_EXPERIMENTS.md) §7). Benchmark numbers come only from Member 5's evaluator: validation in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md); test results are pending and none may be claimed before they are scored.
+- **CRF Benchmark Claims:** The six CRF models were trained on the full official training lists ([CRF_EXPERIMENTS.md](../docs/CRF_EXPERIMENTS.md) §7). Benchmark numbers come only from Member 5's evaluator in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md): final test results in §1–4 and test_amb in §9, with validation (model selection) in §5.
 - **Configurable vs Tuned Hyperparameters:** CLI regularization options (`--c1`, `--c2`) are user-configurable runtime arguments. No validation-based hyperparameter tuning has been performed; all six models use c1 = c2 = 0.1 and 100 iterations.
 
 ### 9.5 Future Planned Work
 - Systematic validation grid search for optimal L1/L2 regularization penalties ($c_1, c_2$).
-- Feature ablations run on **validation only**, never on test: one feature group is removed at a time from the improved preset and trained on a 50k-sequence sample. Results are in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md) §6; `scripts/run_ablations.py --mode {A,B,C} --out DIR` reruns them. The utterance-final shortcut is measured with Member 5's `non_final` view on validation.
+- Feature ablations run on **validation only**, never on test: one feature group is removed at a time from the improved preset and trained on a 50k-sequence sample. Results are in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md) §6; `scripts/run_ablations.py --mode {A,B,C} --out DIR` reruns them. The utterance-final shortcut is measured with Member 5's `non_final` view on validation and test.
 
 ---
 
 ## 10. Official SponSpeech v2 Dataset Verification Protocol
 
-When the official handoff archive is distributed, Member 3 will execute this 13-point audit protocol before any training. The status column was written before the full-data runs and was not updated; the training manifests' input and ID hashes match the release ([EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md), Provenance).
+When the official handoff archive is distributed, Member 3 will execute this 13-point audit protocol before any training. The status column was written before the full-data runs and was not updated. The six training manifests themselves record `input_sha256` (training JSONL) and `ids_sha256` (`default_train` ID list); on 2026-10-30 both matched the entries in the release's `SHA256SUMS` files (fingerprints `19ed874f…` and `40ea6371…`, [DATA_RELEASE_VALIDATION.md](../docs/DATA_RELEASE_VALIDATION.md)).
 
 | Check # | Audit Item | Target / Reference Standard | Status |
 | :---: | :--- | :--- | :---: |

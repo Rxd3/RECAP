@@ -9,8 +9,9 @@ The reviewed results are tracked as documents:
 
 - [EVALUATION_RESULTS.md](../docs/EVALUATION_RESULTS.md): HMM and shortcut baseline, validation, test
   and test_amb, with confusion matrices, error analysis and runtime;
-- [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md): CRF basic and improved on
-  validation, plus feature ablations (CRF test pending);
+- [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md): CRF basic, improved and
+  improved + threshold, with test results final (§1–4), validation selection (§5), feature
+  ablations (§6), leakage (§8), test_amb (§9) and runtime (§10);
 - [HMM_RESULTS.md](../experiments/HMM_RESULTS.md): the HMM study's own record.
 
 Score a prediction file with `python scripts/evaluate_models.py score ... --out results/tables/<run_id>.json`,

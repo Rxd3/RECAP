@@ -4,7 +4,7 @@
 **Author:** Omar Alzyod  
 **Branch:** `feat/m3-crf-model`  
 **Last Verified Commit:** `aa232be`  
-**Status:** Validation predictions evaluated by Member 5 in [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md); test predictions pending.
+**Status:** Evaluated by Member 5 in [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md): test results final (§1–4), validation selection in §5.
 
 ---
 

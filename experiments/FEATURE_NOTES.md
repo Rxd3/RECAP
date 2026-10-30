@@ -74,10 +74,10 @@ FeatureConfig(include_utterance_boundaries=False)
 ```
 When set to `False`, all boundary flags (`BOS`, `EOS`, `[-1:BOS]`, `[+1:EOS]`) are suppressed.
 
-**Comparison as run (validation only; test is never used for feature decisions):**
-1. **Full improved CRF:** scored on the primary validation lists, with and without the utterance-final token. Mode A primary 51.18, `non_final` 36.99 ([EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md) §1, §3).
+**Comparison as run (feature decisions use validation only; the frozen models were scored once on test):**
+1. **Full improved CRF:** selected on the primary validation lists (mode A primary 51.18, [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md) §5), then scored once on test with and without the utterance-final token (mode A test primary 49.92, `non_final` 36.40; §1, §3).
 2. **Boundary-ablated CRF** (`--no-utterance-boundaries`): not run.
-3. **Member 5's `non_final` view** scores only internal tokens $t < T - 1$. Mode A validation: HMM 8.63, CRF basic 27.92, CRF improved 36.99 (§3), so the CRF does learn punctuation inside the utterance.
+3. **Member 5's `non_final` view** scores only internal tokens $t < T - 1$. Mode A test: HMM 9.13, CRF basic 28.30, CRF improved 36.40 (§3), so the CRF does learn punctuation inside the utterance.
 
 ---
 
@@ -103,6 +103,6 @@ Change in primary macro F1 when the group is removed (without − with, points; 
 - Word pairs, the wider window and the question cues help.
 - Clause, position and casing cues have small effects of mixed sign.
 - Removing the casing cues does not measurably change mode C casing (−0.08).
-- Removing the clause cues changes COMMA F1 by +0.03 (A), +0.05 (B) and −0.20 (C), so hypothesis H4 is not supported.
+- Removing the clause cues changes COMMA F1 by +0.03 (A), +0.05 (B) and −0.20 (C).
 
-Rerun with `scripts/run_ablations.py --mode {A,B,C} --out DIR [--sample 50000] [--variants ...]`. The variants are `improved`, `improved_minus_{window2,ngrams,question,clause,casing,position}` and `improved_plus_filler`. The filler-cue variant is a final-push team extension, evaluated on the same validation-only sample; its results are pending.
+Rerun with `scripts/run_ablations.py --mode {A,B,C} --out DIR [--sample 50000] [--variants ...]`. The variants are `improved`, `improved_minus_{window2,ngrams,question,clause,casing,position}` and `improved_plus_filler`. The filler-cue variant (`improved_plus_filler`, a Member 5 extension) was trained on the same sample and scored on validation: primary macro F1 changes by +0.04 (A), +0.04 (B) and −0.28 (C), and no interval excludes 0. Hypothesis H4 (filler and discourse cues raise COMMA F1) is therefore not supported ([EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md) §6, Filler cue).
