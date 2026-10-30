@@ -23,6 +23,7 @@ All files were written by `scripts/evaluate_models.py` (`score`, `compare`, `err
 | `b_to_a/` | Mode B models projected to mode A (D5 mapping) vs their mode A twins, mode A validation gold, with per-class intervals |
 | `per_class/` | Paired per-class F1 intervals (`compare --class`) behind hypotheses H2–H4 |
 | `sensitivity/` | Mode A CRF basic and improved retrained on the 50k sample at c1 = c2 ∈ {0.01, 0.1, 1.0} and 100 or 300 iterations, scored on validation |
+| `gold_noise/` | Mode B rescored without the known noisy records (speaker labels, subtitle cue numbers, two auto-caption videos), with the excluded ID lists and their rules |
 | `leakage/` | HMM and improved CRF on the official mode A test, split by leakage-control status and exclusion reason; native SponSpeech labels |
 | `runtime/` | HMM and CRF prediction timing (median of 3 passes, same laptop) |
 | `crf_training_manifests/` | Member 3's six training manifests: settings, data hashes, fit time, peak memory, environment |

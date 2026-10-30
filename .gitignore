@@ -54,6 +54,7 @@ drive-download-*/
 !/results/**/.gitkeep
 # Evaluator JSON behind every reported number (Member 5); small, text only.
 !/results/scores/**/*.json
+!/results/scores/**/*.tsv
 
 # Models/dataset archives accidentally written elsewhere
 *.pkl

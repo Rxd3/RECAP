@@ -528,6 +528,29 @@ Each mode B model was projected to mode A with the approved D5 mapping (`scripts
 
 Training on the finer 8-class labels barely changes 4-class punctuation: the differences are under 0.3 points and go both ways. Per class, the improved CRF trained on mode B gains on QUESTION (+0.90, 0.36 to 1.52) and loses a little on COMMA (−0.25, −0.40 to −0.10). The extended labels change the basic task by at most a quarter of a point either way; the CRF basic loss of 0.24 has an interval that excludes 0. Files: `results/scores/b_to_a/`.
 
+## 12. Gold-noise check (mode B)
+
+The protocol lists three known sources of noise in the gold labels. To test whether they explain the low rare-class scores, mode B was rescored without the affected utterances. These are the excluded records:
+
+| Rule | Validation records | Test records |
+|---|---|---|
+| Leftover speaker label in the source text (`speaker <n>:`) | 22 | 0 |
+| Subtitle cue number (a 4–8 digit number before a dash) | 3 | 5 |
+| Auto-caption-style video (`732fql_jhJQ`, `JNxcznsrRb8`) | 135 | 46 |
+
+The ID lists with the rule behind each exclusion are in `results/scores/gold_noise/{validation,test}_B_noisy.tsv`. The scores below are mode B macro F1 % (COLON F1), on the primary list and then without the noisy records:
+
+| Model | Validation | Without noise | Test | Without noise |
+|---|---|---|---|---|
+| HMM | 18.47 (15.29) | 18.61 (16.16) | 16.79 (6.73) | 16.78 (6.73) |
+| CRF basic | 22.22 (19.65) | 21.49 (14.16) | 20.25 (6.42) | 20.28 (6.45) |
+| CRF improved | 25.10 (15.69) | 24.80 (12.99) | 22.82 (7.84) | 22.88 (7.84) |
+
+The known noise does not explain the low rare-class scores:
+- On test, removing it changes macro F1 by at most 0.06 points.
+- On validation, the CRFs' COLON F1 falls when the speaker labels go, because "speaker 1:" colons were the easiest colons to predict.
+- The extended marks remain hard to predict from text alone.
+
 ## Multiple comparisons (Holm)
 
 The intervals in this document are not adjusted for the number of comparisons. As a check, two-sided bootstrap p-values were taken from each paired comparison's share of resamples in which B beats A (resolution 0.001), and Holm's step-down correction was applied at α = 0.05 within two families.
