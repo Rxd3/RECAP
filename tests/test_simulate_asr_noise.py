@@ -421,3 +421,108 @@ def test_script_and_tests_have_no_todo_marker_or_bom():
     for path in (SCRIPT, MODULE, Path(__file__), Path(__file__).with_name("test_asr_noise.py")):
         data = path.read_bytes()
         assert not data.startswith(b"\xef\xbb\xbf") and marker.encode() not in data
+
+
+GOLDEN_V1_HASHES = {
+    "masks/validation.jsonl": "1eaca502fcc1f6089e4acfe8a5d7d4d9be5e960f334784f923c7fe200628a405",
+    "mode_A/validation.jsonl": "5da685ef7e8dd9e683059c717d497d4135ccaa6e44b3153f0c933a13ade2fad7",
+    "mode_B/validation.jsonl": "564e04ba24c4cd5950fd7d5d76e566f413df32277de7d05ef6e31f813f13db56",
+    "mode_C/validation.jsonl": "5a13ed89835194a64633f645cb1c63164de6a3240da4cf94dc7e3af58f51b9b0",
+    "summary.json": "6e44ed5a6c4be08990d92d5a40954ca23c232af2922363a26f9772afa3ae97ad",
+    "validation_mode_A.ids": "07f8aa6ba363eae6af8494b023f85388297518292353449e905f1d81ef8dec45",
+    "validation_mode_B.ids": "07f8aa6ba363eae6af8494b023f85388297518292353449e905f1d81ef8dec45",
+    "validation_mode_C.ids": "33db7b073c4090c44f87a0c71a149b2070c3b12d52a20c44ba8349d549c2620f",
+}
+
+
+def test_v1_golden_output_is_byte_identical_by_default_and_explicit_flag(sim, capsys, root, tmp_path):
+    import hashlib
+    out_default = tmp_path / "out_default"
+    out_explicit = tmp_path / "out_explicit"
+    produce(sim, capsys, root, out_default, 0.10, seed=2026)
+    code, _, err = run(sim, capsys, argv_for(root, out_explicit, 0.10, "--edit-model", "v1", seed=2026))
+    assert code == 0, err
+    hashes_default = {k: hashlib.sha256(v).hexdigest() for k, v in tree(out_default).items()}
+    hashes_explicit = {k: hashlib.sha256(v).hexdigest() for k, v in tree(out_explicit).items()}
+    assert hashes_default == GOLDEN_V1_HASHES
+    assert hashes_explicit == GOLDEN_V1_HASHES
+
+
+def write_train(root: Path, words_with_counts: dict[str, int], unlisted_words: list[str] | None = None) -> None:
+    """Write mode_A/train.jsonl and default_train/mode_A.ids under root."""
+    train_path = root / "processed" / RELEASE / "mode_A" / "train.jsonl"
+    ids_path = root / "splits" / RELEASE / "default_train" / "mode_A.ids"
+    rows = []
+    listed_ids = []
+    idx = 0
+    for word, count in sorted(words_with_counts.items()):
+        for _ in range(count):
+            sid = f"tr{idx:03d}"
+            listed_ids.append(sid)
+            rows.append(row({"id": sid, "tokens": [word], "A": ["PERIOD"], "B": ["PERIOD"], "case": ["LOWER"]}, "A"))
+            idx += 1
+    if unlisted_words:
+        rows.append(row({"id": "unlisted", "tokens": unlisted_words, "A": ["PERIOD"] * len(unlisted_words),
+                         "B": ["PERIOD"] * len(unlisted_words), "case": ["LOWER"] * len(unlisted_words)}, "A"))
+    write_lines(train_path, rows)
+    ids_path.parent.mkdir(parents=True, exist_ok=True)
+    ids_path.write_bytes(("\n".join(listed_ids) + "\n").encode())
+
+
+def test_v2_uses_only_default_train_vocabulary_with_min_count_five_never_val_or_test(sim, capsys, tmp_path):
+    # Validation has "mark" (target to replace) and "marx" 30 times in validation;
+    # unlisted train has "mart" 10 times; default_train has "mare" 4 times (<5) and "mars" 5 times (>=5).
+    samples = [make_sample(i, ["mark"] + ["marx"] * 19) for i in range(SAMPLES)]
+    data_root = write_root(tmp_path / "data", samples, LISTED_C)
+    write_train(data_root, {"mars": 5, "mare": 4}, unlisted_words=["mart"] * 10)
+    out = tmp_path / "out_v2"
+    code, _, err = run(sim, capsys, argv_for(data_root, out, 0.10, "--edit-model", "v2", seed=2026))
+    assert code == 0, err
+    summary = json.loads((out / "summary.json").read_text(encoding="utf-8"))
+    assert summary["edit_model"] == "v2"
+    assert summary["vocabulary_source"] == "default_train"
+    assert summary["edits"]["substitution"] > 0
+    after_words = {w for r in read_rows(out / "mode_A" / "validation.jsonl") for w in r["tokens"]}
+    assert "mars" in after_words
+    assert "mare" not in after_words and "mart" not in after_words
+
+
+def test_v2_outputs_validate_and_summary_records_shares_and_masks_insertions(sim, capsys, root, tmp_path):
+    write_train(root, {"cap": 5, "map": 5, "hat": 5, "ran": 5, "tan": 5, "fan": 5, "now": 5, "new": 5})
+    out = tmp_path / "out_v2"
+    code, _, err = run(sim, capsys, argv_for(root, out, 0.10, "--edit-model", "v2", seed=2026))
+    assert code == 0, err
+    summary = json.loads((out / "summary.json").read_text(encoding="utf-8"))
+    assert summary["edit_model"] == "v2"
+    assert summary["vocabulary_source"] == "default_train"
+    assert summary["cost_share"] == {"deletion": 0.3, "insertion": 0.15, "substitution": 0.45, "swap": 0.1}
+    assert summary["tokens_after"] == summary["tokens_before"] - summary["edits"]["deletion"] + summary["edits"]["insertion"]
+    for mode in MODES:
+        gold = out / f"mode_{mode}" / "validation.jsonl"
+        ids = out / f"validation_mode_{mode}.ids"
+        found_mode, records = load_scored_gold(gold, ids, load_vocab())
+        assert found_mode == mode and len(records) == len(listed_input(root, mode))
+    after_c = {r["sample_id"]: r for r in read_rows(out / "mode_C" / "validation.jsonl")}
+    masks = {m["sample_id"]: m["excluded_positions"] for m in read_rows(out / "masks" / "validation.jsonl")}
+    inserted_found = False
+    for sid, rec in after_c.items():
+        for idx, span in enumerate(rec["metadata"]["offsets"]):
+            if span[0] == span[1]:  # empty span = inserted token
+                inserted_found = True
+                assert idx in masks[sid]
+                assert rec["punct_labels"][idx] == "O" and rec["case_labels"][idx] == "LOWER"
+    assert inserted_found
+
+
+def test_v2_missing_train_file_exits_one_naming_the_file(sim, capsys, root, tmp_path):
+    code, stdout, err = run(sim, capsys, argv_for(root, tmp_path / "out_v2", 0.10, "--edit-model", "v2"))
+    assert code == 1 and stdout == ""
+    assert_one_error_line(err)
+    assert "mode_A.ids" in err and str(tmp_path) not in err
+
+
+def test_invalid_edit_model_exits_two(sim, root, tmp_path):
+    with pytest.raises(SystemExit, match="2"):
+        sim.main(argv_for(root, tmp_path / "out", 0.10, "--edit-model", "v3"))
+
+
