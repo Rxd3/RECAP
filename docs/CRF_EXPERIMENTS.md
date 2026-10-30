@@ -137,14 +137,14 @@ All generated artifacts adhere to standard directory structures and schemas:
 
 ## 9. Reproducibility Commands
 
-To reproduce any training run or prediction export from a clean checkout at commit `aa232be`:
+To reproduce any training run or prediction export, run these from `release/final`. Mode A basic retrained from the `aa232be` code gives byte-identical predictions, and all six validation files reproduce from the shared models ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md), Provenance):
 
 ### 9.1. Training Command Template
 ```powershell
 .\.venv\Scripts\python.exe scripts/train_crf.py train `
   --mode <A|B|C> `
   --input data/processed/sponspeech-m1-v2/mode_<A|B|C>/train.jsonl `
-  --ids data/splits/sponspeech-m1-v2/default_train/mode_<A|C>.ids `
+  --ids data/splits/sponspeech-m1-v2/default_train/mode_<A|B|C>.ids `
   --output experiments/runs/<run_dir>/<run_id>.joblib `
   --manifest-out experiments/runs/<run_dir>/<run_id>.manifest.json `
   --preset <basic|improved> `
@@ -161,7 +161,7 @@ The label mode and `model_name` come from the saved artifact. `--manifest-out` w
 .\.venv\Scripts\python.exe scripts/train_crf.py predict `
   --model experiments/runs/<run_dir>/<run_id>.joblib `
   --input data/processed/sponspeech-m1-v2/mode_<A|B|C>/validation.jsonl `
-  --ids data/splits/sponspeech-m1-v2/primary_eval/validation_mode_<A|C>.ids `
+  --ids data/splits/sponspeech-m1-v2/primary_eval/validation_mode_<A|B|C>.ids `
   --output experiments/runs/<run_dir>/<run_id>_val_predictions.jsonl `
   --manifest-out experiments/runs/<run_dir>/<run_id>_val_predictions.manifest.json
 ```
