@@ -1,8 +1,9 @@
 # Configuration templates
 
 `label_sets.yaml` defines the exact ordered label vocabularies. Mode names are
-`A`, `B`, `C` throughout the repository. Proposed 8-to-4 projection is explicitly
-unapproved and must not silently become a benchmark policy.
+`A`, `B`, `C` throughout the repository. The 8-to-4 (B→A) projection is approved as D5
+(EXCLAMATION, SEMICOLON → PERIOD; COLON, DASH → COMMA) and recorded in the file's `approval`
+field; canonical modes A and C use it ([DECISIONS.md](../docs/DECISIONS.md)).
 
 `datasets.yaml` is an inspection checklist, not a working loader configuration.
 Null values mean unverified; they are not defaults that a loader may guess.

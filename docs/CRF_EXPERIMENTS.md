@@ -179,7 +179,11 @@ The label mode and `model_name` come from the saved artifact. `--manifest-out` w
 
 ---
 
-## 11. Instructions for Member 5 (Official Evaluator Handoff)
+## 11. Instructions for Member 5 (historical, validation handoff)
+
+*Historical:* this section was written for the validation handoff. Member 5 later also used the six
+`.joblib` models: to reproduce the validation files byte for byte and to predict test and test_amb
+once ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md), Provenance).
 
 Member 5 should score the six prediction files using the official evaluation suite:
 
@@ -202,4 +206,4 @@ Member 5 should score the six prediction files using the official evaluation sui
   - Mode A: Standard Punctuation non-O macro F1 and micro F1.
   - Mode B: Extended Punctuation non-O macro F1 and micro F1 (8 punctuation classes).
   - Mode C: Joint punctuation-and-casing macro/micro F1, masked joint F1, and decomposed casing F1.
-- **Independence:** Model weights (`.joblib` files) are not required by Member 5. Scoring operates entirely on streamed prediction lines and gold label streams.
+- **Scoring inputs:** scoring itself reads only prediction lines and gold label streams; the model weights were needed to produce the test predictions and the threshold-decoded runs.

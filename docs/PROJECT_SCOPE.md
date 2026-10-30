@@ -2,35 +2,31 @@
 
 RECAP — Restoring English Casing and Punctuation.
 COE025 Group Project 2: Extended Punctuation and Truecasing Restoration Using
-Sequence Labeling. Six members; Python; one independent repository.
+Sequence Labeling. Six members; Python; one repository.
 
-## Current deliverable
+## Deliverable
 
-Member 1's corrected SponSpeech release and Member 2's supervised HMM baseline
-are complete and verified. The HMM implements log-space Viterbi, unknown words,
-persistence, release-aware training, validation selection and prediction export.
-Real-data scores, runtime and independent refit evidence are recorded in
-[HMM results](../experiments/HMM_RESULTS.md). The study uses Member 5's pinned
-shared scorer in a separate checkout. CRF, feature ablations and integrated text
-reconstruction remain outside Member 2's completed baseline deliverables.
+Restore the punctuation mark after each English word and the casing of each word, on SponSpeech
+transcripts, in three label modes: A (4 punctuation labels), B (8) and C (4 punctuation × 3 casing
+= 12 joint labels). Compare the three models the course asks for on fixed, shared splits: an HMM
+with Viterbi decoding, a linear-chain CRF with basic features, and the same CRF with improved
+features.
 
-## Future research scope
+All three are trained and evaluated. Results: [EVALUATION_RESULTS.md](EVALUATION_RESULTS.md) (HMM and
+shortcut) and [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) (CRF, final test results).
+Validation chose the HMM smoothing and the threshold τ; the CRF settings (c1 = c2 = 0.1, 100 iterations) were fixed and not tuned; no test result influenced any choice. The team's additions beyond the course baselines are listed in the
+[README](../README.md#what-is-new).
 
-Restore a punctuation boundary after each English word and casing of each word.
-Compare HMM + Viterbi, a basic linear-chain CRF, and that CRF with improved
-features on fixed, shared splits. Support A (4 punctuation), B (8 punctuation),
-and C (4 punctuation × 3 casing = 12 joint labels) through configuration.
-Investigate clean text and a separately verified ASR condition. Future separate
-casing models are a research question; no new label types are introduced here.
+## Out of scope
 
-## Limits and evidence
+- Audio, prosody and speech-recognition (ASR) output: RECAP uses the transcripts only, and no ASR
+  condition was evaluated.
+- Neural models (for example BiLSTM-CRF or transformers), GPU frameworks and pretrained-model
+  downloads.
+- An interactive application beyond the command-line demo (`scripts/run_demo.py`).
 
-Do not claim ready-made extended annotations, source compatibility, dataset
-sizes, trained models, or measured gains before verification. BiLSTM-CRF, GPU
-frameworks, pretrained model downloads and a finished interactive UI are outside
-initial setup. The user separately authorized creating and publishing the Project 2
-repository under their account. NALTRA remains a read-only reference. Deadlines
-and personal names remain unassigned.
+## Evidence rules
 
-Success later means reproducible data, comparable within-task experiments,
-honest error analysis, an integrated demo, and an evidence-based presentation.
+Every reported number comes from an evaluator output file under `results/scores/`. Validation is
+used for selection; each frozen model predicts the test lists once. Limitations and negative
+findings are reported with the results.

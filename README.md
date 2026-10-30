@@ -83,7 +83,7 @@ Every number names its split.
 - **Primary metric:** macro F1 % over the non-O punctuation classes (A, B), or over all 12 joint classes on unmasked positions (C).
 - **Intervals:** 95%, grouped bootstrap by video, 1,000 resamples.
 - **Modes B and C are different tasks;** never rank one against the other.
-- **Selection:** validation chose every setting, and each frozen model predicted the primary test lists once. The mode A improved CRF also predicted the full official test once more, for the leakage analysis.
+- **Selection:** Validation chose the HMM smoothing and the threshold τ; the CRF settings (c1 = c2 = 0.1, 100 iterations) were fixed and not tuned; no test result influenced any choice. Each frozen model predicted the primary test lists once. The mode A improved CRF also predicted the full official test once more, for the leakage analysis.
 
 **Test, primary ID lists** ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §1):
 

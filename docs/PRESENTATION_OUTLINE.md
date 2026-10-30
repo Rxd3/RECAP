@@ -5,7 +5,7 @@ Owner: Member 6 (Abdulla Jamal). Four slides, about 30 seconds each.
 Every number comes from [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md), [EVALUATION_RESULTS.md](EVALUATION_RESULTS.md) or the evaluator JSON behind them (Member 5 results bundle).
 
 **Rules for the slides:**
-- **Main numbers are test.** Validation picked every setting, and each frozen model predicted test once.
+- **Main numbers are test.** Validation chose the HMM smoothing and the threshold τ; the CRF settings (c1 = c2 = 0.1, 100 iterations) were fixed and not tuned; no test result influenced any choice. Each frozen model predicted test once.
 - **Always show the mode.**
 - **Never rank mode B against mode C:** they are different tasks.
 

@@ -1,8 +1,8 @@
 # CRF Engineering & Technical Notes — Member 3 Workstream
 
 **Modules:** `src/punct_restore/models/crf.py`, `scripts/train_crf.py`, `src/punct_restore/features/crf_features.py`
-**CRF Test Suite:** 94 tests passed (23 feature, 48 model, 23 CLI) | **Total Project Suite:** 209 tests passed
-**Status:** Six full-data CRF models (modes A, B, C × basic, improved) were trained on the official `sponspeech-m1-v2` `default_train` lists; see [CRF_EXPERIMENTS.md](../docs/CRF_EXPERIMENTS.md) §7. Member 5 reproduced all six validation prediction files byte for byte from the shared models, chose every setting on validation (§5) and scored each frozen model once on test and test_amb; the final results are in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md). The test counts below describe the suite at commit `aa232be`.
+**CRF Tests:** `tests/test_crf_features.py`, `tests/test_crf_model.py`, `tests/test_train_crf_cli.py`
+**Status:** Six full-data CRF models (modes A, B, C × basic, improved) were trained on the official `sponspeech-m1-v2` `default_train` lists; see [CRF_EXPERIMENTS.md](../docs/CRF_EXPERIMENTS.md) §7. Member 5 reproduced all six validation prediction files byte for byte from the shared models and scored each frozen model once on test and test_amb. Validation chose the HMM smoothing and the threshold τ; the CRF settings (c1 = c2 = 0.1, 100 iterations) were fixed and not tuned; no test result influenced any choice. The final results are the final results are in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md). The test counts below describe the suite at commit `aa232be`.
 
 ---
 
@@ -118,7 +118,7 @@ The artifact saved via `save_model(path)` bundles:
 
 ## 6. Synthetic Test Evidence (`tests/test_crf_model.py`)
 
-48 test cases verify:
+The tests verify:
 - **Category A (Init):** Parameter boundary checks, invalid mode rejection, non-finite regularization rejection.
 - **Category B (Training):** Target derivation, empty dataset rejection, duplicate ID rejection, split protection (`test` and `validation`), input immutability.
 - **Category C (Prediction):** Record-oriented output schema matching `MODEL_CONTRACT.md`, length preservation, unseen word robustness, predict-before-fit guard.
@@ -131,7 +131,7 @@ The artifact saved via `save_model(path)` bundles:
 
 ## 7. Scientific Limitations & Boundaries (Phase 4 vs Phase 5)
 
-Passing all 48 synthetic unit tests proves the **software correctness** and **contract compliance** of the model implementation. It does **not** prove:
+Passing these synthetic unit tests proves the **software correctness** and **contract compliance** of the model implementation. It does **not** prove:
 - High non-O macro F1 scores on conversational speech.
 - Generalization to out-of-domain conversations.
 - Optimal hyperparameter selection ($c_1, c_2$).
@@ -144,8 +144,7 @@ Real-data performance is measured by Member 5, not by these unit tests: validati
 ## 8. Phase 5: Reproducible CRF Training Pipeline (`scripts/train_crf.py`)
 
 **CLI Script:** `scripts/train_crf.py`
-**CLI Tests:** `tests/test_train_crf_cli.py` (22 passed)
-**Total Test Suite:** 208 tests passed
+**CLI Tests:** `tests/test_train_crf_cli.py`
 
 ### 8.1 CLI Architecture & Supported Operations
 
@@ -247,7 +246,7 @@ In `cmd_predict`:
 
 ### 8.5 Verification & Test Coverage (`tests/test_train_crf_cli.py`)
 
-23 automated tests cover:
+Automated tests at commit `aa232be` cover:
 1. `test_train_mode_a_success`: Mode A training (4 labels), artifact and manifest generation.
 2. `test_train_mode_b_success`: Mode B training (8 labels), vocabulary validation.
 3. `test_train_mode_c_success`: Mode C training (12 joint labels), vocabulary validation.
@@ -286,11 +285,7 @@ To maintain university research integrity, we strictly delineate the following f
 - Comprehensive provenance generation and multi-file source fingerprinting.
 
 ### 9.2 Tested Functionality (Verified via Automated Tests)
-- **209 total tests passing** in pytest (0 regressions):
-  - 115 Member 1 data-contract tests.
-  - 23 Member 3 feature unit tests (`tests/test_crf_features.py`).
-  - 48 Member 3 model unit & contract tests (`tests/test_crf_model.py`).
-  - 23 Member 3 training CLI tests (`tests/test_train_crf_cli.py`).
+- Member 3's feature, model and CLI tests (`tests/test_crf_features.py`, `tests/test_crf_model.py`, `tests/test_train_crf_cli.py`) run in the full pytest suite.
 - Verified invariants: parameter boundaries, non-overwriting guards, save/load bitwise equivalence, vocabulary containment, gold-free inference, and cross-platform compatibility.
 
 ### 9.3 External Teammate-Reported Reference Numbers (Not CRF Results)
@@ -310,39 +305,25 @@ A teammate reported the following initial benchmark numbers from a local rebuild
 - **CRF Benchmark Claims:** The six CRF models were trained on the full official training lists ([CRF_EXPERIMENTS.md](../docs/CRF_EXPERIMENTS.md) §7). Benchmark numbers come only from Member 5's evaluator in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md): final test results in §1–4 and test_amb in §9, with validation (model selection) in §5.
 - **Configurable vs Tuned Hyperparameters:** CLI regularization options (`--c1`, `--c2`) are user-configurable runtime arguments. No validation-based hyperparameter tuning has been performed; all six models use c1 = c2 = 0.1 and 100 iterations.
 
-### 9.5 Future Planned Work
-- Systematic validation grid search for optimal L1/L2 regularization penalties ($c_1, c_2$).
-- Feature ablations run on **validation only**, never on test: one feature group is removed at a time from the improved preset and trained on a 50k-sequence sample. Results are in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md) §6; `scripts/run_ablations.py --mode {A,B,C} --out DIR` reruns them. The utterance-final shortcut is measured with Member 5's `non_final` view on validation and test.
+### 9.5 Follow-up Work (status)
+- **Not done:** a validation grid search over $c_1, c_2$. The CRF settings stayed fixed.
+- **Done:** feature ablations on **validation only**, never on test: one feature group is removed at a time from the improved preset and trained on a 50k-sequence sample. Results are in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md) §6; `scripts/run_ablations.py --mode {A,B,C} --out DIR` reruns them. The utterance-final shortcut is measured with Member 5's `non_final` view on validation and test.
 
 ---
 
-## 10. Official SponSpeech v2 Dataset Verification Protocol
+## 10. Dataset Verification (historical)
 
-When the official handoff archive is distributed, Member 3 will execute this 13-point audit protocol before any training. The status column was written before the full-data runs and was not updated. The six training manifests themselves record `input_sha256` (training JSONL) and `ids_sha256` (`default_train` ID list); on 2026-10-30 both matched the entries in the release's `SHA256SUMS` files (fingerprints `19ed874f…` and `40ea6371…`, [DATA_RELEASE_VALIDATION.md](../docs/DATA_RELEASE_VALIDATION.md)).
-
-| Check # | Audit Item | Target / Reference Standard | Status |
-| :---: | :--- | :--- | :---: |
-| 1 | Archive File Name | `sponspeech-m1-v2-handoff.zip` in `artifacts/data/` | **NOT EXECUTED** (awaiting distribution) |
-| 2 | Archive Size | Exactly `224,632,100` bytes | **NOT EXECUTED** |
-| 3 | Archive Checksum | SHA-256: `1e4b4a9504c68cd8e3af8d6a2a0ef7de5de0146c76457752a56a90dcf6504b9f` | **NOT EXECUTED** |
-| 4 | Splits Fingerprint | SHA256SUMS: `40ea6371b038d5d36e6da390493bfc0e45c513ec46c324ee1a6af8766e7546b7` | **NOT EXECUTED** |
-| 5 | Processed Fingerprint | SHA256SUMS: `19ed874f9ae3de4489bdc668aaad6581c24b56e00d57f2d671d8a4c2908d4bbb` | **NOT EXECUTED** |
-| 6 | Safe Extraction | Extract to `data/processed/sponspeech-m1-v2/` and `data/splits/sponspeech-m1-v2/` | **NOT EXECUTED** |
-| 7 | Per-File Checksums | Every extracted JSONL and `.ids` file matches its SHA256SUMS entry | **NOT EXECUTED** |
-| 8 | Mode A/B/C Views | Verify files: `mode_A/train.jsonl`, `mode_B/train.jsonl`, `mode_C/train.jsonl`, plus `validation.jsonl` and `test.jsonl` | **NOT EXECUTED** |
-| 9 | Frozen ID Lists | Verify `default_train/mode_<A,B,C>.ids` and `primary_eval/validation_mode_<A,B,C>.ids` | **NOT EXECUTED** |
-| 10 | Cross-Mode Alignment | Confirm identical `sample_id` and `tokens` across modes for all records | **NOT EXECUTED** |
-| 11 | Label Validity | Validate all labels match `configs/label_sets.yaml` (Mode A: 4, B: 8, C: 12) | **NOT EXECUTED** |
-| 12 | Policy & Schema | Confirm `schema_version == 1` and `policy_version == "m1-v2"` | **NOT EXECUTED** |
-| 13 | Exclusions Audit | Ensure no unresolved clusters or test/val overlap exist in default train | **NOT EXECUTED** |
+A 13-point pre-training audit was planned here before the release was distributed. It is superseded by
+the release validation ([DATA_RELEASE_VALIDATION.md](../docs/DATA_RELEASE_VALIDATION.md)) and by the six
+training manifests' `input_sha256` and `ids_sha256`, which match the release `SHA256SUMS` (checked
+2026-10-30).
 
 ---
 
 ## 11. Team Integration Interface Specification (Kamal & Abdulla)
 
 ### 11.1 Target Consumers
-- **Kamal (Member 4 — UI):** Interactive demo web application.
-- **Abdulla Jamal (Member 6 — Integration & Pipeline):** Unified end-to-end inference pipeline.
+- **Member 6's demo path:** `src/punct_restore/pipeline.py` loads a saved CRF with `CRFModel.load_model` and calls `predict_tokens`; `scripts/run_demo.py` wraps it. No web application was built.
 
 ### 11.2 Required Input Representation
 Input tokens must be:
@@ -404,236 +385,8 @@ print("Vocabulary:", model.vocabulary)
 
 ---
 
-## 12. Corrected Real-Data Smoke Test Protocol (Prepared for Future Approval)
+## 12. Smoke-Test Protocol (historical)
 
-**Scope:** The very first real-data CRF execution to be run only upon explicit user authorization after official SponSpeech v2 archive distribution and verification.
-
-### 12.1 Execution Parameters, Contract Definitions & Safe Locations
-- **Dataset Release:** Official verified `sponspeech-m1-v2`.
-- **Target Label Mode:** `A` (4 standard punctuation classes: `O`, `COMMA`, `PERIOD`, `QUESTION`).
-- **Feature Preset:** `basic` (`FeatureConfig.basic()`, $\pm 1$ context, affixes, shape).
-- **Authoritative Model Contract & Identification:**
-  - **`model_name` (`"crf_basic"`):** Conforms strictly to `docs/MODEL_CONTRACT.md` ("Use `hmm`, `crf_basic`, or `crf_improved` as initial model names"). Emitted in every prediction record (`"model_name": "crf_basic"`).
-  - **`run_id` (`"crf_mode_a_basic_smoke_01"`):** Unique experiment run identifier distinguishing training settings. Tracked in the companion manifest (`crf_mode_a_basic_smoke_01.manifest.json`) and in the model artifact provenance metadata (`training_metadata["provenance"]["run_id"]`).
-  - *Contract Rule:* `model_name` and `run_id` must NOT be conflated. Prediction JSONL lines must have `model_name = "crf_basic"`, NOT the run ID.
-- **Sequence Ordering Reality:**
-  - `scripts/train_crf.py predict` streams line-by-line through `input_path` (`validation.jsonl`), outputting records whose `sample_id` belongs to the target set.
-  - Therefore, prediction JSONL strictly preserves **source JSONL sequence order**, NOT the line order in the `.ids` file.
-  - Smoke verification assertions must never assume `.ids` file ordering. Instead, they must validate:
-    1. Unique IDs (no duplicate sequences).
-    2. Exact set equality and cardinality match with the frozen ID set (`set(pred_ids) == set(target_ids)`).
-    3. Strict vocabulary containment (`predicted_labels` $\subseteq$ Mode A vocabulary).
-    4. Exact 1-to-1 token-to-label alignment matching corresponding input tokens.
-    5. Order matching the occurrence of selected sequences in `validation.jsonl`.
-- **Official Immutable Inputs (Read-Only):**
-  - Training Data: `data/processed/sponspeech-m1-v2/mode_A/train.jsonl`
-  - Validation Data: `data/processed/sponspeech-m1-v2/mode_A/validation.jsonl`
-  - Official Train IDs: `data/splits/sponspeech-m1-v2/default_train/mode_A.ids`
-  - Official Primary Validation IDs: `data/splits/sponspeech-m1-v2/primary_eval/validation_mode_A.ids`
-- **Isolated Local Experiment Directory:**
-  - `experiments/runs/smoke/` (strictly git-ignored under `/experiments/runs/**`).
-  - Temporary subsets are NEVER written to official dataset directories (`data/splits/...` remains immutable).
-- **Generated Smoke Subsets:**
-  - Train Subset (1,000 IDs): `experiments/runs/smoke/smoke_train_mode_A.ids`
-  - Validation Subset (100 IDs): `experiments/runs/smoke/smoke_validation_mode_A.ids`
-- **Output Artifacts:**
-  - Model: `experiments/runs/smoke/crf_mode_a_basic_smoke_01.joblib`
-  - Manifest: `experiments/runs/smoke/crf_mode_a_basic_smoke_01.manifest.json`
-  - Validation Predictions: `experiments/runs/smoke/crf_mode_a_basic_smoke_01_val_predictions.jsonl`
-- **Initial Hyperparameters (Fixed Initial, Untuned):**
-  - Algorithm: `lbfgs`
-  - $c_1 = 0.1$ (L1 penalty)
-  - $c_2 = 0.1$ (L2 penalty)
-  - `max_iterations = 50`
-  - `all_possible_transitions = True`
-
-### 12.2 Safe Deterministic Subset Generation via Python
-To ensure cross-platform compatibility, UTF-8 encoding without BOM, and explicit LF (`\n`) line endings while preserving relative source sequence order:
-
-```powershell
-.\.venv\Scripts\python.exe -c "
-from pathlib import Path
-
-def extract_subset(src_str: str, dst_str: str, count: int) -> None:
-    src, dst = Path(src_str), Path(dst_str)
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    with open(src, 'r', encoding='utf-8') as f_in:
-        lines = [line.strip() for line in f_in if line.strip()][:count]
-    if len(lines) != count:
-        raise ValueError(f'Expected {count} IDs, found {len(lines)} in {src}')
-    with open(dst, 'w', encoding='utf-8', newline='\n') as f_out:
-        for s_id in lines:
-            f_out.write(f'{s_id}\n')
-    print(f'Successfully wrote {len(lines)} IDs to {dst} (UTF-8, LF)')
-
-extract_subset('data/splits/sponspeech-m1-v2/default_train/mode_A.ids', 'experiments/runs/smoke/smoke_train_mode_A.ids', 1000)
-extract_subset('data/splits/sponspeech-m1-v2/primary_eval/validation_mode_A.ids', 'experiments/runs/smoke/smoke_validation_mode_A.ids', 100)
-"
-```
-
-### 12.3 Windows PowerShell Monitored Execution Pipeline
-
-All commands use the project's `.venv` interpreter (`.\.venv\Scripts\python.exe`).
-
-#### Step 1: Single Unified Monitored Training Execution (Executed Exactly ONCE)
-To prevent accidental double execution against `crf_mode_a_basic_smoke_01.joblib` and ensure clean process metrics on Windows, PowerShell launches the training process via .NET `System.Diagnostics.Process`, continuously sampling `WorkingSet64` (RAM) until completion:
-
-```powershell
-# Single Monitored Training Procedure (No duplicate execution)
-$psi = New-Object System.Diagnostics.ProcessStartInfo
-$psi.FileName = (Resolve-Path ".\.venv\Scripts\python.exe").Path
-$psi.Arguments = "scripts/train_crf.py train --mode A --input data/processed/sponspeech-m1-v2/mode_A/train.jsonl --ids experiments/runs/smoke/smoke_train_mode_A.ids --output experiments/runs/smoke/crf_mode_a_basic_smoke_01.joblib --manifest-out experiments/runs/smoke/crf_mode_a_basic_smoke_01.manifest.json --preset basic --algorithm lbfgs --c1 0.1 --c2 0.1 --max-iterations 50 --run-id crf_mode_a_basic_smoke_01 --dataset-release sponspeech-m1-v2 --policy-version m1-v2"
-$psi.UseShellExecute = $false
-
-$sw = [System.Diagnostics.Stopwatch]::StartNew()
-$proc = [System.Diagnostics.Process]::Start($psi)
-
-$peakMemBytes = [int64]0
-while (-not $proc.HasExited) {
-    try {
-        $proc.Refresh()
-        $ws = $proc.WorkingSet64
-        if ($ws -gt $peakMemBytes) { $peakMemBytes = $ws }
-    } catch {
-        # Guard against process termination between HasExited check and Refresh
-    }
-    Start-Sleep -Milliseconds 100
-}
-$proc.WaitForExit()
-$sw.Stop()
-
-$exitCode = $proc.ExitCode
-$wallTimeSeconds = [math]::Round($sw.Elapsed.TotalSeconds, 2)
-$peakMemMB = [math]::Round($peakMemBytes / 1MB, 2)
-
-Write-Host "=========================================================="
-Write-Host "RECAP CRF Smoke Training Process Summary:"
-Write-Host "  Exit Code:    $exitCode"
-Write-Host "  Wall Time:    $wallTimeSeconds s"
-Write-Host "  Peak Memory:  $peakMemMB MB"
-Write-Host "=========================================================="
-
-if ($exitCode -ne 0) {
-    throw "Training failed with exit code $exitCode"
-}
-```
-
-#### Step 2: Predict on Validation Subset
-```powershell
-.\.venv\Scripts\python.exe scripts/train_crf.py predict `
-    --model experiments/runs/smoke/crf_mode_a_basic_smoke_01.joblib `
-    --input data/processed/sponspeech-m1-v2/mode_A/validation.jsonl `
-    --ids experiments/runs/smoke/smoke_validation_mode_A.ids `
-    --output experiments/runs/smoke/crf_mode_a_basic_smoke_01_val_predictions.jsonl
-```
-
-#### Step 3: Inspect Saved Model & Companion Manifest
-```powershell
-.\.venv\Scripts\python.exe scripts/train_crf.py inspect `
-    --model experiments/runs/smoke/crf_mode_a_basic_smoke_01.joblib
-```
-
-### 12.4 Evaluator Branch Identity & Unmerged Scaffold Status
-- **Official Evaluator Remote Branch:** `remotes/origin/feat/m5-evaluation` (owned by Member 5: Abd Raouf, commit `680438f`: *"feat(eval): add evaluation pipeline, shortcut baseline and CLI"*).
-- **Branch Availability & Local Isolation:**
-  - The evaluator code exists on GitHub on branch `feat/m5-evaluation`.
-  - It has **NOT** been merged into `main` or into our local branch `feat/m3-crf-model`.
-  - In our local workspace, `scripts/evaluate_models.py` remains placeholder scaffolding raising `SystemExit`.
-  - Under strict university project rules (*"No Git staging, commits, pushes, merges, rebases, or uploads"*), `feat/m5-evaluation` must NOT be merged locally during this workstream.
-  - Therefore, smoke test verification does not call `scripts/evaluate_models.py`. Instead, complete contract compliance and metric integrity are verified directly via our authoritative Python verification script.
-
-### 12.5 Smoke Verification Gate (Automated Python Script)
-To be executed immediately following Steps 1–3, verifying all contract requirements without assuming `.ids` file line ordering or conflating `model_name` with `run_id`:
-
-```powershell
-.\.venv\Scripts\python.exe -c "
-import json
-from pathlib import Path
-import sys
-
-val_input = Path('data/processed/sponspeech-m1-v2/mode_A/validation.jsonl')
-val_ids_file = Path('experiments/runs/smoke/smoke_validation_mode_A.ids')
-preds_file = Path('experiments/runs/smoke/crf_mode_a_basic_smoke_01_val_predictions.jsonl')
-manifest_file = Path('experiments/runs/smoke/crf_mode_a_basic_smoke_01.manifest.json')
-model_file = Path('experiments/runs/smoke/crf_mode_a_basic_smoke_01.joblib')
-
-# 1. Verify frozen validation IDs
-with open(val_ids_file, 'r', encoding='utf-8') as f:
-    target_ids = [line.strip() for line in f if line.strip()]
-assert len(target_ids) == 100, f'Expected 100 validation IDs, got {len(target_ids)}'
-target_id_set = set(target_ids)
-assert len(target_id_set) == 100, 'Duplicate IDs detected in validation ID list'
-
-# 2. Extract ground truth observations and record source JSONL order
-source_tokens_by_id = {}
-source_ordered_target_ids = []
-with open(val_input, 'r', encoding='utf-8') as f:
-    for line in f:
-        rec = json.loads(line)
-        s_id = rec['sample_id']
-        if s_id in target_id_set:
-            source_tokens_by_id[s_id] = rec['tokens']
-            source_ordered_target_ids.append(s_id)
-
-assert len(source_tokens_by_id) == 100, f'Expected 100 matches in source JSONL, found {len(source_tokens_by_id)}'
-
-# 3. Verify prediction records
-with open(preds_file, 'r', encoding='utf-8') as f:
-    predictions = [json.loads(line) for line in f if line.strip()]
-
-assert len(predictions) == 100, f'Expected 100 prediction records, got {len(predictions)}'
-
-pred_ids = [p['sample_id'] for p in predictions]
-
-# 3a. Unique IDs assertion
-assert len(set(pred_ids)) == len(pred_ids), 'Duplicate sample_ids found in prediction output'
-
-# 3b. Exact selected membership
-assert set(pred_ids) == target_id_set, 'Predicted sample_ids do not match expected frozen ID set'
-
-# 3c. Source JSONL stream order verification (CRF CLI preserves source JSONL order, not .ids order)
-assert pred_ids == source_ordered_target_ids, 'Predictions must preserve source JSONL sequence ordering'
-
-# 3d. Field contract, vocabulary containment, and 1-to-1 length alignment
-mode_a_vocab = {'O', 'COMMA', 'PERIOD', 'QUESTION'}
-for pred in predictions:
-    s_id = pred['sample_id']
-    assert set(pred.keys()) == {'sample_id', 'model_name', 'label_mode', 'predicted_labels'}, f'Invalid keys in {s_id}'
-    # Authoritative contract: model_name must be canonical 'crf_basic', NOT run_id
-    assert pred['model_name'] == 'crf_basic', f'Expected model_name==\"crf_basic\", got {pred[\"model_name\"]!r}'
-    assert pred['label_mode'] == 'A', f'Expected label_mode==\"A\", got {pred[\"label_mode\"]!r}'
-
-    expected_tokens = source_tokens_by_id[s_id]
-    pred_labels = pred['predicted_labels']
-    assert isinstance(pred_labels, list), f'predicted_labels must be list for {s_id}'
-    assert len(pred_labels) == len(expected_tokens), (
-        f'Alignment error for {s_id}: {len(pred_labels)} labels vs {len(expected_tokens)} tokens'
-    )
-    for lbl in pred_labels:
-        assert lbl in mode_a_vocab, f'Illegal label {lbl!r} in {s_id} outside Mode A vocabulary'
-
-# 4. Verify companion manifest and distinguish run_id from model_name
-with open(manifest_file, 'r', encoding='utf-8') as f:
-    manifest = json.load(f)
-
-assert manifest['run_id'] == 'crf_mode_a_basic_smoke_01', f'Manifest run_id mismatch: {manifest.get(\"run_id\")}'
-assert manifest['model_name'] == 'crf_basic', f'Manifest model_name mismatch: {manifest.get(\"model_name\")}'
-assert manifest['label_mode'] == 'A'
-assert manifest['feature_preset'] == 'basic'
-assert manifest['provenance']['selected_sequences'] == 1000
-assert Path(manifest['artifact']['path']).name == model_file.name
-
-print('==========================================================')
-print('CRF Phase 6 Smoke Test Verification Passed with 100% Compliance:')
-print('  - 100/100 validation sequences predicted')
-print('  - Model Name contract verified: \"crf_basic\"')
-print('  - Run ID contract verified in manifest: \"crf_mode_a_basic_smoke_01\"')
-print('  - Source JSONL sequence ordering verified')
-print('  - Unique IDs and exact set membership verified')
-print('  - 1-to-1 token-to-label alignment verified')
-print('  - Mode A vocabulary containment verified')
-print('==========================================================')
-"
-```
-
-*Status: Fully specified and verified. NOT EXECUTED during pre-approval.*
+A 1,000-sequence smoke-test protocol was written before the first real-data run. It is superseded by the
+six full-data runs ([CRF_EXPERIMENTS.md](../docs/CRF_EXPERIMENTS.md) §7) and by Member 5's scoring with
+`scripts/evaluate_models.py` ([EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md)).
