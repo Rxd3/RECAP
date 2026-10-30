@@ -25,20 +25,24 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 # Support the documented source-checkout command before an editable install.
 sys.path.insert(0, str(ROOT / "src"))
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from train_crf import (  # noqa: E402
-    read_observations,
+from punct_restore.evaluation.inputs import (  # noqa: E402
+    load_bundle,
+    load_scored_gold,
+    load_vocab,
     sha256_file,
-    write_prediction_manifest,
-    write_predictions_jsonl,
 )
-
-from punct_restore.evaluation.inputs import load_bundle, load_scored_gold, load_vocab  # noqa: E402
 from punct_restore.evaluation.report import evaluate  # noqa: E402
 from punct_restore.models.crf import CRFModel  # noqa: E402
 from punct_restore.models.threshold import check_tau, decode_with_threshold  # noqa: E402
+from punct_restore.prediction_io import (  # noqa: E402
+    check_new_output_paths,
+    read_observations,
+    write_prediction_outputs,
+    write_predictions_jsonl,
+)
 
 DEFAULT_GRID = "0.05:0.95:0.05"
+MAX_GRID_VALUES = 1000
 
 
 def parse_grid(text: str) -> tuple[float, ...]:
@@ -53,7 +57,12 @@ def parse_grid(text: str) -> tuple[float, ...]:
         raise argparse.ArgumentTypeError(
             f"grid needs 0 <= start <= stop <= 1 and step > 0, got {text!r}"
         )
-    count = math.floor((stop - start) / step + 1e-9) + 1
+    span = (stop - start) / step
+    if not math.isfinite(span) or span + 1e-9 >= MAX_GRID_VALUES:
+        raise argparse.ArgumentTypeError(
+            f"grid may have at most {MAX_GRID_VALUES} values, got {text!r}"
+        )
+    count = math.floor(span + 1e-9) + 1
     return tuple(round(start + i * step, 6) for i in range(count))
 
 
@@ -117,6 +126,11 @@ def _score_grid(
 def cmd_tune(args: argparse.Namespace) -> int:
     """Pick the best tau on the validation gold and write it as JSON."""
     out = Path(args.out)
+    check_new_output_paths(
+        {"--out": out},
+        {"--model": Path(args.model), "--gold": Path(args.gold), "--ids": Path(args.ids),
+         "--masks": Path(args.masks) if args.masks else None},
+    )
     _refuse_existing(out)
     model = CRFModel.load_model(args.model)
     vocab = load_vocab()
@@ -162,24 +176,29 @@ def _read_tau_file(path: Path, model_path: Path) -> float:
         raise ValueError(f"tau file {path}: {exc}") from exc
     if data["model_sha256"] != sha256_file(model_path):
         raise ValueError("tau file was tuned for a different model")
-    return float(data["tau"])
+    return float(data["tau"]) + 0.0  # + 0.0: a tau of -0.0 must not name the model "_tau-0"
 
 
 def cmd_predict(args: argparse.Namespace) -> int:
     """Write thresholded predictions plus the evaluator's sidecar manifest."""
-    model_path, input_path = Path(args.model), Path(args.input)
-    out, manifest_out = Path(args.out), Path(args.manifest_out)
+    model_path, input_path, ids_path = Path(args.model), Path(args.input), Path(args.ids)
+    tau_path, out, manifest_out = Path(args.tau_file), Path(args.out), Path(args.manifest_out)
+    check_new_output_paths(
+        {"--out": out, "--manifest-out": manifest_out},
+        {"--model": model_path, "--input": input_path, "--ids": ids_path,
+         "--tau-file": tau_path},
+    )
     _refuse_existing(out, manifest_out)
     model = CRFModel.load_model(model_path)
-    tau = _read_tau_file(Path(args.tau_file), model_path)
-    observations = read_observations(input_path, Path(args.ids))
+    tau = _read_tau_file(tau_path, model_path)
+    observations = read_observations(input_path, ids_path)
     marginals = model.predict_marginals(observations)
     sample_ids = [observation["sample_id"] for observation in observations]
     predictions = _predictions(model.model_name, model.label_mode, sample_ids, marginals, tau)
-    write_predictions_jsonl(predictions, out)
-    write_prediction_manifest(
+    write_prediction_outputs(
+        predictions,
+        out,
         manifest_out,
-        predictions_path=out,
         input_path=input_path,
         model_name=_tau_model_name(model.model_name, tau),
         label_mode=model.label_mode,
