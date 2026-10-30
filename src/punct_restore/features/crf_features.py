@@ -1,4 +1,4 @@
-﻿"""CRF feature extraction module for punctuation and casing restoration.
+"""CRF feature extraction module for punctuation and casing restoration.
 
 Owned by Member 3 (expanded scope covering CRF model and feature engineering).
 Follows the shared feature contract from docs/MODEL_CONTRACT.md:

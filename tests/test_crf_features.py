@@ -1,4 +1,4 @@
-﻿"""Unit and acceptance tests for CRF feature extraction module.
+"""Unit and acceptance tests for CRF feature extraction module.
 
 Verifies:
 - Length preservation: Exactly one feature dict per token.
