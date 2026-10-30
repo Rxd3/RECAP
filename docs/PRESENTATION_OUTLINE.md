@@ -5,7 +5,7 @@ Owner: Member 6 (Abdulla Jamal). Four slides, about 30 seconds each.
 Every number comes from [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md), [EVALUATION_RESULTS.md](EVALUATION_RESULTS.md) or the evaluator JSON behind them (Member 5 results bundle).
 
 **Rules for the slides:**
-- **Main numbers are test.** Validation chose the HMM smoothing and the threshold τ; the CRF settings (c1 = c2 = 0.1, 100 iterations) were fixed and not tuned; no test result influenced any choice. Each frozen model predicted test once.
+- **Main numbers are test.** The course-baseline settings (HMM smoothing, CRF settings, the plain threshold τ) were fixed or chosen on validation before any test result. The comparison methods in sections 13–14 of EVALUATION_RESULTS_CRF.md (simulated ASR noise, gap classifier, hidden-event LM, prior-adjusted decoding, question lookback, factored casing) were added on 2026-10-30, after the first test report, in response to a review that cited test results. They are exploratory; their settings were still chosen on validation only, and each test list was predicted once. Each frozen model predicted test once.
 - **Always show the mode.**
 - **Never rank mode B against mode C:** they are different tasks.
 

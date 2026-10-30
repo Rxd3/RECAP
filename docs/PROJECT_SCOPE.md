@@ -14,7 +14,7 @@ features.
 
 All three are trained and evaluated. Results: [EVALUATION_RESULTS.md](EVALUATION_RESULTS.md) (HMM and
 shortcut) and [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) (CRF, final test results).
-Validation chose the HMM smoothing and the threshold τ; the CRF settings (c1 = c2 = 0.1, 100 iterations) were fixed and not tuned; no test result influenced any choice. The team's additions beyond the course baselines are listed in the
+The course-baseline settings (HMM smoothing, CRF settings, the plain threshold τ) were fixed or chosen on validation before any test result. The comparison methods in sections 13–14 of [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) (simulated ASR noise, gap classifier, hidden-event LM, prior-adjusted decoding, question lookback, factored casing) were added on 2026-10-30, after the first test report, in response to a review that cited test results. They are exploratory; their settings were still chosen on validation only, and each test list was predicted once. The team's additions beyond the course baselines are listed in the
 [README](../README.md#what-is-new).
 
 ## Out of scope

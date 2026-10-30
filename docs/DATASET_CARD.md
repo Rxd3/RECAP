@@ -39,6 +39,7 @@ numbers; nothing else was calculated for this card.
 | Leak-free primary splits | Validation is filtered against train; test and test_amb against train ∪ validation, by shared video, exact text, exact token tuple and ≥ 50% shared word 6-grams. | D6, [DATASET_PLAN.md](DATASET_PLAN.md) |
 | Unresolved-record flags | Ambiguous records stay in the full views with reasons and positions, and are excluded from default training and primary evaluation. | D3, [DATASET_PLAN.md](DATASET_PLAN.md) |
 | Gold-noise audit | Known gold errors are listed, not relabelled. | [EVALUATION_PROTOCOL.md](EVALUATION_PROTOCOL.md) |
+| Robustness and noise checks | Mode B rescored without the known noisy records, and the test inputs with simulated ASR word errors | [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §12, §13 |
 
 The projection changes 13,721 labels relative to the native view, all O → COMMA at DASH
 boundaries: train 9,762, validation 1,869, test 1,258, test_amb 832
@@ -163,7 +164,8 @@ From [DATASET_PLAN.md](DATASET_PLAN.md), Limitations:
 - Channel overlap remains: 149 of 522 channels span the original splits.
 - Low-comma, TTS, speaker, casing and punctuation rules are documented heuristics.
 - Canonical and native scores use different gold labels and are never compared directly.
-- The transcripts are creator-written, not ASR output; no ASR condition is evaluated.
+- The transcripts are creator-written, not ASR output. There is no real-ASR condition; a simulated one is
+  evaluated in [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §13.
 
 ## Licence and citation
 

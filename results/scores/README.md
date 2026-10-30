@@ -12,6 +12,7 @@ All files were written by `scripts/evaluate_models.py` (`score`, `compare`, `err
 **Format:**
 - Scores are fractions with six decimals; the docs show them as percentages rounded half-up.
 - The score, compare and errors files record the sha256 of their gold, ID-list, mask and prediction inputs. `threshold/tau_<mode>.json` and `threshold_prior/tau_gamma_<mode>.json` record only `model_sha256`, and `runtime/*.json` only the model file name. The predictions themselves are not committed: they can be regenerated from the shared models (see [REPRODUCIBILITY.md](../../docs/REPRODUCIBILITY.md)).
+- **Intentional copies:** `filler/mode_A/improved.json`, `filler/mode_B/improved.json`, `filler/mode_C/improved.json` and `factored/improved_C.json` are byte-identical to `ablations/mode_<M>/improved.json`, the shared 50k-sample baseline. They are kept so that each study folder stands alone.
 - **Data excerpts:** the `*.errors.json` files contain short SponSpeech excerpts as error examples (gold and predicted text around each error). They are CC BY-NC 4.0, with the upstream attribution in [DATA_LICENSE.md](../../docs/DATA_LICENSE.md).
 
 | Folder | Contents |

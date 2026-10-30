@@ -1,7 +1,7 @@
-# Team hypotheses (pre-registered)
+# Team hypotheses
 
-The six hypotheses below were written in the team execution plan (*RECAP — Team Execution Plan v2*,
-whose status block is dated Thu Oct 29, 00:50, i.e. 2026-10-29), before any CRF result existed. They are
+The six hypotheses below were written in the team plan before the CRF results (the plan is not in the repo): the team execution plan (*RECAP — Team Execution Plan v2*,
+whose status block is dated Thu Oct 29, 00:50, i.e. 2026-10-29). They are
 copied verbatim, H1–H6 exactly as written, from that plan's section 5. Their outcomes, supported or not,
 are in [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) (Team hypotheses).
 
