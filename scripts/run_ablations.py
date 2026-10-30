@@ -2,14 +2,16 @@
 
 Usage:
     python scripts/run_ablations.py --mode {A,B,C} --out DIR [--sample 50000]
-        [--variants improved,improved_minus_window2,...,improved_plus_filler]
+        [--variants improved,improved_minus_window2,...,improved_plus_filler,gap_improved]
         [--data-root DATA] [--release sponspeech-m1-v2]
 
 Trains this repository's CRFModel (c1 = c2 = 0.1, 100 L-BFGS iterations) on a fixed seeded sample
 of default_train, once with the full improved preset, once per removed feature group and once with
-the filler cues added. Primary-validation predictions are written to
-DIR/mode_<M>/<variant>/validation.jsonl, and the sampled training IDs to DIR/mode_<M>/sample.ids.
-Test data is never read.
+the filler cues added. The last variant, gap_improved, trains GapClassifier ("CRF without
+transitions": per-token logistic regression, C = 1, 200 L-BFGS iterations) on the same improved
+features and the same sample, so its difference from improved isolates the value of label
+transitions. Primary-validation predictions are written to DIR/mode_<M>/<variant>/validation.jsonl,
+and the sampled training IDs to DIR/mode_<M>/sample.ids. Test data is never read.
 """
 
 from __future__ import annotations
@@ -27,8 +29,9 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 # Support the documented source-checkout command before an editable install.
 sys.path.insert(0, str(ROOT / "src"))
-from punct_restore.features.crf_features import FeatureConfig  # noqa: E402
-from punct_restore.models.crf import CRFModel  # noqa: E402
+from punct_restore.features.crf_features import FeatureConfig
+from punct_restore.models.crf import CRFModel
+from punct_restore.models.gap_classifier import GapClassifier
 
 SEED = 2026
 # group name -> FeatureConfig.improved() override that removes it
@@ -40,10 +43,12 @@ GROUPS: dict[str, dict[str, Any]] = {
     "casing": {"use_casing_cues": False},
     "position": {"use_positional_buckets": False},
 }
+GAP_VARIANT = "gap_improved"
 VARIANTS: dict[str, dict[str, Any]] = {
     "improved": {},
     **{f"improved_minus_{group}": override for group, override in GROUPS.items()},
     "improved_plus_filler": {"use_filler_cues": True},
+    GAP_VARIANT: {},  # improved features, trained with GapClassifier instead of the CRF
 }
 
 
@@ -136,14 +141,19 @@ def run_variant(
     gold_free: list[dict[str, Any]],
     out_dir: Path,
 ) -> None:
-    model = CRFModel(
-        label_mode=mode,
-        c1=0.1,
-        c2=0.1,
-        max_iterations=100,
-        feature_config=FeatureConfig.improved(**VARIANTS[variant]),
-        model_name=f"crf_{variant}",
-    )
+    feature_config = FeatureConfig.improved(**VARIANTS[variant])
+    model: CRFModel | GapClassifier
+    if variant == GAP_VARIANT:
+        model = GapClassifier(mode, feature_config=feature_config, C=1.0, max_iter=200, model_name=variant)
+    else:
+        model = CRFModel(
+            label_mode=mode,
+            c1=0.1,
+            c2=0.1,
+            max_iterations=100,
+            feature_config=feature_config,
+            model_name=f"crf_{variant}",
+        )
     model.fit(records)
     preds = model.predict(gold_free)
     out_dir.mkdir()

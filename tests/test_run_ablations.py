@@ -16,7 +16,8 @@ from typing import Any
 
 import pytest
 
-import scripts.run_ablations as run_ablations
+from punct_restore.features.crf_features import FeatureConfig
+from scripts import run_ablations
 
 ROOT = Path(__file__).resolve().parents[1]
 RELEASE = "rel"
@@ -113,7 +114,7 @@ def forbid_test_files(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(io, "open", guarded)
 
 
-def test_variants_are_the_eight_expected_names_in_order():
+def test_variants_are_the_nine_expected_names_in_order():
     assert list(run_ablations.VARIANTS) == [
         "improved",
         "improved_minus_window2",
@@ -123,10 +124,12 @@ def test_variants_are_the_eight_expected_names_in_order():
         "improved_minus_casing",
         "improved_minus_position",
         "improved_plus_filler",
+        "gap_improved",
     ]
     assert run_ablations.VARIANTS["improved"] == {}
     assert run_ablations.VARIANTS["improved_minus_window2"] == {"window_size": 1}
     assert run_ablations.VARIANTS["improved_plus_filler"] == {"use_filler_cues": True}
+    assert run_ablations.VARIANTS["gap_improved"] == {}  # the improved features, no removed group
     assert run_ablations.SEED == 2026
 
 
@@ -157,6 +160,62 @@ def test_run_ablations_reads_crlf_ids_and_never_opens_test(tmp_path, monkeypatch
         assert {p["label_mode"] for p in preds} == {"A"}
         assert all(len(p["predicted_labels"]) == len(_SEQUENCES[p["sample_id"]][0]) for p in preds)
     assert not (out / "mode_A" / "improved_minus_ngrams").exists()
+
+
+def test_gap_improved_runs_the_gap_classifier_not_the_crf(tmp_path, monkeypatch):
+    root = build_root(tmp_path)
+    out = tmp_path / "out"
+
+    def boom(**_: Any) -> None:
+        raise AssertionError("gap_improved must not build a CRFModel")
+
+    monkeypatch.setattr(run_ablations, "CRFModel", boom)
+    code = run_ablations.main(_argv(root, out, "--sample", "4", "--variants", "gap_improved"))
+
+    assert code == 0
+    path = out / "mode_A" / "gap_improved" / "validation.jsonl"
+    raw = path.read_bytes()
+    assert b"\r" not in raw and raw.endswith(b"\n")
+    preds = [json.loads(line) for line in raw.decode("utf-8").splitlines()]
+    assert [p["sample_id"] for p in preds] == VAL_IDS
+    assert {p["model_name"] for p in preds} == {"gap_improved"}
+    assert {p["label_mode"] for p in preds} == {"A"}
+    assert all(len(p["predicted_labels"]) == len(_SEQUENCES[p["sample_id"]][0]) for p in preds)
+    assert all(label in {"O", "COMMA", "PERIOD", "QUESTION"} for p in preds for label in p["predicted_labels"])
+
+
+def test_gap_classifier_is_built_with_the_improved_features_and_explicit_hyperparameters(tmp_path, monkeypatch):
+    root = build_root(tmp_path)
+    built: list[tuple[tuple[Any, ...], dict[str, Any]]] = []
+    real = run_ablations.GapClassifier
+
+    def spy(*args: Any, **kwargs: Any) -> Any:
+        built.append((args, kwargs))
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(run_ablations, "GapClassifier", spy)
+    code = run_ablations.main(_argv(root, tmp_path / "out", "--sample", "4", "--variants", "gap_improved"))
+
+    assert code == 0
+    assert built == [
+        (
+            ("A",),
+            {"feature_config": FeatureConfig.improved(), "C": 1.0, "max_iter": 200, "model_name": "gap_improved"},
+        )
+    ]
+
+
+def test_gap_improved_and_improved_share_the_sample_and_the_output_layout(tmp_path):
+    root = build_root(tmp_path)
+    out = tmp_path / "out"
+    code = run_ablations.main(_argv(root, out, "--sample", "4", "--variants", "improved,gap_improved"))
+    assert code == 0
+    models = {}
+    for variant in ("improved", "gap_improved"):
+        lines = (out / "mode_A" / variant / "validation.jsonl").read_text(encoding="utf-8").splitlines()
+        models[variant] = {json.loads(line)["model_name"] for line in lines}
+    assert models == {"improved": {"crf_improved"}, "gap_improved": {"gap_improved"}}
+    assert (out / "mode_A" / "sample.ids").is_file()
 
 
 def test_progress_line_per_variant_goes_to_stdout(tmp_path, capsys):
