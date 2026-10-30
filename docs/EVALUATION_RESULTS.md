@@ -1,6 +1,6 @@
 # Evaluation results: HMM baseline (Member 5)
 
-This is the Member 5 deliverable for the HMM baseline (PR #4) and the shortcut baseline: confusion matrices, rare-label and class-imbalance analysis, error pairs, sequence-level errors and a runtime measurement. It follows [EVALUATION_PROTOCOL.md](EVALUATION_PROTOCOL.md). The CRF models (Member 3) are evaluated in [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) (validation so far, with feature ablations; test pending).
+This is the Member 5 deliverable for the HMM baseline (PR #4) and the shortcut baseline: confusion matrices, rare-label and class-imbalance analysis, error pairs, sequence-level errors and a runtime measurement. It follows [EVALUATION_PROTOCOL.md](EVALUATION_PROTOCOL.md). The CRF models (Member 3) are evaluated in [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) (test, test_amb, validation selection, ablations and extensions).
 
 ## Provenance
 
@@ -276,12 +276,18 @@ Hardware: Intel64 Family 6 Model 158 Stepping 10, GenuineIntel, Python 3.13.1, o
 |---|---|---|---|---|
 | Official test, all utterances | canonical | 17,695 | 34.98 (33.01–36.83) | 9.06 |
 | Leakage-controlled test | canonical | 12,668 | 34.74 (32.46–36.90) | 9.14 |
-| Excluded part (shared videos and near-duplicates) | canonical | 5,027 | 35.40 (31.47–38.42) | 8.63 |
+| Excluded part, all reasons | canonical | 5,027 | 35.40 (31.47–38.42) | 8.63 |
+| Excluded: video also in the training set | canonical | 2,706 | 33.54 (29.94–36.84) | — |
 | Official test, all utterances | SponSpeech native | 17,695 | 35.10 (33.15–36.95) | 9.19 |
 | Primary test (leakage-controlled, mode A policy) | canonical | 12,321 | 35.12 (32.80–37.31) | 9.13 |
 
-- **What leakage is.** The official test shares videos and near-duplicate texts with train and dev; 5,027 of 17,695 utterances (28.4%) are excluded from the leakage-controlled set.
-- **The HMM barely profits from leakage.** On the excluded utterances it scores 35.40, against 34.74 on the clean ones, and the intervals overlap widely. A first-order HMM has little context to memorise.
+- **What leakage is.** The official test shares videos and duplicate texts with train and dev.
+  - 5,027 of 17,695 utterances (28.4%) are excluded from the leakage-controlled set.
+  - 4,836 of them for leakage; 2,706 of those come from videos in the training set.
+  - 191 for a quality filter (low comma density or a TTS source).
+- **The HMM barely profits from leakage, unlike the CRF.**
+  - On utterances from videos in its training set, the HMM scores 33.54, against 34.74 on the clean ones. A first-order HMM has little context to memorise.
+  - On the same utterances, the improved CRF scores 67.09 against 49.50 ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §8).
 - **Native labels.** Scoring against SponSpeech's own 4-class labels changes the result by +0.13 points. Our canonical label policy is therefore not what drives the HMM's score.
 
 ## Limitations

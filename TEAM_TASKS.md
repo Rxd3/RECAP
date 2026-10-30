@@ -2,8 +2,8 @@
 
 **Status (2026-10-30):** the data release and the HMM baseline are verified
 ([release validation](docs/DATA_RELEASE_VALIDATION.md), [HMM results](experiments/HMM_RESULTS.md)).
-The six CRF models are trained and scored on validation
-([CRF results](docs/EVALUATION_RESULTS_CRF.md)); CRF test predictions are pending. A ticked item
+The six CRF models are trained, selected on validation and scored once on test and test_amb
+([CRF results](docs/EVALUATION_RESULTS_CRF.md)). A ticked item
 names its evidence in the repository; an unticked one is not done or has no such evidence. Every
 member must understand their component's assumptions, label schemes, leakage
 risks, evaluation choices and the overall methodology.
@@ -112,8 +112,8 @@ Member 4's feature module is a coordinated contribution, not overlapping ownersh
 - [x] Implement fit/predict/save/load under the common contract. (evidence: [crf.py](src/punct_restore/models/crf.py), [tests/test_crf_model.py](tests/test_crf_model.py))
 - [x] Support configurable A/B/C targets with explicit artifact compatibility. (evidence: [tests/test_train_crf_cli.py](tests/test_train_crf_cli.py) (modes A, B, C; mode mismatch rejected))
 - [ ] Train and select settings on the fixed training/validation release. — six models trained ([CRF_EXPERIMENTS.md](docs/CRF_EXPERIMENTS.md) §7); settings not tuned
-- [ ] Export standard predictions and complete configuration/run records. — validation predictions delivered; test predictions and prediction manifests pending
-- [x] Compare against the HMM within the same mode using Member 5's evaluation. (evidence: [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §1–2, validation)
+- [x] Export standard predictions and complete configuration/run records. (evidence: Member 3's training manifests per model; test and test_amb predictions with prediction manifests produced by Member 5 from Member 3's frozen models, [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) Provenance)
+- [x] Compare against the HMM within the same mode using Member 5's evaluation. (evidence: [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §1–2 test, §5 validation)
 
 **Deliverables:** working basic CRF; reproducible training procedure;
 common-format prediction/artifact bundles; experiment records and contract tests.
@@ -127,7 +127,7 @@ for integration. CRF implementation need not wait for HMM training.
 - [x] Feature/token alignment and model persistence pass meaningful tiny tests. (evidence: [tests/test_crf_features.py](tests/test_crf_features.py), [tests/test_crf_model.py](tests/test_crf_model.py))
 - [x] One CRF implementation supports both basic and improved feature injection. (evidence: [crf.py](src/punct_restore/models/crf.py), [CRF_EXPERIMENTS.md](docs/CRF_EXPERIMENTS.md) §3, §7)
 - [x] No gold casing/punctuation or test-derived information enters features. (evidence: [tests/test_crf_features.py](tests/test_crf_features.py) `test_gold_free_integrity`)
-- [ ] Selected validation settings and actual evidence are reproducible. — mode A basic reproduced byte for byte; improved models not re-run; settings not tuned ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md))
+- [ ] Selected validation settings and actual evidence are reproducible. — all six validation prediction files reproduced byte for byte from the delivered models ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) Provenance); settings were fixed, not selected
 
 **Handoff:** give Member 4 the stable CRF adapter/extractor signature and basic
 preset; give Members 5 and 6 compatible artifacts, predictions and provenance.
@@ -147,8 +147,8 @@ preset; give Members 5 and 6 compatible artifacts, predictions and provenance.
 - [ ] Explicitly account for lowercased input; never use hidden gold casing. — implemented by Member 3 (see [contributions](contributions/Omar_STUDENT_ID_Devinci101.md))
 - [ ] Compare basic versus improved features through Member 3's CRF implementation. — done by Member 5 ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §1)
 - [ ] Design separate punctuation/casing versus joint experiments with Members 3 and 5. — joint vs punctuation-only comparison done by Member 5 ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md), H1)
-- [ ] Run controlled one-change ablations with fixed splits and selection rules. — done by Member 5 ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §5, validation)
-- [ ] Document useful, ineffective and uncertain features based on actual evidence. — documented by Member 5 ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §5) and in [FEATURE_NOTES.md](experiments/FEATURE_NOTES.md)
+- [ ] Run controlled one-change ablations with fixed splits and selection rules. — done by Member 5 ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §6, validation)
+- [ ] Document useful, ineffective and uncertain features based on actual evidence. — documented by Member 5 ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §6) and in [FEATURE_NOTES.md](experiments/FEATURE_NOTES.md)
 
 **Deliverables:** improved extractors; reproducible ablation configuration and
 run records; feature comparison tables from real evaluation; technical explanation.
@@ -161,8 +161,8 @@ Do not independently rewrite or replace the CRF model.
 
 - [ ] Extractors return one feature dictionary per input token with no gold access. — implemented by Member 3 (see [contributions](contributions/Omar_STUDENT_ID_Devinci101.md))
 - [ ] Basic and improved variants share model/data/evaluation code. — implemented by Member 3 (see [contributions](contributions/Omar_STUDENT_ID_Devinci101.md))
-- [ ] Ablations change declared factors only and select on validation. — done by Member 5 ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §5)
-- [ ] Gains or negative findings have reproducible evidence and support counts. — done by Member 5 ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §5)
+- [ ] Ablations change declared factors only and select on validation. — done by Member 5 ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §6)
+- [ ] Gains or negative findings have reproducible evidence and support counts. — done by Member 5 ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §6 ablations, §4 class supports)
 
 **Handoff:** provide Member 3 the versioned extractor/configuration, Member 5 the
 paired run bundles and hypothesis list, and Member 6 feature-loading requirements.
@@ -184,9 +184,9 @@ paired run bundles and hypothesis list, and Member 6 feature-loading requirement
 - [x] Use zero_division=0; keep accuracy secondary and absent-class support visible. (evidence: [EVALUATION_PROTOCOL.md](docs/EVALUATION_PROTOCOL.md))
 - [x] Evaluate C jointly and after punctuation/casing projections; compare tasks fairly. (evidence: [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §3, H1, [tests/test_evaluation_views.py](tests/test_evaluation_views.py))
 - [x] Produce confusion matrices, rare-label/class-imbalance and sequence error analysis. (evidence: [EVALUATION_RESULTS.md](docs/EVALUATION_RESULTS.md) §3–6, [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md))
-- [ ] Compare runtime with common hardware/input/measurement conditions. — HMM only so far ([EVALUATION_RESULTS.md](docs/EVALUATION_RESULTS.md) §7); CRF runtime row pending
+- [x] Compare runtime with common hardware/input/measurement conditions. (evidence: HMM [EVALUATION_RESULTS.md](docs/EVALUATION_RESULTS.md) §7; CRF [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §10; prediction speed on the same machine and procedure, CRF fit times from Member 3's machine)
 - [x] Support group-aware paired confidence intervals if practical and documented. (evidence: [uncertainty.py](src/punct_restore/evaluation/uncertainty.py), [comparison.py](src/punct_restore/evaluation/comparison.py), [EVALUATION_PROTOCOL.md](docs/EVALUATION_PROTOCOL.md))
-- [x] Reserve validation for selection and test for final reporting; never fabricate results. (evidence: [HMM_RUNBOOK.md](experiments/HMM_RUNBOOK.md) (selection froze before test access), [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) (validation only))
+- [x] Reserve validation for selection and test for final reporting; never fabricate results. (evidence: [HMM_RUNBOOK.md](experiments/HMM_RUNBOOK.md) (selection froze before test access), [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) (validation selection in §5; each frozen model predicted test once))
 
 **Deliverables:** evaluation pipeline; verified comparison tables/visualizations;
 confusion matrices; error-analysis report; runtime comparison and optional intervals.
@@ -220,8 +220,8 @@ cases to Members 1–4 for analysis without silently changing the frozen test.
 - [ ] Coordinate interface versions, compatibility checks and integration PR order.
 - [ ] Define CLI prediction inputs/flags and artifact-loading/model selection adapters.
 - [ ] Route identical gold-free token sequences to each trained model.
-- [ ] Integrate approved punctuation/casing reconstruction and error handling.
-- [ ] Build a command-line demonstration; add interactive UI only if later agreed.
+- [x] Integrate approved punctuation/casing reconstruction and error handling. (evidence: `RestorationPipeline` in [pipeline.py](src/punct_restore/pipeline.py), [tests/test_pipeline.py](tests/test_pipeline.py); completed during release integration)
+- [x] Build a command-line demonstration; add interactive UI only if later agreed. (evidence: [scripts/run_demo.py](scripts/run_demo.py), [tests/test_pipeline.py](tests/test_pipeline.py); completed during release integration)
 - [x] Document exact preparation, training, prediction and evaluation commands as built. (evidence: [REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md))
 - [ ] Record dependency locks, seeds, code/data/artifact hashes and hardware needs.
 - [ ] Run a tiny end-to-end reproduction in a clean environment.
@@ -237,7 +237,7 @@ Member 5 verified outputs. CLI/manifest planning starts before models are traine
 
 **Definition of Done:**
 
-- [ ] Compatible artifacts load and incompatible ones fail with useful messages.
+- [x] Compatible artifacts load and incompatible ones fail with useful messages. (evidence: `src/punct_restore/pipeline.py` `load_model`, [tests/test_model_contract.py](tests/test_model_contract.py); completed during release integration)
 - [ ] Shared inputs, IDs and output alignment survive every adapter; no gold leakage.
 - [ ] Documented commands reproduce a small complete workflow from a clean setup.
 - [ ] Demo and slides accurately distinguish trained behavior, targets and limitations.
@@ -254,8 +254,8 @@ This is a technical integration role, not only slide preparation.
 - [ ] M2 — Member 1 data release validated; all consumers agree identical IDs/splits.
 - [ ] M3 — HMM and basic CRF contract tests pass; Member 5 scores validation bundles;
   Member 6 verifies shared-input inference and save/load compatibility.
-- [x] M4 — Improved CRF and ablations reviewed on fixed validation settings. (evidence: [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §1, §5)
-- [ ] M5 — Freeze settings; Member 5 runs final held-out evaluation and error analysis.
+- [x] M4 — Improved CRF and ablations reviewed on fixed validation settings. (evidence: [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §5, §6)
+- [x] M5 — Freeze settings; Member 5 runs final held-out evaluation and error analysis. (evidence: [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md), [EVALUATION_RESULTS.md](docs/EVALUATION_RESULTS.md))
 - [ ] M6 — Member 6 verifies clean-environment reproduction, demo and presentation;
   all members review assumptions and evidence before the final release.
 

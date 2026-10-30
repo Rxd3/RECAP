@@ -54,7 +54,7 @@ record format and alignment.
   become PERIOD, COLON and DASH become COMMA ([DECISIONS.md](docs/DECISIONS.md), D5).
 - **Leak-free primary splits.** The official splits share source videos. Our primary
   validation lists drop every utterance whose video also appears in train, and our primary test
-  lists every utterance whose video appears in train or validation, plus exact and near
+  lists drop every utterance whose video appears in train or validation, plus exact and near
   duplicates. In the official test file, 4,716 of 17,695 utterances
   (26.7%) come from such videos ([DATASET_PLAN.md](docs/DATASET_PLAN.md)).
 - **A gold-noise audit.** Leftover speaker labels, subtitle cue numbers and auto-caption-style
@@ -72,48 +72,39 @@ record format and alignment.
 - **Grouped bootstrap by video** for every 95% interval, and paired intervals for every model
   comparison.
 - **Feature ablations** on validation only, one feature group at a time.
-- **Team extensions, tuned on validation only** (results pending): threshold decoding of the
-  CRF marginals (`scripts/tune_threshold.py`) and a filler-word cue (`improved_plus_filler` in
-  `scripts/run_ablations.py`).
+- **Two team extensions, tuned on validation only:**
+  - threshold decoding of the CRF marginals (`scripts/tune_threshold.py`);
+  - a filler-word cue (`improved_plus_filler` in `scripts/run_ablations.py`).
+- **The cost of leakage, measured.** On official test utterances whose video is in the training set, the frozen improved CRF scores 67.09, against 49.50 on the leak-free test.
 
 ## Key findings
 
-Every number names its split. Primary metric: macro F1 % over the non-O punctuation classes
-(A, B), or over all 12 joint classes on unmasked positions (C). Intervals: 95%, grouped
-bootstrap by video, 1,000 resamples. Modes B and C are different tasks; never rank one against
-the other.
+Every number names its split.
+- **Primary metric:** macro F1 % over the non-O punctuation classes (A, B), or over all 12 joint classes on unmasked positions (C).
+- **Intervals:** 95%, grouped bootstrap by video, 1,000 resamples.
+- **Modes B and C are different tasks;** never rank one against the other.
+- **Selection:** validation chose every setting, and each frozen model predicted the primary test lists once. The mode A improved CRF also predicted the full official test once more, for the leakage analysis.
 
-**Validation, primary ID lists** ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §1):
+**Test, primary ID lists** ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §1):
 
-| Mode | Shortcut | HMM | CRF basic | CRF improved |
-| --- | --- | --- | --- | --- |
-| A | 28.21 | 36.54 (34.80–38.01) | 44.54 (42.80–45.90) | **51.18** (49.60–52.49) |
-| B | 12.14 | 18.47 (16.32–21.35) | 22.22 (19.79–24.98) | **25.10** (23.08–27.68) |
-| C | 18.53 | 40.89 (38.72–42.93) | 47.72 (45.73–49.72) | **51.52** (49.14–53.56) |
+| Mode | Shortcut | HMM | CRF basic | CRF improved | CRF improved + threshold |
+| --- | --- | --- | --- | --- | --- |
+| A | 27.48 | 35.12 (32.80–37.31) | 43.65 (41.74–45.59) | 49.92 (47.91–52.01) | **50.44** (48.53–52.41) |
+| B | 11.87 | 16.79 (15.28–18.49) | 20.25 (18.87–21.95) | 22.82 (21.42–24.42) | **23.23** (21.74–25.05) |
+| C | 18.09 | 37.41 (34.56–40.71) | 43.85 (42.13–45.47) | 47.02 (44.97–49.00) | **47.72** (45.78–49.61) |
 
-- **The improved CRF beats the HMM** by +14.64 (A), +6.63 (B) and +10.64 (C) points, and the
-  basic CRF by +6.64, +2.88 and +3.80 (validation). All nine paired intervals exclude 0.
-- **The HMM mostly learns the end-of-utterance shortcut.** The shortcut alone reaches PERIOD
-  F1 68.80 in mode A, against the HMM's 69.42. Without each utterance's final token, mode A
-  scores HMM 8.63, CRF basic 27.92 and CRF improved 36.99 (validation).
-- **The CRF gain is mostly COMMA and QUESTION** (mode A F1, validation): COMMA 24.67 → 51.71,
-  QUESTION 15.54 → 29.45, PERIOD 69.42 → 72.39 (HMM → CRF improved).
-- **Casing is easier than punctuation** (mode C, masked casing F1, validation): HMM 84.31,
-  CRF improved 87.32.
-- **Ablations** (validation, 50k-sequence training sample): removing word pairs, the ±2
-  window or the question cues costs points in modes A and B; clause, casing and position cues
-  have small effects of mixed sign ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §5).
-
-**Test, primary ID lists, HMM and shortcut only** ([EVALUATION_RESULTS.md](docs/EVALUATION_RESULTS.md) §1):
-
-| Mode | Shortcut | HMM |
-| --- | --- | --- |
-| A | 27.48 (25.55–29.38) | 35.12 (32.80–37.31) |
-| B | 11.87 (11.02–12.68) | 16.79 (15.28–18.49) |
-| C | 18.09 (17.34–18.76) | 37.41 (34.56–40.71) |
-
-**CRF test results are pending:** the frozen CRF models have not yet predicted test and
-test_amb. The validation numbers above select models; they are not final test results.
+- **The improved CRF beats the HMM** by +14.80 (A), +6.03 (B) and +9.61 (C) points on test. It beats the basic CRF by +6.27, +2.57 and +3.17, and the basic CRF beats the HMM by +8.53, +3.46 and +6.43. All nine paired intervals exclude 0, and the ranking holds on test_amb.
+- **The HMM mostly learns the end-of-utterance shortcut.**
+  - The shortcut alone reaches PERIOD F1 66.68 in mode A, against the HMM's 67.34 (test).
+  - Without each utterance's final token, mode A scores HMM 9.13, CRF basic 28.30 and CRF improved 36.40 (test).
+- **The CRF gain is mostly COMMA and QUESTION** (mode A test F1, HMM → CRF improved): COMMA 26.28 → 52.52, QUESTION 11.75 → 26.23, PERIOD 67.34 → 71.02.
+- **Threshold decoding** adds +0.51 / +0.41 / +0.70 on test, mostly through comma recall. The B interval includes 0.
+- **The filler-word cue has no detectable effect** on validation: every interval includes 0.
+- **Leakage inflates lexical models.** On test utterances from videos in the training set, the improved CRF scores 67.09 against 49.50 on the leak-free test, while the HMM scores 33.54 against 34.74. See [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §8.
+- **Casing** (mode C, masked casing F1, test): HMM 79.81, CRF improved 85.09.
+- **Ablations** (validation, 50k-sequence training sample, [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §6):
+  - Removing word pairs, the ±2 window or the question cues costs points in modes A and B.
+  - Clause, casing and position cues have small effects of mixed sign.
 
 ## Quickstart
 
@@ -204,7 +195,7 @@ Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM
 | `docs/MODEL_CONTRACT.md` | Model inputs, prediction records and manifests. |
 | `docs/EVALUATION_PROTOCOL.md` | Metrics, views, masks, bootstrap and known gold issues. |
 | `docs/EVALUATION_RESULTS.md` | HMM and shortcut results (validation, test, test_amb). |
-| `docs/EVALUATION_RESULTS_CRF.md` | CRF results and ablations (validation). |
+| `docs/EVALUATION_RESULTS_CRF.md` | CRF test results, validation selection, ablations, threshold decoding, filler cue, leakage, runtime. |
 | `docs/CRF_EXPERIMENTS.md` | The six CRF runs: features, settings, hashes, commands. |
 | `docs/RELATED_WORK.md` | Prior work, checked online, and how RECAP differs. |
 | `docs/REPRODUCIBILITY.md` | Every command, with the environments actually used. |

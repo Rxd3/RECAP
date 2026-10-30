@@ -2,7 +2,7 @@
 
 **Module:** `src/punct_restore/features/crf_features.py`
 **Test Suite:** `tests/test_crf_features.py` (23 passed)
-**Status:** The feature code, both presets included, was written by Member 3 (Omar) in commit `aa232be` and used for the six full-data CRF models ([CRF_EXPERIMENTS.md](../docs/CRF_EXPERIMENTS.md)). Member 4's branch `feat/m4-feature-engineering` has no commits beyond the project scaffold ([contributions](../contributions/Mohamed_STUDENT_ID_GITHUB.md)). The feature ablations were run on **validation only** by Member 5: [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md) §5. `scripts/run_ablations.py` reruns them.
+**Status:** The feature code, both presets included, was written by Member 3 (Omar) in commit `aa232be` and used for the six full-data CRF models ([CRF_EXPERIMENTS.md](../docs/CRF_EXPERIMENTS.md)). Member 4's branch `feat/m4-feature-engineering` has no commits beyond the project scaffold ([contributions](../contributions/Mohamed_STUDENT_ID_GITHUB.md)). The feature ablations were run on **validation only** by Member 5: [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md) §6. `scripts/run_ablations.py` reruns them.
 
 ---
 
@@ -88,7 +88,7 @@ The additive plan `ABL-01`–`ABL-07` (basic plus one group at a time) was not r
 - Each variant trained on a fixed 50,000-sequence `default_train` sample (seed 2026), with one fit per row.
 - Every variant was scored on the primary validation lists.
 
-Change in primary macro F1 when the group is removed (without − with, points; * = paired 95% interval excludes 0). Source: [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md) §5.
+Change in primary macro F1 when the group is removed (without − with, points; * = paired 95% interval excludes 0). Source: [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md) §6.
 
 | Removed group | A | B | C (joint) |
 | :--- | ---: | ---: | ---: |
