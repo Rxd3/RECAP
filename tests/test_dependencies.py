@@ -20,6 +20,8 @@ IMPORT_TO_DISTRIBUTION = {
     "joblib": "joblib",
     "sklearn_crfsuite": "sklearn-crfsuite",
     "pycrfsuite": "python-crfsuite",
+    "torch": "torch",
+    "transformers": "transformers",
 }
 PROJECT_PACKAGE = "punct_restore"
 
@@ -125,6 +127,10 @@ def test_requirements_lock_pins_what_the_pickled_crf_models_load_through() -> No
 
 def test_every_third_party_import_is_declared() -> None:
     declared = {_distribution(re.match(r"[A-Za-z0-9._-]+", spec)[0]) for spec in _pyproject_pins()["runtime"]}
+    # Optional neural imports remain declared without making torch a base dependency.
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    declared.update(_distribution(spec.partition("==")[0])
+                    for spec in project["optional-dependencies"].get("neural", []))
     imports = _third_party(_top_level_imports(_shipped_files()), _first_party_names())
     assert imports, "the import scan found nothing, so it cannot be trusted"
     unmapped = sorted(name for name in imports if name not in IMPORT_TO_DISTRIBUTION)

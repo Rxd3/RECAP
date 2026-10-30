@@ -227,6 +227,9 @@ Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM
 | `scripts/verify_hmm_experiments.py` | HMM | Audits an HMM study: recounts scores, refits the winners and compares predictions. |
 | `scripts/package_hmm_handoff.py` | HMM | Packages a verified HMM study as a checksummed ZIP. |
 | `scripts/train_crf.py` | CRF | `train` fits a CRF (basic or improved features); `predict` writes predictions, and the prediction manifest with `--manifest-out`; `inspect` prints artifact metadata. |
+| `scripts/train_neural_tagger.py` | Neural comparison | `train` selects BERT checkpoints on validation; `predict` exports frozen word labels and manifests. Requires the optional `neural` extra; see [commands](docs/REPRODUCIBILITY.md#11-neural-comparisons). |
+| `scripts/train_seq2seq.py` | Neural comparison | `train` selects T5 rewriting checkpoints on validation; `predict` aligns generated words back to input labels and exports manifests. |
+| `scripts/package_neural_handoff.py` | Neural handoff | Verifies all 18 prediction pairs with the official scorer and bootstrap 1000; creates a ZIP with SHA256SUMS. |
 | `scripts/run_ablations.py` | CRF | Trains the feature-group ablations and writes their validation predictions (never reads test). |
 | `scripts/tune_threshold.py` | CRF | Threshold decoding: `tune` picks τ on validation, `predict` applies the frozen τ. |
 | `scripts/evaluate_models.py` | Evaluation | `score`, `compare` (paired), `errors` and `baseline` (the shortcut). |

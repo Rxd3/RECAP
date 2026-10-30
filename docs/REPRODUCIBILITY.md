@@ -302,3 +302,94 @@ exits 1 with one `error:` line.
 
 A saved model does not prove its own training provenance; never update a checksum to hide a
 mismatch.
+
+## 11. Neural comparisons
+
+These optional comparisons leave the classical models and evaluator unchanged. See
+[NEURAL_NOTES.md](../experiments/NEURAL_NOTES.md) for current delivery status, alignment,
+selection and measurement details. No neural result is claimed until its run completes.
+Use a separate environment; existing dependencies retain their pins:
+
+```powershell
+python -m venv .venv-neural
+.venv-neural/Scripts/Activate.ps1
+# CUDA 12.8 build supports the RTX 5070; verify the GPU before starting.
+python -m pip install torch==2.9.1 --index-url https://download.pytorch.org/whl/cu128
+python -m pip install -e ".[dev,neural]"
+python -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+python -m pytest -q
+```
+
+For CPU-only, download-free verification, omit the CUDA installation and install
+`.[dev,neural]` from PyPI. Also run the full suite in a fresh `.[dev]` environment
+without torch: optional tensor tests skip, while alignment/protocol tests still run.
+
+Download and verify `sponspeech-m1-v2-handoff.zip` from the `dataset/` link above,
+then unpack it as [data/README.md](../data/README.md#getting-the-release-from-google-drive)
+describes. The following loop reads only training and validation. It searches both
+BERT LRs (2e-5, 5e-5), and epochs 1–3 for both families, using T5 LR 1e-4:
+
+```powershell
+$neuralProcessed = "data/processed/sponspeech-m1-v2"
+$neuralSplits = "data/splits/sponspeech-m1-v2"
+foreach ($neuralMode in @("A", "B", "C")) {
+  foreach ($neuralFamily in @("bert_tagger", "t5_seq2seq")) {
+    $neuralScript = if ($neuralFamily -eq "bert_tagger") { "scripts/train_neural_tagger.py" } else { "scripts/train_seq2seq.py" }
+    $neuralRun = "experiments/runs/neural/${neuralFamily}_${neuralMode}"
+    $neuralMaskArgs = if ($neuralMode -eq "C") { @("--masks", "$neuralProcessed/masks/case_joint/validation.jsonl") } else { @() }
+    python $neuralScript train --mode $neuralMode `
+      --input "$neuralProcessed/mode_$neuralMode/train.jsonl" `
+      --ids "$neuralSplits/default_train/mode_$neuralMode.ids" `
+      --validation-input "$neuralProcessed/mode_$neuralMode/validation.jsonl" `
+      --validation-ids "$neuralSplits/primary_eval/validation_mode_$neuralMode.ids" `
+      --output $neuralRun --manifest-out "$neuralRun/training.manifest.json" `
+      --selection-out "$neuralRun/selection.json" --run-id "${neuralFamily}_${neuralMode}" `
+      --epochs 3 --batch-size 4 --gradient-accumulation 4 @neuralMaskArgs
+    if ($LASTEXITCODE -ne 0) { throw "Neural training failed; inspect the retained run evidence" }
+  }
+}
+```
+
+All run directories must be new. Set `--pretrained t5-small` on the seq2seq command
+only if memory is short, and record that fallback in a fresh run. Batch size,
+accumulation, LR (T5: 1e-4 or 3e-4) and beams (1 or 4) must be fixed using validation.
+Never change them using test feedback. BERT uses fp16 on CUDA; T5 uses bf16 when
+available and otherwise float32. No automatic memory fallback changes the experiment.
+
+Each completed run writes candidate artifacts/predictions/scores, the frozen
+`selection.json`, final `validation.jsonl` and `validation.manifest.json`, a
+bootstrap-1000 validation score, and a training manifest including the median of
+three validation timing passes after warm-up. It appends the full selection and
+runtime record to `experiments/NEURAL_NOTES.md`; commit those real records before
+opening held-out splits. The notes currently state which work remains pending.
+
+After all six selections are frozen and recorded, predict each held-out split once:
+
+```powershell
+foreach ($neuralMode in @("A", "B", "C")) {
+  foreach ($neuralFamily in @("bert_tagger", "t5_seq2seq")) {
+    $neuralScript = if ($neuralFamily -eq "bert_tagger") { "scripts/train_neural_tagger.py" } else { "scripts/train_seq2seq.py" }
+    $neuralRun = "experiments/runs/neural/${neuralFamily}_${neuralMode}"
+    $neuralSelection = Get-Content "$neuralRun/selection.json" -Raw | ConvertFrom-Json
+    $neuralModel = "$neuralRun/$($neuralSelection.selected.artifact)"
+    foreach ($neuralSplit in @("test", "test_amb")) {
+      python $neuralScript predict --model $neuralModel --selection "$neuralRun/selection.json" `
+        --input "$neuralProcessed/mode_$neuralMode/$neuralSplit.jsonl" `
+        --ids "$neuralSplits/primary_eval/${neuralSplit}_mode_$neuralMode.ids" `
+        --output "$neuralRun/$neuralSplit.jsonl" `
+        --manifest-out "$neuralRun/$neuralSplit.manifest.json" --batch-size 4
+      if ($LASTEXITCODE -ne 0) { throw "Neural prediction failed; inspect the receipt before continuing" }
+    }
+  }
+}
+python scripts/package_neural_handoff.py --run-root experiments/runs/neural `
+  --output artifacts/neural/neural-predictions.zip
+```
+
+Held-out inference writes exclusive attempt receipts to prevent accidental repeats.
+The package command validates all six freeze records, scores all 18 pairs using
+`evaluate_models.py score --manifest ... --bootstrap 1000` (with split-specific C
+masks), and writes the 36 prediction/manifest files plus `SHA256SUMS` to the ZIP.
+It keeps score JSON/Markdown beside the ZIP; all are ignored by Git. Upload the ZIP
+to team Drive `Models/` and send its link to Abd Raouf (Member 5). Data, weights
+and predictions must never be committed.
