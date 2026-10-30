@@ -14,14 +14,15 @@ read and write files, and report errors as one line on stderr. Full command sequ
 | `verify_hmm_experiments.py` | Member 2 | HMM | Independent audit of a study: score recounts, refits of the winners, prediction comparison. |
 | `package_hmm_handoff.py` | Member 2 | HMM | Packages a verified study as a ZIP with internal and outer SHA-256 sums. |
 | `train_crf.py` | Member 3 | CRF | `train` fits a linear-chain CRF (`--preset basic` or `improved`) on an explicit `--ids` list and writes a `.joblib` model and manifest. `predict` writes prediction JSONL and, with `--manifest-out`, the prediction manifest. `inspect` prints an artifact's metadata. |
-| `run_ablations.py` | Team (final push) | CRF | Trains the improved CRF with one feature group removed (or the filler cue added) on a training sample and scores each variant on primary validation only. |
+| `run_ablations.py` | Team (final push) | CRF | Trains the improved CRF with one feature group removed (or the filler cue added) on a training sample and writes each variant's primary-validation predictions; score them with `evaluate_models.py`. Never reads test. |
 | `tune_threshold.py` | Team (final push) | CRF | Threshold decoding of CRF marginals: `tune` picks τ on validation, `predict` applies the frozen τ once. |
 | `evaluate_models.py` | Member 5 | Evaluation | `score` one prediction file, `compare` two on the same IDs (paired bootstrap), `errors` (confusion pairs and examples), `baseline` (the end-of-utterance shortcut). |
-| `run_demo.py` | Member 6 | Demo | Loads a saved HMM (`.json`) or CRF (`.joblib`) and prints the restored text for one input. |
+| `run_demo.py` | Member 6 | Demo | Loads a saved HMM (`.json`) or CRF (`.joblib`, `.pkl`) through `src/punct_restore/pipeline.py` and prints the restored text; without `--text` it prompts interactively. |
 
 ## Interfaces
 
-Flags below are the ones each script accepts; check `--help` for defaults.
+Flags below are the ones each script accepts (checked with `--help`; see it for defaults).
+`train_crf.py` needs the package installed (`python -m pip install -e .`).
 
 ```text
 prepare_data.py extract --raw-root RAW [--archive sponspeech.tar.gz]
@@ -43,11 +44,12 @@ train_crf.py train --mode {A,B,C} --input JSONL --ids IDS --output MODEL.joblib
     [--run-id ID] [--manifest-out PATH] [--overwrite]
 train_crf.py predict --model MODEL.joblib --input JSONL --output PRED.jsonl [--ids IDS]
     [--manifest-out PATH] [--overwrite]
-train_crf.py inspect ...            (see train_crf.py inspect --help)
+train_crf.py inspect --model MODEL.joblib
 run_ablations.py --mode {A,B,C} --out DIR [--sample 50000] [--variants V1,V2,...]
+    [--data-root data] [--release sponspeech-m1-v2]
     variants: improved, improved_minus_{window2,ngrams,question,clause,casing,position},
               improved_plus_filler
-tune_threshold.py tune --model M --gold G --ids I [--masks K] --grid 0.05:0.95:0.05 --out tau.json
+tune_threshold.py tune --model M --gold G --ids I [--masks K] [--grid 0.05:0.95:0.05] --out tau.json
 tune_threshold.py predict --model M --input JSONL --ids I --tau-file tau.json --out PRED --manifest-out MAN
 
 evaluate_models.py score --gold JSONL --ids IDS --predictions PRED [--masks K] --out REPORT.json
@@ -58,7 +60,7 @@ evaluate_models.py errors --gold JSONL --ids IDS --predictions PRED [--masks K] 
     [--block NAME] [--per-pair K] [--seed S]
 evaluate_models.py baseline --gold JSONL --ids IDS --out PRED.jsonl
 
-run_demo.py --model-path MODEL --text "some lowercased text"
+run_demo.py --model-path MODEL [--text "some lowercased text"]
 ```
 
 `--masks` is required in mode C (`masks/case_joint/<split>.jsonl`). `run_demo.py` exits 1

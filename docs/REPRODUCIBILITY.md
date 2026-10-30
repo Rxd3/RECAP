@@ -149,7 +149,8 @@ python scripts/evaluate_models.py errors --gold <gold> --ids <ids> --predictions
 ## 7. Ablations and threshold decoding (validation only)
 
 ```text
-python scripts/run_ablations.py --mode A --out experiments/runs/ablations_A --sample 50000
+python scripts/run_ablations.py --mode A --out experiments/runs/ablations_A --sample 50000 \
+    --data-root data --release sponspeech-m1-v2
 python scripts/tune_threshold.py tune --model <model>.joblib --gold <processed>/mode_A/validation.jsonl \
     --ids <splits>/primary_eval/validation_mode_A.ids --grid 0.05:0.95:0.05 --out tau_A.json
 python scripts/tune_threshold.py predict --model <model>.joblib --input <processed>/mode_A/test.jsonl \
@@ -159,6 +160,9 @@ python scripts/tune_threshold.py predict --model <model>.joblib --input <process
 
 `run_ablations.py` takes `--variants` to run a subset (`improved`,
 `improved_minus_{window2,ngrams,question,clause,casing,position}`, `improved_plus_filler`).
+`--data-root` (default `data`) and `--release` (default `sponspeech-m1-v2`) locate the release.
+It writes `DIR/mode_X/sample.ids` and one `DIR/mode_X/<variant>/validation.jsonl` per variant and
+never reads test; score each file with `evaluate_models.py score` (section 6).
 Mode C `tune` also takes `--masks <processed>/masks/case_joint/validation.jsonl`. τ is chosen on
 validation; test is predicted once with the frozen τ.
 
@@ -167,6 +171,9 @@ validation; test is predicted once with the frozen τ.
 ```text
 python scripts/run_demo.py --model-path <model.json or model.joblib> --text "hello everyone welcome to our presentation"
 ```
+
+Without `--text`, the demo prompts for input. A missing or unsupported model, or unusable text,
+exits 1 with one `error:` line.
 
 ## Reproduction levels reached
 
