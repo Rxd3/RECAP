@@ -5,6 +5,7 @@ Every number comes from evaluator JSON (score / compare / errors) under the scor
 (default results/scores): the CRF files from R/crf_validation or R/crf_test (validation files are
 named m3_<preset>_<M>.json, test files m3_<preset>_<M>_test.json), the shortcut and HMM files from
 R/hmm, and with --tau the threshold files from R/threshold.
+OUT_MD must not exist: the script never replaces a file.
 """
 
 from __future__ import annotations
@@ -12,11 +13,12 @@ from __future__ import annotations
 import argparse
 import sys
 from collections.abc import Callable, Sequence
+from decimal import Decimal
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _cli import run
-from build_tables import MODES, PRIMARY, cell, diff_cell, load, pct
+from _cli import check_out, run, write_new_text
+from build_tables import MODES, PRIMARY, cell, diff_cell, half_up, load, pct
 
 ROOT = Path(__file__).resolve().parents[2]
 SPLITS = {"validation": "", "test": "_test"}
@@ -70,7 +72,8 @@ def sec_paired(scores: Path, split: str, tau: Path | None = None) -> list[str]:
     for mode in MODES:
         for stem, label, folder in rows:
             b = load(folder / f"{stem}_{mode}{sfx}.json")["blocks"]
-            out.append(f"| {mode} | {label} | {diff_cell(b[PRIMARY[mode]])} | {diff_cell(b['punctuation/non_final'])} |")
+            primary, non_final = diff_cell(b[PRIMARY[mode]]), diff_cell(b["punctuation/non_final"])
+            out.append(f"| {mode} | {label} | {primary} | {non_final} |")
     return out + [""]
 
 
@@ -118,8 +121,12 @@ def sec_errors(scores: Path, split: str) -> list[str]:
     out = [f"## Most frequent errors, M3 improved ({split}, punctuation labels; mode C projected to punctuation)", "",
            "| Mode | Errors | Top pairs (count, share) |", "|---|---|---|"]
     for mode in MODES:
-        e = load(scores / f"m3_improved_{mode}{sfx}.errors.json")
-        top = "; ".join(f"{p['gold']}→{p['pred']} {p['count']:,} ({100 * p['count'] / e['errors_total']:.0f}%)"
+        name = f"m3_improved_{mode}{sfx}.errors.json"
+        e = load(scores / name)
+        total = e["errors_total"]
+        if total <= 0:
+            raise ValueError(f"{name}: errors_total must be positive")
+        top = "; ".join(f"{p['gold']}→{p['pred']} {p['count']:,} ({half_up(Decimal(100 * p['count']) / total)}%)"
                         for p in e["pair_counts"][:5])
         out.append(f"| {mode} | {e['errors_total']:,} | {top} |")
     return out + [""]
@@ -150,11 +157,12 @@ def sec_confusion(ms: Models, split: str) -> list[str]:
 
 
 def build(root: Path, out_md: Path, split: str = "validation", tau: bool = False) -> None:
+    check_out(out_md)  # before reading anything
     scores, tau_dir = root / CRF_DIRS[split], (root / "threshold" if tau else None)
     ms = models(scores, root / "hmm", split, tau_dir)
     body = sec_main(ms, split) + sec_paired(scores, split, tau_dir) + sec_views(ms, split) + sec_classes(ms, split)
     body += sec_errors(scores, split) + sec_confusion(ms, split)
-    out_md.write_text("\n".join(body), encoding="utf-8")
+    write_new_text(out_md, "\n".join(body))
     print(f"wrote {out_md}")
 
 
@@ -164,7 +172,7 @@ def build_parser() -> argparse.ArgumentParser:
                         help="folder holding hmm/, crf_validation/, crf_test/ and threshold/")
     parser.add_argument("--split", choices=tuple(SPLITS), default="validation")
     parser.add_argument("--tau", action="store_true", help="add the threshold-decoding rows (needs R/threshold)")
-    parser.add_argument("--out", type=Path, required=True, help="Markdown file to write")
+    parser.add_argument("--out", type=Path, required=True, help="Markdown file to create (must not exist)")
     return parser
 
 

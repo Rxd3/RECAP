@@ -1,8 +1,8 @@
 """Ablation table from the evaluator's compare files (full improved CRF vs one group removed, validation).
 
 Usage: python scripts/reporting/build_ablation_table.py [--scores-root R] --out OUT_MD [--setup TEXT]
-Reads R/ablations/mode_<M>/ (default R: results/scores). Groups are read from the improved_minus_<group>.json
-files present, in a fixed order when known.
+Reads R/ablations/mode_<M>/ (default R: results/scores); OUT_MD must not exist. Groups are read from the
+improved_minus_<group>.json files present, in a fixed order when known.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _cli import run
+from _cli import check_out, run, write_new_text
 from build_tables import MODES, PRIMARY, cell, diff_cell, load
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -41,13 +41,14 @@ def mode_lines(scores: Path, mode: str) -> list[str]:
 
 
 def build(root: Path, out_md: Path, setup: str = DEFAULT_SETUP) -> None:
+    check_out(out_md)  # before reading anything
     lines = [f"## Feature ablations (validation; {setup})", "",
              ("Each row removes one feature group from the improved CRF. Difference = without − with, in points "
               "(95% paired CI, grouped bootstrap by video, 1,000 resamples, seed 2026; * = interval excludes 0). "
               "Negative means the group helps."), ""]
     for mode in MODES:
         lines += mode_lines(root / "ablations" / f"mode_{mode}", mode)
-    out_md.write_text("\n".join(lines), encoding="utf-8")
+    write_new_text(out_md, "\n".join(lines))
     print(f"wrote {out_md}")
 
 
@@ -55,7 +56,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Write the feature-ablation table as Markdown.")
     parser.add_argument("--scores-root", type=Path, default=ROOT / "results" / "scores",
                         help="folder holding ablations/mode_A, mode_B and mode_C")
-    parser.add_argument("--out", type=Path, required=True, help="Markdown file to write")
+    parser.add_argument("--out", type=Path, required=True, help="Markdown file to create (must not exist)")
     parser.add_argument("--setup", default=DEFAULT_SETUP, help="setup text for the table heading")
     return parser
 
