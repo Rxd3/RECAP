@@ -152,10 +152,10 @@ with canonical mode A scores. Keep clean, real-ASR and synthetic-noise results
 separate. ASR insertions and deletions need a declared alignment policy.
 
 **Known gold issues in the v2 primary lists** (from Member 5's data check; nothing is relabelled):
-- **Leftover speaker labels.** About 50 primary validation records keep a speaker label. Most are in videos `fusAJwee7ws` and `gMcBTwru5go`. One example is `SPEAKER 1:`, which gives 26 false COLON labels, 6.1% of mode B validation COLON support. Read validation COLON scores with this in mind.
+- **Leftover speaker labels.** The speaker-label rule of `scripts/find_gold_noise.py` flags 134 validation, 22 test and 63 test_amb primary mode B records (one example is `SPEAKER 1:`). Speaker-label COLONs are 144 of 425 gold COLONs on validation (33.88%), 23 of 166 on test (13.86%) and 76 of 273 on test_amb (27.84%), and 319 of 3,385 (9.42%) in `default_train`. Read COLON scores as an upper bound ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §12).
 - **Subtitle cue numbers** (for example `sponspeech:test:nSVl92jJbwk-116`) appear as tokens with gold DASH, and some symbols are dropped from the model input without a flag.
 - **Two auto-caption-style videos** miss commas and sentence ends in their gold: `732fql_jhJQ` (135 validation records) and `JNxcznsrRb8` (46 test records).
-- **Source transcripts** contain errors in about 1% of records. Treat a capital after O as possible gold noise when reading confusion matrices.
+- **Source transcripts:** an informal, unmeasured estimate puts errors in about 1% of records; no method for it is committed. Treat a capital after O as possible gold noise when reading confusion matrices.
 - **`QUESTION|ALL_UPPER`** has only 18, 9 and 15 primary tokens (validation, test, test_amb). Always give its support and the bootstrap interval, and never rank mode C models on a joint difference smaller than that interval.
 
 ## Efficiency, uncertainty and error analysis

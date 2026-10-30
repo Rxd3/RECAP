@@ -147,12 +147,14 @@ records with their masks are in `data/sample/`.
 
 From [EVALUATION_PROTOCOL.md](EVALUATION_PROTOCOL.md), Known gold issues; nothing is relabelled:
 
-- about 50 primary validation records keep a speaker label (for example `SPEAKER 1:`), giving 26
-  false COLON labels, 6.1% of mode B validation COLON support;
+- leftover speaker labels (for example `SPEAKER 1:`): the speaker-label rule of `scripts/find_gold_noise.py`
+  flags 134 validation, 22 test and 63 test_amb primary mode B records. Speaker-label COLONs are 144 / 425 (33.88%) of the validation
+  COLONs, 23 / 166 on test, 76 / 273 on test_amb and 319 / 3,385 (9.42%) in `default_train`, so COLON scores are
+  an upper bound ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §12);
 - subtitle cue numbers appear as tokens with gold DASH;
 - two auto-caption-style videos miss commas and sentence ends in their gold (135 validation and
   46 test records);
-- about 1% of source transcripts contain errors;
+- about 1% of source transcripts contain errors: an informal, unmeasured estimate (no method for it is committed);
 - `QUESTION|ALL_UPPER` has only 18, 9 and 15 primary tokens (validation, test, test_amb).
 
 ## Limitations

@@ -244,6 +244,9 @@ Counts of wrong positions per (gold → predicted) pair; share = share of that m
 
 ## 6. Sequence-level errors (mode A, test)
 
+Source: `scripts/reporting/length_position.py` → `results/scores/hmm/length_position_A_test.json`, which
+reproduces every number in this section.
+
 Micro F1 (%) over COMMA/PERIOD/QUESTION by utterance length in tokens.
 
 | Length | Sequences | shortcut | HMM |
@@ -296,10 +299,10 @@ Hardware: Intel64 Family 6 Model 158 Stepping 10, GenuineIntel, Python 3.13.1, o
 
 - **QUESTION|ALL_UPPER** has only 9 test tokens, so it can move mode C's 12-class macro by about 2.8 points. Never rank mode C models on a joint difference smaller than its interval.
 - **Gold noise** affects the rare classes:
-  - leftover speaker labels give 26 false COLON labels in validation;
+  - leftover speaker labels give 144 of the 425 validation COLONs (23 of 166 on test), so COLON scores are an upper bound ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §12);
   - subtitle cue numbers carry gold DASH;
   - one auto-caption-style test video (`JNxcznsrRb8`) lacks commas and sentence ends;
-  - about 1% of source transcripts contain errors.
+  - about 1% of source transcripts contain errors (an informal, unmeasured estimate).
 - **Channels overlap** across the original splits (149 of 522). Grouping by video does not guarantee independence from training.
 - **Intervals cover test-sample variance only.** There is one deterministic fit per setting.
 - **Runtime** was measured on one laptop CPU, single process. Absolute times will differ on other machines; the ratios are what to compare.

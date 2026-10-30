@@ -363,6 +363,30 @@ The output folder (which must not exist) holds `mode_<A|B|C>/test.jsonl`, `test_
 remapped `masks/test.jsonl` and `summary.json` with the achieved WER and edit counts. Repeat with
 `--wer 0.05` and `--wer 0.15`.
 
+## 12. Gold noise, CRF convergence and length/position errors
+
+```bash
+mkdir -p experiments/runs results/predictions
+python scripts/find_gold_noise.py --mode B --out experiments/runs/gold_noise
+python scripts/reporting/crf_convergence.py --models <folder with the six CRF .joblib models> \
+    --out experiments/runs/crf_convergence.json
+python scripts/evaluate_models.py baseline --gold <processed>/mode_A/test.jsonl \
+    --ids <splits>/primary_eval/test_mode_A.ids --out results/predictions/shortcut_A_test.jsonl
+python scripts/reporting/length_position.py --gold <processed>/mode_A/test.jsonl \
+    --ids <splits>/primary_eval/test_mode_A.ids \
+    --predictions shortcut=results/predictions/shortcut_A_test.jsonl hmm=<HMM mode A test predictions.jsonl> \
+    --out experiments/runs/length_position_A_test.json
+```
+
+The HMM test predictions come from the finalize run in section 4.
+
+`find_gold_noise.py` writes `<split>_B_noisy.tsv` and `<split>_B_summary.json` for validation, test and
+test_amb, and `default_train_B_summary.json`; score each list without its noisy IDs with
+`evaluate_models.py score` ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §12).
+`crf_convergence.py` reads pickles: trusted `.joblib` files only. `tune_threshold.py tune` now records the
+split (`--split`, default the gold file's name without extension) and the sha256 of every input in its tau file; the committed
+tau files predate this.
+
 ## Reproduction levels reached
 
 1. **Recompute metrics from saved predictions.** Every reported table can be recomputed or checked

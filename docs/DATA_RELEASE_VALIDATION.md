@@ -68,6 +68,28 @@ The manifest records the Python version and exact checksums for every generated 
 Corrected subset counts/distributions and remaining source limitations are recorded
 in [DATASET_PLAN.md](DATASET_PLAN.md).
 
+## Gold-noise rules (2026-10-30)
+
+`scripts/find_gold_noise.py` (rules in `src/punct_restore/data/gold_noise.py`) flags three known sources of
+noise on the primary mode B lists:
+- leftover speaker labels (a name before ':' at the utterance start, after a sentence end, after ', ' or after a turn dash);
+- subtitle cue residue (block number and timestamp in the original text);
+- the two auto-caption-style videos `732fql_jhJQ` and `JNxcznsrRb8`.
+
+| Rule | Validation | Test | test_amb | `default_train` |
+|---|---|---|---|---|
+| Speaker label | 134 | 22 | 63 | 291 |
+| Cue residue | 1 | 8 | 0 | 4 |
+| Auto-caption video | 135 | 46 | 0 | 0 |
+| Records flagged (any rule) | 270 | 76 | 63 | 295 |
+| Speaker-label COLONs / all gold COLONs | 144 / 425 | 23 / 166 | 76 / 273 | 319 / 3,385 |
+
+Counts from `results/scores/gold_noise/*_B_summary.json`. They are an upper estimate: a few single-word
+headings such as "Disclaimer:" also match the speaker-label rule. The release was not changed: the flagged IDs are listed in
+`results/scores/gold_noise/*_B_noisy.tsv` and the effect on scores is in
+[EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §12. The rules are heuristics; a 100-record hand audit
+of them is in progress.
+
 ## Handoff
 
 - Local outputs: `data/processed/sponspeech-m1-v2/` and `data/splits/sponspeech-m1-v2/`.

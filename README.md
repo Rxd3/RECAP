@@ -79,8 +79,10 @@ improved-feature CRF above, in modes A, B and C. Member 3 wrote both CRF feature
   lists drop every utterance whose video appears in train or validation, plus exact and near
   duplicates. In the official test file, 4,716 of 17,695 utterances
   (26.7%) come from such videos ([DATASET_PLAN.md](docs/DATASET_PLAN.md)).
-- **A gold-noise audit.** Leftover speaker labels, subtitle cue numbers and auto-caption-style
-  videos are listed, not relabelled ([EVALUATION_PROTOCOL.md](docs/EVALUATION_PROTOCOL.md)).
+- **A gold-noise audit** (`scripts/find_gold_noise.py`). Leftover speaker labels, subtitle cue residue and
+  auto-caption-style videos are flagged, not relabelled. Speaker labels give about a third of the validation
+  COLONs (144 of 425), so the COLON scores are an upper bound
+  ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §12).
 
 **Our additions: analysis and methods:**
 
@@ -221,13 +223,14 @@ report `test` and `test_amb` separately (they share 25 videos).
 | --- | --- |
 | `results/scores/ablations/` | One-feature-group-removed ablations of the improved CRF, per mode, on validation (50k training sample); the gap classifier, question-lookback and factored runs on the same sample are in `results/scores/gap/`, `results/scores/question2/` and `results/scores/factored/` |
 | `results/scores/b_to_a/` | Mode B models projected to mode A (D5 mapping) vs their mode A twins, mode A validation gold |
+| `results/scores/crf_convergence/` | CRF training loss traces of the six delivered models: iterations, final loss, drop over the last 10 iterations |
 | `results/scores/crf_test/` | The six CRFs on test and test_amb, each predicted once; paired comparisons; error pairs |
 | `results/scores/crf_training_manifests/` | Member 3's six CRF training manifests: settings, data hashes, fit time, peak memory, environment |
 | `results/scores/crf_validation/` | The six CRFs on validation (model selection); paired comparisons; error pairs |
 | `results/scores/filler/` | Improved CRF with and without the filler-word cue, per mode, on validation |
-| `results/scores/gold_noise/` | Mode B rescored without the known noisy records, with the excluded ID lists and their rules |
+| `results/scores/gold_noise/` | Mode B rescored without the known noisy records; the flagged IDs and rules (`*_B_noisy.tsv`) and counts (`*_B_summary.json`, also for test_amb and `default_train`) from `scripts/find_gold_noise.py` |
 | `results/scores/h1_joint/` | Joint mode C vs punctuation-only mode A on the mode C validation IDs (H1) |
-| `results/scores/hmm/` | HMM and shortcut baseline on validation, test and test_amb; HMM error pairs |
+| `results/scores/hmm/` | HMM and shortcut baseline on validation, test and test_amb; HMM error pairs; `length_position_A_test.json` (mode A micro F1 by length and QUESTION recall by position) |
 | `results/scores/leakage/` | HMM and improved CRF on the official mode A test, split by exclusion cause |
 | `results/scores/per_class/` | Paired per-class F1 intervals behind hypotheses H2–H4 |
 | `results/scores/runtime/` | HMM and CRF prediction timing (median of 3 passes, same laptop) |
@@ -246,7 +249,7 @@ package initializer, `<folder>/__init__.py`):
 
 | Module | Role |
 | --- | --- |
-| `src/punct_restore/data/` | Member 1's data pipeline: `extraction` (raw transcripts from the official archive), `preprocessing` (loading, cleaning, tokenization), `labeling` (punctuation and casing labels), `splits` (split assignment and leakage audits), `release` (versioned release build and load), `validation` (checks against the data contract), `asr_noise` (simulated ASR word errors with labels and masks kept aligned). |
+| `src/punct_restore/data/` | Member 1's data pipeline: `extraction` (raw transcripts from the official archive), `preprocessing` (loading, cleaning, tokenization), `labeling` (punctuation and casing labels), `splits` (split assignment and leakage audits), `release` (versioned release build and load), `validation` (checks against the data contract), `asr_noise` (simulated ASR word errors with labels and masks kept aligned), `gold_noise` (rules that flag speaker labels, cue residue and auto-caption videos in the gold). |
 | `src/punct_restore/models/hmm.py` | Supervised HMM with Viterbi decoding. |
 | `src/punct_restore/models/hmm_workflow.py` | Validated file selection and provenance for the HMM commands. |
 | `src/punct_restore/models/crf.py` | Linear-chain CRF: fit, predict, marginals, save and load. |
@@ -286,10 +289,13 @@ Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM
 | `scripts/factor_predictions.py` | Comparison | Combines mode A and CASE predictions into mode C predictions with a manifest (the factored casing pipeline). |
 | `scripts/simulate_asr_noise.py` | Robustness | Writes copies of the validation or test inputs with simulated ASR word errors at a target WER, labels and masks kept aligned. |
 | `scripts/build_leakage_subsets.py` | Study (leakage) | Splits an official evaluation file into kept and excluded ID lists by exclusion cause, for the leakage-cost analysis. |
+| `scripts/find_gold_noise.py` | Study (gold noise) | Flags speaker labels, subtitle cue residue and auto-caption videos on the primary mode B lists; writes the flagged IDs and summaries. |
 | `scripts/reporting/build_m3_tables.py` | Reporting | Rebuilds the CRF result tables for one split (main, paired, views, per class, errors, confusion) from `results/scores/`. |
 | `scripts/reporting/build_m3_final_sections.py` | Reporting | Rebuilds the threshold, leakage, test_amb and runtime sections from `results/scores/` and the training manifests. |
 | `scripts/reporting/build_ablation_table.py` | Reporting | Rebuilds the feature-ablation tables from `results/scores/ablations/`. |
 | `scripts/reporting/time_models.py` | Reporting | Times HMM or CRF prediction (and an HMM fit) with the protocol used in the runtime tables. |
+| `scripts/reporting/crf_convergence.py` | Reporting | Summarises the CRF training loss traces of trusted `.joblib` models (iterations, final loss, drop over the last 10 iterations). |
+| `scripts/reporting/length_position.py` | Reporting | Mode A micro F1 by utterance length and QUESTION recall by position, per model (EVALUATION_RESULTS.md §6). |
 | `scripts/reporting/build_tables.py` | Reporting | Helper module, not run directly: shared helpers for the table builders (half-up percentages, cells, JSON loading). |
 | `scripts/reporting/_cli.py` | Reporting | Helper module, not run directly: shared one-line error handling for the reporting scripts. |
 

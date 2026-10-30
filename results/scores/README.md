@@ -7,17 +7,19 @@ All files were written by `scripts/evaluate_models.py` (`score`, `compare`, `err
 - `runtime/` comes from the timing script;
 - `crf_training_manifests/*.manifest.json` come from `scripts/train_crf.py train` (Member 3);
 - `asr_noise/wer<rate>/summary.json` comes from `scripts/simulate_asr_noise.py`;
-- `gold_noise/*_B_noisy.tsv` (sample ID, exclusion rule) come from the gold-noise check that picked the excluded records.
+- `gold_noise/*_B_noisy.tsv` (sample ID, exclusion rule) and `gold_noise/*_B_summary.json` (counts, including test_amb and `default_train`) come from `scripts/find_gold_noise.py`;
+- `crf_convergence/convergence.json` comes from `scripts/reporting/crf_convergence.py`;
+- `hmm/length_position_A_test.json` comes from `scripts/reporting/length_position.py`.
 
 **Format:**
 - Scores are fractions with six decimals; the docs show them as percentages rounded half-up.
-- The score, compare and errors files record the sha256 of their gold, ID-list, mask and prediction inputs. `threshold/tau_<mode>.json` and `threshold_prior/tau_gamma_<mode>.json` record only `model_sha256`, and `runtime/*.json` only the model file name. The predictions themselves are not committed: they can be regenerated from the shared models (see [REPRODUCIBILITY.md](../../docs/REPRODUCIBILITY.md)).
+- The score, compare and errors files record the sha256 of their gold, ID-list, mask and prediction inputs. The committed `threshold/tau_<mode>.json` and `threshold_prior/tau_gamma_<mode>.json` record only `model_sha256` (they predate the change that makes `tune_threshold.py tune` also record the split and the input sha256 values), and `runtime/*.json` only the model file name. The predictions themselves are not committed: they can be regenerated from the shared models (see [REPRODUCIBILITY.md](../../docs/REPRODUCIBILITY.md)).
 - **Intentional copies:** `filler/mode_A/improved.json`, `filler/mode_B/improved.json`, `filler/mode_C/improved.json` and `factored/improved_C.json` are byte-identical to `ablations/mode_<M>/improved.json`, the shared 50k-sample baseline. They are kept so that each study folder stands alone.
 - **Data excerpts:** the `*.errors.json` files contain short SponSpeech excerpts as error examples (gold and predicted text around each error). They are CC BY-NC 4.0, with the upstream attribution in [DATA_LICENSE.md](../../docs/DATA_LICENSE.md).
 
 | Folder | Contents |
 |---|---|
-| `hmm/` | HMM and shortcut baseline scores on validation, test and test_amb; HMM error pairs |
+| `hmm/` | HMM and shortcut baseline scores on validation, test and test_amb; HMM error pairs; `length_position_A_test.json` (EVALUATION_RESULTS.md §6) |
 | `crf_validation/` | Member 3's six CRFs on validation (model selection); paired comparisons against the basic CRF and the HMM; error pairs |
 | `crf_test/` | The same six CRFs on test and test_amb, each predicted once; paired comparisons; error pairs |
 | `threshold/` | τ grids tuned on validation; threshold-decoded test and test_amb scores; paired comparisons against the plain improved CRF |
@@ -32,7 +34,8 @@ All files were written by `scripts/evaluate_models.py` (`score`, `compare`, `err
 | `b_to_a/` | Mode B models projected to mode A (D5 mapping) vs their mode A twins, mode A validation gold, with per-class intervals |
 | `per_class/` | Paired per-class F1 intervals (`compare --class`) behind hypotheses H2–H4 |
 | `sensitivity/` | Mode A CRF basic and improved retrained on the 50k sample at c1 = c2 ∈ {0.01, 0.1, 1.0} and 100 or 300 iterations, scored on validation |
-| `gold_noise/` | Mode B rescored without the known noisy records (speaker labels, subtitle cue numbers, two auto-caption videos), with the excluded ID lists and their rules |
+| `gold_noise/` | Mode B rescored without the known noisy records (speaker labels, subtitle cue numbers, two auto-caption videos), with the excluded ID lists and their rules and the finder's counts per split |
+| `crf_convergence/` | Loss traces of the six delivered CRFs: iterations, final loss, relative drop over the last 10 iterations |
 | `asr_noise/wer<rate>/` | Frozen HMM and CRFs on test inputs with simulated ASR-style word errors (5/10/15% WER), with the corruption summary |
 | `leakage/` | HMM and improved CRF on the official mode A test, split by leakage-control status and exclusion reason; native SponSpeech labels |
 | `runtime/` | HMM and CRF prediction timing (median of 3 passes, same laptop) |
