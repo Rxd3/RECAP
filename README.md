@@ -2,187 +2,227 @@
 
 **Restoring English Casing and Punctuation**
 
-**COE025 — Natural Language Processing | Group Project 2 — Sequence Labeling**
+COE025 Natural Language Processing, Group Project 2: sequence labeling.
+Repository: [github.com/Rxd3/RECAP](https://github.com/Rxd3/RECAP) (public).
+Code licence: [MIT](LICENSE). Data licence: SponSpeech, CC BY-NC 4.0 ([DATA_LICENSE.md](docs/DATA_LICENSE.md)).
 
-**Status:** Member 1's corrected SponSpeech pipeline and Member 2's trained HMM
-baseline are verified. Use release `sponspeech-m1-v2` (policy `m1-v2`);
-see [release validation](docs/DATA_RELEASE_VALIDATION.md). All 27 validation
-candidates, three selected models and final HMM results passed independent
-verification; see [HMM results](experiments/HMM_RESULTS.md). CRF, the shared
-evaluation implementation and the integrated demo develop on their member branches.
+RECAP restores punctuation and capitalization in lowercased, unpunctuated English text.
+Every token gets a label for the punctuation mark that follows it and, in mode C, a casing
+label for the token itself. We compare three models on the same data and splits:
 
-## Overview
+1. a hidden Markov model with Viterbi decoding (baseline);
+2. a linear-chain CRF with basic features;
+3. the same CRF with improved features, plus one-group-out feature ablations.
 
-Restore punctuation and capitalization in unformatted English text, including a
-future evaluation on speech-recognition transcripts. Each word receives a label
-for the punctuation boundary **after** it and a casing label for the word itself.
+The data are the reference transcripts of SponSpeech, informal podcast-style English speech
+from YouTube. RECAP uses the transcripts only. It does not use audio and was not evaluated
+on speech-recognition (ASR) output.
 
-Repository: [Rxd3/RECAP](https://github.com/Rxd3/RECAP) (public).
+## Task
 
-Project 1, [NALTRA](https://github.com/Rxd3/NALTRA/), classified whole documents.
-Project 2 predicts aligned token sequences in a separate repository. We retain
-its `src/` layout, YAML configuration, script entry points, common evaluation
-contracts, ownership documentation, and pull-request workflow. See the
-[reference review](docs/REFERENCE_REVIEW.md) for what was inspected.
-
-## Illustrative task
-
-Input:
+Input (model view: lowercased tokens, no punctuation):
 
 ```text
 hello everyone welcome to our presentation today we will discuss natural language processing
 ```
 
-Target:
+Target (illustrative, not a model prediction):
 
 ```text
 Hello everyone, welcome to our presentation. Today we will discuss natural language processing.
 ```
 
-This is an illustrative target, not a model prediction. Punctuation-only modes
-do not themselves predict capitalization; the full example requires casing.
-
-## Label configurations
-
 | Mode | Target | Labels |
 | --- | --- | --- |
 | A | Standard punctuation | O, COMMA, PERIOD, QUESTION (4) |
-| B | Extended punctuation | Mode A plus EXCLAMATION, COLON, SEMICOLON, DASH (8) |
-| C | Joint standard punctuation and casing | Mode A × LOWER, FIRST_UPPER, ALL_UPPER (12) |
+| B | Extended punctuation | mode A plus EXCLAMATION, COLON, SEMICOLON, DASH (8) |
+| C | Joint punctuation and casing | mode A × LOWER, FIRST_UPPER, ALL_UPPER (4 × 3 = 12) |
 
-Mode C uses **4 × 3 = 12**, never 8 × 3. Its label form is
-`PERIOD|FIRST_UPPER`: punctuation after this word, casing of this word.
-[Label configuration](configs/label_sets.yaml) is the vocabulary source of truth;
-[data rules](docs/DATA_CONTRACT.md) define alignment and approved projections.
-Decisions D1–D6 are recorded in [decisions](docs/DECISIONS.md).
+A mode C label reads `PERIOD|FIRST_UPPER`: the mark after this word, and the casing of this
+word. Modes A and B predict no casing. [configs/label_sets.yaml](configs/label_sets.yaml) is
+the source of truth for the vocabularies; [DATA_CONTRACT.md](docs/DATA_CONTRACT.md) defines the
+record format and alignment.
 
-## Dataset
+## What is new
 
-SponSpeech is the approved source: 206,632 original utterances, with 206,584
-retained in each annotation view and 48 rejected with documented reasons.
-Only transcripts are used. The fixed source revision, CC BY-NC 4.0 attribution,
-cleaning rules and known source overlap are recorded in the
-[dataset plan](docs/DATASET_PLAN.md) and [storage guide](data/README.md).
+**Data** (built by us from the SponSpeech transcripts):
 
-Train on the mode's `default_train/*.ids` selection and evaluate on
-`primary_eval/*.ids`. Full official files contain unresolved examples and source
-overlap; the training CLI must explicitly apply the ID lists. Report `test` and
-`test_amb` separately. Version 2 supersedes the earlier version 1 Drive handoff.
+- **Three label views of the same tokens.** Upstream SponSpeech scores three marks (full stop,
+  comma, question mark). We add an 8-class extended view (mode B), a 3-way casing label with
+  per-position masks for approximate casing, and a 12-class joint view (mode C).
+- **One documented projection.** Mode A is the projection of mode B: EXCLAMATION and SEMICOLON
+  become PERIOD, COLON and DASH become COMMA ([DECISIONS.md](docs/DECISIONS.md), D5).
+- **Leak-free primary splits.** The official splits share source videos. Our primary
+  validation lists drop every utterance whose video also appears in train, and our primary test
+  lists every utterance whose video appears in train or validation, plus exact and near
+  duplicates. In the official test file, 4,716 of 17,695 utterances
+  (26.7%) come from such videos ([DATASET_PLAN.md](docs/DATASET_PLAN.md)).
+- **A gold-noise audit.** Leftover speaker labels, subtitle cue numbers and auto-caption-style
+  videos are listed, not relabelled ([EVALUATION_PROTOCOL.md](docs/EVALUATION_PROTOCOL.md)).
 
-## Models and evaluation
+**Task and method:**
 
-1. HMM with Viterbi decoding: trained, validation-selected and evaluated in A/B/C.
-2. Linear-chain CRF with basic features: main model.
-3. The same CRF with improved features: controlled improvement and ablations.
+- **Joint punctuation and casing** (mode C) in one sequence labeler, compared with
+  punctuation-only training on identical sequences.
+- **The end-of-utterance shortcut, measured.** Every utterance ends in PERIOD or QUESTION, so
+  we report a rule-based shortcut baseline and a `non_final` view that drops each
+  utterance's last token.
+- **Grouped bootstrap by video** for every 95% interval, and paired intervals for every model
+  comparison.
+- **Feature ablations** on validation only, one feature group at a time.
+- **Team extensions, tuned on validation only** (results pending): threshold decoding of the
+  CRF marginals (`scripts/tune_threshold.py`) and a filler-word cue (`improved_plus_filler` in
+  `scripts/run_ablations.py`).
 
-Future architectures such as BiLSTM-CRF may implement the same
-[model contract](docs/MODEL_CONTRACT.md); neural work is outside this scaffold.
-All models will use the same versioned records and fixed splits.
+## Key findings
 
-Primary reporting will include non-O punctuation macro F1, per-class precision,
-recall and F1, confusion matrices, class support, and latency. Accuracy is
-secondary. Mode C also requires joint and projected punctuation/casing scores.
-Modes B and C have different tasks; compare only justified compatible targets.
-Validation selects settings; test data is reserved for final reporting. The
-[evaluation protocol](docs/EVALUATION_PROTOCOL.md) specifies denominators and
-zero-division policy. [HMM results](experiments/HMM_RESULTS.md) include actual
-primary scores, position diagnostics, confusion counts, class support and runtime.
-The study uses Member 5's pinned scorer directly from its separate checkout;
-the evaluator on this branch remains a placeholder.
+Every number names its split. Primary metric: macro F1 % over the non-O punctuation classes
+(A, B), or over all 12 joint classes on unmasked positions (C). Intervals: 95%, grouped
+bootstrap by video, 1,000 resamples. Modes B and C are different tasks; never rank one against
+the other.
 
-## Repository structure
+**Validation, primary ID lists** ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §1):
 
-```text
-configs/                 Label vocabularies, source planning, experiment template
-data/{raw,processed,splits}/  Local data and frozen split manifests (ignored)
-src/punct_restore/
-  data/                  Member 1: implemented source extraction, labels and release validation
-  models/                Member 2: implemented HMM; Member 3: CRF placeholder
-  features/              Member 4: shared CRF feature interface
-  evaluation/            Member 5: scoring and analysis placeholders
-  demo/                  Member 6: inference demonstration placeholder
-  pipeline.py            Member 6: integration placeholder
-scripts/                 Working preparation and HMM train/predict/study/verification/handoff commands
-experiments/             HMM results, model notes and reproducible run instructions
-results/{predictions,tables,figures}/  Empty output locations
-artifacts/               Ignored data and HMM handoff bundles
-tests/                   Data contract/release regressions and HMM/CLI tests
-docs/                    Scope, contracts, decisions, workflow, reproduction
-presentation/assets/    Presentation outline and future evidence
-```
+| Mode | Shortcut | HMM | CRF basic | CRF improved |
+| --- | --- | --- | --- | --- |
+| A | 28.21 | 36.54 (34.80–38.01) | 44.54 (42.80–45.90) | **51.18** (49.60–52.49) |
+| B | 12.14 | 18.47 (16.32–21.35) | 22.22 (19.79–24.98) | **25.10** (23.08–27.68) |
+| C | 18.53 | 40.89 (38.72–42.93) | 47.72 (45.73–49.72) | **51.52** (49.14–53.56) |
 
-## Team responsibilities
+- **The improved CRF beats the HMM** by +14.64 (A), +6.63 (B) and +10.64 (C) points, and the
+  basic CRF by +6.64, +2.88 and +3.80 (validation). All nine paired intervals exclude 0.
+- **The HMM mostly learns the end-of-utterance shortcut.** The shortcut alone reaches PERIOD
+  F1 68.80 in mode A, against the HMM's 69.42. Without each utterance's final token, mode A
+  scores HMM 8.63, CRF basic 27.92 and CRF improved 36.99 (validation).
+- **The CRF gain is mostly COMMA and QUESTION** (mode A F1, validation): COMMA 24.67 → 51.71,
+  QUESTION 15.54 → 29.45, PERIOD 69.42 → 72.39 (HMM → CRF improved).
+- **Casing is easier than punctuation** (mode C, masked casing F1, validation): HMM 84.31,
+  CRF improved 87.32.
+- **Ablations** (validation, 50k-sequence training sample): removing word pairs, the ±2
+  window or the question cues costs points in modes A and B; clause, casing and position cues
+  have small effects of mixed sign ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §5).
 
-| Member | Responsibility | Branch |
+**Test, primary ID lists, HMM and shortcut only** ([EVALUATION_RESULTS.md](docs/EVALUATION_RESULTS.md) §1):
+
+| Mode | Shortcut | HMM |
 | --- | --- | --- |
-| 1 | Dataset and preprocessing | `feat/m1-data-preprocessing` |
-| 2 | HMM baseline | `feat/m2-hmm-baseline` |
-| 3 | CRF main model | `feat/m3-crf-model` |
-| 4 | Feature engineering and improvement | `feat/m4-feature-engineering` |
-| 5 | Evaluation and error analysis | `feat/m5-evaluation` |
-| 6 | Integration, reproducibility and presentation | `feat/m6-integration-presentation` |
+| A | 27.48 (25.55–29.38) | 35.12 (32.80–37.31) |
+| B | 11.87 (11.02–12.68) | 16.79 (15.28–18.49) |
+| C | 18.09 (17.34–18.76) | 37.41 (34.56–40.71) |
 
-[TEAM_TASKS.md](TEAM_TASKS.md) is the detailed board, including deliverables,
-dependencies, acceptance criteria, shared milestones, and handoffs.
+**CRF test results are pending:** the frozen CRF models have not yet predicted test and
+test_amb. The validation numbers above select models; they are not final test results.
 
-## Installation and environment preparation
+## Quickstart
 
-Use Python 3.11+ from the repository root. The corrected data release was verified
-with Python 3.13.5 and PyYAML 6.0.3. Record model experiment environments separately.
+Python 3.11 or newer, run from the repository root. Versions actually used are recorded in
+[REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md).
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+.\.venv\Scripts\Activate.ps1          # macOS/Linux: source .venv/bin/activate
 python -m pip install -e ".[dev]"
+python -m pytest -q
 ```
 
-On macOS/Linux activate with `source .venv/bin/activate`. Alternatively,
-`python -m pip install -r requirements.txt` installs the same development extra.
-The data pipeline requires PyYAML; the development extra adds pytest.
-NumPy, pandas, scikit-learn,
-sklearn-crfsuite, Datasets, and matplotlib are candidates to review when needed.
-PyTorch is a future extension only. No GPU framework or pretrained model is
-required. [Reproducibility notes](docs/REPRODUCIBILITY.md) describe future locking.
+The tests use small fixtures and download nothing. With a trained model (an HMM `.json` or a
+CRF `.joblib`), restore one sentence:
 
-`python scripts/prepare_data.py --help` describes source extraction and release
-building. See [data/README.md](data/README.md) for the exact commands and required
-provenance package. `python -m pytest -q` runs the data tests using tiny local
-fixtures without downloading SponSpeech. The HMM core and CLI also have fixture
-tests; inspect `python scripts/train_hmm.py --help` and
-[HMM notes](experiments/HMM_NOTES.md). Training requires `--train-ids`, and
-`--release-manifest` verifies the official release. The
-[HMM runbook](experiments/HMM_RUNBOOK.md) covers validation selection, saved-model
-inference and independent reproduction. Other scripts develop on their member
-branches. [Initial verification](docs/INITIAL_VERIFICATION.md) is historical;
-[release validation](docs/DATA_RELEASE_VALIDATION.md) records current data checks.
+```powershell
+python scripts/run_demo.py --model-path <model.json or model.joblib> --text "hello everyone welcome to our presentation"
+```
 
-## Git collaboration
+Every command, from rebuilding the data to scoring a model, is in
+[REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md).
 
-Use `main` for reviewed integration and each member's branch for development.
-All six member branches were created from the same scaffolding commit. Open focused PRs
-into `main`; discuss shared interface changes with affected owners first.
-Never force-push another member's work. The Project 2 remote is
-`https://github.com/Rxd3/RECAP.git`; `main` and all six member branches are
-published there. Team members need collaborator access to push their branches.
+## Data access
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the daily checklist and
-[Git workflow](docs/GIT_WORKFLOW.md) for clone, branch, commit, push, PR, and
-conflict commands using the Project 2 remote.
+- **Upstream:** SponSpeech (Liu & Beigi, 2024, [arXiv:2409.11241](https://arxiv.org/abs/2409.11241)),
+  CC BY-NC 4.0. No data is committed to this repository.
+- **Rebuild from source:** `scripts/prepare_data.py` with `extract` reads only about 97 MB of pinned
+  byte ranges from the official archive; `build` creates release `sponspeech-m1-v2`. Steps
+  and checksums: [data/README.md](data/README.md).
+- **Team copy:** releases are shared in the team's Google Drive folder
+  [RECAP -NLP2](https://drive.google.com/drive/folders/1ZKDNnRHXsLJf3UjOdKVgQ0bYpo12IQfH?usp=sharing),
+  with SHA-256 sums ([data/README.md](data/README.md)).
+- **Preprocessing:** normalization, label and casing rules, masks and split construction are in
+  [DATASET_PLAN.md](docs/DATASET_PLAN.md) and [DATA_CONTRACT.md](docs/DATA_CONTRACT.md); the
+  release checks are in [DATA_RELEASE_VALIDATION.md](docs/DATA_RELEASE_VALIDATION.md).
 
-## Roadmap and current status
+Train on `default_train/mode_<X>.ids`, select on `primary_eval/validation_mode_<X>.ids`, and
+report `test` and `test_amb` separately (they share 25 videos).
 
-- [x] Create package structure, configuration templates, ownership and contracts.
-- [x] Prepare independent local Git history and six member branches.
-- [x] Agree D1–D6 annotation policies, source configuration, and data projections.
-- [x] Implement reproducible data releases and immutable split manifests.
-- [x] Implement the HMM core, training/export CLI and synthetic tests.
-- [x] Train/evaluate the HMM baseline with validation-only selection and independent reproduction.
-- [ ] Implement and evaluate the basic CRF.
-- [ ] Implement improved CRF features and controlled ablations.
-- [ ] Evaluate frozen settings on held-out data; analyze errors and runtime.
-- [ ] Integrate inference, rehearse the demo, and prepare evidence-based slides.
+## Folder and script map
 
-HMM evidence is recorded in [HMM results](experiments/HMM_RESULTS.md); other model
-results and team deadlines remain pending.
-Record seeds, source revisions, preprocessing versions, split hashes, code
-commits, environments, and commands for every future run.
+| Path | What it holds |
+| --- | --- |
+| `artifacts/` | Ignored local model and data bundles (handoff ZIPs). Only `artifacts/README.md` is tracked. |
+| `configs/` | `configs/label_sets.yaml` (label vocabularies), `configs/datasets.yaml` (source checklist), `configs/hmm_sponspeech_v2.yaml` (frozen HMM search), `configs/experiment.example.yaml` (run template). |
+| `contributions/` | One file per team member: role, branch, pull request, commits and files. |
+| `data/` | Ignored local data: `data/raw/`, `data/processed/`, `data/splits/`. `data/README.md` explains how to rebuild or download a release. |
+| `docs/` | Contracts, dataset documentation, decisions, evaluation protocol and results; listed below. |
+| `experiments/` | Model notes and runbooks: `experiments/HMM_NOTES.md`, `experiments/HMM_RUNBOOK.md`, `experiments/HMM_RESULTS.md`, `experiments/CRF_NOTES.md`, `experiments/FEATURE_NOTES.md`. Run outputs go to the ignored `experiments/runs/`. |
+| `presentation/` | Presentation workspace; the outline is `docs/PRESENTATION_OUTLINE.md`. |
+| `results/` | Ignored evaluator outputs: `results/predictions/`, `results/tables/`, `results/figures/`. |
+| `scripts/` | Command-line entry points; see the table below and `scripts/README.md`. |
+| `src/punct_restore/` | The package: `src/punct_restore/data/` (extraction, labeling, preprocessing, release, splits, validation), `src/punct_restore/models/` (`src/punct_restore/models/hmm.py`, `src/punct_restore/models/hmm_workflow.py`, `src/punct_restore/models/crf.py`), `src/punct_restore/features/crf_features.py`, `src/punct_restore/evaluation/` (metrics, views, bootstrap, comparison, errors, reports) and `src/punct_restore/pipeline.py` (model loading for the demo). |
+| `tests/` | The pytest suite for data, models, features, CLIs and evaluation; fixtures only. |
+
+Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM_TASKS.md`
+(work board), `pyproject.toml` and `requirements.txt` (package and dependencies),
+`requirements-hmm.txt` (the pinned HMM reproduction environment), `.gitignore`, `.gitattributes`.
+
+**Scripts** (run from the repository root; each has `--help`):
+
+| Script | Stage | What it does |
+| --- | --- | --- |
+| `scripts/prepare_data.py` | Data | `extract` recreates the raw transcripts from pinned archive ranges; `build` writes a validated, immutable release. |
+| `scripts/train_hmm.py` | HMM | Trains the HMM on an explicit ID list; writes a JSON artifact, a run manifest and optional predictions. |
+| `scripts/predict_hmm.py` | HMM | Predicts with a saved HMM artifact, without training. |
+| `scripts/run_hmm_experiments.py` | HMM | `tune` runs the frozen validation search; `finalize` predicts and scores the selected models. |
+| `scripts/verify_hmm_experiments.py` | HMM | Audits an HMM study: recounts scores, refits the winners and compares predictions. |
+| `scripts/package_hmm_handoff.py` | HMM | Packages a verified HMM study as a checksummed ZIP. |
+| `scripts/train_crf.py` | CRF | `train` fits a CRF (basic or improved features); `predict` writes predictions and a manifest; `inspect` prints artifact metadata. |
+| `scripts/run_ablations.py` | CRF | Trains and scores the feature-group ablations on validation only. |
+| `scripts/tune_threshold.py` | CRF | Threshold decoding: `tune` picks τ on validation, `predict` applies the frozen τ. |
+| `scripts/evaluate_models.py` | Evaluation | `score`, `compare` (paired), `errors` and `baseline` (the shortcut). |
+| `scripts/run_demo.py` | Demo | Restores punctuation and casing for one text with a saved HMM or CRF. |
+
+**Docs:**
+
+| File | Content |
+| --- | --- |
+| `docs/PROJECT_SCOPE.md`, `docs/ARCHITECTURE.md` | Scope, components and ownership. |
+| `docs/DATASET_PLAN.md` | Source, annotation policy, released counts and limitations (preprocessing). |
+| `docs/DATA_CONTRACT.md` | Record schema, alignment and approved projections. |
+| `docs/DATA_RELEASE_VALIDATION.md` | Checks and fingerprints of release `sponspeech-m1-v2`. |
+| `docs/DATA_LICENSE.md` | SponSpeech licence and the upstream attribution text. |
+| `docs/DECISIONS.md` | Approved data decisions D1–D6 and the open questions D7–D12. |
+| `docs/MODEL_CONTRACT.md` | Model inputs, prediction records and manifests. |
+| `docs/EVALUATION_PROTOCOL.md` | Metrics, views, masks, bootstrap and known gold issues. |
+| `docs/EVALUATION_RESULTS.md` | HMM and shortcut results (validation, test, test_amb). |
+| `docs/EVALUATION_RESULTS_CRF.md` | CRF results and ablations (validation). |
+| `docs/CRF_EXPERIMENTS.md` | The six CRF runs: features, settings, hashes, commands. |
+| `docs/REPRODUCIBILITY.md` | Every command, with the environments actually used. |
+| `docs/PRESENTATION_OUTLINE.md` | Four-slide outline with verified numbers. |
+| `docs/GIT_WORKFLOW.md`, `docs/MEMBER2_COMPLETION.md`, `docs/INITIAL_VERIFICATION.md`, `docs/REFERENCE_REVIEW.md` | Git workflow, the HMM completion audit, and historical setup records. |
+
+## Team
+
+| Member | Role | Branch | Contribution file |
+| --- | --- | --- | --- |
+| 1 Mutasim | Dataset and preprocessing | `feat/m1-data-preprocessing` | `contributions/Mutasim_STUDENT_ID_Sam-Ali23.md` |
+| 2 Raşit (lead) | HMM baseline | `feat/m2-hmm-baseline` | `contributions/Rasit_STUDENT_ID_Rxd3.md` |
+| 3 Omar | CRF model and improved features | `feat/m3-crf-model` | `contributions/Omar_STUDENT_ID_Devinci101.md` |
+| 4 Mohamed | Feature engineering | `feat/m4-feature-engineering` | `contributions/Mohamed_STUDENT_ID_GITHUB.md` |
+| 5 Abd Raouf | Evaluation and error analysis | `feat/m5-evaluation` | `contributions/AbdRaouf_STUDENT_ID_afel6.md` |
+| 6 Abdulla | Integration and presentation | `feat/m6-integration-presentation` | `contributions/Abdulla_STUDENT_ID_abdu3061.md` |
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) for the
+branch and pull-request workflow.
+
+## Licence
+
+Code and documentation: MIT ([LICENSE](LICENSE)). SponSpeech data and anything derived from
+it: CC BY-NC 4.0, non-commercial use only, with the upstream attribution
+([DATA_LICENSE.md](docs/DATA_LICENSE.md)).

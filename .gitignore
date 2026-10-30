@@ -29,6 +29,7 @@ secrets/
 *.local.yaml
 
 # Local downloads, processed data, split outputs and model artifacts
+drive-download-*/
 /data/raw/**
 /data/processed/**
 /data/splits/**

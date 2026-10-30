@@ -1,47 +1,184 @@
-# Reproducibility & Environment Guide
+# Reproducibility guide
 
-Owner: Member 6, with all producing members. Member 2's HMM training/export
-command is implemented and documented in [HMM notes](../experiments/HMM_NOTES.md).
-Its full SponSpeech v2 study passed score recounts, independent full-data refits
-and exact prediction reproduction; see [HMM results](../experiments/HMM_RESULTS.md)
-and the [HMM runbook](../experiments/HMM_RUNBOOK.md). Other task commands remain
-unfinished on this branch; the integrated workflow below is still a plan.
+Every command below comes from the owning member's runbook: [data/README.md](../data/README.md),
+[HMM_RUNBOOK.md](../experiments/HMM_RUNBOOK.md), [CRF_EXPERIMENTS.md](CRF_EXPERIMENTS.md) and
+[EVALUATION_PROTOCOL.md](EVALUATION_PROTOCOL.md), plus the final-push CLIs
+(`scripts/run_ablations.py`, `scripts/tune_threshold.py`, `scripts/run_demo.py`). Run everything
+from the repository root. Each script prints its full options with `--help`; see also
+[scripts/README.md](../scripts/README.md).
 
-## Environment Specification
-- **Python**: 3.11+
-- **Setup**: `pip install -e ".[dev]"`
-- **Hardware Target**: CPU
+## Environments actually used
 
-## Reproduction Steps
+| Stage | Python | Key packages | Source |
+| --- | --- | --- | --- |
+| Data release `sponspeech-m1-v2` | CPython 3.13.5, Windows | PyYAML 6.0.3 | [DATA_RELEASE_VALIDATION.md](DATA_RELEASE_VALIDATION.md), [DECISIONS.md](DECISIONS.md) |
+| HMM study and verification | CPython 3.13.5 | PyYAML 6.0.3 (`requirements-hmm.txt`) | [HMM_RESULTS.md](../experiments/HMM_RESULTS.md), [HMM_RUNBOOK.md](../experiments/HMM_RUNBOOK.md) |
+| CRF full-data runs (Member 3) | 3.15.2, as recorded in the delivered training manifests | python-crfsuite 0.9.12, sklearn-crfsuite 0.5.0, joblib 1.6.0 | [CRF_NOTES.md](../experiments/CRF_NOTES.md) §1, [CRF_EXPERIMENTS.md](CRF_EXPERIMENTS.md) §2 |
+| Scoring and runtime measurement (Member 5) | 3.13.1 | evaluator at the commits named in each report | [EVALUATION_RESULTS.md](EVALUATION_RESULTS.md) §7 |
 
-Member 6 will coordinate remaining flags and integration commands as adapters
-arrive. Data preparation and HMM train/predict/search/verification/packaging
-commands are implemented. The HMM study uses the pinned Member 5 evaluator in
-a separate checkout. Do not infer other working command-line arguments from filenames.
+No GPU or pretrained model is needed. `python -m pip install -e ".[dev]"` installs the package,
+its pinned runtime dependencies and pytest.
 
-HMM reproduction uses CPython 3.13.5 and the pinned PyYAML in
-`requirements-hmm.txt`; all three reproduction levels below passed in an isolated
-environment. Add only needed packages in reviewed implementation PRs and capture
-a tested environment for each model. `requirements.txt` currently
-installs the development extra; it is not a lock or a claim of a tested model
-environment. Avoid adding GPU packages for the planned classical models.
+## 1. Environment and tests
 
-## Reproduction levels
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev]"
+python -m pytest -q
+```
 
-1. Recalculate metrics from an existing verified gold/prediction bundle.
-2. Rerun inference using matching artifacts, feature code and input processing.
-3. Retrain using matching data, configuration, seed and recorded environment.
+On macOS/Linux, activate with `source .venv/bin/activate`. The tests use small fixtures and
+download nothing.
 
-Document which levels actually work; a saved estimator does not prove original
-training provenance. Never update a checksum merely to conceal incompatible data.
+## 2. Data
 
-## Member 6 integration acceptance
+Rebuild release `sponspeech-m1-v2` from the official archive. First unpack the provenance
+package (raw manifest and title snapshot) into the raw root, as [data/README.md](../data/README.md)
+describes.
 
-- [ ] Load one shared input sequence through each selected model adapter.
-- [ ] Check mode, label order, feature/preprocessing versions and artifact metadata.
-- [ ] Strip all gold/privileged metadata from prediction inputs.
-- [ ] Reject incompatible or unfitted models with an actionable error.
-- [ ] Export common prediction records and pass Member 5's alignment checks.
-- [ ] Demonstrate approved punctuation/casing decoding; explain A/B casing limits.
-- [ ] Reproduce one tiny end-to-end run in a clean environment using documented commands.
-- [ ] Preserve measured evidence for the presentation and list remaining limits.
+```bash
+python scripts/prepare_data.py extract --raw-root data/raw/sponspeech-gcs-generation-1716975130398953
+python scripts/prepare_data.py build --raw-root data/raw/sponspeech-gcs-generation-1716975130398953 \
+  --release-id sponspeech-m1-v2
+python -m pytest
+```
+
+Then compare `data/processed/<release>/SHA256SUMS` and `data/splits/<release>/SHA256SUMS` with
+the published copies. If the byte ranges can no longer be read, add `--archive <path>/sponspeech.tar.gz`
+to `extract` (the full 63.5 GB archive). To use the team's archive instead of rebuilding:
+
+```bash
+shasum -a 256 -c <id>.SHA256SUMS
+tar -xzf <id>-processed.tar.gz -C data/processed
+tar -xzf <id>-splits.tar.gz -C data/splits
+(cd data/processed/<id> && shasum -a 256 -c SHA256SUMS)
+(cd data/splits/<id> && shasum -a 256 -c SHA256SUMS)
+```
+
+The expected fingerprints are in [DATA_RELEASE_VALIDATION.md](DATA_RELEASE_VALIDATION.md).
+
+## 3. Shortcut baseline
+
+```text
+python scripts/evaluate_models.py baseline --gold <processed>/mode_A/validation.jsonl \
+    --ids <splits>/primary_eval/validation_mode_A.ids --out results/predictions/shortcut_A_validation.jsonl
+```
+
+`<processed>` is `data/processed/sponspeech-m1-v2` and `<splits>` is `data/splits/sponspeech-m1-v2`.
+
+## 4. HMM
+
+The HMM study uses Member 5's evaluator pinned in a separate checkout:
+
+```powershell
+python -m venv tmp/hmm-env
+tmp/hmm-env/Scripts/python.exe -m pip install -r requirements-hmm.txt
+git fetch origin feat/m5-evaluation
+git worktree add --detach tmp/member2-evaluation-3044a58 3044a58e777200bcac64e6e3364922404be359bf
+```
+
+Tune on validation, finalize on test, verify, then package:
+
+```powershell
+tmp/hmm-env/Scripts/python.exe scripts/run_hmm_experiments.py tune --config configs/hmm_sponspeech_v2.yaml --output-dir experiments/runs/hmm-sponspeech-v2-20261029 --evaluator-root tmp/member2-evaluation-3044a58
+tmp/hmm-env/Scripts/python.exe scripts/run_hmm_experiments.py finalize --run-dir experiments/runs/hmm-sponspeech-v2-20261029 --evaluator-root tmp/member2-evaluation-3044a58
+tmp/hmm-env/Scripts/python.exe scripts/verify_hmm_experiments.py --run-dir experiments/runs/hmm-sponspeech-v2-20261029 --evaluator-root tmp/member2-evaluation-3044a58 --output-dir experiments/runs/hmm-sponspeech-v2-20261029/verification
+tmp/hmm-env/Scripts/python.exe scripts/package_hmm_handoff.py --run-dir experiments/runs/hmm-sponspeech-v2-20261029 --evaluator-root tmp/member2-evaluation-3044a58 --output-dir artifacts/hmm/hmm-sponspeech-v2-20261029
+```
+
+Output directories must be new; the completed study is never overwritten. On Linux/macOS use
+`tmp/hmm-env/bin/python`.
+
+## 5. CRF
+
+Train one model (repeat for each mode and preset; the six runs and their hashes are in
+[CRF_EXPERIMENTS.md](CRF_EXPERIMENTS.md) §7):
+
+```powershell
+.\.venv\Scripts\python.exe scripts/train_crf.py train `
+  --mode <A|B|C> `
+  --input data/processed/sponspeech-m1-v2/mode_<A|B|C>/train.jsonl `
+  --ids data/splits/sponspeech-m1-v2/default_train/mode_<A|C>.ids `
+  --output experiments/runs/<run_dir>/<run_id>.joblib `
+  --manifest-out experiments/runs/<run_dir>/<run_id>.manifest.json `
+  --preset <basic|improved> `
+  --algorithm lbfgs `
+  --c1 0.1 --c2 0.1 --max-iterations 100 `
+  --run-id <run_id> `
+  --dataset-release sponspeech-m1-v2 `
+  --policy-version m1-v2
+```
+
+Predict the primary validation list with the prediction manifest:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/train_crf.py predict `
+  --model experiments/runs/<run_dir>/<run_id>.joblib `
+  --input data/processed/sponspeech-m1-v2/mode_<A|B|C>/validation.jsonl `
+  --ids data/splits/sponspeech-m1-v2/primary_eval/validation_mode_<A|C>.ids `
+  --output experiments/runs/<run_dir>/<run_id>_val_predictions.jsonl `
+  --manifest-out experiments/runs/<run_dir>/<run_id>_val_predictions.manifest.json
+```
+
+Test and test_amb use the same command, run once per frozen model: `--input .../test.jsonl`
+with `--ids .../primary_eval/test_mode_<X>.ids`, and `--input .../test_amb.jsonl` with
+`--ids .../primary_eval/test_amb_mode_<X>.ids`.
+
+## 6. Scoring
+
+```text
+python scripts/evaluate_models.py score --gold <processed>/mode_C/validation.jsonl \
+    --ids <splits>/primary_eval/validation_mode_C.ids --predictions <model predictions>.jsonl \
+    --masks <processed>/masks/case_joint/validation.jsonl --out results/tables/<run_id>.json
+```
+
+Modes A and B take the same command without `--masks`. Add `--bootstrap 1000` for the 95%
+intervals (seed 2026 by default) and `--manifest <predictions>.manifest.json` to check the
+prediction manifest. Paired comparisons and error examples:
+
+```text
+python scripts/evaluate_models.py compare --gold <gold> --ids <ids> --out <report>.json \
+    --predictions-a <A>.jsonl --predictions-b <B>.jsonl --bootstrap 1000
+python scripts/evaluate_models.py errors --gold <gold> --ids <ids> --predictions <pred>.jsonl \
+    --out <report>.json --per-pair 5
+```
+
+`score` never overwrites an output and never creates folders.
+
+## 7. Ablations and threshold decoding (validation only)
+
+```text
+python scripts/run_ablations.py --mode A --out experiments/runs/ablations_A --sample 50000
+python scripts/tune_threshold.py tune --model <model>.joblib --gold <processed>/mode_A/validation.jsonl \
+    --ids <splits>/primary_eval/validation_mode_A.ids --grid 0.05:0.95:0.05 --out tau_A.json
+python scripts/tune_threshold.py predict --model <model>.joblib --input <processed>/mode_A/test.jsonl \
+    --ids <splits>/primary_eval/test_mode_A.ids --tau-file tau_A.json \
+    --out <predictions>.jsonl --manifest-out <predictions>.manifest.json
+```
+
+`run_ablations.py` takes `--variants` to run a subset (`improved`,
+`improved_minus_{window2,ngrams,question,clause,casing,position}`, `improved_plus_filler`).
+Mode C `tune` also takes `--masks <processed>/masks/case_joint/validation.jsonl`. τ is chosen on
+validation; test is predicted once with the frozen τ.
+
+## 8. Demo
+
+```text
+python scripts/run_demo.py --model-path <model.json or model.joblib> --text "hello everyone welcome to our presentation"
+```
+
+## Reproduction levels reached
+
+1. **Recompute metrics from saved predictions.** HMM scores equal those in its own bundle, and an
+   independent from-scratch scorer gives identical CRF values ([EVALUATION_RESULTS.md](EVALUATION_RESULTS.md),
+   [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md)).
+2. **Rerun inference from saved models.** HMM: every full-split prediction was reproduced
+   ([HMM_RUNBOOK.md](../experiments/HMM_RUNBOOK.md)).
+3. **Retrain.** HMM: each selected model was refit and matched byte for byte. CRF: mode A basic was
+   retrained from commit `aa232be` and its predictions matched the delivered file byte for byte;
+   the improved models were not re-run (about 14.5 GB of memory each)
+   ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md), Provenance).
+
+A saved model does not prove its own training provenance; never update a checksum to hide a
+mismatch.
