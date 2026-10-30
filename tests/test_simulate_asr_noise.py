@@ -1,0 +1,423 @@
+"""Tests for scripts/simulate_asr_noise.py (the CLI) on a tiny synthetic data root; the edit model is in test_asr_noise.py."""
+
+from __future__ import annotations
+
+import argparse
+import errno
+import importlib.util
+import json
+import os
+import subprocess
+import sys
+from collections.abc import Callable, Iterator
+from pathlib import Path
+from types import ModuleType
+from typing import Any
+
+import pytest
+
+from punct_restore.data.asr_noise import Edits
+from punct_restore.evaluation import load_scored_gold, load_vocab
+
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPT = ROOT / "scripts" / "simulate_asr_noise.py"
+MODULE = ROOT / "src" / "punct_restore" / "data" / "asr_noise.py"
+RELEASE = "sponspeech-m1-v2"
+MODES = ("A", "B", "C")
+WORDS = ["the", "cat", "is", "on", "a", "mat", "their", "dog", "and", "you're",
+         "too", "fast", "then", "it", "ran", "to", "its", "home", "today", "now"]
+SAMPLES = 30
+LISTED_C = 28  # mode C lists fewer samples than A and B, as in the release
+DATA = {m: Path("processed", RELEASE, f"mode_{m}", "validation.jsonl") for m in MODES}
+MASKS = Path("processed", RELEASE, "masks", "case_joint", "validation.jsonl")
+IDS = {m: Path("splits", RELEASE, "primary_eval", f"validation_mode_{m}.ids") for m in MODES}
+
+
+@pytest.fixture(scope="module")
+def sim() -> Iterator[ModuleType]:
+    name = "simulate_asr_noise_under_test"
+    spec = importlib.util.spec_from_file_location(name, SCRIPT)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module  # dataclasses looks its module up here
+    spec.loader.exec_module(module)
+    yield module
+    del sys.modules[name]
+
+
+def make_sample(index: int, words: list[str] | None = None) -> dict[str, Any]:
+    tokens = words or WORDS[index % len(WORDS):] + WORDS[:index % len(WORDS)]
+    n = len(tokens)
+    punct_a = ["O"] * n
+    if n > 12:
+        punct_a[4] = punct_a[12] = "COMMA"
+    punct_a[-1] = "QUESTION" if index % 5 == 0 else "PERIOD"
+    punct_b = list(punct_a)
+    if index % 3 == 0 and n > 12:
+        punct_b[12] = "DASH"
+    if index % 7 == 0:
+        punct_b[-1] = "EXCLAMATION"
+    case = ["LOWER"] * n
+    case[0], case[5 % n] = "FIRST_UPPER", "ALL_UPPER"
+    return {"id": f"s{index:02d}", "tokens": tokens, "A": punct_a, "B": punct_b, "case": case}
+
+
+def row(sample: dict[str, Any], mode: str) -> dict[str, Any]:
+    n = len(sample["tokens"])
+    return {"sample_id": sample["id"], "label_mode": mode, "schema_version": 1, "source": "fx",
+            "split": "validation", "tokens": sample["tokens"],
+            "punct_labels": sample["B" if mode == "B" else "A"], "case_labels": sample["case"],
+            "metadata": {"group_id": "g", "policy_version": "m1-v2", "condition": "clean",
+                         "original_text": "kept as is", "offsets": [[k * 10, k * 10 + 5] for k in range(n)]}}
+
+
+def write_lines(path: Path, rows: list[Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes("".join(json.dumps(r, separators=(",", ":")) + "\n" for r in rows).encode())
+
+
+def write_root(root: Path, samples: list[dict[str, Any]], listed_c: int) -> Path:
+    """Data root with all three modes, ID lists (descending, unlike the file order) and masks.
+
+    The files hold two extra records (x00, x01) that no list names; masks cover every mode C record.
+    """
+    extras = [make_sample(i + 100) | {"id": f"x{i:02d}"} for i in range(2)]
+    everything = extras + samples
+    for mode in MODES:
+        write_lines(root / DATA[mode], [row(s, mode) for s in everything])
+        names = [s["id"] for s in (samples[:listed_c] if mode == "C" else samples)]
+        (root / IDS[mode]).parent.mkdir(parents=True, exist_ok=True)
+        (root / IDS[mode]).write_bytes(("\n".join(sorted(names, reverse=True)) + "\n").encode())
+    masks = [{"sample_id": s["id"], "excluded_positions": [3, 7, 15] if k % 2 == 0 else [],
+              "reason": "case_mixed_approximation" if k % 2 == 0 else None}
+             for k, s in enumerate(everything)]
+    write_lines(root / MASKS, masks)
+    return root
+
+
+@pytest.fixture
+def root(tmp_path: Path) -> Path:
+    return write_root(tmp_path / "data", [make_sample(i) for i in range(SAMPLES)], LISTED_C)
+
+
+def argv_for(root: Path, out: Path, wer: float = 0.10, *extra: str, seed: int = 2026) -> list[str]:
+    return ["--data-root", str(root), "--split", "validation", "--wer", str(wer),
+            "--seed", str(seed), "--out", str(out), *extra]
+
+
+def run(sim: ModuleType, capsys: pytest.CaptureFixture[str], argv: list[str]) -> tuple[int, str, str]:
+    code = sim.main(argv)
+    captured = capsys.readouterr()
+    return code, captured.out, captured.err
+
+
+def assert_one_error_line(err: str) -> None:
+    assert err.startswith("error: ") and err.endswith("\n") and err.count("\n") == 1, repr(err)
+    assert "Traceback" not in err and "\r" not in err, repr(err)
+
+
+def read_rows(path: Path) -> list[dict[str, Any]]:
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+
+
+def tree(path: Path) -> dict[str, bytes]:
+    return {p.relative_to(path).as_posix(): p.read_bytes() for p in sorted(path.rglob("*")) if p.is_file()}
+
+
+def produce(sim: ModuleType, capsys: pytest.CaptureFixture[str], root: Path, out: Path, wer: float = 0.10,
+            seed: int = 2026) -> dict[str, Any]:
+    code, _, err = run(sim, capsys, argv_for(root, out, wer, seed=seed))
+    assert code == 0, err
+    return json.loads((out / "summary.json").read_text(encoding="utf-8"))
+
+
+def listed_input(root: Path, mode: str) -> list[dict[str, Any]]:
+    listed = set((root / IDS[mode]).read_text().split())
+    return [r for r in read_rows(root / DATA[mode]) if r["sample_id"] in listed]
+
+
+def distance(a: list[str], b: list[str]) -> int:
+    previous = list(range(len(b) + 1))
+    for i, x in enumerate(a, 1):
+        current = [i]
+        for j, y in enumerate(b, 1):
+            current.append(min(previous[j] + 1, current[-1] + 1, previous[j - 1] + (x != y)))
+        previous = current
+    return previous[-1]
+
+
+@pytest.mark.parametrize("mode", MODES)
+def test_outputs_validate_with_the_evaluator(sim, capsys, root, tmp_path, mode):
+    out = tmp_path / "out"
+    produce(sim, capsys, root, out)
+    gold = out / f"mode_{mode}" / "validation.jsonl"
+    ids = out / f"validation_mode_{mode}.ids"
+    found_mode, records = load_scored_gold(gold, ids, load_vocab())
+    assert found_mode == mode and len(records) == len(listed_input(root, mode))
+    for rec in read_rows(gold):
+        n = len(rec["tokens"])
+        assert n >= 1 and len(rec["punct_labels"]) == n == len(rec["case_labels"])
+        assert len(rec["metadata"]["offsets"]) == n
+
+
+@pytest.mark.parametrize("mode", MODES)
+def test_listed_records_only_in_input_order_with_same_schema(sim, capsys, root, tmp_path, mode):
+    out = tmp_path / "out"
+    produce(sim, capsys, root, out)
+    before, after = listed_input(root, mode), read_rows(out / f"mode_{mode}" / "validation.jsonl")
+    assert [r["sample_id"] for r in after] == [r["sample_id"] for r in before]
+    assert all(list(a) == list(b) and list(a["metadata"]) == list(b["metadata"]) for a, b in zip(after, before))
+    assert all(a["metadata"]["original_text"] == "kept as is" for a in after)
+    assert b"\r" not in (out / f"mode_{mode}" / "validation.jsonl").read_bytes()
+    assert (out / f"validation_mode_{mode}.ids").read_bytes() == (root / IDS[mode]).read_bytes()
+
+
+def test_tokens_and_o_pattern_agree_across_modes(sim, capsys, root, tmp_path):
+    out = tmp_path / "out"
+    produce(sim, capsys, root, out)
+    by_mode = {m: {r["sample_id"]: r for r in read_rows(out / f"mode_{m}" / "validation.jsonl")} for m in MODES}
+    assert by_mode["A"].keys() == by_mode["B"].keys() and by_mode["C"].keys() <= by_mode["A"].keys()
+    for sid, c_rec in by_mode["C"].items():
+        a_rec, b_rec = by_mode["A"][sid], by_mode["B"][sid]
+        assert a_rec["tokens"] == b_rec["tokens"] == c_rec["tokens"]
+        assert a_rec["case_labels"] == b_rec["case_labels"] == c_rec["case_labels"]
+        pattern = [p == "O" for p in a_rec["punct_labels"]]
+        assert pattern == [p == "O" for p in b_rec["punct_labels"]] == [p == "O" for p in c_rec["punct_labels"]]
+        assert a_rec["punct_labels"] == c_rec["punct_labels"]
+
+
+@pytest.mark.parametrize("wer", [0.05, 0.10, 0.15])
+def test_achieved_cost_equals_the_rounded_budget(sim, capsys, root, tmp_path, wer):
+    out = tmp_path / "out"
+    summary = produce(sim, capsys, root, out, wer)
+    total = SAMPLES * len(WORDS)
+    edits = summary["edits"]
+    assert summary["tokens_before"] == total and summary["budget"] == round(wer * total)
+    assert edits["deletion"] + edits["substitution"] + 2 * edits["swap"] == summary["budget"]
+    assert summary["edit_cost"] == summary["budget"] and summary["achieved_wer"] == summary["budget"] / total
+    assert summary["wer"] == wer and summary["seed"] == 2026
+    assert summary["tokens_after"] == total - edits["deletion"]
+    before, after = listed_input(root, "A"), read_rows(out / "mode_A" / "validation.jsonl")
+    assert sum(len(r["tokens"]) for r in after) == summary["tokens_after"]
+    assert sum(distance(b["tokens"], a["tokens"]) for a, b in zip(after, before)) <= summary["edit_cost"]
+
+
+def test_not_enough_candidates_exits_one_with_one_line(sim, capsys, tmp_path):
+    root = write_root(tmp_path / "data", [make_sample(i, ["cat", "dog"]) for i in range(10)], 10)
+    out = tmp_path / "out"
+    code, stdout, err = run(sim, capsys, argv_for(root, out, 0.10))
+    assert code == 1 and stdout == ""
+    assert_one_error_line(err)
+    assert "not enough editable tokens for WER 0.1" in err
+    assert not out.exists() and [p.name for p in tmp_path.iterdir()] == ["data"]
+
+
+def test_same_seed_is_byte_identical_and_other_seed_differs(sim, capsys, root, tmp_path):
+    produce(sim, capsys, root, tmp_path / "one")
+    produce(sim, capsys, root, tmp_path / "two")
+    produce(sim, capsys, root, tmp_path / "other", seed=7)
+    assert tree(tmp_path / "one") == tree(tmp_path / "two")
+    assert tree(tmp_path / "one")["mode_A/validation.jsonl"] != tree(tmp_path / "other")["mode_A/validation.jsonl"]
+
+
+def test_summary_reports_the_cost_share_of_each_edit_type(sim, capsys, root, tmp_path):
+    summary = produce(sim, capsys, root, tmp_path / "out")  # budget 60 = 15 rounds
+    assert summary["edits"] == {"deletion": 15, "substitution": 15, "swap": 15}
+    assert summary["cost_share"] == {"deletion": 0.25, "substitution": 0.25, "swap": 0.5}
+
+
+def test_a_budget_that_rounds_to_zero_gives_zero_shares(sim, capsys, root, tmp_path):
+    summary = produce(sim, capsys, root, tmp_path / "out", wer=0.0001)  # round(0.0001 * 600) = 0
+    assert summary["edit_cost"] == 0 and summary["edits"] == {"deletion": 0, "substitution": 0, "swap": 0}
+    assert summary["cost_share"] == {"deletion": 0.0, "substitution": 0.0, "swap": 0.0}
+
+
+def test_written_masks_follow_the_tokens(sim, capsys, root, tmp_path):
+    out = tmp_path / "out"
+    produce(sim, capsys, root, out)
+    before = {r["sample_id"]: r for r in listed_input(root, "C")}
+    after = {r["sample_id"]: r for r in read_rows(out / "mode_C" / "validation.jsonl")}
+    masks = read_rows(out / "masks" / "validation.jsonl")
+    assert [m["sample_id"] for m in masks] == list(after)
+    for m in masks:
+        sid = m["sample_id"]
+        old, new = before[sid]["metadata"]["offsets"], after[sid]["metadata"]["offsets"]
+        kept = [old[p] for p in ([3, 7, 15] if int(sid[1:]) % 2 == 0 else []) if old[p] in new]
+        assert [new[p] for p in m["excluded_positions"]] == sorted(kept, key=new.index)
+        assert m["excluded_positions"] == sorted(m["excluded_positions"])
+
+
+def test_existing_out_is_refused_and_left_alone(sim, capsys, root, tmp_path):
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "keep.txt").write_text("x")
+    code, _, err = run(sim, capsys, argv_for(root, out))
+    assert code == 1 and "already exists" in err
+    assert_one_error_line(err)
+    assert [p.name for p in out.iterdir()] == ["keep.txt"]
+
+
+def test_a_write_failure_leaves_no_out_and_no_temp_folder(sim, capsys, root, tmp_path, monkeypatch):
+    def fail(path: Path, rows: Any) -> None:
+        raise OSError(errno.ENOSPC, "No space left on device", str(path))
+    monkeypatch.setattr(sim, "write_jsonl", fail)
+    out = tmp_path / "out"
+    code, _, err = run(sim, capsys, argv_for(root, out))
+    assert code == 1 and "No space left on device" in err and str(tmp_path) not in err
+    assert_one_error_line(err)
+    assert [p.name for p in tmp_path.iterdir()] == ["data"]
+
+
+def test_masks_override_and_missing_default(sim, capsys, root, tmp_path):
+    moved = tmp_path / "elsewhere" / "m.jsonl"
+    moved.parent.mkdir()
+    (root / MASKS).rename(moved)
+    code, _, err = run(sim, capsys, argv_for(root, tmp_path / "fail"))
+    assert code == 1 and "validation.jsonl" in err and not (tmp_path / "fail").exists()
+    assert_one_error_line(err)
+    code, _, err = run(sim, capsys, argv_for(root, tmp_path / "ok", 0.10, "--masks", str(moved)))
+    assert code == 0, err
+    assert (tmp_path / "ok" / "masks" / "validation.jsonl").is_file()
+
+
+def test_wer_one_half_is_accepted(sim, capsys, root, tmp_path):
+    summary = produce(sim, capsys, root, tmp_path / "out", wer=0.5)  # budget 300 of 600 tokens
+    assert summary["wer"] == 0.5 and summary["budget"] == summary["edit_cost"] == 300
+
+
+def test_out_in_a_missing_folder_is_refused(sim, capsys, root, tmp_path):
+    code, stdout, err = run(sim, capsys, argv_for(root, tmp_path / "nope" / "out"))
+    assert code == 1 and stdout == ""
+    assert_one_error_line(err)
+    assert "out: the folder to create it in does not exist" in err and str(tmp_path) not in err
+    assert [p.name for p in tmp_path.iterdir()] == ["data"]
+
+
+def test_masks_given_as_a_folder_says_so_whatever_the_platform_errno(sim, capsys, root, tmp_path):
+    folder = tmp_path / "maskdir"  # Windows reports EACCES for this, POSIX EISDIR
+    folder.mkdir()
+    code, stdout, err = run(sim, capsys, argv_for(root, tmp_path / "out", 0.10, "--masks", str(folder)))
+    assert code == 1 and stdout == ""
+    assert_one_error_line(err)
+    assert err == f"error: {tmp_path.name}/maskdir: is a folder, not a file\n"
+    assert [p.name for p in tmp_path.iterdir()] == ["data", "maskdir"]
+
+
+def test_display_name_is_the_parent_and_file_without_an_empty_parent(sim):
+    assert sim._display_name(Path("rev-b2", "masks.jsonl")) == "rev-b2/masks.jsonl"
+    assert sim._display_name(Path("/rev-b2")) == "rev-b2"  # the parent is the root: no leading slash
+    assert sim._display_name(Path("masks.jsonl")) == "masks.jsonl"
+
+
+def test_masks_follow_the_mode_c_input_whatever_the_order_of_the_inputs(sim, capsys, root, tmp_path, monkeypatch):
+    load_inputs = sim.load_inputs
+    monkeypatch.setattr(sim, "load_inputs", lambda args: load_inputs(args)[::-1])  # C, B, A
+    out = tmp_path / "out"
+    produce(sim, capsys, root, out)
+    masks = read_rows(out / "masks" / "validation.jsonl")
+    assert len(masks) == LISTED_C
+    assert [m["sample_id"] for m in masks] == [r["sample_id"] for r in read_rows(out / "mode_C" / "validation.jsonl")]
+
+
+def test_summary_cost_is_computed_from_the_cost_table(sim, monkeypatch):
+    monkeypatch.setattr(sim, "COST", {**sim.COST, "swap": 3})
+    args = argparse.Namespace(release="r", split="validation", wer=0.5, seed=1)
+    plan = {"s": Edits(swapped=frozenset({0}))}
+    summary = sim.summarize(args, [], {"s": ["a", "b", "c", "d"]}, plan)
+    assert summary["edit_cost"] == 3 and summary["cost_share"]["swap"] == 1.0
+
+
+def rewrite(path: Path, change: Callable[[list[dict[str, Any]]], Any]) -> None:
+    rows = read_rows(path)
+    change(rows)
+    write_lines(path, rows)
+
+
+def append(path: Path, data: bytes) -> None:
+    path.write_bytes(path.read_bytes() + data)
+
+
+def set_sample(path: Path, **changes: Any) -> None:
+    """Change fields of row 2 (sample s00, listed in every mode) of a data file."""
+    rewrite(path, lambda rows: rows[2].update(changes))
+
+
+def with_token(rows_path: Path, index: int, value: Any) -> None:
+    rewrite(rows_path, lambda rows: rows[2]["tokens"].__setitem__(index, value))
+
+
+def with_offsets_cut(rows_path: Path) -> None:
+    rewrite(rows_path, lambda rows: rows[2]["metadata"].update(offsets=rows[2]["metadata"]["offsets"][1:]))
+
+
+DAMAGE = [  # (what to break under the data root, file the error must name, what the error must say)
+    (lambda r: with_token(r / DATA["B"], 0, "zzz"), "mode_B/validation.jsonl", "tokens differ from another mode"),
+    (lambda r: set_sample(r / DATA["C"], punct_labels=["O"]), "mode_C/validation.jsonl",
+     "punct_labels must hold one string per token"),
+    (lambda r: set_sample(r / DATA["A"], label_mode="B"), "mode_A/validation.jsonl", "label_mode must be A"),
+    (lambda r: append(r / DATA["B"], b"{not json\n"), "mode_B/validation.jsonl", "invalid JSON"),
+    (lambda r: append(r / DATA["B"], b"[1,2]\n"), "mode_B/validation.jsonl", "record must be a JSON object"),
+    (lambda r: rewrite(r / DATA["B"], lambda x: x.append(dict(x[2]))), "mode_B/validation.jsonl",
+     "duplicate sample_id"),
+    (lambda r: with_token(r / DATA["A"], 1, ""), "mode_A/validation.jsonl", "nonempty list of nonempty strings"),
+    (lambda r: with_token(r / DATA["A"], 1, 5), "mode_A/validation.jsonl", "nonempty list of nonempty strings"),
+    (lambda r: with_offsets_cut(r / DATA["A"]), "mode_A/validation.jsonl",
+     "metadata.offsets must hold one entry per token"),
+    (lambda r: (r / DATA["B"]).write_bytes(b"\xff\xfe\n"), "mode_B/validation.jsonl", "not UTF-8 text"),
+    (lambda r: (r / IDS["B"]).unlink(), "validation_mode_B.ids", "No such file"),
+    (lambda r: append(r / IDS["A"], b"nope\n"), "mode_A/validation.jsonl", "1 listed ID(s) not found"),
+    (lambda r: append(r / IDS["A"], b"s00\n"), "validation_mode_A.ids", "ID list is empty or has duplicates"),
+    (lambda r: (r / IDS["A"]).write_bytes(b"\n\n"), "validation_mode_A.ids", "ID list is empty or has duplicates"),
+    (lambda r: rewrite(r / MASKS, lambda x: x.pop(2)), "case_joint/validation.jsonl", "1 listed ID(s) not found"),
+    (lambda r: rewrite(r / MASKS, lambda x: x[2].update(excluded_positions=[999])), "case_joint/validation.jsonl",
+     "excluded_positions must be unique integers"),
+]
+
+
+@pytest.mark.parametrize(("damage", "fragment", "reason"), DAMAGE)
+def test_bad_inputs_exit_one_naming_the_file(sim, capsys, root, tmp_path, damage, fragment, reason):
+    damage(root)
+    code, stdout, err = run(sim, capsys, argv_for(root, tmp_path / "out"))
+    assert code == 1 and stdout == ""
+    assert_one_error_line(err)
+    assert fragment in err and reason in err and str(tmp_path) not in err
+    assert [p.name for p in tmp_path.iterdir()] == ["data"]
+
+
+@pytest.mark.parametrize("wer", ["0", "0.51", "-0.1", "nan", "abc"])
+def test_wer_must_be_above_zero_and_at_most_half(sim, root, tmp_path, wer):
+    with pytest.raises(SystemExit, match="2"):
+        sim.main(argv_for(root, tmp_path / "out", wer))  # type: ignore[arg-type]
+
+
+def run_script(root: Path, out: Path, cwd: Path, **env: str) -> subprocess.CompletedProcess[str]:
+    """The script as a user runs it: a fresh interpreter, no PYTHONPATH."""
+    environ = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"} | env
+    return subprocess.run([sys.executable, str(SCRIPT), *argv_for(root, out)], cwd=cwd, env=environ,
+                          capture_output=True, text=True, check=False)
+
+
+def test_runs_as_a_subprocess_without_pythonpath(root, tmp_path):
+    out = tmp_path / "out"
+    done = run_script(root, out, tmp_path)
+    assert done.returncode == 0 and done.stderr == "", done.stderr
+    assert (out / "summary.json").is_file()
+    done = run_script(root, out, tmp_path)  # --out now exists
+    assert done.returncode == 1 and done.stderr.startswith("error: ") and done.stderr.count("\n") == 1
+
+
+def test_output_is_byte_identical_under_different_hash_seeds(root, tmp_path):
+    trees = []
+    for hash_seed in ("1", "2"):  # set iteration order changes with PYTHONHASHSEED
+        out = tmp_path / f"out{hash_seed}"
+        done = run_script(root, out, tmp_path, PYTHONHASHSEED=hash_seed)
+        assert done.returncode == 0 and done.stderr == "", done.stderr
+        trees.append(tree(out))
+    assert trees[0] and trees[0] == trees[1]
+
+
+def test_script_and_tests_have_no_todo_marker_or_bom():
+    marker = "TO" + "DO"  # split so this file does not match itself
+    for path in (SCRIPT, MODULE, Path(__file__), Path(__file__).with_name("test_asr_noise.py")):
+        data = path.read_bytes()
+        assert not data.startswith(b"\xef\xbb\xbf") and marker.encode() not in data
