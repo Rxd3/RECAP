@@ -171,7 +171,7 @@ The label mode and `model_name` come from the saved artifact. `--manifest-out` w
 ## 10. Known Scientific & Technical Limitations
 
 1. **Optimizer Budget vs Convergence:**  
-   All six models reached the maximum iteration budget limit (`max_iterations = 100`) without achieving asymptotic numerical convergence (`converged = False`). While the models trained stably to completion and yield well-formed predictions, formal convergence cannot be claimed.
+   All six models stopped at the iteration budget (`max_iterations = 100`). The training manifests record only `num_iterations = 100`; the loss traces in the shared models are summarised in `results/scores/crf_convergence/convergence.json` (`scripts/reporting/crf_convergence.py`): the loss was still falling by 0.12–1.52% over the last 10 iterations, so formal convergence is not claimed.
 2. **Dataset Partitioning (Source/Video Overlap):**  
    Training uses the `default_train` lists and validation uses the `primary_eval` lists. Those primary lists share no source video, no exact or normalized transcript and no qualifying six-gram with their reference splits ([DATASET_PLAN.md](DATASET_PLAN.md), [DATA_RELEASE_VALIDATION.md](DATA_RELEASE_VALIDATION.md)). Channel overlap remains: 149 of 522 channels span the original splits.
 3. **Mode C Transition Sparsity:**  

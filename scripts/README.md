@@ -27,6 +27,9 @@ read and write files, and report errors as one line on stderr. Full command sequ
 | `train_hidden_event_lm.py` | Team (final push) | Comparison | `train` fits a Stolcke-style hidden-event LM (mode C adds a unigram truecaser); `predict` writes predictions and, with `--manifest-out`, a manifest. |
 | `factor_predictions.py` | Team (final push) | Comparison | Joins mode A predictions and CASE predictions (a casing-only CRF) into mode C predictions with a manifest. |
 | `simulate_asr_noise.py` | Team (final push) | Robustness | Copies the validation or test inputs of every mode with simulated ASR word errors (deletion, homophone substitution, adjacent swap) at a target WER; labels and casing masks stay aligned. |
+| `find_gold_noise.py` | Team (final push) | Study (gold noise) | Flags speaker labels, subtitle cue residue and auto-caption videos on the primary mode B lists; writes `<split>_B_noisy.tsv` and `<split>_B_summary.json`. |
+| `reporting/crf_convergence.py` | Team (final push) | Reporting | Loss-trace summary of trusted CRF `.joblib` models. |
+| `reporting/length_position.py` | Team (final push) | Reporting | Mode A micro F1 by utterance length and QUESTION recall by position (EVALUATION_RESULTS.md §6). |
 | `run_demo.py` | Member 6 | Demo | Loads a saved HMM or hidden-event LM (`.json`), or a CRF or gap classifier (`.joblib`, `.pkl`), through `src/punct_restore/pipeline.py` (CASE-mode CRFs are refused) and prints the restored text; without `--text` it prompts interactively. |
 
 ## Interfaces
@@ -60,8 +63,9 @@ run_ablations.py --mode {A,B,C} --out DIR [--sample 50000] [--variants V1,V2,...
     variants: improved, improved_minus_{window2,ngrams,question,clause,casing,position},
               improved_plus_filler, improved_plus_question2, gap_improved,
               case_improved and factored (mode C only)
-tune_threshold.py tune --model M --gold G --ids I [--masks K] [--grid 0.05:0.95:0.05]
+tune_threshold.py tune --model M --gold G --ids I [--masks K] [--grid 0.05:0.95:0.05] [--split NAME]
     [--train TRAIN.jsonl --train-ids TRAIN.ids] --out experiments/runs/tau_<mode>.json
+    (the tau file records the split and the sha256 of every input)
     (--train/--train-ids add label priors and search gamma: prior-adjusted decoding)
 tune_threshold.py predict --model M --input JSONL --ids I --tau-file experiments/runs/tau_<mode>.json
     --out PRED --manifest-out MAN
@@ -85,6 +89,11 @@ factor_predictions.py --punct A_PRED.jsonl --case CASE_PRED.jsonl --gold MODE_C_
     --manifest-out MAN.json [--model-name factored]
 simulate_asr_noise.py [--data-root data] [--release sponspeech-m1-v2] --split {validation,test} --wer W
     [--seed 2026] [--masks FILE] --out NEW_DIR
+
+find_gold_noise.py [--data-root data] [--release sponspeech-m1-v2] [--mode B] --out NEW_DIR
+reporting/crf_convergence.py --models MODEL.joblib|DIR [...] --out OUT.json
+reporting/length_position.py --gold MODE_A_GOLD.jsonl --ids IDS [--masks K]
+    --predictions NAME=PRED.jsonl [NAME=PRED.jsonl ...] --out OUT.json
 
 project_joint.py [--from {C,B}] --predictions PRED.jsonl --gold MODE_A_GOLD.jsonl --out A_PRED.jsonl
     --manifest-out A_PRED.manifest.json
