@@ -284,5 +284,5 @@ synthetic noise/alignment; artifacts/CLI/environment; uncertainty/runtime policy
 ## Final state
 
 Final state at commit `f5a4721` (the final `release/final` content with the final documentation),
-2026-10-30. A ticked item names its evidence; every unticked item gives its reason. The commit
-after it only records this freeze (this board and REPRODUCIBILITY.md §1).
+2026-10-30. A ticked item names its evidence; every unticked item gives its reason. Commits
+after it change wording only (this board, REPRODUCIBILITY.md §1 and CONTRIBUTING.md).
