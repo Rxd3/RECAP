@@ -40,6 +40,53 @@ Dynamic CRFs jointly predict sentence type and punctuation in conversational spe
 (punctuation × casing, mode C), and we measure how much of the score comes from the utterance-final
 token.
 
+## Classical tagging precedents: maximum entropy and CRFs
+
+These are the closest precedents for RECAP's models: punctuation, sentence boundaries or casing treated
+as per-word tagging with maximum-entropy or CRF models.
+
+**Huang and Zweig (2002).** Jing Huang, Geoffrey Zweig. *Maximum entropy model for punctuation
+annotation from speech.* ICSLP 2002, pp. 917–920, doi:10.21437/ICSLP.2002-307.
+<https://www.isca-archive.org/icslp_2002/huang02b_icslp.html>
+Treats punctuation insertion as word tagging, with a maximum-entropy tagger over word and pitch/timing
+cues, on Switchboard reference and recognizer transcripts.
+*RECAP differs:* words only (no prosody), sequence models (HMM, CRF) instead of a per-word classifier,
+and extended and joint label sets.
+
+**Liu, Stolcke, Shriberg and Harper (2005).** Yang Liu, Andreas Stolcke, Elizabeth Shriberg, Mary Harper.
+*Using Conditional Random Fields for Sentence Boundary Detection in Speech.* ACL 2005, pp. 451–458.
+<https://aclanthology.org/P05-1056/>
+Compares a CRF with HMM and maximum-entropy classifiers for sentence boundaries in conversational and
+broadcast speech, on reference and ASR transcripts; the CRF has the lowest error.
+*RECAP differs:* the same HMM-versus-CRF comparison, but for every punctuation class and for casing,
+from words only.
+
+**Batista, Caseiro, Mamede and Trancoso (2008).** Fernando Batista, D. Caseiro, N. Mamede, Isabel
+Trancoso. *Recovering capitalization and punctuation marks for automatic speech recognition: Case study
+for Portuguese broadcast news.* Speech Communication 50, pp. 847–862, doi:10.1016/j.specom.2008.05.008.
+<https://api.semanticscholar.org/graph/v1/paper/DOI:10.1016/j.specom.2008.05.008>
+Restores both capitalization and punctuation in Portuguese broadcast news: finite-state transducers and
+maximum-entropy models for capitalization, and a maximum-entropy model with lexical and acoustic
+features for punctuation.
+*RECAP differs:* English spontaneous speech, words only, and one joint 12-class tagger for punctuation
+and casing instead of separate models.
+
+**Wang, Ng and Sim (2012).** Xuancong Wang, Hwee Tou Ng, Khe Chai Sim. *Dynamic conditional random
+fields for joint sentence boundary and punctuation prediction.* Interspeech 2012, pp. 1384–1387,
+doi:10.21437/Interspeech.2012-398. <https://www.isca-archive.org/interspeech_2012/wang12h_interspeech.html>
+A dynamic CRF with word-level, prosodic and n-gram features predicts sentence boundaries and punctuation
+jointly on TDT3 English broadcast news, beating two-stage linear-chain CRF or maximum-entropy pipelines.
+*RECAP differs:* a single linear-chain CRF, words only, joint with casing rather than with sentence type.
+
+**Ueffing, Bisani and Vozila (2013).** Nicola Ueffing, Maximilian Bisani, Paul Vozila. *Improved models
+for automatic punctuation prediction for spoken and written text.* Interspeech 2013, pp. 3097–3101,
+doi:10.21437/Interspeech.2013-675. <https://www.isca-archive.org/interspeech_2013/ueffing13_interspeech.html>
+CRFs over language-model scores, token n-grams, sentence length and parse-tree features predict
+punctuation in newspaper text, dictated messages and spoken text, with up to 26% relative F-score over a
+hidden-event language model. This text-only CRF is the closest precedent for RECAP's CRF.
+*RECAP differs:* no parser or language-model features, an extended 8-class and a joint 12-class label
+set, and evaluation on leak-free splits of spontaneous speech.
+
 ## Truecasing
 
 **Lita et al. (2003).** Lucian Vlad Lita, Abe Ittycheriah, Salim Roukos, Nanda Kambhatla.
@@ -102,7 +149,11 @@ Transformer models with data augmentation for English and Bangla punctuation res
 
 ## Summary: where RECAP sits
 
-The recent benchmark papers above use neural models, mostly pretrained transformers, on TED talks
-with three marks. RECAP instead studies
-classical sequence labelers (HMM, CRF) on spontaneous speech, adds an 8-class view, a joint
-12-class punctuation and casing view, leak-free splits and a measured end-of-utterance shortcut.
+RECAP's models are not new. HMM, maximum-entropy and CRF taggers for punctuation (Huang and Zweig 2002;
+Liu et al. 2005; Lu and Ng 2010; Ueffing et al. 2013) and joint restoration of punctuation and
+capitalization (Batista et al. 2008; Gravano et al. 2009; Pahuja et al. 2017) are established, and
+recent benchmark work uses pretrained transformers on TED talks with three marks. RECAP applies the
+course's classical models to spontaneous-speech transcripts. Its own contributions are in the data and
+the evaluation: an 8-class and a joint 12-class view, leak-free splits with the measured cost of leakage,
+the end-of-utterance shortcut analysis, and threshold decoding and a filler cue tested on top of the
+baselines.

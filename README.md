@@ -8,11 +8,14 @@ Code licence: [MIT](LICENSE). Data licence: SponSpeech, CC BY-NC 4.0 ([DATA_LICE
 
 RECAP restores punctuation and capitalization in lowercased, unpunctuated English text.
 Every token gets a label for the punctuation mark that follows it and, in mode C, a casing
-label for the token itself. We compare three models on the same data and splits:
+label for the token itself. The course asks for three models, which we build as the baselines and
+compare on the same data and splits:
 
-1. a hidden Markov model with Viterbi decoding (baseline);
+1. a hidden Markov model with Viterbi decoding;
 2. a linear-chain CRF with basic features;
-3. the same CRF with improved features, plus one-group-out feature ablations.
+3. the same CRF with improved features.
+
+What we added beyond these baselines is listed under [What is new](#what-is-new).
 
 The data are the reference transcripts of SponSpeech, informal podcast-style English speech
 from YouTube. RECAP uses the transcripts only. It does not use audio and was not evaluated
@@ -43,11 +46,23 @@ word. Modes A and B predict no casing. [configs/label_sets.yaml](configs/label_s
 the source of truth for the vocabularies; [DATA_CONTRACT.md](docs/DATA_CONTRACT.md) defines the
 record format and alignment.
 
+## Models
+
+| Architecture | Trained model | Settings | Source |
+| --- | --- | --- | --- |
+| First-order HMM, Viterbi decoding | HMM, one per mode | additive smoothing α = 0.01 in A/B/C; rare-word cutoff 1 (A, B) and 2 (C); chosen on validation from 9 candidates per mode | [HMM_RESULTS.md](experiments/HMM_RESULTS.md) |
+| Linear-chain CRF (`sklearn-crfsuite`, L-BFGS) | CRF basic preset | ±1 window, affixes, token shape, utterance boundaries; c1 = c2 = 0.1, 100 iterations, fixed | [CRF_EXPERIMENTS.md](docs/CRF_EXPERIMENTS.md) §3, §6 |
+| Linear-chain CRF (`sklearn-crfsuite`, L-BFGS) | CRF improved preset | basic plus ±2 window, word pairs, question, clause, casing and position cues; same settings | [CRF_EXPERIMENTS.md](docs/CRF_EXPERIMENTS.md) §3 |
+| Linear-chain CRF + threshold decoding (ours) | CRF improved + τ | a token is non-O when 1 − P(O) > τ; τ = 0.40 (A), 0.30 (B), 0.35 (C), chosen on validation | [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §7 |
+
 ## What is new
 
-**Data** (built by us from the SponSpeech transcripts; [DATASET_CARD.md](docs/DATASET_CARD.md)):
+**Course baselines** (what the assignment asks for, not our novelty): the HMM, the basic CRF and the
+improved-feature CRF above, in modes A, B and C. Member 3 wrote both CRF feature presets.
 
-- **Three label views of the same tokens.** Upstream SponSpeech scores three marks (full stop,
+**Our additions: data** (built from the SponSpeech transcripts; [DATASET_CARD.md](docs/DATASET_CARD.md)):
+
+- **Extended label views of the same tokens.** Upstream SponSpeech scores three marks (full stop,
   comma, question mark). We add an 8-class extended view (mode B), a 3-way casing label with
   per-position masks for approximate casing, and a 12-class joint view (mode C).
 - **One documented projection.** Mode A is the projection of mode B: EXCLAMATION and SEMICOLON
@@ -60,22 +75,22 @@ record format and alignment.
 - **A gold-noise audit.** Leftover speaker labels, subtitle cue numbers and auto-caption-style
   videos are listed, not relabelled ([EVALUATION_PROTOCOL.md](docs/EVALUATION_PROTOCOL.md)).
 
-**Task and method:**
+**Our additions: analysis and methods:**
 
-- **Joint punctuation and casing** (mode C) in one sequence labeler, compared with
-  punctuation-only training on identical sequences.
 - **The end-of-utterance shortcut, measured.** Every utterance ends in PERIOD or QUESTION, so
   we report a rule-based shortcut baseline and a `non_final` view that drops each
   utterance's last token.
-- **Positioned against prior work** in [RELATED_WORK.md](docs/RELATED_WORK.md): classical
-  sequence labelers on spontaneous speech rather than transformers on TED talks.
-- **Grouped bootstrap by video** for every 95% interval, and paired intervals for every model
-  comparison.
-- **Feature ablations** on validation only, one feature group at a time.
-- **Two team extensions, tuned on validation only:**
-  - threshold decoding of the CRF marginals (`scripts/tune_threshold.py`);
-  - a filler-word cue (`improved_plus_filler` in `scripts/run_ablations.py`).
-- **The cost of leakage, measured.** On official test utterances whose video is in the training set, the frozen improved CRF scores 67.09, against 49.50 on the leak-free test.
+- **The cost of leakage, measured.** The frozen models also predicted the full official test, split
+  by why each utterance was excluded ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §8).
+- **Threshold decoding** of the CRF marginals (`scripts/tune_threshold.py`), with τ tuned on validation.
+- **A filler-word cue** (`improved_plus_filler` in `scripts/run_ablations.py`), tested on validation.
+- **Joint vs punctuation-only (H1).** Each mode C model, projected to punctuation, is compared with
+  its mode A twin on mode A gold over the same 19,936 mode C validation IDs. The training sets
+  differ: A uses 142,722 sequences and C uses 141,745.
+
+**Evaluation rigor:** grouped bootstrap by video for every 95% interval, paired intervals for every
+model comparison, and one-group-out feature ablations on validation only. Prior work and how RECAP
+differs: [RELATED_WORK.md](docs/RELATED_WORK.md).
 
 ## Key findings
 
@@ -85,26 +100,33 @@ Every number names its split.
 - **Modes B and C are different tasks;** never rank one against the other.
 - **Selection:** Validation chose the HMM smoothing and the threshold τ; the CRF settings (c1 = c2 = 0.1, 100 iterations) were fixed and not tuned; no test result influenced any choice. Each frozen model predicted the primary test lists once. The mode A improved CRF also predicted the full official test once more, for the leakage analysis.
 
-**Test, primary ID lists** ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §1):
+**Course baselines on test, primary ID lists** ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §1;
+the shortcut and threshold columns are our additions):
 
-| Mode | Shortcut | HMM | CRF basic | CRF improved | CRF improved + threshold |
+| Mode | Shortcut (ours) | HMM | CRF basic | CRF improved | CRF improved + threshold (ours) |
 | --- | --- | --- | --- | --- | --- |
 | A | 27.48 | 35.12 (32.80–37.31) | 43.65 (41.74–45.59) | 49.92 (47.91–52.01) | **50.44** (48.53–52.41) |
 | B | 11.87 | 16.79 (15.28–18.49) | 20.25 (18.87–21.95) | 22.82 (21.42–24.42) | **23.23** (21.74–25.05) |
 | C | 18.09 | 37.41 (34.56–40.71) | 43.85 (42.13–45.47) | 47.02 (44.97–49.00) | **47.72** (45.78–49.61) |
 
 - **The improved CRF beats the HMM** by +14.80 (A), +6.03 (B) and +9.61 (C) points on test. It beats the basic CRF by +6.27, +2.57 and +3.17, and the basic CRF beats the HMM by +8.53, +3.46 and +6.43. All nine paired intervals exclude 0, and the ranking holds on test_amb.
+- **The CRF gain is mostly COMMA and QUESTION** (mode A test F1, HMM → CRF improved): COMMA 26.28 → 52.52, QUESTION 11.75 → 26.23, PERIOD 67.34 → 71.02.
+- **Casing** (mode C, masked casing F1, test): HMM 79.81, CRF improved 85.09.
+- **Feature ablations of the improved preset** (validation, 50k-sequence training sample, [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §6):
+  - Removing word pairs, the ±2 window or the question cues costs points in modes A and B.
+  - Clause, casing and position cues have small effects of mixed sign.
+
+**Our additions:**
+
 - **The HMM mostly learns the end-of-utterance shortcut.**
   - The shortcut alone reaches PERIOD F1 66.68 in mode A, against the HMM's 67.34 (test).
   - Without each utterance's final token, mode A scores HMM 9.13, CRF basic 28.30 and CRF improved 36.40 (test).
-- **The CRF gain is mostly COMMA and QUESTION** (mode A test F1, HMM → CRF improved): COMMA 26.28 → 52.52, QUESTION 11.75 → 26.23, PERIOD 67.34 → 71.02.
 - **Threshold decoding** adds +0.51 / +0.41 / +0.70 on test, mostly through comma recall. The B interval includes 0.
 - **The filler-word cue has no detectable effect** on validation: every interval includes 0.
 - **Leakage inflates lexical models.** On test utterances from videos in the training set, the improved CRF scores 67.09 against 49.50 on the leak-free test, while the HMM scores 33.54 against 34.74. See [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §8.
-- **Casing** (mode C, masked casing F1, test): HMM 79.81, CRF improved 85.09.
-- **Ablations** (validation, 50k-sequence training sample, [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §6):
-  - Removing word pairs, the ±2 window or the question cues costs points in modes A and B.
-  - Clause, casing and position cues have small effects of mixed sign.
+- **Joint vs punctuation-only (H1, validation, same 19,936 evaluation IDs):** every joint model gains
+  on non-final positions (HMM +8.69, CRF basic +1.59, CRF improved +1.16; all intervals exclude 0), but
+  PERIOD F1 does not rise consistently, so H1 as stated is not supported.
 
 ## Quickstart
 
