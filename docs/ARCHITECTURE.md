@@ -28,7 +28,7 @@ feature configuration selects behavior; versioned contracts fix alignment.
 | `models/crf.py`, `scripts/train_crf.py` | Member 3 | Records + injected features → CRF artifacts/predictions |
 | `features/`, `scripts/run_ablations.py` | Member 4 | Observable tokens → aligned feature dictionaries |
 | `evaluation/`, `scripts/evaluate_models.py`, results | Member 5 | Gold + predictions → verified reports |
-| `pipeline.py`, `demo/`, `scripts/run_demo.py`, presentation | Member 6 | Validated input + artifact → inference and integration |
+| `pipeline.py` (`load_model`, `ModelAdapter`, `RestorationPipeline`) and `scripts/run_demo.py` (the demo path), presentation | Member 6 | Text + saved HMM (`.json`) or CRF (`.joblib`) artifact → restored text |
 
 Member 4 owns `crf_features.py`; Member 3 reviews its interface and contributes
 the basic preset through a coordinated PR. Member 4 does not replace or fork
