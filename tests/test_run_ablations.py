@@ -114,7 +114,7 @@ def forbid_test_files(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(io, "open", guarded)
 
 
-def test_variants_are_the_nine_expected_names_in_order():
+def test_variants_are_the_ten_expected_names_in_order():
     assert list(run_ablations.VARIANTS) == [
         "improved",
         "improved_minus_window2",
@@ -124,11 +124,13 @@ def test_variants_are_the_nine_expected_names_in_order():
         "improved_minus_casing",
         "improved_minus_position",
         "improved_plus_filler",
+        "improved_plus_question2",
         "gap_improved",
     ]
     assert run_ablations.VARIANTS["improved"] == {}
     assert run_ablations.VARIANTS["improved_minus_window2"] == {"window_size": 1}
     assert run_ablations.VARIANTS["improved_plus_filler"] == {"use_filler_cues": True}
+    assert run_ablations.VARIANTS["improved_plus_question2"] == {"use_question_lookback": True}
     assert run_ablations.VARIANTS["gap_improved"] == {}  # the improved features, no removed group
     assert run_ablations.SEED == 2026
 
@@ -142,7 +144,7 @@ def test_run_ablations_reads_crlf_ids_and_never_opens_test(tmp_path, monkeypatch
         pass  # pragma: no cover - the guard raises before a file object exists
 
     code = run_ablations.main(
-        _argv(root, out, "--sample", "4", "--variants", "improved,improved_plus_filler")
+        _argv(root, out, "--sample", "4", "--variants", "improved,improved_plus_filler,improved_plus_question2")
     )
 
     assert code == 0
@@ -152,7 +154,7 @@ def test_run_ablations_reads_crlf_ids_and_never_opens_test(tmp_path, monkeypatch
     assert sample_ids.pop() == ""  # file ends with exactly one newline
     assert sample_ids == sorted(random.Random(2026).sample(sorted(TRAIN_IDS), 4))
     assert len(sample_ids) == 4
-    for variant in ("improved", "improved_plus_filler"):
+    for variant in ("improved", "improved_plus_filler", "improved_plus_question2"):
         path = out / "mode_A" / variant / "validation.jsonl"
         preds = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
         assert [p["sample_id"] for p in preds] == VAL_IDS

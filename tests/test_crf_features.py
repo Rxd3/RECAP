@@ -230,6 +230,7 @@ def test_improved_and_basic_presets_unchanged():
         "include_utterance_boundaries": True,
         "use_positional_buckets": False,
         "use_filler_cues": False,
+        "use_question_lookback": False,
         "version": "v1-basic",
     }
     assert FeatureConfig.improved().to_dict() == {
@@ -245,6 +246,7 @@ def test_improved_and_basic_presets_unchanged():
         "include_utterance_boundaries": True,
         "use_positional_buckets": True,
         "use_filler_cues": False,
+        "use_question_lookback": False,
         "version": "v1-improved",
     }
     tokens = ["so", "um", "i", "i", "mean", "you", "know"]
@@ -291,3 +293,107 @@ def test_is_repeat_never_wraps_to_the_last_token():
 
     assert "is_repeat" not in feats[0]
     assert "is_repeat" not in feats[2]
+
+
+# --- team extension: question lookback (wh_aux_lookback, is_tag_question_cue) ----------------------
+
+LOOKBACK_KEYS = ("wh_aux_lookback", "is_tag_question_cue")
+
+
+def _fired(tokens: list[str], key: str) -> list[int]:
+    """Indices at which the flag is present (flags are only stored when true)."""
+    feats = extract_sequence_features(tokens, config=FeatureConfig.improved(use_question_lookback=True))
+    assert all(f[key] is True for f in feats if key in f)
+    return [i for i, f in enumerate(feats) if key in f]
+
+
+def test_old_saved_config_without_lookback_key_loads_with_default_off():
+    """Configs saved before the switch existed must still load, with the switch off."""
+    legacy = FeatureConfig.improved().to_dict()
+    del legacy["use_question_lookback"]
+    assert FeatureConfig.from_dict(legacy).use_question_lookback is False
+
+
+def test_lookback_keys_absent_when_the_switch_is_off():
+    """Basic and improved presets never emit the lookback keys, even on tokens that would fire."""
+    tokens = ["what", "is", "it", "you", "know", "right", "isn't", "it"]
+    for cfg in (FeatureConfig.basic(), FeatureConfig.improved()):
+        for feats in extract_sequence_features(tokens, config=cfg):
+            assert not any(key in feats for key in LOOKBACK_KEYS)
+
+
+def test_one_switch_turns_on_both_lookback_features_for_any_preset():
+    tokens = ["what", "is", "it", "isn't", "it"]
+    for cfg in (FeatureConfig.basic(use_question_lookback=True), FeatureConfig.improved(use_question_lookback=True)):
+        feats = extract_sequence_features(tokens, config=cfg)
+        assert feats[1]["wh_aux_lookback"] is True
+        assert feats[4]["is_tag_question_cue"] is True
+
+
+def test_wh_aux_lookback_fires_from_the_aux_onward():
+    """The (what, is) pair at (0, 1) is seen from index 1 on, never at the wh-word itself."""
+    tokens = ["what", "is", "it", "you", "know", "really"]
+    assert _fired(tokens, "wh_aux_lookback") == [1, 2, 3, 4, 5]
+
+
+def test_wh_aux_lookback_window_is_the_previous_twelve_tokens_including_the_current():
+    """Window = tokens[i-11 .. i]: a pair at (0, 1) is seen at i = 1..11 but not at i = 12."""
+    tokens = ["what", "is"] + ["x"] * 12
+    assert _fired(tokens, "wh_aux_lookback") == list(range(1, 12))
+
+
+def test_wh_aux_lookback_last_position_inside_the_window():
+    """A pair whose wh-word is exactly 11 tokens back still counts; 12 back does not."""
+    tokens = ["x", "what", "is"] + ["x"] * 11
+    assert _fired(tokens, "wh_aux_lookback") == list(range(2, 13))
+
+
+@pytest.mark.parametrize(
+    "tokens",
+    [
+        ["what", "time", "is", "it"],  # wh-word not followed by an auxiliary
+        ["what", "the", "is"],  # not adjacent
+        ["how", "really", "can", "we"],  # not adjacent
+        ["is", "what", "now"],  # aux before wh
+        ["what"],  # wh-word alone
+        ["is", "it"],  # auxiliary alone
+    ],
+    ids=["no_aux", "gap_the", "gap_really", "aux_first", "wh_alone", "aux_alone"],
+)
+def test_wh_aux_lookback_needs_an_adjacent_wh_then_aux_pair(tokens):
+    assert _fired(tokens, "wh_aux_lookback") == []
+
+
+def test_tag_question_cue_pronoun_after_negative_contraction():
+    assert _fired(["it", "is", "nice", "isn't", "it"], "is_tag_question_cue") == [4]
+
+
+def test_tag_question_cue_trailing_word():
+    assert _fired(["you", "know", "right"], "is_tag_question_cue") == [2]
+
+
+@pytest.mark.parametrize("word", ["right", "correct", "huh", "eh"])
+def test_tag_question_cue_words_fire_anywhere(word):
+    assert _fired(["so", word, "then"], "is_tag_question_cue") == [1]
+
+
+@pytest.mark.parametrize("pronoun", ["it", "they", "you", "we", "he", "she", "there"])
+def test_tag_question_cue_every_listed_pronoun_after_nt(pronoun):
+    assert _fired(["don't", pronoun], "is_tag_question_cue") == [1]
+
+
+@pytest.mark.parametrize(
+    "tokens",
+    [
+        ["it", "is", "nice", "you"],  # pronoun not after n't
+        ["he", "is"],  # pronoun at index 0
+        ["you"],  # single-token pronoun
+        ["she", "went", "isn't"],  # index 0 must not read tokens[-1]
+        ["isn't", "i"],  # i is not a tag pronoun
+        ["isn't", "nice"],  # n't followed by a non-pronoun
+        ["not", "it"],  # previous token only resembles n't
+    ],
+    ids=["no_nt", "index0", "single", "no_wraparound", "pronoun_i", "non_pronoun", "not_nt"],
+)
+def test_tag_question_cue_absent_otherwise(tokens):
+    assert _fired(tokens, "is_tag_question_cue") == []
