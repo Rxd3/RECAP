@@ -161,8 +161,8 @@ python -m pip install -e ".[dev]"
 python -m pytest -q
 ```
 
-The tests use small fixtures and download nothing. With a trained model (an HMM `.json` or a
-CRF `.joblib`), restore one sentence:
+The tests use small fixtures and download nothing. With a trained model (an HMM or hidden-event LM
+`.json`, or a CRF or gap-classifier `.joblib`), restore one sentence:
 
 ```powershell
 python scripts/run_demo.py --model-path <model.json or model.joblib> --text "hello everyone welcome to our presentation"
@@ -247,7 +247,7 @@ package initializer, `<folder>/__init__.py`):
 | `src/punct_restore/features/crf_features.py` | CRF features: basic and improved presets, ablation switches and the filler cue. |
 | `src/punct_restore/evaluation/` | Member 5's evaluator: `inputs` (input checks), `views` (scored positions and report blocks), `metrics` (token-level P/R/F1), `uncertainty` (bootstrap grouped by video), `comparison` (paired comparison), `error_analysis` (error examples), `baseline` (shortcut baseline), `manifest` (prediction-manifest check), `report` (JSON and Markdown reports). |
 | `src/punct_restore/prediction_io.py` | Gold-free prediction JSONL and manifest writing, shared by `scripts/train_crf.py`, `scripts/tune_threshold.py` and `scripts/project_joint.py`. |
-| `src/punct_restore/pipeline.py` | Demo inference: load a trained HMM or CRF, clean raw text, predict labels, rebuild text. |
+| `src/punct_restore/pipeline.py` | Demo inference: load a trained HMM, hidden-event LM, CRF or gap classifier (`load_model`), clean raw text, predict labels, rebuild text. |
 
 Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM_TASKS.md`
 (work board), `pyproject.toml` and `requirements.txt` (package and dependencies),
@@ -268,7 +268,7 @@ Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM
 | `scripts/run_ablations.py` | CRF | Trains the feature-group ablations and writes their validation predictions (never reads test). |
 | `scripts/tune_threshold.py` | CRF | Threshold decoding: `tune` picks τ on validation, `predict` applies the frozen τ. |
 | `scripts/evaluate_models.py` | Evaluation | `score`, `compare` (paired), `errors` and `baseline` (the shortcut). |
-| `scripts/run_demo.py` | Demo | Restores punctuation and casing for one text with a saved HMM or CRF. |
+| `scripts/run_demo.py` | Demo | Restores punctuation and casing for one text with a saved HMM, hidden-event LM, CRF or gap classifier. |
 | `scripts/project_joint.py` | Study (H1) | Projects mode C predictions onto mode A punctuation labels, so a joint model can be compared with its mode A twin. |
 | `scripts/train_hidden_event_lm.py` | Comparison | `train` fits the hidden-event LM on an explicit ID list; `predict` writes predictions and, with `--manifest-out`, a manifest. |
 | `scripts/factor_predictions.py` | Comparison | Combines mode A and CASE predictions into mode C predictions with a manifest (the factored casing pipeline). |

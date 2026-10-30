@@ -27,7 +27,7 @@ feature configuration selects behavior; versioned contracts fix alignment.
 | `models/crf.py`, `scripts/train_crf.py` | Member 3 | Records + injected features → CRF artifacts/predictions |
 | `features/`, `scripts/run_ablations.py` | Member 4 (role); code by Member 3, ablation runner by Member 5 | Observable tokens → aligned feature dictionaries |
 | `evaluation/`, `scripts/evaluate_models.py`, results | Member 5 | Gold + predictions → verified reports |
-| `pipeline.py` (`load_model`, `ModelAdapter`, `RestorationPipeline`) and `scripts/run_demo.py` (the demo path), presentation | Member 6 | Text + saved HMM (`.json`) or CRF (`.joblib`) artifact → restored text |
+| `pipeline.py` (`load_model`, `ModelAdapter`, `RestorationPipeline`) and `scripts/run_demo.py` (the demo path), presentation | Member 6 | Text + saved HMM or hidden-event LM (`.json`), or CRF or gap classifier (`.joblib`, `.pkl`) → restored text |
 
 The feature code in `crf_features.py`, both presets included, was written by Member 3; Member 4's
 branch has no commits ([contributions](../contributions/Mohamed_STUDENT_ID_GITHUB.md)). The threshold
