@@ -1,112 +1,92 @@
-# Shared model and feature contracts — proposed v1
+# Model contract (implemented)
 
-Owners: Members 2 and 3; reviewers: Members 4–6. The common operations below remain
-proposed for CRF/integration. Member 2's concrete HMM adapter is implemented as
-described at the end of this guide. Its A/B/C models have been trained and
-independently reproduced; see [HMM results](../experiments/HMM_RESULTS.md).
+This is the contract the code implements: the two model classes, the prediction files, the
+prediction manifest the evaluator checks, and the decoder that turns labels back into text. Records
+follow [DATA_CONTRACT.md](DATA_CONTRACT.md); label vocabularies come from
+[configs/label_sets.yaml](../configs/label_sets.yaml).
 
-## Common future operations
+## Common rules
 
-| Operation | Proposed behavior |
+- **Gold-free prediction.** Both models read only `sample_id` and `tokens` (the HMM also requires
+  `schema_version` 1). Gold fields in an input record are ignored, never copied to the output. The
+  CLIs strip them before prediction (`src/punct_restore/prediction_io.py`,
+  `src/punct_restore/models/hmm_workflow.py`); `tests/test_hmm.py` checks that injected gold labels leave
+  HMM predictions unchanged.
+- **One label per token, in input order.** Every prediction record has exactly as many labels as
+  tokens, and every label belongs to the model's mode vocabulary (A: 4 punctuation labels, B: 8, C: 12
+  `PUNCT|CASE` labels).
+- **Unfitted models fail.** `predict`, `predict_marginals` and `save_model` on an unfitted model raise
+  `RuntimeError`. Invalid input raises `ValueError` (or `TypeError` for a non-mapping record in the CRF).
+
+## `HMMModel` (`src/punct_restore/models/hmm.py`)
+
+| Operation | Behaviour |
 | --- | --- |
-| `fit(training_records, *, label_mode, config, feature_extractor=None)` | Validate training records; derive mode-specific targets; fit using training data only; return fitted model |
-| `predict(records)` | Accept gold-free input records; return ordered prediction records, one per sequence |
-| `save_model(path)` | Save learned state and complete, versioned compatibility/provenance metadata |
-| `load_model(path)` | Class-level load returning an equivalent fitted instance; reject incompatible metadata |
+| `HMMModel(*, label_mode, labels, smoothing=0.1, min_token_count=2)` | `labels` must be exactly the mode's vocabulary; bad smoothing or cutoff raises `ValueError`. |
+| `fit(training_records, *, metadata=None)` | Each record needs `schema_version` 1, a unique `sample_id`, `tokens`, `split == "train"`, the model's `label_mode`, `source`, and `punct_labels` / `case_labels` of token length. Mode C targets are `PUNCT|CASE`. A failed refit keeps the old state. |
+| `predict(records)` | Returns `{"sample_id", "model_name": "hmm", "label_mode", "predicted_labels"}` per record, in input order; a duplicate `sample_id` raises `ValueError`. |
+| `save_model(path)` / `HMMModel.load_model(path)` | One UTF-8 JSON file, no pickle. Top-level keys: `format_version` (1), `model_name` ("hmm"), `config` {`label_mode`, `labels`, `smoothing`, `min_token_count`}, `counts`, `metadata`. Saving refuses an existing file; loading rejects another format version or model name. |
 
-Training records follow [DATA_CONTRACT.md](DATA_CONTRACT.md). Prediction inputs
-contain `schema_version`, `sample_id`, and `tokens` (plus declared source/split
-identity if required). An adapter strips gold labels, original text, and
-gold-derived metadata before prediction. Predictions must depend on observable
-input and learned state, never on an input record's gold labels.
+## `CRFModel` (`src/punct_restore/models/crf.py`)
 
-HMM and CRF document support for the selected A/B/C configuration, expose one
-target label per token, preserve IDs and sequence ordering, and fail clearly on
-unsupported modes, unfitted state, invalid input or alignment mismatches. Do
-not silently fall back to another mode. A mode-specific trained artifact has a
-fixed ordered label vocabulary. Optional scores must identify that same order.
+| Operation | Behaviour |
+| --- | --- |
+| `CRFModel(*, label_mode="A", algorithm="lbfgs", c1=0.1, c2=0.1, max_iterations=100, all_possible_transitions=True, feature_config=None, feature_extractor=None, model_name=None, config_path=None)` | `model_name` defaults to `crf_<preset>` (`crf_basic`, `crf_improved`). |
+| `fit(training_records, *, label_mode=None, config=None, feature_extractor=None)` | Unique non-empty `sample_id`, non-empty `tokens`, `split` `train` (or absent), labels of token length in the mode vocabulary; mode C also checks `case_labels`. `scripts/train_crf.py` additionally enforces `split` and `label_mode` per record. |
+| `predict(records)` | Same four output fields as the HMM, in input order. |
+| `predict_tokens(tokens, *, sample_id="seq_0")` | Labels for one token list (used by the demo). |
+| `predict_marginals(records)` | One list per record, one dict per token mapping every vocabulary label to its marginal probability (labels unseen in training get 0.0). |
+| `save_model(path)` / `CRFModel.load_model(path)` | A `joblib` file holding one dict: `schema_version` (1), `model_family` ("crf"), `model_name`, `label_mode`, `vocabulary`, `hyperparameters`, `feature_config`, `training_metadata`, `environment`, `backend_state` (the fitted `sklearn_crfsuite.CRF`). Loading checks the schema version, family, mode and vocabulary; a missing file raises `FileNotFoundError`. Load only trusted `.joblib` files: they are pickles. |
+
+**Features.** `extract_sequence_features(tokens, *, config=None)` in
+`src/punct_restore/features/crf_features.py` returns one feature dict per token from the tokens
+alone. A `FeatureConfig` selects the `basic` or `improved` preset, the ablation switches and the
+filler cue; the same `CRFModel` trains every preset.
+
+**Threshold decoding.** `decode_with_threshold(marginals, tau)` in
+`src/punct_restore/models/threshold.py` labels a token non-O when 1 − P(O) > τ, where P(O) sums every
+O label (`O` in modes A/B, every `O|*` in mode C), and then takes the most probable non-O label;
+otherwise it takes the most probable O label. `check_tau` accepts a finite τ in [0, 1].
 
 ## Prediction JSONL
 
-Required fields: `sample_id`, `model_name`, `label_mode`, `predicted_labels`.
-An illustrative shape (not a computed prediction) is:
+One JSON object per line, one per sequence:
 
 ```json
-{"sample_id":"sample_0001","model_name":"hmm","label_mode":"A","predicted_labels":["O","PERIOD"]}
+{"sample_id": "sample_0001", "model_name": "hmm", "label_mode": "A", "predicted_labels": ["O", "PERIOD"]}
 ```
 
-Use `hmm`, `crf_basic`, or `crf_improved` as initial model names; include `run_id`
-to distinguish trained settings. `predicted_labels` is a string array with the
-same length as input tokens: A/B contain punctuation labels, C contains joint
-`PUNCT|CASE` labels. No missing tokens, duplicate IDs, gold substitution, or
-reordered records. Confidence and timing are optional and absent if unsupported;
-do not invent calibrated probabilities for arbitrary model scores.
+(Illustrative shape, not a computed prediction.) `model_name` is `hmm`, `crf_basic`, `crf_improved`,
+an ablation name `crf_<variant>`, a threshold-decoded name `<model_name>_tau<τ>` (for example
+`crf_improved_tau0.35`), or a mode C projection `<name>_joint_C`. Records follow the input file's
+order; the evaluator matches them by `sample_id`, so order does not affect scores.
 
-Each prediction file needs a sidecar manifest with input release/split hash,
-schema and preprocessing versions, label configuration, run ID, artifact hash,
-resolved configuration, code commit, environment and command. Optional runtime
-metadata distinguishes end-to-end from decode-only measurements.
+## Prediction manifest
 
-## CRF feature injection — Members 3 and 4
+`scripts/train_crf.py predict --manifest-out` and `scripts/tune_threshold.py predict` write
+(`src/punct_restore/prediction_io.py`): `model_name`, `label_mode`, `ordered_labels`,
+`predictions_sha256` and `input` {`path`, `sha256`}. The HMM CLIs write a longer
+`predictions.manifest.json` (run ID, model hash, counts, timing, provenance, command) that carries
+the input identity under `inputs.input`.
 
-Proposed signature:
+`scripts/evaluate_models.py score --manifest` checks (`src/punct_restore/evaluation/manifest.py`):
+`model_name`, `label_mode` and `ordered_labels` (exact order) equal the scored predictions and the
+mode vocabulary, `predictions_sha256` equals the predictions file, and the input `sha256` (top-level
+`input` or `inputs.input`; both must agree if both exist) equals the gold file's. CRF training
+manifests are separate sidecars, not prediction manifests.
 
-```text
-extract_sequence_features(tokens, *, config) -> list[dict[str, str | int | float | bool]]
-```
+## Decoder: labels back to text (`src/punct_restore/pipeline.py`)
 
-One dictionary per token; stable feature names and boundary handling; no mutation
-of token sequences. The CRF accepts an injected extractor, so basic and improved
-presets use the same fit/predict/save implementation. Members 3 and 4 agree this
-interface in their first PR before adding feature logic. Member 4 owns the
-feature module; Member 3 supplies the agreed basic preset with Member 4 review.
-
-Extractors may use observable tokens and agreed context windows, never
-`punct_labels`, `case_labels`, original punctuated text, test statistics, or future
-gold boundaries. Gold casing is unavailable when input is lowercased. Any study
-using observed input case is a separately described input condition, not hidden
-access to original gold. Fit vocabularies/statistics on training only.
-
-## Persistence and reproducibility
-
-Save model family/version, ordered labels and mode, learned parameters,
-hyperparameters, feature preset/version, random seeds, tokenizer/normalization
-and annotation policy versions, data release and training/validation split
-hashes, producing code commit, dependency versions and artifact checksums.
-Never package credentials or absolute personal-machine paths. Loading must
-check compatibility rather than quietly using current defaults.
-
-Future contract tests verify one output per token, invariant IDs/order, valid
-mode labels, no gold leakage, and equivalent predictions after save/load. They
-must use tiny fixtures and need no downloaded dataset or pretrained model.
-
-## Future decoding into readable text
-
-For C, split each joint label into punctuation and casing. Restore each word's
-case from the approved casing rule, append the approved punctuation symbol after
-that word, then apply the versioned spacing policy. A/B alone restore punctuation
-and leave lowercased input unless an explicitly configured separate casing model
-is present. Sentence-initial capitalization is not an implicit model prediction.
-
-Quotes, contractions, dash spacing and unsupported casing patterns require
-approved policies. The compact labels may not reconstruct every original glyph.
-No integrated text decoder exists yet. The HMM label predictor is implemented;
-CRF and other adapters remain unfinished.
-
-## Implemented HMM adapter — Member 2
-
-`HMMModel` in `src/punct_restore/models/hmm.py` receives `label_mode`, ordered
-`labels`, `smoothing` and `min_token_count` at construction. It provides
-`fit(training_records, *, metadata=None)`, `predict(records)`,
-`save_model(path)` and class method `load_model(path)`. Configuration belongs to
-the instance rather than being repeated on each fit. HMM has no feature extractor.
-Save/load paths identify a JSON file, not a model directory.
-
-The training CLI injects labels from `configs/label_sets.yaml` and records
-provenance. Predictions read only schema version, IDs and token sequences;
-extra gold fields are ignored and never copied into predictions. Training
-requires aligned casing arrays even in A/B, as specified by the shared data
-contract; no missing annotations or cross-mode conversions are guessed.
-
-Read [HMM_NOTES.md](../experiments/HMM_NOTES.md) for math, OOV policy, persistence,
-CLI outputs, synthetic checks, release handoff and remaining integration review.
+- **Loading:** `load_model(path)` dispatches on the suffix: `.json` → `HMMModel.load_model`;
+  `.joblib` or `.pkl` → `CRFModel.load_model`; anything else raises `ValueError`.
+- **Input cleaning:** `RestorationPipeline(adapter).process_text(text)` splits on whitespace,
+  lowercases each token and strips `,.?!:;-"` from its edges. Internal apostrophes and hyphens stay;
+  empty input raises `ValueError`.
+- **Prediction:** `ModelAdapter(model_path)` builds one gold-free record and checks that the model
+  returns one label per token from the mode's vocabulary.
+- **Reconstruction** (`reconstruct`): a label splits on its first `|` into punctuation and casing (no
+  `|` means LOWER). FIRST_UPPER capitalises the first character and ALL_UPPER the whole word. After the
+  word, COMMA adds `,`, PERIOD `.`, QUESTION `?`, EXCLAMATION `!`, COLON `:`, SEMICOLON `;` and DASH
+  ` -`; O adds nothing. Words are joined by single spaces.
+- **Modes A and B** predict no casing, so their restored text stays lowercase; there is no
+  sentence-initial capitalisation rule. `scripts/run_demo.py` wraps this pipeline.
