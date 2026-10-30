@@ -113,7 +113,7 @@ Every number names its split.
 - **Primary metric:** macro F1 % over the non-O punctuation classes (A, B), or over all 12 joint classes on unmasked positions (C).
 - **Intervals:** 95%, grouped bootstrap by video, 1,000 resamples.
 - **Modes B and C are different tasks;** never rank one against the other.
-- **Selection:** Validation chose the HMM smoothing and the threshold τ; the CRF settings (c1 = c2 = 0.1, 100 iterations) were fixed and not tuned; no test result influenced any choice. Each frozen model predicted the primary test lists once. The mode A improved CRF also predicted the full official test once more, for the leakage analysis.
+- **Selection:** Validation chose the HMM smoothing, the threshold τ (and γ for the prior-adjusted threshold) and the hidden-event LM's order and discount; the CRF settings (c1 = c2 = 0.1, 100 iterations) were fixed and not tuned; no test result influenced any choice. Each frozen model predicted the primary test lists once. The mode A improved CRF also predicted the full official test once more, for the leakage analysis.
 
 **Course baselines on test, primary ID lists** ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §1;
 the shortcut, hidden-event LM and threshold columns are our additions):
@@ -139,7 +139,7 @@ the shortcut, hidden-event LM and threshold columns are our additions):
 - **Prior-adjusted threshold decoding** gives the best results: +1.42 / +1.43 / +2.74 over the improved CRF on test, all surviving a Holm correction. It lifts rare marks such as QUESTION (A 26.23 → 30.24) and EXCLAMATION (B 1.85 → 5.45). A plain threshold adds only +0.51 / +0.41 / +0.70.
 - **A classic hidden-event language model** (Stolcke-style, n-gram) comes close to the improved CRF on punctuation: −1.54 in A and a tie in B on test. It is 5.84 points behind in mode C, where its unigram truecaser is weak.
 - **The CRF's label-to-label transitions are worth 1.3–4.7 points:** the same features without transitions (a per-token classifier) lose 1.27 / 1.70 / 4.74 on validation.
-- **Question-lookback features** (a wh-word plus an auxiliary anywhere in the last 12 words, and tag questions) raise QUESTION F1 by about 6 points in every mode on validation.
+- **Question-lookback features** (a wh-word plus an auxiliary anywhere in the last 12 words, and tag questions) raise QUESTION F1 by 6–7 points in every mode on validation (+6.11 / +7.12 / +6.01, every interval excludes 0).
 - **Punctuation and casing as separate models** beat the joint mode C model on the joint metric (+2.08), because a dedicated casing CRF is better at casing. Joint training still helps punctuation inside the utterance.
 - **Under simulated ASR noise** (15% word errors) the ranking holds: the improved CRF drops from 49.92 to 45.42 in mode A, still well above the HMM (35.16).
 - **The filler-word cue** leaves macro F1 unchanged on validation, but raises comma F1 slightly: +0.21 (B) and +0.25 (C), with both intervals excluding 0.
@@ -208,7 +208,7 @@ report `test` and `test_amb` separately (they share 25 videos).
 
 | Folder | Content |
 | --- | --- |
-| `results/scores/ablations/` | One-feature-group-removed ablations of the improved CRF, per mode, on validation (50k training sample); also the gap classifier, the question-lookback variant and the factored casing pipeline |
+| `results/scores/ablations/` | One-feature-group-removed ablations of the improved CRF, per mode, on validation (50k training sample); the gap classifier, question-lookback and factored runs on the same sample are in `results/scores/gap/`, `results/scores/question2/` and `results/scores/factored/` |
 | `results/scores/b_to_a/` | Mode B models projected to mode A (D5 mapping) vs their mode A twins, mode A validation gold |
 | `results/scores/crf_test/` | The six CRFs on test and test_amb, each predicted once; paired comparisons; error pairs |
 | `results/scores/crf_training_manifests/` | Member 3's six CRF training manifests: settings, data hashes, fit time, peak memory, environment |

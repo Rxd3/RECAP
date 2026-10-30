@@ -81,9 +81,9 @@ This is Member 5's evaluation of Member 3's six CRF models (modes A, B and C × 
 9. **Team comparison methods** (section 14):
    - Prior-adjusted threshold decoding is the best decoder: +1.42 / +1.43 / +2.74 over the improved CRF on test.
    - A classic hidden-event LM nearly matches the CRF on punctuation (−1.54 in A, a tie in B).
-   - The CRF's transitions are worth 1.3–4.7 points over a per-token classifier.
-   - Question-lookback features add about +6 QUESTION F1.
-   - Separate punctuation and casing models beat the joint mode C model on the joint metric (+2.08).
+   - The CRF's transitions are worth 1.3–4.7 points over a per-token classifier (validation, 50k sample).
+   - Question-lookback features add +6.11 / +7.12 / +6.01 QUESTION F1 (validation, 50k sample).
+   - Separate punctuation and casing models beat the joint mode C model on the joint metric (+2.08; validation, 50k sample).
 
 ## Team hypotheses
 
@@ -616,14 +616,14 @@ It was trained on all of `default_train`. Order ∈ {2, 3, 4} and discount ∈ {
 
 Results on test:
 - The LM beats the HMM in every mode.
-- In mode A it comes within 1.5 points of the improved CRF, and in mode B the two are statistically tied.
+- In mode A it is 1.54 points behind the improved CRF, and in mode B the two are statistically tied.
 - In mode C it is 5.8 points behind, because the unigram truecaser cannot use context.
 
 test_amb shows the same picture (`results/scores/hidden_event_lm/`).
 
 ### 14.3 Prior-adjusted threshold decoding (τ × γ)
 
-This extends section 7. After the gate 1 − P(O) > τ fires, the label is `argmax_c P(c|x) / P_train(c)^γ`, which divides each class's probability by its training frequency raised to γ. τ and γ ∈ {0, 0.25, 0.5, 0.75, 1} were chosen jointly on validation, with γ = 0 reproducing section 7; the test lists were then predicted once. The difference is against the plain improved CRF, paired 95% CI:
+This extends section 7. After the gate 1 − P(O) > τ fires, the label is `argmax_c P(c|x) / P_train(c)^γ`, which divides each class's probability by its training frequency raised to γ. τ (0.05 to 0.95 in steps of 0.05, as in section 7) and γ ∈ {0, 0.25, 0.5, 0.75, 1} were chosen jointly on validation, with γ = 0 reproducing section 7; the test lists were then predicted once. The difference is against the plain improved CRF, paired 95% CI:
 
 | Mode | Chosen τ, γ | Validation | Test | Test − improved | test_amb − improved |
 |---|---|---|---|---|---|
@@ -635,7 +635,7 @@ Dividing by the class prior lets the rare marks win more often:
 - mode A QUESTION F1 goes from 26.23 to 30.24;
 - mode B (test F1): EXCLAMATION 1.85 → 5.45; COLON 7.84 → 7.71; SEMICOLON 0.00 → 1.28; DASH 0.24 → 1.93.
 
-This is the best decoding of the improved CRF in every mode.
+On validation and test this is the best decoding of the improved CRF in every mode. These are point estimates: it was not compared pairwise with the plain threshold of section 7. On test_amb mode C the plain threshold scores slightly higher (48.44 vs 48.31).
 
 ### 14.4 Question-lookback and tag-question features (validation)
 
@@ -647,7 +647,7 @@ This extension is off by default (`FeatureConfig.improved(use_question_lookback=
 | B | 23.25 | 24.19 | +0.94 (0.74 to 1.18) * | +0.68 (0.42 to 0.99) * | `QUESTION` +7.12 (5.76 to 8.67) * |
 | C | 47.70 | 49.77 | +2.07 (0.23 to 3.87) * | +1.35 (0.60 to 2.11) * | `QUESTION\|LOWER` +6.01 (4.30 to 7.83) * |
 
-Question lookback is the largest single feature gain we found: about +6 QUESTION F1 in every mode, with every interval excluding 0. It was tested at the 50k-sample scale on validation only, and it is not in the delivered models.
+Question lookback is the largest single feature gain we found: +6.11 / +7.12 / +6.01 QUESTION F1 in modes A / B / C, with every interval excluding 0. It was tested at the 50k-sample scale on validation only, and it is not in the delivered models.
 
 ### 14.5 Factored vs joint punctuation and casing (validation, mode C)
 
@@ -666,7 +666,7 @@ Findings:
 - **Punctuation over all positions is tied.**
 - **The joint model keeps an advantage on punctuation inside the utterance (−0.83 for the factored pipeline)**, consistent with H1.
 
-Joint training helps punctuation; a separate model helps casing.
+Joint training helps punctuation inside the utterance; a separate model helps casing.
 
 ## Multiple comparisons (Holm)
 
@@ -684,7 +684,7 @@ The p-values are recomputed from the committed compare JSONs in `results/scores/
 
 ## Limitations
 
-- **CRF settings were not tuned.** Every model uses c1 = c2 = 0.1 and 100 L-BFGS iterations, and every fit stopped at the iteration cap. Only τ was tuned. The validation sensitivity check in section 5 shows the improved − basic gap holds (+4.37 to +6.53) across six settings, but the absolute scores could move a little with tuning.
+- **CRF settings were not tuned.** Every model uses c1 = c2 = 0.1 and 100 L-BFGS iterations, and every fit stopped at the iteration cap. Only the decoding was tuned: τ (section 7), and τ with γ (section 14.3). The validation sensitivity check in section 5 shows the improved − basic gap holds (+4.37 to +6.53) across six settings, but the absolute scores could move a little with tuning.
 - **Intervals cover sample variance only.** Each setting has one fit. The intervals are not adjusted for the number of comparisons; the Holm check above shows which conclusions survive.
 - **Ablation and filler models use a 50k-sequence sample.** Read only their differences; each comes from one fit.
 - **Rare classes stay low.** In mode B the improved CRF scores under 8 F1 on COLON, DASH, EXCLAMATION and SEMICOLON on test. `QUESTION|ALL_UPPER` has 9 test tokens.
