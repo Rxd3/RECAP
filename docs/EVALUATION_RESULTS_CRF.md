@@ -537,26 +537,33 @@ Training on the finer 8-class labels barely changes 4-class punctuation: the dif
 
 ## 12. Gold-noise check (mode B)
 
-The protocol lists three known sources of noise in the gold labels. To test whether they explain the low rare-class scores, mode B was rescored without the affected utterances. These are the excluded records:
+The protocol lists three known sources of noise in the gold labels. `scripts/find_gold_noise.py` flags them on the primary mode B lists (rules in `src/punct_restore/data/gold_noise.py`); the frozen release was not changed. The counts are an upper estimate: a few single-word headings such as "Disclaimer:" also match the speaker-label rule.
 
-| Rule | Validation records | Test records |
-|---|---|---|
-| Leftover speaker label in the source text (`speaker <n>:`) | 22 | 0 |
-| Subtitle cue number (a 4–8 digit number before a dash) | 3 | 5 |
-| Auto-caption-style video (`732fql_jhJQ`, `JNxcznsrRb8`) | 135 | 46 |
+| Rule | Validation | Test | test_amb |
+|---|---|---|---|
+| Leftover speaker label: a name before ':' at the utterance start, after a sentence end, after ', ' or after a turn dash | 134 | 22 | 63 |
+| Subtitle cue residue (block number and timestamp in the original text) | 1 | 8 | 0 |
+| Auto-caption-style video (`732fql_jhJQ`, `JNxcznsrRb8`) | 135 | 46 | 0 |
+| Records excluded (any rule) | 270 | 76 | 63 |
+| Speaker-label COLONs / all gold COLONs | 144 / 425 (33.88%) | 23 / 166 (13.86%) | 76 / 273 (27.84%) |
 
-The ID lists with the rule behind each exclusion are in `results/scores/gold_noise/{validation,test}_B_noisy.tsv`. The scores below are mode B macro F1 % (COLON F1), on the primary list and then without the noisy records:
+In `default_train`, 319 of 3,385 COLON labels (9.42%) sit on speaker labels, so the models also learn the pattern. The flagged IDs with their rules are in `results/scores/gold_noise/{validation,test,test_amb}_B_noisy.tsv`, and the counts in `*_B_summary.json`.
 
-| Model | Validation | Without noise | Test | Without noise |
-|---|---|---|---|---|
-| HMM | 18.47 (15.29) | 18.61 (16.16) | 16.79 (6.73) | 16.78 (6.73) |
-| CRF basic | 22.22 (19.65) | 21.49 (14.16) | 20.25 (6.42) | 20.28 (6.45) |
-| CRF improved | 25.10 (15.69) | 24.80 (12.99) | 22.82 (7.84) | 22.88 (7.84) |
+Mode B was rescored without every flagged record. Macro F1 % (COLON F1), on the primary list and then without the noisy records:
 
-The known noise does not explain the low rare-class scores:
-- On test, removing it changes macro F1 by at most 0.06 points.
-- On validation, the CRFs' COLON F1 falls when the speaker labels go, because "speaker 1:" colons were the easiest colons to predict.
-- The extended marks remain hard to predict from text alone.
+| Model | Validation | Without noise | Test | Without noise | test_amb | Without noise |
+|---|---|---|---|---|---|---|
+| HMM | 18.47 (15.29) | 16.43 (0.75) | 16.79 (6.73) | 15.97 (1.12) | 15.32 (11.41) | 15.01 (9.05) |
+| CRF basic | 22.22 (19.65) | 19.70 (1.42) | 20.25 (6.42) | 19.51 (1.07) | 19.44 (9.76) | 18.80 (5.08) |
+| CRF improved | 25.10 (15.69) | 23.27 (2.14) | 22.82 (7.84) | 22.08 (2.30) | 22.59 (9.88) | 22.07 (6.01) |
+| CRF improved + τ | — | — | 23.23 (7.89) | 22.45 (2.04) | 23.16 (11.83) | 22.38 (6.18) |
+
+COLON support falls from validation 425 → 245; test 166 → 143; test_amb 273 → 192.
+
+Findings:
+- **Most of the models' COLON skill comes from speaker labels.** Without the flagged records, COLON F1 falls to 0.75–2.30 on validation and test.
+- **Macro F1 falls by 0.31–2.53 points**, and the model ranking is the same in every list (HMM < CRF basic < CRF improved < CRF improved + τ).
+- **The mode B scores elsewhere in this report include this noise.** Read their COLON F1 as an upper bound; the other extended marks (EXCLAMATION, SEMICOLON, DASH) remain hard to predict from text alone.
 
 ## 13. Simulated ASR noise (test)
 
@@ -691,11 +698,11 @@ The p-values are recomputed from the committed compare JSONs in `results/scores/
 
 ## Limitations
 
-- **CRF settings were not tuned.** Every model uses c1 = c2 = 0.1 and 100 L-BFGS iterations, and every fit stopped at the iteration cap. Only the decoding was tuned: τ (section 7), and τ with γ (section 14.3). The validation sensitivity check in section 5 shows the improved − basic gap holds (+4.37 to +6.53) across six settings, but the absolute scores could move a little with tuning.
+- **CRF settings were not tuned.** Every model uses c1 = c2 = 0.1 and 100 L-BFGS iterations, and every fit stopped at the iteration cap. The loss was still falling at the cap: by 0.12–1.52% over the last 10 iterations, more for the improved models (0.86 / 0.63 / 1.52% in A / B / C) than for the basic ones (0.12 / 0.21 / 0.53%), so the iteration cap works against the improved − basic gain (`results/scores/crf_convergence/convergence.json`). Only the decoding was tuned: τ (section 7), and τ with γ (section 14.3). The validation sensitivity check in section 5 shows the improved − basic gap holds (+4.37 to +6.53) across six settings, but the absolute scores could move a little with tuning.
 - **Intervals cover sample variance only.** Each setting has one fit. The intervals are not adjusted for the number of comparisons; the Holm check above shows which conclusions survive.
 - **Ablation and filler models use a 50k-sequence sample.** Read only their differences; each comes from one fit.
 - **Rare classes stay low.** In mode B the improved CRF scores under 8 F1 on COLON, DASH, EXCLAMATION and SEMICOLON on test. `QUESTION|ALL_UPPER` has 9 test tokens.
-- **Gold noise.** Leftover speaker labels give false COLON labels; see EVALUATION_RESULTS.md.
+- **Gold noise.** Leftover speaker labels give false COLON labels: about a third of the validation COLONs and 9.42% of the training COLONs (section 12). Mode B COLON scores are an upper bound.
 - **Training environment.** Fit times, memory and the Python version come from Member 3's training manifests and were not re-measured.
 - **test and test_amb share 25 videos.** They are reported separately and never pooled.
 - **The comparison methods of sections 13–14 are post hoc.** They were added after the first test report, in response to a review that cited test results. Their settings were chosen on validation and each test list was predicted once, but they are exploratory, and the hypotheses H1–H6 are judged on the course models.
