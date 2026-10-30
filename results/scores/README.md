@@ -21,3 +21,4 @@ All files were written by `scripts/evaluate_models.py` (`score`, `compare`, `err
 | `h1_joint/` | Mode A model vs the mode C model projected to punctuation, on mode A validation gold over the mode C IDs |
 | `leakage/` | HMM and improved CRF on the official mode A test, split by leakage-control status and exclusion reason; native SponSpeech labels |
 | `runtime/` | CRF prediction timing (median of 3 passes, same laptop as the HMM rows) |
+| `crf_training_manifests/` | Member 3's six training manifests: settings, data hashes, fit time, peak memory, environment |

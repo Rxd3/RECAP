@@ -316,5 +316,6 @@ python scripts/evaluate_models.py score --gold data/processed/sponspeech-m1-v2/m
 - **Mode C:** add `--masks data/processed/sponspeech-m1-v2/masks/case_joint/test.jsonl`.
 - **Paired comparisons:** `compare --predictions-a A --predictions-b B --bootstrap 1000`.
 - **Error pairs:** `errors --per-pair 3`.
-- **Report generator and timing script:** shared in the Member 5 results bundle.
+- **Timing script:** `scripts/reporting/time_models.py`.
+- **Evaluator outputs behind every number:** `results/scores/hmm/` and `results/scores/leakage/`.
 - **Section 8 ID lists:** the "all utterances" list is every `sample_id` in `mode_A/test.jsonl`. The "excluded" list is that list minus `splits/sponspeech-m1-v2/leakage_controlled/test.ids`. The native rows use `--gold data/processed/sponspeech-m1-v2/benchmark_native/mode_A/test.jsonl`.

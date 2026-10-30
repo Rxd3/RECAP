@@ -509,3 +509,19 @@ Mode C is shown as its punctuation projection and its masked casing projection; 
 - **Training environment.** Fit times, memory and the Python version come from Member 3's training manifests and were not re-measured.
 - **test and test_amb share 25 videos.** They are reported separately and never pooled.
 - **Section 8 is supplementary.** It scores the frozen models on additional official-test utterances; nothing was selected on it.
+
+## Reproduce
+
+Run every command from the repository root. `<rel>` is `sponspeech-m1-v2`. The shared models are listed in [REPRODUCIBILITY.md](REPRODUCIBILITY.md).
+
+- **Test predictions, once per model:** `python scripts/train_crf.py predict --model crf_mode_<m>_<preset>_full_01.joblib --input data/processed/<rel>/mode_<M>/test.jsonl --ids data/splits/<rel>/primary_eval/test_mode_<M>.ids --output PRED.jsonl --manifest-out PRED.manifest.json`. The same command on validation reproduces Member 3's delivered files byte for byte.
+- **Scores and paired comparisons:** `python scripts/evaluate_models.py score|compare|errors ... --bootstrap 1000 --seed 2026`. Mode C needs `--masks data/processed/<rel>/masks/case_joint/<split>.jsonl`.
+- **Threshold decoding (§7):** `python scripts/tune_threshold.py tune ...` on validation, then `predict --tau-file ...` once on test and test_amb.
+- **Ablations and filler cue (§6):** `python scripts/run_ablations.py --mode <M> --out DIR [--variants ...]`, then score as above.
+- **Joint vs punctuation-only (H1):** `python scripts/project_joint.py --predictions C_PRED.jsonl --gold data/processed/<rel>/mode_A/validation.jsonl --out A_PRED.jsonl --manifest-out A_PRED.manifest.json`, then `compare` on mode A gold with `--ids data/splits/<rel>/primary_eval/validation_mode_C.ids`.
+- **Leakage subsets (§8):** `python scripts/build_leakage_subsets.py --mode A --split test --out DIR`. It writes `all`, `kept`, `excluded_train_video`, `excluded_other_leak` and `excluded_quality` ID lists, with counts 17,695 / 12,668 / 2,706 / 2,130 / 191.
+- **Tables in this document:** `python scripts/reporting/build_m3_tables.py --split test --tau --out OUT.md` (§1–4, errors, confusion matrices).
+  - `python scripts/reporting/build_m3_final_sections.py --manifests results/scores/crf_training_manifests --out OUT.md` gives §7–10.
+  - `python scripts/reporting/build_ablation_table.py --out OUT.md` gives the §6 tables.
+  - All three read the committed JSON in `results/scores/` and reproduce the tables above line for line.
+- **Runtime (§10):** `python scripts/reporting/time_models.py --kind crf --model M --mode <M> --out OUT.json`.
