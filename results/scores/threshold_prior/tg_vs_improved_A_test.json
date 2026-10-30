@@ -31,6 +31,104 @@
    "macro_f1_b": 0.378727
   }
  },
+ "classes": {
+  "COMMA": {
+   "punctuation/all": {
+    "difference": 0.020418,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.02456,
+     "level": 0.95,
+     "low": 0.016155,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 1.0,
+     "unit": "group_id"
+    },
+    "f1_a": 0.525215,
+    "f1_b": 0.545634
+   },
+   "punctuation/non_final": {
+    "difference": 0.020418,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.02456,
+     "level": 0.95,
+     "low": 0.016155,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 1.0,
+     "unit": "group_id"
+    },
+    "f1_a": 0.525215,
+    "f1_b": 0.545634
+   }
+  },
+  "PERIOD": {
+   "punctuation/all": {
+    "difference": -0.017885,
+    "difference_ci": {
+     "groups": 153,
+     "high": -0.013853,
+     "level": 0.95,
+     "low": -0.021958,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 0.0,
+     "unit": "group_id"
+    },
+    "f1_a": 0.710168,
+    "f1_b": 0.692283
+   },
+   "punctuation/non_final": {
+    "difference": 0.013115,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.019803,
+     "level": 0.95,
+     "low": 0.006475,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 1.0,
+     "unit": "group_id"
+    },
+    "f1_a": 0.357004,
+    "f1_b": 0.370119
+   }
+  },
+  "QUESTION": {
+   "punctuation/all": {
+    "difference": 0.040018,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.061319,
+     "level": 0.95,
+     "low": 0.018777,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 0.999,
+     "unit": "group_id"
+    },
+    "f1_a": 0.262341,
+    "f1_b": 0.302359
+   },
+   "punctuation/non_final": {
+    "difference": 0.010787,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.036993,
+     "level": 0.95,
+     "low": -0.014464,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 0.789,
+     "unit": "group_id"
+    },
+    "f1_a": 0.20964,
+    "f1_b": 0.220428
+   }
+  }
+ },
  "inputs_a": {
   "gold": {
    "path": "data/processed/sponspeech-m1-v2/mode_A/test.jsonl",

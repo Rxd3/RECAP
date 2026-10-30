@@ -1,10 +1,11 @@
 # Evaluation results: CRF models (Member 3) and Member 5 extensions
 
-This is Member 5's evaluation of Member 3's six CRF models (modes A, B and C × basic and improved feature presets) and of Member 5's two extensions: threshold decoding, and a filler-word cue. It follows [EVALUATION_PROTOCOL.md](EVALUATION_PROTOCOL.md). The HMM baseline is reported in [EVALUATION_RESULTS.md](EVALUATION_RESULTS.md).
+This is Member 5's evaluation of Member 3's six CRF models (modes A, B and C × basic and improved feature presets) and of Member 5's additions: threshold decoding and a filler-word cue (sections 6–7), the gold-noise and simulated-ASR checks (sections 12–13), and the exploratory comparison methods of section 14. It follows [EVALUATION_PROTOCOL.md](EVALUATION_PROTOCOL.md). The HMM baseline is reported in [EVALUATION_RESULTS.md](EVALUATION_RESULTS.md).
 
 **Final results are on the primary test lists.**
 - Validation chose the threshold τ (section 7). Member 3's CRF settings (c1 = c2 = 0.1, 100 iterations) were fixed and not tuned.
-- No test result influenced any choice. Section 5 has the validation tables.
+- The course-baseline settings (HMM smoothing, CRF settings, the plain threshold τ) were fixed or chosen on validation before any test result. Section 5 has the validation tables.
+- The comparison methods in sections 13–14 (simulated ASR noise, gap classifier, hidden-event LM, prior-adjusted decoding, question lookback, factored casing) were added on 2026-10-30, after the first test report, in response to a review that cited test results. They are exploratory; their settings were still chosen on validation only, and each test list was predicted once.
 - Each frozen model predicted the primary test and test_amb lists exactly once. For the supplementary leakage analysis (section 8), the mode A improved model also predicted the full official test once.
 - Every number comes from an evaluator JSON file in [`results/scores/`](../results/scores/README.md).
 
@@ -37,7 +38,7 @@ This is Member 5's evaluation of Member 3's six CRF models (modes A, B and C × 
 - **Scoring:**
   - `scripts/evaluate_models.py` on the primary lists, with the `case_joint` mask in mode C.
   - Grouped bootstrap by video: 1,000 resamples, seed 2026, 95% percentile intervals, not adjusted for multiple comparisons.
-  - Validation numbers were also confirmed by an independent from-scratch scorer.
+  - During the work, validation scores were cross-checked against scikit-learn's `f1_score`; that check is not committed.
 
 **Metric:**
 - A/B primary: macro F1 over the non-O punctuation classes.
@@ -78,8 +79,8 @@ This is Member 5's evaluation of Member 3's six CRF models (modes A, B and C × 
    - Improved − HMM: +16.47 / +7.27 / +10.82.
    - Improved − basic: +6.61 / +3.15 / +3.58.
    - All six intervals exclude 0.
-9. **Team comparison methods** (section 14):
-   - Prior-adjusted threshold decoding is the best decoder: +1.42 / +1.43 / +2.74 over the improved CRF on test.
+9. **Team comparison methods** (section 14; exploratory, added after the first test report):
+   - Prior-adjusted threshold decoding is the best decoder on test: +1.42 / +1.43 / +2.74 over the improved CRF and +0.91 / +1.03 / +2.04 over the plain threshold, every interval excluding 0. It trades PERIOD (−1.79 in A) for QUESTION (+4.00 in A), and half of the mode C gain comes from two tiny ALL_UPPER classes.
    - A classic hidden-event LM nearly matches the CRF on punctuation (−1.54 in A, a tie in B).
    - The CRF's transitions are worth 1.3–4.7 points over a per-token classifier (validation, 50k sample).
    - Question-lookback features add +6.11 / +7.12 / +6.01 QUESTION F1 (validation, 50k sample).
@@ -91,8 +92,8 @@ The team wrote H1–H6 in its execution plan on 2026-10-29, before any CRF resul
 
 | # | Hypothesis | Outcome | Evidence |
 |---|---|---|---|
-| H1 | Joint mode C gives higher PERIOD F1 than mode A | **Not supported for PERIOD** (mixed: higher only for CRF improved), but joint training helps inside the utterance | Paired comparison on mode A gold over the 19,936 mode C validation IDs: each mode A model against the same model type trained on mode C, projected to punctuation. PERIOD F1, A vs C: HMM 69.31 vs 68.33, CRF basic 71.57 vs 71.43, CRF improved 72.33 vs 72.63. The joint CRF improved gains +0.42 macro (0.05 to 0.82), mostly on QUESTION (+1.51). Every joint model gains on non-final positions, and all three intervals exclude 0: HMM +8.69, CRF basic +1.59, CRF improved +1.16. Overall, the joint HMM loses 0.62 (−1.20 to −0.03). **Controlled check:** the mode A model trains on 142,722 sequences and the mode C model on 141,745. Retraining the mode A HMM and CRF basic on exactly the mode C training IDs gives the same picture: non-final +8.68 (7.79 to 9.63) for the HMM and +1.36 (0.89 to 1.86) for the CRF basic. All positions: −0.62 and +0.24 (−0.09 to 0.58). The training-set difference moves the results by at most about 0.2 points (`results/scores/h1_joint/*_sameids.json`). |
-| H2 | Threshold decoding raises rare-class recall | **Not supported with a single threshold; partly supported with prior adjustment** (test) | Recall rises for almost every non-O class, but mostly for COMMA (mode A 45.22 → 52.63; mode B 45.36 → 57.80). Per-class F1 changes, threshold − improved, with paired 95% intervals: COMMA +2.38 (1.89 to 2.88) in A, +2.52 (1.88 to 3.22) in B, and `COMMA|LOWER` +2.79 (2.15 to 3.46) in C. PERIOD falls overall (A −0.76, B −1.59) but rises on non-final positions (+1.43, +1.60). Every rare-class interval includes 0 (QUESTION, COLON, SEMICOLON, DASH, EXCLAMATION). Macro F1 gains +0.51 / +0.41 / +0.70 (sections 1–2; the τ grid is in section 7). **With prior adjustment** (γ = 0.5, section 14.3), the rare marks do rise (point estimates): QUESTION F1 26.23 → 30.24 in A; EXCLAMATION 1.85 → 5.45 and DASH 0.24 → 1.93 in B. Macro F1 rises by +1.42 / +1.43 / +2.74. |
+| H1 | Joint mode C gives higher PERIOD F1 than mode A | **Not supported for PERIOD** (mixed: higher only for CRF improved), but joint training helps inside the utterance | Paired comparison on mode A gold over the 19,936 mode C validation IDs: each mode A model against the same model type trained on mode C, projected to punctuation. PERIOD F1, A vs C, with the paired per-class difference C − A: HMM 69.31 vs 68.33, −0.98 (−1.95 to 0.04); CRF basic 71.57 vs 71.43, −0.15 (−0.44 to 0.17); CRF improved 72.33 vs 72.63, +0.31 (0.02 to 0.61). The joint CRF improved gains +0.42 macro (0.05 to 0.82), mostly on QUESTION (+1.51). Every joint model gains on non-final positions, and all three intervals exclude 0: HMM +8.69, CRF basic +1.59, CRF improved +1.16. Overall, the joint HMM loses 0.62 (−1.20 to −0.03). **Controlled check:** the mode A model trains on 142,722 sequences and the mode C model on 141,745. Retraining the mode A HMM and CRF basic on exactly the mode C training IDs gives the same picture: non-final +8.68 (7.79 to 9.63) for the HMM and +1.36 (0.89 to 1.86) for the CRF basic. All positions: −0.62 and +0.24 (−0.09 to 0.58). PERIOD: −0.98 (−1.95 to 0.04) and −0.07 (−0.36 to 0.23). The training-set difference moves the results by at most about 0.2 points (`results/scores/h1_joint/*_sameids.json`). The CRF improved, the only model whose PERIOD favours the joint model, was not retrained on the mode C IDs: its full fit needs about 14 GB of memory, the size of the evaluation laptop's RAM, so its +0.31 is within reach of that confound. |
+| H2 | Threshold decoding raises rare-class recall | **Not supported** (test; single τ, as written). Prior adjustment is an exploratory follow-up | Recall rises for almost every non-O class, but mostly for COMMA (mode A 45.22 → 52.63; mode B 45.36 → 57.80). Per-class F1 changes, threshold − improved, with paired 95% intervals: COMMA +2.38 (1.89 to 2.88) in A, +2.52 (1.88 to 3.22) in B, and `COMMA|LOWER` +2.79 (2.15 to 3.46) in C. PERIOD falls overall (A −0.76, B −1.59) but rises on non-final positions (+1.43, +1.60). Every rare-class interval includes 0 (QUESTION, COLON, SEMICOLON, DASH, EXCLAMATION). Macro F1 gains +0.51 / +0.41 / +0.70 (sections 1–2; the τ grid is in section 7). **Exploratory follow-up, prior adjustment** (γ = 0.5, section 14.3, added after the first test report), per-class F1 − improved with paired 95% intervals: QUESTION +4.00 (1.88 to 6.13) in A; QUESTION +4.60 (2.63 to 6.50), EXCLAMATION +3.60 (1.21 to 6.33) and DASH +1.70 (0.16 to 3.23) in B, while SEMICOLON and COLON intervals include 0. PERIOD pays for it: −1.79 (−2.20 to −1.39) in A and −1.59 (−1.87 to −1.31) in B. |
 | H3 | Question cues raise QUESTION F1 | **Supported** (validation ablation) | Removing the question cues changes QUESTION F1 by −4.05 (−5.37 to −2.99) in A and −2.85 (−4.45 to −1.58) in B, and `QUESTION|LOWER` F1 by −5.39 (−6.81 to −4.10) in C. These are paired per-class intervals (`compare --class`). Primary intervals exclude 0 in every mode (section 6). Question-lookback features (section 14.4) add +6.11 / +7.12 / +6.01 QUESTION F1 on validation. |
 | H4 | Filler and discourse cues raise COMMA F1 | **Partly supported** for fillers, **not supported** for discourse markers (validation) | Adding the filler cue (*um*, *uh*, *er*, *erm*, *like*, *you know*, *i mean*, repeated words) raises COMMA F1 by +0.14 (−0.00 to 0.28) in A and +0.21 (0.06 to 0.37) in B, and `COMMA|LOWER` F1 by +0.25 (0.05 to 0.45) in C. Its primary macro F1 does not change (+0.04 / +0.04 / −0.28, all intervals include 0). Removing the clause cues (conjunctions and discourse markers) changes COMMA F1 by +0.03 (−0.08 to 0.14) in A and +0.05 (−0.08 to 0.18) in B, and `COMMA|LOWER` F1 by −0.18 (−0.34 to −0.03) in C. |
 | H5 | Much of PERIOD F1 comes from the utterance-final token | **Supported** (test) | The shortcut alone reaches PERIOD F1 66.68 in mode A, against the HMM's 67.34. Without the final token, the HMM's primary score falls from 35.12 to 9.13. |
@@ -559,7 +560,7 @@ The known noise does not explain the low rare-class scores:
 
 ## 13. Simulated ASR noise (test)
 
-This check is **simulated**; RECAP has no real ASR condition. `scripts/simulate_asr_noise.py` corrupts the primary test inputs at a word error rate of 5, 10 and 15%, with seed 2026. The edits are taken round-robin by type:
+This check is **simulated** and **exploratory** (added after the first test report; nothing was tuned on it); RECAP has no real ASR condition. `scripts/simulate_asr_noise.py` corrupts the primary test inputs at a word error rate of 5, 10 and 15%, with seed 2026. The edits are taken round-robin by type:
 - deletion of a function word, whose punctuation label moves to the previous word if that word is O, and is dropped otherwise;
 - homophone substitution (their/there, your/you're, its/it's, to/too/two, then/than);
 - an adjacent swap of two non-final words, counted as two errors.
@@ -587,9 +588,11 @@ Files: `results/scores/asr_noise/wer<rate>/`, including `summary.json` with the 
 
 ## 14. Team comparison methods
 
+**Exploratory.** These methods were added on 2026-10-30, after the first test report, in response to a review that cited test results. Their settings were still chosen on validation only, and each test list was predicted once. The team's hypotheses H1–H6 are judged on the course models; these results are follow-ups.
+
 ### 14.1 Gap classifier: the CRF without its transitions (validation)
 
-`GapClassifier` is a multinomial logistic regression on exactly the improved CRF's per-token features, with each token predicted independently. It was trained on the same 50k sample with the same features as the ablation CRF (`run_ablations.py --variants gap_improved`). The difference is gap − CRF, in points with paired 95% CI (* = interval excludes 0):
+`GapClassifier` is a multinomial logistic regression on exactly the improved CRF's per-token features, with each token predicted independently. It was trained on the same 50k sample with the same features as the ablation CRF (`run_ablations.py --variants gap_improved`). It also differs in training: scikit-learn logistic regression with an L2 penalty, C = 1.0 and up to 200 lbfgs iterations, against the CRF's elastic net c1 = c2 = 0.1 and 100 iterations. The difference is gap − CRF, in points with paired 95% CI (* = interval excludes 0):
 
 | Mode | CRF improved | Gap classifier | Difference | non_final difference |
 |---|---|---|---|---|
@@ -597,7 +600,7 @@ Files: `results/scores/asr_noise/wer<rate>/`, including `summary.json` with the 
 | B | 23.25 | 21.54 | −1.70 (−3.77 to −0.17) * | −1.49 (−3.58 to 0.14) |
 | C | 47.70 | 42.96 | −4.74 (−6.06 to −3.60) * | −3.20 (−4.06 to −2.42) * |
 
-The label-to-label transitions are worth 1.3–1.7 points in A and B, and 4.7 points in mode C, where they carry the capital after a sentence end, the mechanism behind H1.
+Transitions plus these training differences are worth 1.3–1.7 points in A and B, and 4.7 points in mode C. The large mode C gap fits the transitions carrying the capital after a sentence end, the mechanism behind H1, but this comparison cannot separate the two causes.
 
 ### 14.2 Hidden-event language model (classic comparison method)
 
@@ -623,19 +626,23 @@ test_amb shows the same picture (`results/scores/hidden_event_lm/`).
 
 ### 14.3 Prior-adjusted threshold decoding (τ × γ)
 
-This extends section 7. After the gate 1 − P(O) > τ fires, the label is `argmax_c P(c|x) / P_train(c)^γ`, which divides each class's probability by its training frequency raised to γ. τ (0.05 to 0.95 in steps of 0.05, as in section 7) and γ ∈ {0, 0.25, 0.5, 0.75, 1} were chosen jointly on validation, with γ = 0 reproducing section 7; the test lists were then predicted once. The difference is against the plain improved CRF, paired 95% CI:
+This extends section 7. After the gate 1 − P(O) > τ fires, the label is `argmax_c P(c|x) / P_train(c)^γ`, which divides each class's probability by its training frequency raised to γ. τ (0.05 to 0.95 in steps of 0.05, as in section 7) and γ ∈ {0, 0.25, 0.5, 0.75, 1} were chosen jointly on validation, with γ = 0 reproducing section 7; the test lists were then predicted once. Differences are paired 95% CIs, against the plain improved CRF and against the plain threshold of section 7:
 
-| Mode | Chosen τ, γ | Validation | Test | Test − improved | test_amb − improved |
-|---|---|---|---|---|---|
-| A | 0.4, 0.5 | 53.50 | 51.34 | +1.42 (0.68 to 2.16) * | +2.08 (1.45 to 2.66) * |
-| B | 0.45, 0.5 | 26.52 | 24.25 | +1.43 (0.52 to 2.22) * | +1.55 (0.40 to 2.63) * |
-| C | 0.35, 0.5 | 53.16 | 49.77 | +2.74 (1.07 to 4.68) * | +1.15 (0.39 to 1.92) * |
+| Mode | Chosen τ, γ | Validation | Test | Test − improved | Test − plain τ | test_amb − improved | test_amb − plain τ |
+|---|---|---|---|---|---|---|---|
+| A | 0.4, 0.5 | 53.50 | 51.34 | +1.42 (0.68 to 2.16) * | +0.91 (0.24 to 1.57) * | +2.08 (1.45 to 2.66) * | +1.19 (0.65 to 1.72) * |
+| B | 0.45, 0.5 | 26.52 | 24.25 | +1.43 (0.52 to 2.22) * | +1.03 (0.10 to 1.80) * | +1.55 (0.40 to 2.63) * | +0.98 (0.11 to 1.75) * |
+| C | 0.35, 0.5 | 53.16 | 49.77 | +2.74 (1.07 to 4.68) * | +2.04 (0.52 to 3.87) * | +1.15 (0.39 to 1.92) * | −0.13 (−0.76 to 0.46) |
 
-Dividing by the class prior lets the rare marks win more often:
-- mode A QUESTION F1 goes from 26.23 to 30.24;
-- mode B (test F1): EXCLAMATION 1.85 → 5.45; COLON 7.84 → 7.71; SEMICOLON 0.00 → 1.28; DASH 0.24 → 1.93.
+Per class on test, prior adjustment − improved (paired 95% CI, `compare --class`):
+- **A:** QUESTION +4.00 (1.88 to 6.13) *; COMMA +2.04 (1.62 to 2.46) *; PERIOD −1.79 (−2.20 to −1.39) *.
+- **B:** QUESTION +4.60 (2.63 to 6.50) *; EXCLAMATION +3.60 (1.21 to 6.33) *; DASH +1.70 (0.16 to 3.23) *; SEMICOLON +1.28 (0.00 to 2.70); COLON −0.13 (−4.96 to 3.98); COMMA +0.57 (0.25 to 0.90) *; PERIOD −1.59 (−1.87 to −1.31) *.
+- **C:** `QUESTION|FIRST_UPPER` +8.18 (2.28 to 13.78) *; `QUESTION|LOWER` +2.73 (0.56 to 4.79) *; `COMMA|LOWER` +2.35 (1.75 to 2.99) *; `PERIOD|LOWER` −2.09 (−2.58 to −1.61) *.
+- **The mode C gain leans on two tiny classes.** `QUESTION|ALL_UPPER` (9 test tokens) and `PERIOD|ALL_UPPER` (125) change by +10.53 (0.00 to 30.78) and +6.89 (−0.80 to 13.72). With each of the 12 classes weighted equally, they account for 1.45 of the +2.74 gain.
 
-On validation and test this is the best decoding of the improved CRF in every mode. These are point estimates: it was not compared pairwise with the plain threshold of section 7. On test_amb mode C the plain threshold scores slightly higher (48.44 vs 48.31).
+Against the plain threshold, the gain comes from the question mark and, in B, the exclamation mark, at a cost on the frequent marks: QUESTION +4.09 (2.13 to 6.04) * and PERIOD −1.03 (−1.18 to −0.86) * in A; QUESTION +4.84 (3.02 to 6.66) *, EXCLAMATION +3.67 (1.32 to 6.45) * and COMMA −1.95 (−2.47 to −1.49) * in B.
+
+Prior adjustment is the best decoding of the improved CRF on test in every mode, and on test_amb in A and B; on test_amb mode C it ties the plain threshold. The per-class and plain-τ comparisons are exploratory and are not in the Holm families.
 
 ### 14.4 Question-lookback and tag-question features (validation)
 
@@ -691,6 +698,7 @@ The p-values are recomputed from the committed compare JSONs in `results/scores/
 - **Gold noise.** Leftover speaker labels give false COLON labels; see EVALUATION_RESULTS.md.
 - **Training environment.** Fit times, memory and the Python version come from Member 3's training manifests and were not re-measured.
 - **test and test_amb share 25 videos.** They are reported separately and never pooled.
+- **The comparison methods of sections 13–14 are post hoc.** They were added after the first test report, in response to a review that cited test results. Their settings were chosen on validation and each test list was predicted once, but they are exploratory, and the hypotheses H1–H6 are judged on the course models.
 - **Some comparison methods were run on validation only, at the 50k-sample scale:** the gap classifier, the question-lookback features and the factored pipeline (section 14). Their differences are controlled; their absolute scores sit below the full-data models.
 - **Section 8 is supplementary.** It scores the frozen models on additional official-test utterances; nothing was selected on it.
 
