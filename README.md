@@ -116,13 +116,13 @@ Every number names its split.
 - **Selection:** Validation chose the HMM smoothing and the threshold τ; the CRF settings (c1 = c2 = 0.1, 100 iterations) were fixed and not tuned; no test result influenced any choice. Each frozen model predicted the primary test lists once. The mode A improved CRF also predicted the full official test once more, for the leakage analysis.
 
 **Course baselines on test, primary ID lists** ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §1;
-the shortcut and threshold columns are our additions):
+the shortcut, hidden-event LM and threshold columns are our additions):
 
-| Mode | Shortcut (ours) | HMM | CRF basic | CRF improved | CRF improved + threshold (ours) |
-| --- | --- | --- | --- | --- | --- |
-| A | 27.48 | 35.12 (32.80–37.31) | 43.65 (41.74–45.59) | 49.92 (47.91–52.01) | **50.44** (48.53–52.41) |
-| B | 11.87 | 16.79 (15.28–18.49) | 20.25 (18.87–21.95) | 22.82 (21.42–24.42) | **23.23** (21.74–25.05) |
-| C | 18.09 | 37.41 (34.56–40.71) | 43.85 (42.13–45.47) | 47.02 (44.97–49.00) | **47.72** (45.78–49.61) |
+| Mode | Shortcut (ours) | HMM | Hidden-event LM (ours) | CRF basic | CRF improved | CRF improved + prior-adjusted threshold (ours) |
+| --- | --- | --- | --- | --- | --- | --- |
+| A | 27.48 | 35.12 (32.80–37.31) | 48.38 (46.21–50.62) | 43.65 (41.74–45.59) | 49.92 (47.91–52.01) | **51.34** (49.61–53.06) |
+| B | 11.87 | 16.79 (15.28–18.49) | 22.51 (21.08–23.98) | 20.25 (18.87–21.95) | 22.82 (21.42–24.42) | **24.25** (23.06–25.54) |
+| C | 18.09 | 37.41 (34.56–40.71) | 41.18 (39.42–42.70) | 43.85 (42.13–45.47) | 47.02 (44.97–49.00) | **49.77** (47.26–51.95) |
 
 - **The improved CRF beats the HMM** by +14.80 (A), +6.03 (B) and +9.61 (C) points on test. It beats the basic CRF by +6.27, +2.57 and +3.17, and the basic CRF beats the HMM by +8.53, +3.46 and +6.43. All nine paired intervals exclude 0, and the ranking holds on test_amb.
 - **The CRF gain is mostly COMMA and QUESTION** (mode A test F1, HMM → CRF improved): COMMA 26.28 → 52.52, QUESTION 11.75 → 26.23, PERIOD 67.34 → 71.02.
@@ -136,7 +136,12 @@ the shortcut and threshold columns are our additions):
 - **The HMM mostly learns the end-of-utterance shortcut.**
   - The shortcut alone reaches PERIOD F1 66.68 in mode A, against the HMM's 67.34 (test).
   - Without each utterance's final token, mode A scores HMM 9.13, CRF basic 28.30 and CRF improved 36.40 (test).
-- **Threshold decoding** adds +0.51 / +0.41 / +0.70 on test, mostly through comma recall. The B interval includes 0.
+- **Prior-adjusted threshold decoding** gives the best results: +1.42 / +1.43 / +2.74 over the improved CRF on test, all surviving a Holm correction. It lifts rare marks such as QUESTION (A 26.23 → 30.24) and EXCLAMATION (B 1.85 → 5.45). A plain threshold adds only +0.51 / +0.41 / +0.70.
+- **A classic hidden-event language model** (Stolcke-style, n-gram) comes close to the improved CRF on punctuation: −1.54 in A and a tie in B on test. It is 5.84 points behind in mode C, where its unigram truecaser is weak.
+- **The CRF's label-to-label transitions are worth 1.3–4.7 points:** the same features without transitions (a per-token classifier) lose 1.27 / 1.70 / 4.74 on validation.
+- **Question-lookback features** (a wh-word plus an auxiliary anywhere in the last 12 words, and tag questions) raise QUESTION F1 by about 6 points in every mode on validation.
+- **Punctuation and casing as separate models** beat the joint mode C model on the joint metric (+2.08), because a dedicated casing CRF is better at casing. Joint training still helps punctuation inside the utterance.
+- **Under simulated ASR noise** (15% word errors) the ranking holds: the improved CRF drops from 49.92 to 45.42 in mode A, still well above the HMM (35.16).
 - **The filler-word cue** leaves macro F1 unchanged on validation, but raises comma F1 slightly: +0.21 (B) and +0.25 (C), with both intervals excluding 0.
 - **Training on the 8-class labels barely changes the 4-class task.** Mode B models projected to mode A differ from their mode A twins by under 0.3 points on validation (HMM +0.10, CRF basic −0.24, CRF improved +0.25) ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §11).
 - **Leakage inflates lexical models.** On test utterances from videos in the training set, the improved CRF scores 67.09 against 49.50 on the leak-free test, while the HMM scores 33.54 against 34.74. See [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §8.
@@ -217,6 +222,11 @@ report `test` and `test_amb` separately (they share 25 videos).
 | `results/scores/runtime/` | HMM and CRF prediction timing (median of 3 passes, same laptop) |
 | `results/scores/sensitivity/` | Mode A CRF basic and improved at other c1/c2 and iteration settings, on validation |
 | `results/scores/asr_noise/` | Frozen HMM and CRFs on test inputs with simulated ASR word errors (one folder per WER), with the corruption summary |
+| `results/scores/threshold_prior/` | Prior-adjusted threshold decoding (τ × γ): validation grids, test and test_amb, paired comparisons |
+| `results/scores/gap/` | Gap classifier vs the improved CRF on validation (the CRF without transitions) |
+| `results/scores/hidden_event_lm/` | Hidden-event LM: validation grid, test and test_amb, comparisons against the HMM and the improved CRF |
+| `results/scores/question2/` | Question-lookback features vs the improved CRF on validation |
+| `results/scores/factored/` | Factored vs joint punctuation and casing, mode C validation |
 
 **Package** (`src/punct_restore/`; each package folder `src/punct_restore/`, `src/punct_restore/data/`,
 `src/punct_restore/models/`, `src/punct_restore/features/` and `src/punct_restore/evaluation/` has a

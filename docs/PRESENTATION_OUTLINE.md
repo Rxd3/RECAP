@@ -23,18 +23,19 @@ Every number comes from [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md), 
 
 ## Slide 2 — Main result (test, primary macro F1 %, 95% CI) (30 s)
 
-| Mode | Shortcut | HMM | CRF basic | CRF improved | + threshold |
-|---|---|---|---|---|---|
-| A (4 punct) | 27.48 | 35.12 (32.80–37.31) | 43.65 (41.74–45.59) | 49.92 (47.91–52.01) | **50.44** (48.53–52.41) |
-| B (8 punct) | 11.87 | 16.79 (15.28–18.49) | 20.25 (18.87–21.95) | 22.82 (21.42–24.42) | **23.23** (21.74–25.05) |
-| C (12 joint) | 18.09 | 37.41 (34.56–40.71) | 43.85 (42.13–45.47) | 47.02 (44.97–49.00) | **47.72** (45.78–49.61) |
+| Mode | Shortcut | HMM | Hidden-event LM | CRF basic | CRF improved | + threshold (τ, γ) |
+|---|---|---|---|---|---|---|
+| A (4 punct) | 27.48 | 35.12 (32.80–37.31) | 48.38 (46.21–50.62) | 43.65 (41.74–45.59) | 49.92 (47.91–52.01) | **51.34** (49.61–53.06) |
+| B (8 punct) | 11.87 | 16.79 (15.28–18.49) | 22.51 (21.08–23.98) | 20.25 (18.87–21.95) | 22.82 (21.42–24.42) | **24.25** (23.06–25.54) |
+| C (12 joint) | 18.09 | 37.41 (34.56–40.71) | 41.18 (39.42–42.70) | 43.85 (42.13–45.47) | 47.02 (44.97–49.00) | **49.77** (47.26–51.95) |
 
 **Say:** "The improved CRF beats the HMM by 15 points in A, 6 in B and 10 in C, and beats the basic CRF in every mode. Every paired 95% interval for these model comparisons excludes zero, on test and on the second test set."
 
 - **Exact gaps:**
   - improved − HMM: +14.80 / +6.03 / +9.61;
   - improved − basic: +6.27 / +2.57 / +3.17;
-  - threshold − improved: +0.51 / +0.41 / +0.70 (B's interval includes 0).
+  - prior-adjusted threshold − improved: +1.42 / +1.43 / +2.74 (all survive a Holm correction);
+  - hidden-event LM − improved CRF: −1.54 / −0.31 (tie) / −5.84.
 - **Footnote:**
   - A/B primary = macro F1 over the non-O punctuation classes.
   - C primary = macro F1 over all 12 joint classes with the case_joint mask.
@@ -74,7 +75,8 @@ Feature ablations on validation, one group removed at a time from the improved C
 - **Leakage** (official mode A test):
   - The improved CRF scores 67.09 on utterances from videos in its training set, against 49.50 on the leak-free test.
   - The HMM: 33.54 vs 34.74.
-- **Filler-word cue** (validation): macro F1 unchanged, comma F1 slightly up (+0.21 in B, +0.25 in C; intervals exclude 0).
+- **Question-lookback features** (validation): about +6 QUESTION F1 in every mode.
+- **Separate punctuation + casing models** beat the joint mode C model by +2.08 on the joint metric (validation).
 - **Casing** (mode C, masked casing F1, test): HMM 79.81, CRF basic 84.23, CRF improved 85.09.
 - **Most common error is a missed comma** (mode A test):
   - 63% of the HMM's 39,586 errors;
