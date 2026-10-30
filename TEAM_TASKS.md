@@ -3,7 +3,7 @@
 **Status (2026-10-30):** the data release and the HMM baseline are verified
 ([release validation](docs/DATA_RELEASE_VALIDATION.md), [HMM results](experiments/HMM_RESULTS.md)).
 The six CRF models are trained and scored once on test and test_amb
-([CRF results](docs/EVALUATION_RESULTS_CRF.md)). Validation chose the HMM smoothing and the threshold τ; the CRF settings (c1 = c2 = 0.1, 100 iterations) were fixed and not tuned; no test result influenced any choice. A ticked item
+([CRF results](docs/EVALUATION_RESULTS_CRF.md)). The course-baseline settings (HMM smoothing, CRF settings, the plain threshold τ) were fixed or chosen on validation before any test result. The comparison methods in sections 13–14 of EVALUATION_RESULTS_CRF.md (simulated ASR noise, gap classifier, hidden-event LM, prior-adjusted decoding, question lookback, factored casing) were added on 2026-10-30, after the first test report, in response to a review that cited test results. They are exploratory; their settings were still chosen on validation only, and each test list was predicted once. A ticked item
 names its evidence in the repository; an unticked one is not done or has no such evidence. Every
 member must understand their component's assumptions, label schemes, leakage
 risks, evaluation choices and the overall methodology.
@@ -278,7 +278,7 @@ synthetic noise/alignment; artifacts/CLI/environment; uncertainty/runtime policy
 - [x] Test data was held out for final reporting; selection used validation. (evidence: [HMM_RUNBOOK.md](experiments/HMM_RUNBOOK.md), [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md))
 - [x] Models/predictions are shared as checksummed artifacts, not large Git files. (evidence: [HMM_RUNBOOK.md](experiments/HMM_RUNBOOK.md), [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) Provenance, [.gitignore](.gitignore))
 - [x] No credentials or personal absolute paths are committed. (evidence: `git grep` for absolute user paths finds none, 2026-10-30)
-- [x] Integration tests, documented workflow and demonstration work on a clean setup. (evidence: [REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md) §1 (fresh clone, full suite of 1302 tests) and §10 (demo))
+- [x] Integration tests, documented workflow and demonstration work on a clean setup. (evidence: [REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md) §1 (fresh clone, the full suite) and §10 (demo))
 - [ ] Presentation claims/figures trace to real experiments and all owners review them. — partly: the outline's numbers trace to `results/scores/` ([PRESENTATION_OUTLINE.md](docs/PRESENTATION_OUTLINE.md)); owner review is not recorded
 
 ## Final state
