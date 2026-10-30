@@ -4,7 +4,7 @@ score    --gold mode_X/<split>.jsonl --ids <list>.ids --predictions <file>.jsonl
          [--masks masks/case_joint/<split>.jsonl] [--manifest <predictions.manifest.json>]
          [--bootstrap N [--seed S]] --out results/tables/<run>.json   (also writes <run>.md)
 compare  --gold ... --ids ... --predictions-a A.jsonl --predictions-b B.jsonl [--masks ...]
-         [--bootstrap N [--seed S]] --out results/tables/<comparison>.json
+         [--bootstrap N [--seed S]] [--class LABEL ...] --out results/tables/<comparison>.json
 errors   --gold ... --ids ... --predictions ... [--masks ...] [--block NAME] [--per-pair K]
          [--seed S] --out results/tables/<errors>.json
 baseline --gold mode_X/<split>.jsonl --ids <list>.ids --out <predictions>.jsonl
@@ -98,6 +98,9 @@ def _parser() -> argparse.ArgumentParser:
     pair.add_argument("--predictions-a", type=Path, required=True)
     pair.add_argument("--predictions-b", type=Path, required=True)
     _add_bootstrap(pair)
+    pair.add_argument("--class", dest="classes", action="append", default=None, metavar="LABEL",
+                      help="per-class F1 difference for LABEL (repeatable; "
+                           "mode C uses joint labels like COMMA|LOWER)")
     errors = commands.add_parser("errors", help="error-pair counts and random examples")
     _add_common(errors)
     errors.add_argument("--block", default=DEFAULT_BLOCK)
@@ -161,7 +164,7 @@ def _compare(args: argparse.Namespace) -> None:
     vocab = load_vocab()
     bundle_a = load_bundle(args.gold, args.ids, args.predictions_a, args.masks, vocab)
     bundle_b = load_bundle(args.gold, args.ids, args.predictions_b, args.masks, vocab)
-    report = compare(bundle_a, bundle_b, vocab, _bootstrap(args))
+    report = compare(bundle_a, bundle_b, vocab, _bootstrap(args), tuple(args.classes or ()))
     _write_report(outputs, report, comparison_markdown(report))
     primary = report["blocks"][report["primary_block"]]
     print(f"{printable(report['model_b'])} vs {printable(report['model_a'])}: "
