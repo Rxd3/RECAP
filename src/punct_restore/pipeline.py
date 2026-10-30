@@ -34,9 +34,10 @@ _MODES = ("A", "B", "C")
 def load_model(path: Path) -> HMMModel | CRFModel:
     """Load a saved model, choosing the family from the file suffix."""
     path = Path(path)
-    if path.suffix == ".json":
+    suffix = path.suffix.lower()
+    if suffix == ".json":
         return HMMModel.load_model(path)
-    if path.suffix in (".joblib", ".pkl"):
+    if suffix in (".joblib", ".pkl"):
         return CRFModel.load_model(path)
     raise ValueError(f"unsupported model file: {path.name}")
 

@@ -30,9 +30,16 @@ import sklearn_crfsuite
 ROOT = Path(__file__).resolve().parents[1]
 # Support the documented source-checkout command before an editable install.
 sys.path.insert(0, str(ROOT / "src"))
-from punct_restore.evaluation.inputs import file_identity  # noqa: E402
 from punct_restore.features.crf_features import FeatureConfig  # noqa: E402
 from punct_restore.models.crf import CRFModel, get_mode_vocabulary  # noqa: E402
+from punct_restore.prediction_io import (  # noqa: E402
+    check_new_output_paths,
+    read_frozen_ids,
+    read_observations,
+    write_prediction_manifest,  # noqa: F401  (kept importable as train_crf.<name>)
+    write_prediction_outputs,
+    write_predictions_jsonl,  # noqa: F401
+)
 
 
 def sha256_file(path: str | Path) -> str:
@@ -145,37 +152,6 @@ def compute_code_fingerprint() -> str:
     return h.hexdigest()
 
 
-def read_frozen_ids(ids_path: Path) -> list[str]:
-    """Read and validate a frozen ID manifest file.
-
-    Raises:
-        FileNotFoundError: If the ID file does not exist.
-        ValueError: If the ID list is empty or contains duplicate IDs.
-    """
-    if not ids_path.is_file():
-        raise FileNotFoundError(f"Frozen ID list not found: {ids_path}")
-
-    ids: list[str] = []
-    seen: set[str] = set()
-
-    with open(ids_path, "r", encoding="utf-8") as f:
-        for line_num, line in enumerate(f, 1):
-            s_id = line.strip()
-            if not s_id:
-                continue
-            if s_id in seen:
-                raise ValueError(
-                    f"Duplicate ID {s_id!r} found at line {line_num} in {ids_path}"
-                )
-            seen.add(s_id)
-            ids.append(s_id)
-
-    if not ids:
-        raise ValueError(f"Frozen ID list is empty: {ids_path}")
-
-    return ids
-
-
 def load_and_filter_training_records(
     input_path: Path,
     ids_path: Path,
@@ -282,103 +258,6 @@ def load_and_filter_training_records(
     return selected_records, frozen_ids
 
 
-def _parse_observation_line(line_str: str, line_num: int, input_path: Path) -> dict[str, Any]:
-    """Parse one JSONL line into a record with a valid sample_id."""
-    try:
-        rec = json.loads(line_str)
-    except ValueError as e:
-        raise ValueError(f"Corrupt JSON at line {line_num}: {e}") from e
-    if not isinstance(rec, dict):
-        raise ValueError(f"Line {line_num} in {input_path} is not a JSON object")
-    s_id = rec.get("sample_id")
-    if not isinstance(s_id, str) or not s_id.strip():
-        raise ValueError(f"Line {line_num} has missing or empty sample_id")
-    return rec
-
-
-def _gold_free_observation(rec: Mapping[str, Any], line_num: int) -> dict[str, Any]:
-    """Keep only sample_id and validated observable tokens (strictly gold-free)."""
-    s_id = rec["sample_id"]
-    tokens = rec.get("tokens")
-    if not tokens or not isinstance(tokens, list):
-        raise ValueError(f"Invalid tokens at line {line_num} for ID {s_id!r}")
-    if any(not isinstance(t, str) or not t.strip() for t in tokens):
-        raise ValueError(f"Tokens contain invalid elements at line {line_num} for ID {s_id!r}")
-    return {"sample_id": s_id, "tokens": list(tokens)}
-
-
-def read_observations(input_path: Path, ids_path: Path | None) -> list[dict[str, Any]]:
-    """Read gold-free ``{"sample_id", "tokens"}`` records in INPUT FILE order.
-
-    When ``ids_path`` is given, only the listed IDs are kept and every one must be present.
-
-    Raises:
-        FileNotFoundError: If the input JSONL or the ID list does not exist.
-        ValueError: On corrupt, duplicate or invalid records, or IDs missing from the input.
-    """
-    if not input_path.is_file():
-        raise FileNotFoundError(f"Input JSONL not found at {input_path}")
-    target_ids = read_frozen_ids(ids_path) if ids_path is not None else None
-    target_set = set(target_ids) if target_ids is not None else None
-
-    observations: list[dict[str, Any]] = []
-    seen_ids: set[str] = set()
-    with open(input_path, "r", encoding="utf-8") as f:
-        for line_num, line in enumerate(f, 1):
-            line_str = line.strip()
-            if not line_str:
-                continue
-            rec = _parse_observation_line(line_str, line_num, input_path)
-            s_id = rec["sample_id"]
-            if s_id in seen_ids:
-                raise ValueError(f"Duplicate sample_id {s_id!r} encountered at line {line_num}")
-            seen_ids.add(s_id)
-            if target_set is None or s_id in target_set:
-                observations.append(_gold_free_observation(rec, line_num))
-
-    if target_ids is not None:
-        missing_ids = set(target_ids) - {o["sample_id"] for o in observations}
-        if missing_ids:
-            raise ValueError(
-                f"Missing {len(missing_ids)} selected IDs from input file {input_path}. "
-                f"Examples: {sorted(missing_ids)[:5]}"
-            )
-        if len(observations) != len(target_ids):
-            raise ValueError(
-                f"Found {len(observations)} matching records, expected {len(target_ids)} from ID list."
-            )
-    return observations
-
-
-def write_predictions_jsonl(predictions: Sequence[Mapping[str, Any]], path: Path) -> None:
-    """Write one JSON object per line with the platform newline (byte-stable across the team)."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        f.writelines(json.dumps(pred, ensure_ascii=False) + "\n" for pred in predictions)
-
-
-def write_prediction_manifest(
-    manifest_path: Path,
-    *,
-    predictions_path: Path,
-    input_path: Path,
-    model_name: str,
-    label_mode: str,
-    ordered_labels: Sequence[str],
-) -> None:
-    """Write the evaluator-facing sidecar manifest for a predictions file."""
-    manifest: dict[str, Any] = {
-        "model_name": model_name,
-        "label_mode": label_mode,
-        "ordered_labels": list(ordered_labels),
-        "predictions_sha256": sha256_file(predictions_path),
-        "input": file_identity(input_path),
-    }
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(manifest_path, "w", encoding="utf-8") as f:
-        json.dump(manifest, f, indent=2, sort_keys=True)
-
-
 def git_status_porcelain() -> str:
     """Return ``git status --porcelain`` of the repository, or ``"unknown"`` if unavailable."""
     repo_root = Path(__file__).resolve().parent.parent
@@ -387,13 +266,16 @@ def git_status_porcelain() -> str:
             ["git", "status", "--porcelain"],
             cwd=repo_root,
             capture_output=True,
-            text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=30,
             check=False,
         )
     except (OSError, subprocess.TimeoutExpired):
         return "unknown"
-    return result.stdout if result.returncode == 0 else "unknown"
+    if result.returncode != 0 or result.stdout is None:
+        return "unknown"
+    return result.stdout
 
 
 def cmd_train(args: argparse.Namespace) -> int:
@@ -402,6 +284,14 @@ def cmd_train(args: argparse.Namespace) -> int:
     ids_path = Path(args.ids)
     output_path = Path(args.output)
     manifest_path = Path(args.manifest_out) if args.manifest_out else output_path.with_suffix(".joblib.manifest.json")
+
+    try:  # even with --overwrite, the manifest must never replace the model or an input
+        check_new_output_paths({"--output": output_path, "--manifest-out": manifest_path},
+                               {"--input": input_path, "--ids": ids_path,
+                                "--config-path": Path(args.config_path) if args.config_path else None})
+    except ValueError as e:
+        sys.stderr.write(f"Error: {e}\n")
+        return 1
 
     # Safety: do not silently overwrite existing files
     if output_path.exists() and not args.overwrite:
@@ -575,6 +465,14 @@ def _predict_path_error(args: argparse.Namespace, manifest_path: Path | None) ->
         return f"Error: Model artifact not found at {model_path}"
     if not input_path.is_file():
         return f"Error: Input JSONL not found at {input_path}"
+    try:
+        check_new_output_paths(
+            {"--output": output_path, "--manifest-out": manifest_path},
+            {"--input": input_path, "--model": model_path,
+             "--ids": Path(args.ids) if args.ids else None},
+        )
+    except ValueError as e:
+        return f"Error: {e}"
     if output_path.exists() and not args.overwrite:
         return f"Error: Output file already exists at {output_path}. Use --overwrite to replace."
     if manifest_path is not None and manifest_path.exists() and not args.overwrite:
@@ -582,25 +480,25 @@ def _predict_path_error(args: argparse.Namespace, manifest_path: Path | None) ->
     return None
 
 
-def _write_prediction_outputs(
+def _export_predictions(
     model: CRFModel,
     predictions: Sequence[Mapping[str, Any]],
     input_path: Path,
     output_path: Path,
     manifest_path: Path | None,
 ) -> None:
-    """Write the predictions JSONL and, when requested, its sidecar manifest."""
-    write_predictions_jsonl(predictions, output_path)
+    """Write the predictions JSONL and, when requested, its sidecar manifest; report both after."""
+    write_prediction_outputs(
+        predictions,
+        output_path,
+        manifest_path,
+        input_path=input_path,
+        model_name=model.model_name,
+        label_mode=model.label_mode,
+        ordered_labels=model.vocabulary,
+    )
     print(f"[RECAP CRF] Predictions exported to {output_path}")
     if manifest_path is not None:
-        write_prediction_manifest(
-            manifest_path,
-            predictions_path=output_path,
-            input_path=input_path,
-            model_name=model.model_name,
-            label_mode=model.label_mode,
-            ordered_labels=model.vocabulary,
-        )
         print(f"[RECAP CRF] Manifest written to {manifest_path}")
 
 
@@ -643,8 +541,8 @@ def cmd_predict(args: argparse.Namespace) -> int:
     print(f"[RECAP CRF] Inferred {len(predictions):,} sequences ({total_tokens:,} tokens) in {duration:.2f}s ({tok_per_sec:.1f} tok/s).")
 
     try:
-        _write_prediction_outputs(model, predictions, input_path, output_path, manifest_path)
-    except OSError as e:
+        _export_predictions(model, predictions, input_path, output_path, manifest_path)
+    except (OSError, ValueError) as e:
         sys.stderr.write(f"Error: Could not write prediction outputs: {e}\n")
         return 1
     return 0
@@ -762,6 +660,10 @@ def build_cli_parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Main CLI entry point."""
+    # A path the console code page cannot encode must not crash the run after files are written.
+    reconfigure = getattr(sys.stdout, "reconfigure", None)
+    if reconfigure is not None:
+        reconfigure(errors="backslashreplace")
     parser = build_cli_parser()
     args = parser.parse_args(argv)
 

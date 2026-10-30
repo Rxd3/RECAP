@@ -128,6 +128,28 @@ def test_bad_grid_is_a_usage_error(tmp_path: Path, capsys: pytest.CaptureFixture
     assert "grid" in capsys.readouterr().err
 
 
+def test_parse_grid_accepts_exactly_1000_values() -> None:
+    grid = tune_threshold.parse_grid("0:0.999:0.001")
+    assert len(grid) == 1000 and grid[0] == 0.0 and grid[-1] == 0.999
+
+
+@pytest.mark.parametrize("text", ["0:1:0.001", "0:1:0.0005", "0:1:1e-12", "0:1:5e-324"])
+def test_parse_grid_rejects_more_than_1000_values(text: str) -> None:
+    with pytest.raises(argparse.ArgumentTypeError, match="1000"):
+        tune_threshold.parse_grid(text)
+
+
+@pytest.mark.parametrize("grid", ["0:1:0.0005", "0:1:1e-12", "0:1:5e-324"])
+def test_huge_grid_is_a_quick_usage_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], grid: str
+) -> None:
+    with pytest.raises(SystemExit) as exit_info:
+        tune_threshold.main(["tune", "--model", "m", "--gold", "g", "--ids", "i",
+                             "--grid", grid, "--out", str(tmp_path / "t.json")])
+    assert exit_info.value.code == 2
+    assert "grid" in capsys.readouterr().err
+
+
 # ---------------------------------------------------------------- CLI fixtures
 
 _PUNCT_ROWS = [
@@ -310,6 +332,16 @@ def test_predict_end_to_end_is_thresholded_and_manifest_valid(
     assert [p["predicted_labels"] for p in predictions] == expected
 
     check_manifest(man, load_bundle(mode_a.gold, mode_a.ids, out, None, vocab), vocab)
+
+
+def test_predict_tau_of_negative_zero_is_named_tau0(mode_a: Fixture, tmp_path: Path) -> None:
+    tau_file = _write_tau_file(tmp_path / "tau.json", -0.0, _sha256(mode_a.model))
+    out, man = tmp_path / "preds.jsonl", tmp_path / "preds.man.json"
+    assert tune_threshold.main(_predict_argv(mode_a, tau_file, out, man)) == 0
+
+    names = {json.loads(line)["model_name"] for line in out.read_text(encoding="utf-8").splitlines()}
+    assert len(names) == 1 and names.pop().endswith("_tau0")
+    assert json.loads(man.read_text(encoding="utf-8"))["model_name"].endswith("_tau0")
 
 
 def test_predict_rejects_tau_tuned_for_another_model(

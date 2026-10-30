@@ -43,6 +43,10 @@ def _interactive(pipeline: RestorationPipeline) -> None:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    reconfigure = getattr(sys.stdout, "reconfigure", None)
+    if reconfigure is not None:
+        # a cp1252 console must not crash on characters outside the console code page
+        reconfigure(errors="backslashreplace")
     parser = argparse.ArgumentParser(description="RECAP punctuation and casing restoration demo")
     parser.add_argument("--model-path", type=Path, required=True, help="trained model (.json, .joblib or .pkl)")
     parser.add_argument("--text", type=str, default=None, help="text to restore (omit for interactive mode)")

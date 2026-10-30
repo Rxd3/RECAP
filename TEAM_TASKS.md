@@ -173,7 +173,7 @@ paired run bundles and hypothesis list, and Member 6 feature-loading requirement
 
 **Primary ownership:** `src/punct_restore/evaluation/`,
 `scripts/evaluate_models.py`, `docs/EVALUATION_PROTOCOL.md`, `results/`,
-`tests/test_evaluation_contract.py`.
+`tests/test_evaluation_*.py`.
 
 **Tasks:**
 

@@ -5,7 +5,7 @@ release regression suites use tiny local fixtures and cover annotation policies,
 alignment, masks, split integrity, checksums, extraction and immutable releases.
 Member 5's evaluation tests are implemented: `test_evaluation_*.py` and
 `test_evaluate_models_cli*.py`, with shared fixtures in `conftest.py`,
-`eval_fixtures.py` and `cli_analysis_cases.py`. `test_evaluation_contract.py` describes the evaluation contract.
+`eval_fixtures.py` and `cli_analysis_cases.py`.
 
 `test_hmm.py` and `test_hmm_cli.py` cover hand-calculated probabilities,
 exhaustive Viterbi/END checks, OOV handling, all modes, gold-field invariance,
