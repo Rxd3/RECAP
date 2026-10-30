@@ -551,6 +551,34 @@ The known noise does not explain the low rare-class scores:
 - On validation, the CRFs' COLON F1 falls when the speaker labels go, because "speaker 1:" colons were the easiest colons to predict.
 - The extended marks remain hard to predict from text alone.
 
+## 13. Simulated ASR noise (test)
+
+This check is **simulated**; RECAP has no real ASR condition. `scripts/simulate_asr_noise.py` corrupts the primary test inputs at a word error rate of 5, 10 and 15%, with seed 2026. The edits are taken round-robin by type:
+- deletion of a function word, whose punctuation label moves to the previous word if that word is O, and is dropped otherwise;
+- homophone substitution (their/there, your/you're, its/it's, to/too/two, then/than);
+- an adjacent swap of two non-final words, counted as two errors.
+
+Every mode gets the same edits, and the mode C casing masks are remapped through them. Each frozen model then predicted each noisy test set once. Nothing was retuned. Primary macro F1 %; the 15% column shows the 95% CI:
+
+| Mode | Model | Clean (0%) | 5% | 10% | 15% |
+|---|---|---|---|---|---|
+| A | HMM | 35.12 | 35.12 | 35.16 | 35.16 (32.83–37.35) |
+| A | CRF basic | 43.65 | 42.94 | 42.29 | 41.68 (39.81–43.66) |
+| A | CRF improved | 49.92 | 48.13 | 46.64 | 45.42 (43.56–47.41) |
+| B | HMM | 16.79 | 16.79 | 16.85 | 16.85 (15.36–18.50) |
+| B | CRF basic | 20.25 | 19.93 | 19.65 | 19.28 (17.94–20.98) |
+| B | CRF improved | 22.82 | 22.03 | 21.44 | 20.87 (19.48–22.37) |
+| C | HMM | 37.41 | 37.26 | 37.19 | 37.09 (34.25–40.41) |
+| C | CRF basic | 43.85 | 43.08 | 42.36 | 41.83 (39.97–43.47) |
+| C | CRF improved | 47.02 | 45.97 | 45.00 | 44.12 (42.13–45.98) |
+
+What the table shows:
+- **The HMM does not move.** It mostly predicts the utterance-final mark, which word errors inside the utterance do not touch.
+- **In mode A, the improved CRF loses about 1.5 points per 5% of word errors (49.92 → 45.42), and the basic CRF about 0.65 (43.65 → 41.68).** The improved CRF's word-pair features depend on the exact words, so it drops faster.
+- **The ranking holds at every noise level:** CRF improved > CRF basic > HMM in every mode, and at 15% the intervals of the improved CRF and the HMM still do not overlap.
+
+Files: `results/scores/asr_noise/wer<rate>/`, including `summary.json` with the achieved WER and the edit counts.
+
 ## Multiple comparisons (Holm)
 
 The intervals in this document are not adjusted for the number of comparisons. As a check, two-sided bootstrap p-values were taken from each paired comparison's share of resamples in which B beats A (resolution 0.001), and Holm's step-down correction was applied at α = 0.05 within two families.
