@@ -204,3 +204,81 @@ def test_feature_value_types(sample_tokens):
     for feat_dict in features:
         for k, v in feat_dict.items():
             assert isinstance(v, allowed_types), f"Feature {k} has unexpected type {type(v)}"
+
+
+FILLER_KEYS = (
+    "is_filler",
+    "+1:is_filler",
+    "starts_filler_bigram",
+    "+1:starts_filler_bigram",
+    "is_repeat",
+)
+
+
+def test_improved_and_basic_presets_unchanged():
+    """Presets keep today's values (plus the new flag off); no filler keys leak when off."""
+    assert FeatureConfig.basic().to_dict() == {
+        "preset": "basic",
+        "window_size": 1,
+        "use_affixes": True,
+        "use_shape": True,
+        "use_internal_punct": True,
+        "use_token_ngrams": False,
+        "use_question_cues": False,
+        "use_clause_cues": False,
+        "use_casing_cues": False,
+        "include_utterance_boundaries": True,
+        "use_positional_buckets": False,
+        "use_filler_cues": False,
+        "version": "v1-basic",
+    }
+    assert FeatureConfig.improved().to_dict() == {
+        "preset": "improved",
+        "window_size": 2,
+        "use_affixes": True,
+        "use_shape": True,
+        "use_internal_punct": True,
+        "use_token_ngrams": True,
+        "use_question_cues": True,
+        "use_clause_cues": True,
+        "use_casing_cues": True,
+        "include_utterance_boundaries": True,
+        "use_positional_buckets": True,
+        "use_filler_cues": False,
+        "version": "v1-improved",
+    }
+    tokens = ["so", "um", "i", "i", "mean", "you", "know"]
+    for cfg in (FeatureConfig.basic(), FeatureConfig.improved()):
+        for feats in extract_sequence_features(tokens, config=cfg):
+            assert not any(key in feats for key in FILLER_KEYS)
+
+
+def test_old_saved_config_without_filler_key_loads_with_default_off():
+    """Configs saved before the flag existed must still load, with the flag off."""
+    legacy = FeatureConfig.improved().to_dict()
+    del legacy["use_filler_cues"]
+    assert FeatureConfig.from_dict(legacy).use_filler_cues is False
+
+
+def test_filler_features():
+    """Filler flags fire only where true, and are absent elsewhere."""
+    tokens = ["so", "um", "i", "i", "mean", "you", "know"]
+    feats = extract_sequence_features(tokens, config=FeatureConfig.improved(use_filler_cues=True))
+
+    assert feats[1]["is_filler"] is True
+    assert feats[0]["+1:is_filler"] is True
+    assert feats[3]["starts_filler_bigram"] is True
+    assert feats[5]["starts_filler_bigram"] is True
+    assert feats[3]["is_repeat"] is True
+    assert feats[2]["+1:starts_filler_bigram"] is True
+    assert feats[4]["+1:starts_filler_bigram"] is True
+
+    # Flags that are false are absent, not stored as False.
+    assert "is_filler" not in feats[0]
+    assert "+1:is_filler" not in feats[1]
+    assert "starts_filler_bigram" not in feats[2]
+    assert "is_repeat" not in feats[2]
+    assert "is_repeat" not in feats[0]
+    assert "+1:starts_filler_bigram" not in feats[5]
+    assert "+1:starts_filler_bigram" not in feats[6]
+    assert "starts_filler_bigram" not in feats[6]
