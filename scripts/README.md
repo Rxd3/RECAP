@@ -22,7 +22,7 @@ read and write files, and report errors as one line on stderr. Full command sequ
 ## Interfaces
 
 Flags below are the ones each script accepts (checked with `--help`; see it for defaults).
-`train_crf.py` needs the package installed (`python -m pip install -e .`).
+Every script runs from a plain checkout; each adds `src` to the import path itself.
 
 ```text
 prepare_data.py extract --raw-root RAW [--archive sponspeech.tar.gz]

@@ -210,7 +210,7 @@ cases to Members 1–4 for analysis without silently changing the frozen test.
 
 **Branch:** `feat/m6-integration-presentation`
 
-**Primary ownership:** `src/punct_restore/pipeline.py`, `src/punct_restore/demo/`,
+**Primary ownership:** `src/punct_restore/pipeline.py`,
 `scripts/run_demo.py`, `docs/REPRODUCIBILITY.md`,
 `docs/PRESENTATION_OUTLINE.md`, `presentation/`, integration docs and
 `tests/test_model_contract.py` with model-owner review.
