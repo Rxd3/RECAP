@@ -20,6 +20,8 @@ IMPORT_TO_DISTRIBUTION = {
     "joblib": "joblib",
     "sklearn_crfsuite": "sklearn-crfsuite",
     "pycrfsuite": "python-crfsuite",
+    "sklearn": "scikit-learn",
+    "scipy": "scipy",
 }
 PROJECT_PACKAGE = "punct_restore"
 
