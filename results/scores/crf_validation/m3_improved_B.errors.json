@@ -1,0 +1,1259 @@
+{
+ "block": "punctuation/all",
+ "errors_total": 47679,
+ "examples": [
+  {
+   "gold": "COMMA",
+   "gold_text": "employees do care. so, some of them would like higher pay. some of them would like \u2026",
+   "group_id": "DhptH3-KG7o",
+   "position": 3,
+   "pred": "O",
+   "pred_text": "employees do care. so some of them would like higher pay some of them would like \u2026",
+   "sample_id": "sponspeech:dev:DhptH3-KG7o-219"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 now if you look on facebook, there's latino, latinx publishers, there's like myriad, myriad, myriad, myriad facebook groups and stuff like that.",
+   "group_id": "TgZ7qWtQJsA",
+   "position": 25,
+   "pred": "O",
+   "pred_text": "\u2026 now if you look on facebook, there's latino latinx publishers, there's like myriad myriad myriad myriad facebook groups and stuff like that.",
+   "sample_id": "sponspeech:dev:TgZ7qWtQJsA-402"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "and so we have this sense of, um, family, of support and of community that is so important. and so i've, \u2026",
+   "group_id": "lALBvPQOAns",
+   "position": 8,
+   "pred": "O",
+   "pred_text": "and so we have this sense of, um, family of support and of community that is so important and so i've, \u2026",
+   "sample_id": "sponspeech:dev:lALBvPQOAns-143"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 a balloon in their hair and their hair was standing up. and look dan, if you've grown up in puerto rico, you don't need a \u2026",
+   "group_id": "WA0k3odNoFE",
+   "position": 32,
+   "pred": "COMMA",
+   "pred_text": "\u2026 a balloon in their hair and their hair was standing up and look, dan if you've grown up in puerto rico, you don't need a \u2026",
+   "sample_id": "sponspeech:dev:WA0k3odNoFE-110"
+  },
+  {
+   "gold": "O",
+   "gold_text": "i said, no, i said, i told you i've forgiven that debt.",
+   "group_id": "bHncLbZH2A8",
+   "position": 7,
+   "pred": "COMMA",
+   "pred_text": "i said, no, i said, i told you, i've forgiven that debt.",
+   "sample_id": "sponspeech:dev:bHncLbZH2A8-260"
+  },
+  {
+   "gold": "O",
+   "gold_text": "occasionally there's been people from the media that, that i've had to give \u2026",
+   "group_id": "u7XdewtLY7I",
+   "position": 0,
+   "pred": "COMMA",
+   "pred_text": "occasionally, there's been people from the media that that i've had to give \u2026",
+   "sample_id": "sponspeech:dev:u7XdewtLY7I-48"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "yeah, i get that. and i appreciate that effort. i really do. you and i, we \u2026",
+   "group_id": "BssWpDVrJvg",
+   "position": 3,
+   "pred": "O",
+   "pred_text": "yeah, i get that and i appreciate that effort. i really do you and i, we \u2026",
+   "sample_id": "sponspeech:dev:BssWpDVrJvg-29"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 media over the next couple of weeks. but you can go find it. all@disorder.fm we've done which anxiety do i have? well, we did sort \u2026",
+   "group_id": "Irm0_8p6vSQ",
+   "position": 54,
+   "pred": "O",
+   "pred_text": "\u2026 media over the next couple of weeks, but you can go find it all@disorder.fm we've done, which anxiety do i have? well, we did sort \u2026",
+   "sample_id": "sponspeech:dev:Irm0_8p6vSQ-8"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 the reference desk here, who should do it and how important it is. in fact, i don't know if you guys heard that or not. \u2026",
+   "group_id": "nXaSldSmpyc",
+   "position": 21,
+   "pred": "O",
+   "pred_text": "\u2026 the reference desk here who should do it and how important it is in fact, i don't know if you guys heard that or not, \u2026",
+   "sample_id": "sponspeech:dev:nXaSldSmpyc-44"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 time of independence in the 1960s, there were perhaps 10,000 elephants in botswana. then in the mid 1980s, there were perhaps 50,000 elephants in botswana \u2026",
+   "group_id": "Nkzd6bR2Ly8",
+   "position": 27,
+   "pred": "COMMA",
+   "pred_text": "\u2026 time of independence in the 1960s, there were perhaps 10,000 elephants in botswana, then in the mid 1980s, there were perhaps 50,000 elephants in botswana \u2026",
+   "sample_id": "sponspeech:dev:Nkzd6bR2Ly8-34"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "the right deep state. right. which either, you know, as we know, the deep state either does \u2026",
+   "group_id": "X4pZA3OFJaI",
+   "position": 4,
+   "pred": "COMMA",
+   "pred_text": "the right deep state, right, which either you know, as we know the deep state either does \u2026",
+   "sample_id": "sponspeech:dev:X4pZA3OFJaI-256"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "once someone catches your eye it's only natural to feel curious about them. you wanna get to know them better all their likes and dislikes, \u2026",
+   "group_id": "YpkP6BZIFDE",
+   "position": 12,
+   "pred": "COMMA",
+   "pred_text": "once someone catches your eye, it's only natural to feel curious about them, you wanna get to know them better all their likes and dislikes, \u2026",
+   "sample_id": "sponspeech:dev:YpkP6BZIFDE-14"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 just cause asthma, they cause cardiovascular issues, they may be linked to dementia, there are a whole series of issues and i was heard a \u2026",
+   "group_id": "g2nQ6hnrqXY",
+   "position": 22,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 just cause asthma, they cause cardiovascular issues, they may be linked to dementia. there are a whole series of issues, and i was heard a \u2026",
+   "sample_id": "sponspeech:dev:g2nQ6hnrqXY-64"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 the infrastructure standpoint, that you can do to maybe not stop credential theft, that's bad human behavior, but to identify some anomalous behavior.",
+   "group_id": "ig2ziR5Ag-w",
+   "position": 51,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 the infrastructure standpoint that you can do to maybe not stop credential theft. that's bad human behavior. but to identify some anomalous behavior.",
+   "sample_id": "sponspeech:dev:ig2ziR5Ag-w-100"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 that pickle and pineapple pizza, you got the weird dinner that you wanted, and the pizzeria got the money that they wanted.",
+   "group_id": "yLzse4z1yDM",
+   "position": 17,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 that pickle and pineapple pizza, you got the weird dinner that you wanted. and the pizzeria got the money that they wanted.",
+   "sample_id": "sponspeech:dev:yLzse4z1yDM-51"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 effect of like, how i am treated is how i will treat others so i can lead the people i am designing for i will \u2026",
+   "group_id": "UQKnxulx0WA",
+   "position": 22,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 effect of like, how i am treated is how i will treat others. so i can lead the people. i am designing for, i will \u2026",
+   "sample_id": "sponspeech:dev:UQKnxulx0WA-203"
+  },
+  {
+   "gold": "O",
+   "gold_text": "i think where they're really going in the wrong direction now is on remote, of course.",
+   "group_id": "r1lc2fmU_Rg",
+   "position": 9,
+   "pred": "PERIOD",
+   "pred_text": "i think where they're really going in the wrong direction. now is on remote of course.",
+   "sample_id": "sponspeech:dev:r1lc2fmU_Rg-1600"
+  },
+  {
+   "gold": "O",
+   "gold_text": "and we'll just have to see whether that ends up being okay or not.",
+   "group_id": "r1lc2fmU_Rg",
+   "position": 11,
+   "pred": "PERIOD",
+   "pred_text": "and we'll just have to see whether that ends up being okay. or not.",
+   "sample_id": "sponspeech:dev:r1lc2fmU_Rg-394"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 architecture to solve it in a better way than it was solved before? and this data space idea came from a lot of media and \u2026",
+   "group_id": "dsAGbtU-ci4",
+   "position": 34,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 architecture to solve it in a better way than it was solved before. and this data space idea came from a lot of media and \u2026",
+   "sample_id": "sponspeech:dev:dsAGbtU-ci4-41"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "have you ever had moments where you're daydreaming?",
+   "group_id": "tmRVz7baXG8",
+   "position": 7,
+   "pred": "PERIOD",
+   "pred_text": "have you ever had moments where you're daydreaming.",
+   "sample_id": "sponspeech:dev:tmRVz7baXG8-10"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "what is your organization's true goal?",
+   "group_id": "vzzrSpA9Xo8",
+   "position": 5,
+   "pred": "PERIOD",
+   "pred_text": "what is your organization's true goal.",
+   "sample_id": "sponspeech:dev:vzzrSpA9Xo8-143"
+  },
+  {
+   "gold": "DASH",
+   "gold_text": "so you're able to learn from - learn from actually interacting with something and seeing how they're doing it, \u2026",
+   "group_id": "2hS6hO0AqIg",
+   "position": 5,
+   "pred": "O",
+   "pred_text": "so you're able to learn from learn from actually interacting with something and seeing how they're doing it, \u2026",
+   "sample_id": "sponspeech:dev:2hS6hO0AqIg-30"
+  },
+  {
+   "gold": "DASH",
+   "gold_text": "and like then you're like, okay, my life was - my life is done, you know? i did enough.",
+   "group_id": "MmJRbY53RwE",
+   "position": 8,
+   "pred": "O",
+   "pred_text": "and like then you're like, okay, my life was my life is done, you know, i did enough.",
+   "sample_id": "sponspeech:dev:MmJRbY53RwE-445"
+  },
+  {
+   "gold": "DASH",
+   "gold_text": "oh. okay. we were also - anastasia, hey, anastasia. i just worked with her.",
+   "group_id": "wsG3c2H01wI",
+   "position": 4,
+   "pred": "O",
+   "pred_text": "oh, okay, we were also anastasia, hey, anastasia, i just worked with her.",
+   "sample_id": "sponspeech:dev:wsG3c2H01wI-30"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "how do i interact with his llm? because this multi llm thing, i think will be the new building \u2026",
+   "group_id": "7QffnDlFAPM",
+   "position": 6,
+   "pred": "O",
+   "pred_text": "how do i interact with his llm because this multi llm thing i think will be the new building \u2026",
+   "sample_id": "sponspeech:dev:7QffnDlFAPM-98"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 the fruit, gave it to her husband, guess who god came first to? you would think, he would come to eve because she was the \u2026",
+   "group_id": "8YGkpEKwZj8",
+   "position": 75,
+   "pred": "O",
+   "pred_text": "\u2026 the fruit gave it to her husband guess who god came first to you would think he would come to eve because she was the \u2026",
+   "sample_id": "sponspeech:dev:8YGkpEKwZj8-32"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 read something in the library assistant description where it's like, you know what? i'm not too good on story time right now.",
+   "group_id": "wsG3c2H01wI",
+   "position": 24,
+   "pred": "O",
+   "pred_text": "\u2026 read something in the library assistant description where it's like, you know what i'm not too good on story time. right now.",
+   "sample_id": "sponspeech:dev:wsG3c2H01wI-75"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 $250 a month. well, my time's worth more than $250 a month. right. i'm in the office for four or five hours a week cleaning. \u2026",
+   "group_id": "8TFw_Tew8Wc",
+   "position": 86,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 $250 a month. well, my time's worth more than $250 a month, right? i'm in the office for four or five hours a week cleaning \u2026",
+   "sample_id": "sponspeech:dev:8TFw_Tew8Wc-65"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 was very anti god, anti church, did not want to hear about it.",
+   "group_id": "OrKk9msRIVc",
+   "position": 27,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 was very anti god anti church did not want to hear about it?",
+   "sample_id": "sponspeech:dev:OrKk9msRIVc-17"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 cults that i've ever read, which is also relevant on the same. right.",
+   "group_id": "X4pZA3OFJaI",
+   "position": 20,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 cults that i've ever read which is also relevant on the same, right?",
+   "sample_id": "sponspeech:dev:X4pZA3OFJaI-866"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 was your first step to say, ok, that's it, i'm becoming a designer? right.",
+   "group_id": "2hS6hO0AqIg",
+   "position": 39,
+   "pred": "COMMA",
+   "pred_text": "\u2026 was your first step to say, ok, that's it. i'm becoming a designer, right?",
+   "sample_id": "sponspeech:dev:2hS6hO0AqIg-19"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "well, there's this question then, which is like, are these people like us? you know? yeah, actually one of the one example like, you know, \u2026",
+   "group_id": "X4pZA3OFJaI",
+   "position": 12,
+   "pred": "COMMA",
+   "pred_text": "well, there's this question then, which is like, are these people like us, you know, yeah, actually one of the one example like, you know, \u2026",
+   "sample_id": "sponspeech:dev:X4pZA3OFJaI-750"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 your business cards and ask, hey, dale, what do you do? you know? and if they're matching up with your career desires, you know, hey, \u2026",
+   "group_id": "wsG3c2H01wI",
+   "position": 52,
+   "pred": "COMMA",
+   "pred_text": "\u2026 your business cards and ask, hey, dale what do you do, you know, and if they're matching up with your career desires, you know, hey, \u2026",
+   "sample_id": "sponspeech:dev:wsG3c2H01wI-254"
+  },
+  {
+   "gold": "DASH",
+   "gold_text": "so, somewhere - i don't know the exact place - but those in america should know \u2026",
+   "group_id": "Ilj5ikf5E7o",
+   "position": 1,
+   "pred": "COMMA",
+   "pred_text": "so somewhere, i don't know the exact place but those in america, should know \u2026",
+   "sample_id": "sponspeech:dev:Ilj5ikf5E7o-95"
+  },
+  {
+   "gold": "DASH",
+   "gold_text": "so, in the library, this guy, chuck, was a - like a libertarian.",
+   "group_id": "MmJRbY53RwE",
+   "position": 8,
+   "pred": "COMMA",
+   "pred_text": "so in the library this guy, chuck was a, like a libertarian.",
+   "sample_id": "sponspeech:dev:MmJRbY53RwE-391"
+  },
+  {
+   "gold": "DASH",
+   "gold_text": "\u2026 where we serve data to a region and that region is, you know - pardon me i'm just closing out a window. the region is at \u2026",
+   "group_id": "XV9Qlbw_-vg",
+   "position": 66,
+   "pred": "COMMA",
+   "pred_text": "\u2026 where we serve data to a region and that region is you know, pardon me, i'm just closing out a window, the region is at \u2026",
+   "sample_id": "sponspeech:dev:XV9Qlbw_-vg-56"
+  },
+  {
+   "gold": "COLON",
+   "gold_text": "\u2026 glue, we don't just put it down and then stick something hastings pong: in it.",
+   "group_id": "GtYxtDwoUnk",
+   "position": 18,
+   "pred": "O",
+   "pred_text": "\u2026 glue, we don't just put it down and then stick something hastings pong in it.",
+   "sample_id": "sponspeech:dev:GtYxtDwoUnk-658"
+  },
+  {
+   "gold": "COLON",
+   "gold_text": "yeah. yeah. when that happens with the small competitions, we clear everybody pong: out.",
+   "group_id": "GtYxtDwoUnk",
+   "position": 12,
+   "pred": "O",
+   "pred_text": "yeah. yeah. when that happens with the small competitions, we clear everybody pong out.",
+   "sample_id": "sponspeech:dev:GtYxtDwoUnk-95"
+  },
+  {
+   "gold": "COLON",
+   "gold_text": "\u2026 an academic the moment, in which pakeha new zealand moved from basically saying: farming is great, farming is an enormously important part of our history.",
+   "group_id": "J9kgbqoT8Gk",
+   "position": 28,
+   "pred": "O",
+   "pred_text": "\u2026 an academic the moment in which pakeha new zealand moved from basically saying farming is great farming is an enormously important part of our history.",
+   "sample_id": "sponspeech:dev:J9kgbqoT8Gk-119"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 week. every movie we watch together could be true versus false responsibility. why, because when we take responsibility for the world, for the roles of \u2026",
+   "group_id": "ARYwJXcPpoo",
+   "position": 53,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 week every movie. we watch together could be true versus false responsibility. why? because when we take responsibility for the world for the roles of \u2026",
+   "sample_id": "sponspeech:dev:ARYwJXcPpoo-13"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 we're going to have people that aren't going to get in trouble, right, we're not going to know i'm though, i, i would like, perhaps \u2026",
+   "group_id": "dSMQ1Iy3S1o",
+   "position": 86,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 we're going to have people that aren't going to get in trouble, right? we're not going to know i'm though i, i would like perhaps \u2026",
+   "sample_id": "sponspeech:dev:dSMQ1Iy3S1o-57"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "in some sense, right, the weird thing about what i do is that i the thing \u2026",
+   "group_id": "r1lc2fmU_Rg",
+   "position": 3,
+   "pred": "QUESTION",
+   "pred_text": "in some sense, right? the weird thing about what i do is that i the thing \u2026",
+   "sample_id": "sponspeech:dev:r1lc2fmU_Rg-1128"
+  },
+  {
+   "gold": "DASH",
+   "gold_text": "\u2026 so i have a couple questions that i wrote, but they're not necessarily - they don't necessarily follow exactly with where we were. but - so would \u2026",
+   "group_id": "EEj137ADBzY",
+   "position": 13,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 so i have a couple questions that i wrote but they're not necessarily. they don't necessarily follow exactly with where we were. but so would \u2026",
+   "sample_id": "sponspeech:dev:EEj137ADBzY-102"
+  },
+  {
+   "gold": "DASH",
+   "gold_text": "001. the endless pilot - yeah - the preparation never ends.",
+   "group_id": "JcHW33_5y30",
+   "position": 3,
+   "pred": "PERIOD",
+   "pred_text": "001, the endless pilot. yeah, the preparation never ends.",
+   "sample_id": "sponspeech:dev:JcHW33_5y30-20"
+  },
+  {
+   "gold": "DASH",
+   "gold_text": "and so yeah, it's been - it seems like it hasn't been a long time, but it's been \u2026",
+   "group_id": "wsG3c2H01wI",
+   "position": 4,
+   "pred": "PERIOD",
+   "pred_text": "and so yeah, it's been. it seems like it hasn't been a long time, but it's been \u2026",
+   "sample_id": "sponspeech:dev:wsG3c2H01wI-10"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 like when somebody reads that article, they know that they don't sound right or, you know, you've been in it so long and you've followed \u2026",
+   "group_id": "L4xH_WqnP8Y",
+   "position": 25,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 like when somebody reads that article, they know that they don't sound right? or, you know, you've been in it. so long and you've followed \u2026",
+   "sample_id": "sponspeech:dev:L4xH_WqnP8Y-333"
+  },
+  {
+   "gold": "O",
+   "gold_text": "what should a business owner do when customers try to cheat and take advantage of them?",
+   "group_id": "bHncLbZH2A8",
+   "position": 4,
+   "pred": "QUESTION",
+   "pred_text": "what should a business owner? do when customers try to cheat and take advantage of them.",
+   "sample_id": "sponspeech:dev:bHncLbZH2A8-0"
+  },
+  {
+   "gold": "O",
+   "gold_text": "felix91gr: right, so definitely well right felix91gr: yeah, that's, that's a, that's a really good point because felix91gr: \u2026",
+   "group_id": "dSMQ1Iy3S1o",
+   "position": 5,
+   "pred": "QUESTION",
+   "pred_text": "felix91gr, right? so definitely well, right? felix91gr. yeah, that's that's a, that's a really good point because felix91gr \u2026",
+   "sample_id": "sponspeech:dev:dSMQ1Iy3S1o-65"
+  },
+  {
+   "gold": "COLON",
+   "gold_text": "i don't think anyone was ready for, pong: but robert: yeah, i'm disappointed that didn't happen.",
+   "group_id": "GtYxtDwoUnk",
+   "position": 9,
+   "pred": "COMMA",
+   "pred_text": "i don't think anyone was ready for pong. but robert, yeah, i'm disappointed that didn't happen.",
+   "sample_id": "sponspeech:dev:GtYxtDwoUnk-780"
+  },
+  {
+   "gold": "COLON",
+   "gold_text": "well, i haven't done very much profiling that sort of nicholas nethercote: all the incremental like a like if you look at incremental with \u2026",
+   "group_id": "dSMQ1Iy3S1o",
+   "position": 11,
+   "pred": "COMMA",
+   "pred_text": "well, i haven't done very much profiling that sort of nicholas nethercote, all the incremental like a like if you look at incremental with \u2026",
+   "sample_id": "sponspeech:dev:dSMQ1Iy3S1o-19"
+  },
+  {
+   "gold": "COLON",
+   "gold_text": "\u2026 and then it wesley wiser: shouldn't be a problem. i mean, wesley wiser: i guess where i'm coming from, is i feel like it's better \u2026",
+   "group_id": "dSMQ1Iy3S1o",
+   "position": 59,
+   "pred": "COMMA",
+   "pred_text": "\u2026 and then it wesley wiser shouldn't be a problem. i mean, wesley wiser, i guess where i'm coming from is i feel like it's better \u2026",
+   "sample_id": "sponspeech:dev:dSMQ1Iy3S1o-59"
+  },
+  {
+   "gold": "COLON",
+   "gold_text": "paul: i was talking to somebody once about being a successful talk show \u2026",
+   "group_id": "gMcBTwru5go",
+   "position": 0,
+   "pred": "PERIOD",
+   "pred_text": "paul. i was talking to somebody once about being a successful talk show \u2026",
+   "sample_id": "sponspeech:dev:gMcBTwru5go-67"
+  },
+  {
+   "gold": "COLON",
+   "gold_text": "\u2026 from 100 years ago is what it is, to some extent. joe mcneely: see that's a thing that happens though, because i feel like sometimes \u2026",
+   "group_id": "nXaSldSmpyc",
+   "position": 61,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 from 100 years ago is what it is to some extent, joe mcneely. see, that's a thing that happens, though, because i feel like sometimes \u2026",
+   "sample_id": "sponspeech:dev:nXaSldSmpyc-103"
+  },
+  {
+   "gold": "COLON",
+   "gold_text": "joe mcneely: yes. well, because i'm a library assistant iii, and i'm not a \u2026",
+   "group_id": "nXaSldSmpyc",
+   "position": 1,
+   "pred": "PERIOD",
+   "pred_text": "joe mcneely. yes. well, because i'm a library assistant iii and i'm not a \u2026",
+   "sample_id": "sponspeech:dev:nXaSldSmpyc-4"
+  },
+  {
+   "gold": "EXCLAMATION",
+   "gold_text": "\u2026 out with your crush, tell them, thank you for such a good time! or if they're a good friend who never feels to listen, tell \u2026",
+   "group_id": "EyTBcSG3mK0",
+   "position": 16,
+   "pred": "O",
+   "pred_text": "\u2026 out with your crush tell them thank you for such a good time or if they're a good friend who never feels to listen tell \u2026",
+   "sample_id": "sponspeech:dev:EyTBcSG3mK0-27"
+  },
+  {
+   "gold": "EXCLAMATION",
+   "gold_text": "\u2026 let's do it! this is your dollar - you just wrote history my lady! in the past i always tried to make money, but failed always \u2026",
+   "group_id": "MoJQY-3nOjA",
+   "position": 63,
+   "pred": "O",
+   "pred_text": "\u2026 let's do it. this is your dollar you just wrote history, my lady in the past, i always tried to make money, but failed always \u2026",
+   "sample_id": "sponspeech:dev:MoJQY-3nOjA-0"
+  },
+  {
+   "gold": "EXCLAMATION",
+   "gold_text": "that was taken, like, a week later! we, cause it turns out when you move, like, a 500-pound arcade \u2026",
+   "group_id": "YzARQCZnq3A",
+   "position": 6,
+   "pred": "O",
+   "pred_text": "that was taken like a week later we cause it turns out when you move like a 500-pound arcade \u2026",
+   "sample_id": "sponspeech:dev:YzARQCZnq3A-233"
+  },
+  {
+   "gold": "SEMICOLON",
+   "gold_text": "one girl is well-educated, pretty; another girl - father, big man.",
+   "group_id": "5fg9Itcw2GY",
+   "position": 4,
+   "pred": "O",
+   "pred_text": "one girl is well-educated pretty another girl father, big man.",
+   "sample_id": "sponspeech:dev:5fg9Itcw2GY-11"
+  },
+  {
+   "gold": "SEMICOLON",
+   "gold_text": "\u2026 have not seen their parents, so re-establishing relationships takes longer and is harder; escalated and more entrenched conflicts, as people have had longer in an \u2026",
+   "group_id": "gRgApxIm208",
+   "position": 39,
+   "pred": "O",
+   "pred_text": "\u2026 have not seen their parents. so re-establishing relationships takes longer and is harder escalated and more entrenched conflicts as people have had longer in an \u2026",
+   "sample_id": "sponspeech:dev:gRgApxIm208-21"
+  },
+  {
+   "gold": "SEMICOLON",
+   "gold_text": "\u2026 for the climate we actually don't need to think about hypothetical future people; we can talk to and listen to young people today who are \u2026",
+   "group_id": "kjplhKD_7x0",
+   "position": 21,
+   "pred": "O",
+   "pred_text": "\u2026 for the climate, we actually don't need to think about hypothetical future people we can talk to and listen to young people today who are \u2026",
+   "sample_id": "sponspeech:dev:kjplhKD_7x0-42"
+  },
+  {
+   "gold": "EXCLAMATION",
+   "gold_text": "yesterday night i was at f, so today let's go to e! i kept seeking guidance from more experienced individuals.",
+   "group_id": "M2D3hNC8lGA",
+   "position": 11,
+   "pred": "COMMA",
+   "pred_text": "yesterday night i was at f. so today let's go to e, i kept seeking guidance from more experienced individuals.",
+   "sample_id": "sponspeech:dev:M2D3hNC8lGA-63"
+  },
+  {
+   "gold": "EXCLAMATION",
+   "gold_text": "\u2026 that you've ever made in your life i just sold $2 for $4! i'm gonna help your cause - we are definitely going to make this \u2026",
+   "group_id": "MoJQY-3nOjA",
+   "position": 101,
+   "pred": "COMMA",
+   "pred_text": "\u2026 that you've ever made in your life, i just sold $2 for $4, i'm gonna help your cause we are definitely going to make this \u2026",
+   "sample_id": "sponspeech:dev:MoJQY-3nOjA-0"
+  },
+  {
+   "gold": "EXCLAMATION",
+   "gold_text": "\u2026 my masters, i thought, but i would never be able to do this! i can maybe do my experiment, but how can you generate a \u2026",
+   "group_id": "Mq20W76HwTU",
+   "position": 13,
+   "pred": "COMMA",
+   "pred_text": "\u2026 my masters, i thought, but i would never be able to do this, i can maybe do my experiment, but how can you generate a \u2026",
+   "sample_id": "sponspeech:dev:Mq20W76HwTU-39"
+  },
+  {
+   "gold": "EXCLAMATION",
+   "gold_text": "and you know this is true! how do you know this is true? because all you have to \u2026",
+   "group_id": "4j26Jl0JwoE",
+   "position": 5,
+   "pred": "PERIOD",
+   "pred_text": "and you know, this is true. how do you know, this is true because all you have to \u2026",
+   "sample_id": "sponspeech:dev:4j26Jl0JwoE-19"
+  },
+  {
+   "gold": "EXCLAMATION",
+   "gold_text": "\u2026 podcasts, so they're gonna do a podcast. and i think that is awesome! i love podcasts too, but you know what i do love about \u2026",
+   "group_id": "WAUExTbZw_w",
+   "position": 38,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 podcasts, so they're gonna do a podcast and i think that is awesome. i love podcasts too. but you know what i do love about \u2026",
+   "sample_id": "sponspeech:dev:WAUExTbZw_w-1"
+  },
+  {
+   "gold": "EXCLAMATION",
+   "gold_text": "unwanted thinking. well, me too! and negative thinking and unwanted thoughts are so debilitating.",
+   "group_id": "tmRVz7baXG8",
+   "position": 4,
+   "pred": "PERIOD",
+   "pred_text": "unwanted thinking, well me too. and negative thinking and unwanted thoughts are so debilitating.",
+   "sample_id": "sponspeech:dev:tmRVz7baXG8-16"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 kiran that he built 47. and we sat back and we were told, oh, there's a friend of john hughes. he's going to make the \u2026",
+   "group_id": "KoI34I2kyUA",
+   "position": 32,
+   "pred": "DASH",
+   "pred_text": "\u2026 kiran that he built 47 and we sat back and we were told - oh, there's a friend of john hughes, he's going to make the \u2026",
+   "sample_id": "sponspeech:dev:KoI34I2kyUA-186"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 switch up was as crazy as it was. number four, right? we have, it's kind of related to what we talk about with the tactics.",
+   "group_id": "kH0hxseLbTU",
+   "position": 33,
+   "pred": "DASH",
+   "pred_text": "\u2026 switch up was as crazy as it was number four, right? we have - it's kind of related to what we talk about with the tactics.",
+   "sample_id": "sponspeech:dev:kH0hxseLbTU-168"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "but building our goals, we had divided them into different buckets and put them like this \u2026",
+   "group_id": "vzzrSpA9Xo8",
+   "position": 3,
+   "pred": "DASH",
+   "pred_text": "but building our goals - we had divided them into different buckets and put them like this \u2026",
+   "sample_id": "sponspeech:dev:vzzrSpA9Xo8-74"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 emmanuel riche: the official iter drone pilot having flown over the iter worksite since 2015 emmanuel has seen many developments from the construction of the \u2026",
+   "group_id": "Re6dz0MlVoc",
+   "position": 32,
+   "pred": "DASH",
+   "pred_text": "\u2026 emmanuel riche the official iter drone pilot, having flown over the iter worksite - since 2015, emmanuel has seen many developments from the construction of the \u2026",
+   "sample_id": "sponspeech:dev:Re6dz0MlVoc-1"
+  },
+  {
+   "gold": "O",
+   "gold_text": "well, gentlemen, i have a i have a very divisive question for both of you, that i \u2026",
+   "group_id": "nXaSldSmpyc",
+   "position": 4,
+   "pred": "DASH",
+   "pred_text": "well, gentlemen, i have a - i have a very divisive question for both of you that i \u2026",
+   "sample_id": "sponspeech:dev:nXaSldSmpyc-63"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 to redesign society and so in that sense you could say they're - technically they're conservative.",
+   "group_id": "zX0Zl7uQXbw",
+   "position": 20,
+   "pred": "DASH",
+   "pred_text": "\u2026 to redesign society. and so in that sense, you could say they're technically - they're conservative.",
+   "sample_id": "sponspeech:dev:zX0Zl7uQXbw-188"
+  },
+  {
+   "gold": "SEMICOLON",
+   "gold_text": "\u2026 so. the king is not feeling. because feelings pervert. like i said before; can you get to the truth if you're too focused on the \u2026",
+   "group_id": "4j26Jl0JwoE",
+   "position": 27,
+   "pred": "COMMA",
+   "pred_text": "\u2026 so the king is not feeling because feelings pervert like i said before, can you get to the truth. if you're too focused on the \u2026",
+   "sample_id": "sponspeech:dev:4j26Jl0JwoE-76"
+  },
+  {
+   "gold": "SEMICOLON",
+   "gold_text": "and they said, don't worry; we'll bring your mom out too. and so we went out.",
+   "group_id": "bFsRrNn8YIs",
+   "position": 4,
+   "pred": "COMMA",
+   "pred_text": "and they said, don't worry, we'll bring your mom out too. and so we went out.",
+   "sample_id": "sponspeech:dev:bFsRrNn8YIs-39"
+  },
+  {
+   "gold": "SEMICOLON",
+   "gold_text": "\u2026 the lap of shiva. she had never asked for anything in her life; this one thing she requested from her son, please take me to \u2026",
+   "group_id": "sWZU1tFE7dw",
+   "position": 31,
+   "pred": "COMMA",
+   "pred_text": "\u2026 the lap of shiva, she had never asked for anything in her life, this one thing she requested from her son, please take me to \u2026",
+   "sample_id": "sponspeech:dev:sWZU1tFE7dw-1"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 into today, even just preparing for this podcast, i was thinking to myself, well, what you said earlier, the typical person i'll meet with, you'll \u2026",
+   "group_id": "8TFw_Tew8Wc",
+   "position": 19,
+   "pred": "COLON",
+   "pred_text": "\u2026 into today, even just preparing for this podcast, i was thinking to myself: well, what you said earlier, the typical person. i'll meet with you'll \u2026",
+   "sample_id": "sponspeech:dev:8TFw_Tew8Wc-70"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 with bill wheel and i think bill is involved, but certainly paul mcginnis, i'd lunch with paul mcginnis about and it was called celtic something \u2026",
+   "group_id": "KoI34I2kyUA",
+   "position": 26,
+   "pred": "COLON",
+   "pred_text": "\u2026 with bill wheel, and i think bill is involved, but certainly paul mcginnis: i'd lunch with paul mcginnis about and it was called celtic something. \u2026",
+   "sample_id": "sponspeech:dev:KoI34I2kyUA-36"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "i'm going to open that up to you first, todd, because i know that it's a field that you work in and \u2026",
+   "group_id": "WGiN_db5hBI",
+   "position": 9,
+   "pred": "COLON",
+   "pred_text": "i'm going to open that up to you first todd: because i know that it's a field that you work in and \u2026",
+   "sample_id": "sponspeech:dev:WGiN_db5hBI-13"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 my radar. i found myself wondering just for myself what that was about. i envied your portentous dreams, the numinous.",
+   "group_id": "DdxPLoSzzLk",
+   "position": 33,
+   "pred": "DASH",
+   "pred_text": "\u2026 my radar i found myself wondering just for myself, what that was about - i envied your portentous dreams the numinous.",
+   "sample_id": "sponspeech:dev:DdxPLoSzzLk-26"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 their own personal behavior, especially the more affluent who are the bigger emitters. i'm curious, did kim talk about the relationship between personal action and \u2026",
+   "group_id": "kjplhKD_7x0",
+   "position": 79,
+   "pred": "DASH",
+   "pred_text": "\u2026 their own personal behavior, especially the more affluent, who are the bigger emitters - i'm curious did kim talk about the relationship between personal action and \u2026",
+   "sample_id": "sponspeech:dev:kjplhKD_7x0-107"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 leadership that we needed to truly excel at the tasks we've been given. oh, yeah, the name brazil comes from brazil, the amazon river going \u2026",
+   "group_id": "r1lc2fmU_Rg",
+   "position": 15,
+   "pred": "DASH",
+   "pred_text": "\u2026 leadership that we needed to truly excel at the tasks, we've been given - oh yeah. the name brazil comes from brazil. the amazon river going \u2026",
+   "sample_id": "sponspeech:dev:r1lc2fmU_Rg-730"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 would like to learn more about ben and afterglow, go check out ben drake music.com if you are listening to this podcast on apple podcast \u2026",
+   "group_id": "BssWpDVrJvg",
+   "position": 24,
+   "pred": "COLON",
+   "pred_text": "\u2026 would like to learn more about ben: and afterglow go check out ben: drake music.com. if you are listening to this podcast on apple podcast \u2026",
+   "sample_id": "sponspeech:dev:BssWpDVrJvg-53"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 if you're listening. lovely to have you, caroline. and we've also got todd johnson, who i think is in london, but you spend your time \u2026",
+   "group_id": "WGiN_db5hBI",
+   "position": 39,
+   "pred": "COLON",
+   "pred_text": "\u2026 if you're listening lovely to have you caroline and we've also got todd: johnson, who, i think is in london, but you spend your time \u2026",
+   "sample_id": "sponspeech:dev:WGiN_db5hBI-1"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 heard her say it. so i'm gonna quote, i'm gonna give sally winston the credit.",
+   "group_id": "kkI7JBW7n_Y",
+   "position": 54,
+   "pred": "COLON",
+   "pred_text": "\u2026 heard her say it. so i'm gonna quote, i'm gonna give sally winston: the credit.",
+   "sample_id": "sponspeech:dev:kkI7JBW7n_Y-48"
+  },
+  {
+   "gold": "SEMICOLON",
+   "gold_text": "\u2026 just think it's all bizarre. yes, it's an extreme way of doing things; it is not for everybody. why should somebody choose such a way?",
+   "group_id": "VMCHDRcDSNw",
+   "position": 23,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 just think it's all bizarre. yes, it's an extreme way of doing things. it is not for everybody. why should somebody choose such a way.",
+   "sample_id": "sponspeech:dev:VMCHDRcDSNw-8"
+  },
+  {
+   "gold": "SEMICOLON",
+   "gold_text": "that's awesome; thank you for sharing that. what advice would you give to today's \u2026",
+   "group_id": "bFsRrNn8YIs",
+   "position": 1,
+   "pred": "PERIOD",
+   "pred_text": "that's awesome. thank you for sharing that what advice would you give to today's \u2026",
+   "sample_id": "sponspeech:dev:bFsRrNn8YIs-183"
+  },
+  {
+   "gold": "SEMICOLON",
+   "gold_text": "\u2026 maxwell and marsha scott said about the old normal not being good enough; it is not satisfactory and is not working for anybody. will ian \u2026",
+   "group_id": "gRgApxIm208",
+   "position": 45,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 maxwell and marsha scott said about the old normal not being good enough. it is not satisfactory and is not working for anybody will ian \u2026",
+   "sample_id": "sponspeech:dev:gRgApxIm208-52"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "i use a program cross stream yard, excuse me, excuse me.",
+   "group_id": "Vy_Da5DC35I",
+   "position": 6,
+   "pred": "EXCLAMATION",
+   "pred_text": "i use a program cross stream yard! excuse me, excuse me.",
+   "sample_id": "sponspeech:dev:Vy_Da5DC35I-93"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 to a kid in puerto rico, to yourself when you were a kid, why what you're doing is important? and scientists started writing these essays.",
+   "group_id": "WA0k3odNoFE",
+   "position": 20,
+   "pred": "EXCLAMATION",
+   "pred_text": "\u2026 to a kid in puerto rico to yourself when you were a kid! why what you're doing is important and scientists started writing these essays.",
+   "sample_id": "sponspeech:dev:WA0k3odNoFE-121"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 my card. awesome. talk to you later. hey, how are you? hey, good, how are you? hey, what do you do, and in this in \u2026",
+   "group_id": "t-k4a3GglRU",
+   "position": 44,
+   "pred": "EXCLAMATION",
+   "pred_text": "\u2026 my card. awesome talk to you later, hey, how are you hey, good! how are you hey, what do you do and in this in \u2026",
+   "sample_id": "sponspeech:dev:t-k4a3GglRU-31"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 next? what's next for kong? what are you guys doing after this? ha. well, there's a lot of things that we're doing right now. i \u2026",
+   "group_id": "7QffnDlFAPM",
+   "position": 13,
+   "pred": "EXCLAMATION",
+   "pred_text": "\u2026 next, what's next for kong. what are you guys doing after this ha! well, there's a lot of things that we're doing right now. i \u2026",
+   "sample_id": "sponspeech:dev:7QffnDlFAPM-156"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "don't worry about it. buy them from foreign countries, unless you find out that it's made \u2026",
+   "group_id": "DhptH3-KG7o",
+   "position": 3,
+   "pred": "EXCLAMATION",
+   "pred_text": "don't worry about it! buy them from foreign countries, unless you find out that it's made \u2026",
+   "sample_id": "sponspeech:dev:DhptH3-KG7o-164"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 the way we were before our thorn began to cause us pain, hallelujah. like my mother used to teach me, somebody gives you something, just \u2026",
+   "group_id": "RgPT9d3xCKY",
+   "position": 25,
+   "pred": "EXCLAMATION",
+   "pred_text": "\u2026 the way we were before our thorn began to cause us pain hallelujah! like my mother used to teach me somebody gives you something just \u2026",
+   "sample_id": "sponspeech:dev:RgPT9d3xCKY-51"
+  },
+  {
+   "gold": "DASH",
+   "gold_text": "i don't know what you mean - but what does that mean, elevating? you've used that before too. that's \u2026",
+   "group_id": "EEj137ADBzY",
+   "position": 5,
+   "pred": "QUESTION",
+   "pred_text": "i don't know what you mean? but what does that mean elevating you've used that before too, that's \u2026",
+   "sample_id": "sponspeech:dev:EEj137ADBzY-274"
+  },
+  {
+   "gold": "DASH",
+   "gold_text": "\u2026 they're hard to come by so i thought why don't i be promiscuous - why don't i meet up with people whose work i enjoy - intellectually \u2026",
+   "group_id": "JcHW33_5y30",
+   "position": 19,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 they're hard to come by. so i thought, why don't i be promiscuous? why don't i meet up with people whose work i enjoy intellectually \u2026",
+   "sample_id": "sponspeech:dev:JcHW33_5y30-14"
+  },
+  {
+   "gold": "DASH",
+   "gold_text": "so finding ways for you to ingratiate yourself, not - yes.",
+   "group_id": "wsG3c2H01wI",
+   "position": 8,
+   "pred": "QUESTION",
+   "pred_text": "so finding ways for you to ingratiate yourself, not? yes.",
+   "sample_id": "sponspeech:dev:wsG3c2H01wI-264"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 breathe, they're taking away all your energy you are going to die, actually? yeah i want to try is it that bad and the craziest \u2026",
+   "group_id": "MoJQY-3nOjA",
+   "position": 15,
+   "pred": "DASH",
+   "pred_text": "\u2026 breathe. they're taking away all your energy, you are going to die actually - yeah, i want to try is it that bad and the craziest \u2026",
+   "sample_id": "sponspeech:dev:MoJQY-3nOjA-3"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "what do you need? they help us see around corners because they know where their challenges \u2026",
+   "group_id": "dsAGbtU-ci4",
+   "position": 3,
+   "pred": "DASH",
+   "pred_text": "what do you need - they help us see around corners because they know where their challenges \u2026",
+   "sample_id": "sponspeech:dev:dsAGbtU-ci4-40"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 doing, but the reality of it is, isn't that what we all need? i mean, how many times a day do you stop and have \u2026",
+   "group_id": "i_gyDAh_3Gc",
+   "position": 53,
+   "pred": "DASH",
+   "pred_text": "\u2026 doing, but the reality of it is isn't that what we all need - i mean, how many times a day. do you stop and have \u2026",
+   "sample_id": "sponspeech:dev:i_gyDAh_3Gc-31"
+  },
+  {
+   "gold": "O",
+   "gold_text": "hi guys i'm chelsea thomas i'm from, southern illinois so i'm a midwest girl \u2026",
+   "group_id": "732fql_jhJQ",
+   "position": 1,
+   "pred": "EXCLAMATION",
+   "pred_text": "hi, guys! i'm chelsea thomas. i'm from southern illinois. so i'm a midwest girl \u2026",
+   "sample_id": "sponspeech:dev:732fql_jhJQ-1"
+  },
+  {
+   "gold": "O",
+   "gold_text": "nika it's exciting to be here while we're at refed i'm doing this \u2026",
+   "group_id": "B968WTpARjQ",
+   "position": 0,
+   "pred": "EXCLAMATION",
+   "pred_text": "nika! it's exciting to be here. while we're at refed i'm doing this \u2026",
+   "sample_id": "sponspeech:dev:B968WTpARjQ-8"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 don't need to say why, why did you answer my prayer? who cares why? thank you lord, thank you. sometimes, our prayers for relief are \u2026",
+   "group_id": "RgPT9d3xCKY",
+   "position": 62,
+   "pred": "EXCLAMATION",
+   "pred_text": "\u2026 don't need to say why, why did you answer my prayer, who cares! why? thank you lord. thank you sometimes our prayers for relief are \u2026",
+   "sample_id": "sponspeech:dev:RgPT9d3xCKY-51"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 you don't know if that's good or bad and they can spend it however, works for making it seem the most dramatic to make it \u2026",
+   "group_id": "GtYxtDwoUnk",
+   "position": 23,
+   "pred": "SEMICOLON",
+   "pred_text": "\u2026 you don't know if that's good or bad, and they can spend it; however works for making it seem the most dramatic to make it \u2026",
+   "sample_id": "sponspeech:dev:GtYxtDwoUnk-541"
+  },
+  {
+   "gold": "O",
+   "gold_text": "active done so much you had your structure you had your plans you had your structure for the service projects \u2026",
+   "group_id": "K_DQfaqY7_0",
+   "position": 7,
+   "pred": "SEMICOLON",
+   "pred_text": "active done so much you had your structure; you had your plans you had your structure for the service projects \u2026",
+   "sample_id": "sponspeech:dev:K_DQfaqY7_0-35"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 is one of her passions since she's competed in several, including the airways classic, which some of our students have competed in.",
+   "group_id": "kRsB1irX_5E",
+   "position": 14,
+   "pred": "SEMICOLON",
+   "pred_text": "\u2026 is one of her passions, since she's competed in several, including the airways; classic, which some of our students have competed in.",
+   "sample_id": "sponspeech:dev:kRsB1irX_5E-37"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 the french song alouette, it's about plucking the feathers out of a bird. so there are some things beth has put, thank you, jbrary on \u2026",
+   "group_id": "G5a86ABVNp4",
+   "position": 23,
+   "pred": "SEMICOLON",
+   "pred_text": "\u2026 the french song alouette, it's about plucking the feathers out of a bird; so there are some things beth has put thank you jbrary on \u2026",
+   "sample_id": "sponspeech:dev:G5a86ABVNp4-242"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 so that effectively will expect to see nick. nick here every other week. and hopefully we'll see david here.",
+   "group_id": "dSMQ1Iy3S1o",
+   "position": 47,
+   "pred": "SEMICOLON",
+   "pred_text": "\u2026 so that effectively will expect to see nick nick here every other week; and hopefully we'll see david here.",
+   "sample_id": "sponspeech:dev:dSMQ1Iy3S1o-5"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "we've all felt like that. we're all emotional beings. we're all emotional beings. it doesn't mean you're a bad person because you're an emotional being.",
+   "group_id": "kH0hxseLbTU",
+   "position": 12,
+   "pred": "SEMICOLON",
+   "pred_text": "we've all felt like that we're all emotional beings, we're all emotional beings; it doesn't mean you're a bad person because you're an emotional being.",
+   "sample_id": "sponspeech:dev:kH0hxseLbTU-156"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "you're welcome. angel had a question. do you have any resources for persons of color publishers to collaborate \u2026",
+   "group_id": "TgZ7qWtQJsA",
+   "position": 5,
+   "pred": "COLON",
+   "pred_text": "you're welcome. angel had a question: do you have any resources for persons of color publishers to collaborate \u2026",
+   "sample_id": "sponspeech:dev:TgZ7qWtQJsA-397"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 london, but you spend your time between london and new york city, todd. welcome to the podcast for the first time.",
+   "group_id": "WGiN_db5hBI",
+   "position": 58,
+   "pred": "COLON",
+   "pred_text": "\u2026 london, but you spend your time between london and new york city todd: welcome to the podcast for the first time.",
+   "sample_id": "sponspeech:dev:WGiN_db5hBI-1"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 chiefs that came under maori law, but once it transferred to the crown, it came under crown law and and it came under crown jurisdiction. \u2026",
+   "group_id": "J9kgbqoT8Gk",
+   "position": 22,
+   "pred": "SEMICOLON",
+   "pred_text": "\u2026 chiefs that came under maori law, but once it transferred to the crown; it came under crown law and, and it came under crown jurisdiction. \u2026",
+   "sample_id": "sponspeech:dev:J9kgbqoT8Gk-48"
+  },
+  {
+   "gold": "EXCLAMATION",
+   "gold_text": "tony says, you have no idea how happy you just made me, rob! why is that, tony? do you live in new york? amber kelly \u2026",
+   "group_id": "3EAKkh6P_ds",
+   "position": 12,
+   "pred": "COLON",
+   "pred_text": "tony says you have no idea how happy you just made me rob: why is that tony do you live in new york amber. kelly \u2026",
+   "sample_id": "sponspeech:dev:3EAKkh6P_ds-276"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 what do you guys see and where does this news hit that mark? yeah, so in the past few months, we worked with developers and \u2026",
+   "group_id": "7QffnDlFAPM",
+   "position": 21,
+   "pred": "COLON",
+   "pred_text": "\u2026 what do you guys see and where does this news hit that mark: yeah. so in the past few months, we worked with developers and \u2026",
+   "sample_id": "sponspeech:dev:7QffnDlFAPM-14"
+  },
+  {
+   "gold": "SEMICOLON",
+   "gold_text": "we actually don't need the protein; we need the amino acids from the protein to constitute the building \u2026",
+   "group_id": "a_idGhnIrYw",
+   "position": 5,
+   "pred": "QUESTION",
+   "pred_text": "we actually don't need the protein? we need the amino acids from the protein to constitute the building \u2026",
+   "sample_id": "sponspeech:dev:a_idGhnIrYw-137"
+  }
+ ],
+ "inputs": {
+  "gold": {
+   "path": "data/processed/sponspeech-m1-v2/mode_B/validation.jsonl",
+   "sha256": "efbc877efa64abb85579889c1c08ef5faf89b0b22a0eb3e629ca76c73f690fb0"
+  },
+  "ids": {
+   "path": "data/splits/sponspeech-m1-v2/primary_eval/validation_mode_B.ids",
+   "sha256": "15e43a80088a2189f0f0d34c6e1fc5dd867a2ee42637fc5e80d106c7eed487db"
+  },
+  "masks": null,
+  "predictions": {
+   "path": "predictions/crf_mode_b_improved_full_01_val_predictions.jsonl",
+   "sha256": "8a84db7ba3fe99bf39b3c0efa70601f066fc49192da666538b006dbbe96adb2c"
+  }
+ },
+ "label_mode": "B",
+ "model_name": "crf_improved",
+ "pair_counts": [
+  {
+   "count": 20086,
+   "gold": "COMMA",
+   "pred": "O"
+  },
+  {
+   "count": 7588,
+   "gold": "O",
+   "pred": "COMMA"
+  },
+  {
+   "count": 5647,
+   "gold": "PERIOD",
+   "pred": "O"
+  },
+  {
+   "count": 3889,
+   "gold": "PERIOD",
+   "pred": "COMMA"
+  },
+  {
+   "count": 3084,
+   "gold": "COMMA",
+   "pred": "PERIOD"
+  },
+  {
+   "count": 1821,
+   "gold": "O",
+   "pred": "PERIOD"
+  },
+  {
+   "count": 1672,
+   "gold": "QUESTION",
+   "pred": "PERIOD"
+  },
+  {
+   "count": 1063,
+   "gold": "DASH",
+   "pred": "O"
+  },
+  {
+   "count": 645,
+   "gold": "QUESTION",
+   "pred": "O"
+  },
+  {
+   "count": 371,
+   "gold": "PERIOD",
+   "pred": "QUESTION"
+  },
+  {
+   "count": 362,
+   "gold": "QUESTION",
+   "pred": "COMMA"
+  },
+  {
+   "count": 319,
+   "gold": "DASH",
+   "pred": "COMMA"
+  },
+  {
+   "count": 233,
+   "gold": "COLON",
+   "pred": "O"
+  },
+  {
+   "count": 138,
+   "gold": "COMMA",
+   "pred": "QUESTION"
+  },
+  {
+   "count": 103,
+   "gold": "DASH",
+   "pred": "PERIOD"
+  },
+  {
+   "count": 100,
+   "gold": "O",
+   "pred": "QUESTION"
+  },
+  {
+   "count": 90,
+   "gold": "COLON",
+   "pred": "COMMA"
+  },
+  {
+   "count": 63,
+   "gold": "COLON",
+   "pred": "PERIOD"
+  },
+  {
+   "count": 61,
+   "gold": "EXCLAMATION",
+   "pred": "O"
+  },
+  {
+   "count": 58,
+   "gold": "SEMICOLON",
+   "pred": "O"
+  },
+  {
+   "count": 54,
+   "gold": "EXCLAMATION",
+   "pred": "COMMA"
+  },
+  {
+   "count": 37,
+   "gold": "EXCLAMATION",
+   "pred": "PERIOD"
+  },
+  {
+   "count": 34,
+   "gold": "COMMA",
+   "pred": "DASH"
+  },
+  {
+   "count": 32,
+   "gold": "O",
+   "pred": "DASH"
+  },
+  {
+   "count": 32,
+   "gold": "SEMICOLON",
+   "pred": "COMMA"
+  },
+  {
+   "count": 16,
+   "gold": "COMMA",
+   "pred": "COLON"
+  },
+  {
+   "count": 14,
+   "gold": "PERIOD",
+   "pred": "DASH"
+  },
+  {
+   "count": 13,
+   "gold": "O",
+   "pred": "COLON"
+  },
+  {
+   "count": 13,
+   "gold": "SEMICOLON",
+   "pred": "PERIOD"
+  },
+  {
+   "count": 9,
+   "gold": "COMMA",
+   "pred": "EXCLAMATION"
+  },
+  {
+   "count": 7,
+   "gold": "PERIOD",
+   "pred": "EXCLAMATION"
+  },
+  {
+   "count": 6,
+   "gold": "DASH",
+   "pred": "QUESTION"
+  },
+  {
+   "count": 4,
+   "gold": "QUESTION",
+   "pred": "DASH"
+  },
+  {
+   "count": 3,
+   "gold": "O",
+   "pred": "EXCLAMATION"
+  },
+  {
+   "count": 3,
+   "gold": "O",
+   "pred": "SEMICOLON"
+  },
+  {
+   "count": 3,
+   "gold": "PERIOD",
+   "pred": "SEMICOLON"
+  },
+  {
+   "count": 2,
+   "gold": "PERIOD",
+   "pred": "COLON"
+  },
+  {
+   "count": 1,
+   "gold": "COMMA",
+   "pred": "SEMICOLON"
+  },
+  {
+   "count": 1,
+   "gold": "EXCLAMATION",
+   "pred": "COLON"
+  },
+  {
+   "count": 1,
+   "gold": "QUESTION",
+   "pred": "COLON"
+  },
+  {
+   "count": 1,
+   "gold": "SEMICOLON",
+   "pred": "QUESTION"
+  }
+ ],
+ "per_pair": 3,
+ "schema": "recap-errors-v1",
+ "seed": 2026
+}

@@ -1,0 +1,71 @@
+{
+ "blocks": {
+  "punctuation/all": {
+   "difference": 0.037509,
+   "difference_ci": {
+    "groups": 218,
+    "high": 0.056864,
+    "level": 0.95,
+    "low": 0.022164,
+    "resamples": 1000,
+    "seed": 2026,
+    "share_b_better": 1.0,
+    "unit": "group_id"
+   },
+   "macro_f1_a": 0.184711,
+   "macro_f1_b": 0.22222
+  },
+  "punctuation/non_final": {
+   "difference": 0.086609,
+   "difference_ci": {
+    "groups": 218,
+    "high": 0.106291,
+    "level": 0.95,
+    "low": 0.070171,
+    "resamples": 1000,
+    "seed": 2026,
+    "share_b_better": 1.0,
+    "unit": "group_id"
+   },
+   "macro_f1_a": 0.064357,
+   "macro_f1_b": 0.150966
+  }
+ },
+ "inputs_a": {
+  "gold": {
+   "path": "data/processed/sponspeech-m1-v2/mode_B/validation.jsonl",
+   "sha256": "efbc877efa64abb85579889c1c08ef5faf89b0b22a0eb3e629ca76c73f690fb0"
+  },
+  "ids": {
+   "path": "data/splits/sponspeech-m1-v2/primary_eval/validation_mode_B.ids",
+   "sha256": "15e43a80088a2189f0f0d34c6e1fc5dd867a2ee42637fc5e80d106c7eed487db"
+  },
+  "masks": null,
+  "predictions": {
+   "path": "validation/predictions.jsonl",
+   "sha256": "caf863fa7db64c768dc32238e3663837b25429f997b4aede64b9b8b86be390bc"
+  }
+ },
+ "inputs_b": {
+  "gold": {
+   "path": "data/processed/sponspeech-m1-v2/mode_B/validation.jsonl",
+   "sha256": "efbc877efa64abb85579889c1c08ef5faf89b0b22a0eb3e629ca76c73f690fb0"
+  },
+  "ids": {
+   "path": "data/splits/sponspeech-m1-v2/primary_eval/validation_mode_B.ids",
+   "sha256": "15e43a80088a2189f0f0d34c6e1fc5dd867a2ee42637fc5e80d106c7eed487db"
+  },
+  "masks": null,
+  "predictions": {
+   "path": "predictions/crf_mode_b_basic_full_01_val_predictions.jsonl",
+   "sha256": "dcbd3656a793d2a8b5280b2ee0c972ac05368e3ff84737056ef10dba5e4c918c"
+  }
+ },
+ "label_mode": "B",
+ "model_a": "hmm",
+ "model_b": "crf_basic",
+ "policy_version": "m1-v2",
+ "primary_block": "punctuation/all",
+ "schema": "recap-compare-v1",
+ "sequences": 20040
+}

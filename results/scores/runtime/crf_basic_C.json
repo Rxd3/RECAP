@@ -1,0 +1,20 @@
+{
+ "kind": "crf",
+ "mode": "C",
+ "model": "crf_mode_c_basic_full_01.joblib",
+ "load_seconds": 0.0794639999512583,
+ "sequences": 19936,
+ "tokens": 616940,
+ "predict_seconds": [
+  6.414204699918628,
+  6.174548099981621,
+  6.128483599983156
+ ],
+ "median_seconds": 6.174548099981621,
+ "tokens_per_second": 99916.62385816322,
+ "ms_per_sequence": 0.30971850421256125,
+ "hardware": {
+  "processor": "Intel64 Family 6 Model 158 Stepping 10, GenuineIntel",
+  "python": "3.13.1"
+ }
+}

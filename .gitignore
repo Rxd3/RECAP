@@ -53,6 +53,8 @@ drive-download-*/
 !/results/**/
 !/results/**/README.md
 !/results/**/.gitkeep
+# Evaluator JSON behind every reported number (Member 5); small, text only.
+!/results/scores/**/*.json
 !/presentation/assets/**/
 !/presentation/assets/**/README.md
 !/presentation/assets/**/.gitkeep

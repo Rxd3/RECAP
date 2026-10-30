@@ -4,6 +4,8 @@ This is the Member 5 deliverable for the HMM baseline (PR #4) and the shortcut b
 
 ## Provenance
 
+Every number below comes from an evaluator JSON file in [`results/scores/`](../results/scores/README.md).
+
 **Data:** `sponspeech-m1-v2`:
 - processed `SHA256SUMS` fingerprint `19ed874f…`;
 - splits `40ea6371…`;

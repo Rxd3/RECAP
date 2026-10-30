@@ -1,0 +1,412 @@
+{
+ "block": "punctuation/all",
+ "errors_total": 31583,
+ "examples": [
+  {
+   "gold": "COMMA",
+   "gold_text": "i call it the halo effect and the hell effect, or i call it what is commonly referred to that you can \u2026",
+   "group_id": "8P5o-XQ4C-E",
+   "position": 9,
+   "pred": "O",
+   "pred_text": "i call it the halo effect and the hell effect or i call it, what is commonly referred to that you can \u2026",
+   "sample_id": "sponspeech:test:8P5o-XQ4C-E-502"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 that there are people checking about the things that you're trying to do, that you're bouncing ideas of each other.",
+   "group_id": "NVn-Ug_XTpw",
+   "position": 41,
+   "pred": "O",
+   "pred_text": "\u2026 that there are people checking about the things that you're trying to do that you're bouncing ideas of each other.",
+   "sample_id": "sponspeech:test:NVn-Ug_XTpw-144"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 i'm not like one of those people that has a banana every day, not by any means, but on races, that's the one thing that, \u2026",
+   "group_id": "ZRVKU0p-LHE",
+   "position": 17,
+   "pred": "O",
+   "pred_text": "\u2026 i'm not like one of those people that has a banana every day not by any means, but on races, that's the one thing that \u2026",
+   "sample_id": "sponspeech:test:ZRVKU0p-LHE-371"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 with it, we look for stolen goods and guns and that's about it but not any contraband of drugs. so what kind of drone technology \u2026",
+   "group_id": "BvGdNpvulhE",
+   "position": 37,
+   "pred": "COMMA",
+   "pred_text": "\u2026 with it. we look for stolen goods and guns and that's about it, but not any contraband of drugs. so what kind of drone technology \u2026",
+   "sample_id": "sponspeech:test:BvGdNpvulhE-172"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 somebody saw this and said, whatever happened to the golden retriever, so apparently they've done this before, and also appreciated, right before that is, you \u2026",
+   "group_id": "MhGzVd_DrLw",
+   "position": 26,
+   "pred": "COMMA",
+   "pred_text": "\u2026 somebody saw this and said, whatever happened to the golden retriever, so apparently, they've done this before and also appreciated right before that is, you \u2026",
+   "sample_id": "sponspeech:test:MhGzVd_DrLw-42"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 it's helped and helped them think about the world in new ways, and yeah, that's really encouraging because originally the thought had been, let's make \u2026",
+   "group_id": "k9B7LYW_BjI",
+   "position": 14,
+   "pred": "COMMA",
+   "pred_text": "\u2026 it's helped and helped them think about the world in new ways and, yeah, that's really encouraging because originally the thought had been let's make \u2026",
+   "sample_id": "sponspeech:test:k9B7LYW_BjI-95"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 up will wake michael up, and he can come and get his presents. and my my dad would, you know, give her all kinds of \u2026",
+   "group_id": "fKhNnGC8UDI",
+   "position": 44,
+   "pred": "O",
+   "pred_text": "\u2026 up will wake michael up and he can come and get his presents and my my dad would you know, give her all kinds of \u2026",
+   "sample_id": "sponspeech:test:fKhNnGC8UDI-24"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 your business, your social life these are all just means to get there. either you go with it or you go without it but whether \u2026",
+   "group_id": "gavq4LM8XK0",
+   "position": 41,
+   "pred": "O",
+   "pred_text": "\u2026 your business, your social life. these are all just means to get there either you go with it, or you go without it, but whether \u2026",
+   "sample_id": "sponspeech:test:gavq4LM8XK0-22"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 reading, be diabetic, have very bad acne, or heart disease than be obese. more than 90 percent said they'd rather have a leg amputated, and \u2026",
+   "group_id": "q6oBrqClxdI",
+   "position": 20,
+   "pred": "O",
+   "pred_text": "\u2026 reading be diabetic have very bad acne or heart disease than be obese more than 90 percent said they'd rather have a leg amputated and \u2026",
+   "sample_id": "sponspeech:test:q6oBrqClxdI-26"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 people are like, that's good idea. you should do that. i'm like, yeah. go for it. also, people might go, oh, that's a terrible idea. \u2026",
+   "group_id": "h72oWk4xM04",
+   "position": 43,
+   "pred": "COMMA",
+   "pred_text": "\u2026 people are like, that's good idea. you should do that. i'm like, yeah, go for it also people might go, oh, that's a terrible idea. \u2026",
+   "sample_id": "sponspeech:test:h72oWk4xM04-39"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "yeah. yeah. absolutely. it's definitely like loves it.",
+   "group_id": "nSVl92jJbwk",
+   "position": 1,
+   "pred": "COMMA",
+   "pred_text": "yeah, yeah, absolutely. it's definitely like loves it.",
+   "sample_id": "sponspeech:test:nSVl92jJbwk-190"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 help you to relieve stress and anxiety? let us know in the comments. you're not alone in your anxiety and stress. psych2go, and the many \u2026",
+   "group_id": "o18I23HCQtE",
+   "position": 26,
+   "pred": "COMMA",
+   "pred_text": "\u2026 help you to relieve stress and anxiety, let us know in the comments, you're not alone in your anxiety and stress psych2go and the many \u2026",
+   "sample_id": "sponspeech:test:o18I23HCQtE-16"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 youtube channel, but i never met them or seen one of the colonies, so when i heard that you were going i naturally wanted to \u2026",
+   "group_id": "k9B7LYW_BjI",
+   "position": 25,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 youtube channel, but i never met them or seen, one of the colonies. so when i heard that you were going, i naturally wanted to \u2026",
+   "sample_id": "sponspeech:test:k9B7LYW_BjI-5"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 be a new friend or, you know the meal species and it's hi, how are you?",
+   "group_id": "nSVl92jJbwk",
+   "position": 18,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 be a new friend or you know, the meal species and it's hi. how are you?",
+   "sample_id": "sponspeech:test:nSVl92jJbwk-315"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 because you need to be pushing. and, you know, in the government's favour, they don't have our point of view. so we need to be \u2026",
+   "group_id": "yRKP9kvoJxk",
+   "position": 153,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 because you need to be pushing and you know, in the government's favour. they don't have our point of view. so we need to be \u2026",
+   "sample_id": "sponspeech:test:yRKP9kvoJxk-38"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 show us that just by trying to make things more efficient, we can in fact have higher utilization and we can have a more sustainable \u2026",
+   "group_id": "-7CrCik2Cgo",
+   "position": 41,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 show us that just by trying to make things more efficient. we can. in fact, have higher utilization and we can have a more sustainable \u2026",
+   "sample_id": "sponspeech:test:-7CrCik2Cgo-39"
+  },
+  {
+   "gold": "O",
+   "gold_text": "yeah, absolutely. and about 80% of my practice now is autoimmune patients who most of the ones who end up \u2026",
+   "group_id": "BYhh9P5Kf0Q",
+   "position": 7,
+   "pred": "PERIOD",
+   "pred_text": "yeah, absolutely. and about 80% of my practice. now is autoimmune patients who most of the ones who end up \u2026",
+   "sample_id": "sponspeech:test:BYhh9P5Kf0Q-16"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 seemed like, okay, we're probably going to move anyway. so might as well try this new place. so gotten her car and drove out to \u2026",
+   "group_id": "ONklqCNghdc",
+   "position": 26,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 seemed like, okay, we're probably going to move anyway, so might as well. try this new place so gotten her car and drove out to \u2026",
+   "sample_id": "sponspeech:test:ONklqCNghdc-82"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 which was honestly the hardest test ever, you know. and that's a certificate?",
+   "group_id": "CFHw0J-8zsA",
+   "position": 19,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 which was honestly the hardest test ever, you know, and that's a certificate.",
+   "sample_id": "sponspeech:test:CFHw0J-8zsA-47"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 milled around thinking about like, okay, do i want to do a paranormal?",
+   "group_id": "D_uVLUAmG4E",
+   "position": 41,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 milled around thinking about like, okay, do i want to do a paranormal.",
+   "sample_id": "sponspeech:test:D_uVLUAmG4E-32"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "i am an undo. i am an undo, you get it?",
+   "group_id": "XJVsSV5VFC4",
+   "position": 10,
+   "pred": "PERIOD",
+   "pred_text": "i am an undo i am an undo you get it.",
+   "sample_id": "sponspeech:test:XJVsSV5VFC4-208"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "what have you had to fight for? and twanna, i'll just jump in real quick about the documentary is \u2026",
+   "group_id": "-kHx2GE19tI",
+   "position": 6,
+   "pred": "O",
+   "pred_text": "what have you had to fight for and twanna, i'll just jump in real quick about the documentary is \u2026",
+   "sample_id": "sponspeech:test:-kHx2GE19tI-87"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 don't know our purpose. we don't know what what are we heading towards? i don't know. i'm just trying to get to the day and \u2026",
+   "group_id": "VANAe5GULk8",
+   "position": 39,
+   "pred": "O",
+   "pred_text": "\u2026 don't know our purpose, we don't know what, what are we heading towards i don't know. i'm just trying to get to the day and \u2026",
+   "sample_id": "sponspeech:test:VANAe5GULk8-63"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 thought in people's minds that that might be why someone is going in? many difficult things and practical concerns must be thought about.",
+   "group_id": "oUDYQTwr0b0",
+   "position": 117,
+   "pred": "O",
+   "pred_text": "\u2026 thought in people's minds that that might be why someone is going in many difficult things, and practical concerns must be thought about.",
+   "sample_id": "sponspeech:test:oUDYQTwr0b0-246"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "see what i mean? it's just like, oh, it just so happened to work out. it's \u2026",
+   "group_id": "VANAe5GULk8",
+   "position": 3,
+   "pred": "COMMA",
+   "pred_text": "see what i mean, it's just like, oh, it just so happened to work out. it's \u2026",
+   "sample_id": "sponspeech:test:VANAe5GULk8-74"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 ever done that. you know will anybody even be interested in being interviewed? i was pretty sure people just say, no, it doesn't seem worth \u2026",
+   "group_id": "k9B7LYW_BjI",
+   "position": 16,
+   "pred": "COMMA",
+   "pred_text": "\u2026 ever done that, you know, will anybody even be interested in being interviewed, i was pretty sure people just say no, it doesn't seem worth \u2026",
+   "sample_id": "sponspeech:test:k9B7LYW_BjI-39"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 away thinking, wow, why is my church tradition not doing something like this? like we have stuff to share. why aren't we publishing more books? \u2026",
+   "group_id": "k9B7LYW_BjI",
+   "position": 89,
+   "pred": "COMMA",
+   "pred_text": "\u2026 away thinking, wow, why is my church tradition, not doing something like this, like we have stuff to share why aren't we publishing more books. \u2026",
+   "sample_id": "sponspeech:test:k9B7LYW_BjI-6"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 are even questioning the sequence of events over here. you can. about how.",
+   "group_id": "PoSIhO-hYC8",
+   "position": 19,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 are even questioning the sequence of events over here, you can about how?",
+   "sample_id": "sponspeech:test:PoSIhO-hYC8-37"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 would affect, like you say, future plans and future thoughts about what they.",
+   "group_id": "ZRVKU0p-LHE",
+   "position": 44,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 would affect like you say future plans and future thoughts about what they?",
+   "sample_id": "sponspeech:test:ZRVKU0p-LHE-701"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 then, of course, going to school, hardly anybody that looks like me, right.",
+   "group_id": "dtzzvUTlZa0",
+   "position": 14,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 then of course, going to school hardly anybody that looks like me, right?",
+   "sample_id": "sponspeech:test:dtzzvUTlZa0-400"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 lie that we taught ourselves. well, as long as i do what's right, everything will be fine. okay, we we are genuinely surprised when we \u2026",
+   "group_id": "VANAe5GULk8",
+   "position": 82,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 lie that we taught ourselves? well as long as i do. what's right? everything will be fine. okay, we, we are genuinely surprised when we \u2026",
+   "sample_id": "sponspeech:test:VANAe5GULk8-5"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 enough, when i came here and i was a teen services librarian, right, the teens thought i was really cool.",
+   "group_id": "dtzzvUTlZa0",
+   "position": 14,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 enough, when i came here and i was a teen services librarian, right? the teens thought i was really cool.",
+   "sample_id": "sponspeech:test:dtzzvUTlZa0-437"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "what does this mean, and how do you feel it's experienced by its members?",
+   "group_id": "dtzzvUTlZa0",
+   "position": 3,
+   "pred": "QUESTION",
+   "pred_text": "what does this mean? and how do you feel it's experienced by its members.",
+   "sample_id": "sponspeech:test:dtzzvUTlZa0-580"
+  },
+  {
+   "gold": "O",
+   "gold_text": "would there be radical changes in how you'd live your life if you trusted this basic goodness, this belonging to awareness? for most \u2026",
+   "group_id": "XJVsSV5VFC4",
+   "position": 10,
+   "pred": "QUESTION",
+   "pred_text": "would there be radical changes in how you'd live your life? if you trusted this basic goodness this belonging to awareness for most \u2026",
+   "sample_id": "sponspeech:test:XJVsSV5VFC4-182"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 be more the same, there's pretty much three ways that most people respond so then maybe a handful of others or does it seem like \u2026",
+   "group_id": "w_QAzVS4Qq4",
+   "position": 44,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 be more the same, there's pretty much three ways that most people respond? so then maybe a handful of others or does it seem like \u2026",
+   "sample_id": "sponspeech:test:w_QAzVS4Qq4-74"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 comes to language and the use of language, why does this sound right and good to me?",
+   "group_id": "y75_LBqYyvs",
+   "position": 16,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 comes to language and the use of language, why does this sound, right? and good to me.",
+   "sample_id": "sponspeech:test:y75_LBqYyvs-94"
+  }
+ ],
+ "inputs": {
+  "gold": {
+   "path": "data/processed/sponspeech-m1-v2/mode_A/test.jsonl",
+   "sha256": "c18017d6b76a34c19ead4ad6c38ed9199ff61a6db7d464418391533765217caf"
+  },
+  "ids": {
+   "path": "data/splits/sponspeech-m1-v2/primary_eval/test_mode_A.ids",
+   "sha256": "207f414dbc649808729aeb92ee160c9a9bb57e066260d207c4a643cbfe75c3a1"
+  },
+  "masks": null,
+  "predictions": {
+   "path": "RECAP_m3_final/crf_mode_a_improved_full_01_test.jsonl",
+   "sha256": "157acc4a760770ee8dc916a1a3591d5bb367c1067b18571c24d3a2b7d66d39fb"
+  }
+ },
+ "label_mode": "A",
+ "model_name": "crf_improved",
+ "pair_counts": [
+  {
+   "count": 14177,
+   "gold": "COMMA",
+   "pred": "O"
+  },
+  {
+   "count": 5286,
+   "gold": "O",
+   "pred": "COMMA"
+  },
+  {
+   "count": 3920,
+   "gold": "PERIOD",
+   "pred": "O"
+  },
+  {
+   "count": 2607,
+   "gold": "PERIOD",
+   "pred": "COMMA"
+  },
+  {
+   "count": 2249,
+   "gold": "COMMA",
+   "pred": "PERIOD"
+  },
+  {
+   "count": 1252,
+   "gold": "O",
+   "pred": "PERIOD"
+  },
+  {
+   "count": 1122,
+   "gold": "QUESTION",
+   "pred": "PERIOD"
+  },
+  {
+   "count": 455,
+   "gold": "QUESTION",
+   "pred": "O"
+  },
+  {
+   "count": 226,
+   "gold": "QUESTION",
+   "pred": "COMMA"
+  },
+  {
+   "count": 172,
+   "gold": "PERIOD",
+   "pred": "QUESTION"
+  },
+  {
+   "count": 65,
+   "gold": "COMMA",
+   "pred": "QUESTION"
+  },
+  {
+   "count": 52,
+   "gold": "O",
+   "pred": "QUESTION"
+  }
+ ],
+ "per_pair": 3,
+ "schema": "recap-errors-v1",
+ "seed": 2026
+}

@@ -2,7 +2,11 @@
 
 This is Member 5's evaluation of Member 3's six CRF models (modes A, B and C × basic and improved feature presets) and of Member 5's two extensions: threshold decoding, and a filler-word cue. It follows [EVALUATION_PROTOCOL.md](EVALUATION_PROTOCOL.md). The HMM baseline is reported in [EVALUATION_RESULTS.md](EVALUATION_RESULTS.md).
 
-**Final results are on the primary test lists.** Validation chose every setting (section 5). Each frozen model predicted test and test_amb exactly once.
+**Final results are on the primary test lists.**
+- Validation chose the threshold τ (section 7). Member 3's CRF settings (c1 = c2 = 0.1, 100 iterations) were fixed and not tuned.
+- No test result influenced any choice. Section 5 has the validation tables.
+- Each frozen model predicted the primary test and test_amb lists exactly once.
+- Every number comes from an evaluator JSON file in [`results/scores/`](../results/scores/README.md).
 
 ## Provenance
 
@@ -76,6 +80,8 @@ This is Member 5's evaluation of Member 3's six CRF models (modes A, B and C × 
    - All six intervals exclude 0.
 
 ## Team hypotheses
+
+The team wrote H1–H6 in its execution plan on 2026-10-29, before any CRF result existed. Each one is reported whatever its outcome.
 
 | # | Hypothesis | Outcome | Evidence |
 |---|---|---|---|
