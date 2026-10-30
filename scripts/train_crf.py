@@ -27,9 +27,12 @@ from typing import Any, Mapping, Sequence
 import joblib
 import sklearn_crfsuite
 
-from punct_restore.evaluation.inputs import file_identity
-from punct_restore.features.crf_features import FeatureConfig
-from punct_restore.models.crf import CRFModel, get_mode_vocabulary
+ROOT = Path(__file__).resolve().parents[1]
+# Support the documented source-checkout command before an editable install.
+sys.path.insert(0, str(ROOT / "src"))
+from punct_restore.evaluation.inputs import file_identity  # noqa: E402
+from punct_restore.features.crf_features import FeatureConfig  # noqa: E402
+from punct_restore.models.crf import CRFModel, get_mode_vocabulary  # noqa: E402
 
 
 def sha256_file(path: str | Path) -> str:
