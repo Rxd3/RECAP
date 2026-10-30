@@ -60,6 +60,43 @@ Leakage-controlled pool tables of [DATASET_PLAN.md](DATASET_PLAN.md); percentage
 Independent full-record checks found zero shared videos, exact matches and qualifying six-gram
 matches between each primary subset and its reference splits ([DATA_RELEASE_VALIDATION.md](DATA_RELEASE_VALIDATION.md)).
 
+### Raw overlap between the official splits
+
+Before any filtering, the official splits overlap. Each row compares every record of the first split with
+the whole second split. Source: `data/splits/sponspeech-m1-v2/leakage_controlled/report.json`, `overlap`
+block (shipped with the release, not committed); percentages computed.
+
+| Official pair | Records | Shared videos | Records in shared videos | Identical model inputs | Identical texts | Near duplicates (≥ 50% shared 6-grams) |
+| --- | --- | --- | --- | --- | --- | --- |
+| validation vs train | 25,252 | 54 | 4,390 | 1,700 | 1,683 | 4,210 |
+| test vs train | 17,695 | 36 | 2,713 | 998 | 986 | 2,527 |
+| test vs validation | 17,695 | 13 | 2,003 | 727 | 712 | 1,853 |
+| test_amb vs train | 16,472 | 52 | 1,420 | 542 | 531 | 1,311 |
+| test_amb vs validation | 16,472 | 26 | 1,676 | 544 | 539 | 1,572 |
+| test_amb vs test | 16,472 | 26 | 1,664 | 594 | 587 | 1,521 |
+
+So 998 official test utterances (5.6%) give a model exactly the same input as a training utterance, and
+1,700 validation utterances (6.7%) do. After filtering, the same report shows zero overlap of every kind
+between each leakage-controlled pool and train or validation. The one exception is by design: test_amb
+and test still share 25 videos (1,637 records, 576 identical model inputs), which is why they are
+reported separately and never pooled.
+
+### What the leakage costs
+
+The frozen HMM and improved CRF also predicted the full official mode A test once, with the excluded
+utterances split by cause ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §8; macro F1 %):
+
+| Scored set | Utterances | HMM | CRF improved |
+| --- | --- | --- | --- |
+| Leakage-controlled test (kept) | 12,668 | 34.74 | 49.50 |
+| Excluded: video also in the training set | 2,706 | 33.54 | 67.09 |
+| Excluded: other leakage (video shared with validation only, or duplicate text) | 2,130 | 37.50 | 53.97 |
+| Excluded: quality filter (low comma density or TTS source) | 191 | 27.93 | 43.12 |
+
+The improved CRF scores about 18 points higher on utterances from videos it was trained on, while the
+HMM does not gain. In §8, "training set" means a video with an utterance in `default_train`, so its
+2,706 differs from the 2,713 above, which counts videos shared with the full official train file.
+
 ## Splits and sizes
 
 Released records per file ([DATASET_PLAN.md](DATASET_PLAN.md)); 48 source records are rejected with
