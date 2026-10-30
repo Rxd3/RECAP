@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import io
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -161,6 +163,16 @@ def test_run_demo_text_prints_input_and_restored(
     assert "Restored: hello world" in out
 
 
+def test_run_demo_tolerates_a_stdout_without_reconfigure(
+    hmm_json: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake = io.StringIO()
+    monkeypatch.setattr(sys, "stdout", fake)
+
+    assert run_demo.main(["--model-path", str(hmm_json), "--text", "hello world"]) == 0
+    assert "Restored: hello world" in fake.getvalue()
+
+
 def test_run_demo_missing_model_prints_one_error_line(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -195,6 +207,48 @@ def test_run_demo_interactive_loop_ends_on_eof(
     monkeypatch.setattr("builtins.input", raise_eof)
 
     assert run_demo.main(["--model-path", str(hmm_json)]) == 0
+
+
+def test_demo_text_survives_cp1252_stdout(hmm_json: Path) -> None:
+    env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"} | {"PYTHONIOENCODING": "cp1252"}
+
+    done = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts" / "run_demo.py"),
+            "--model-path",
+            str(hmm_json),
+            "--text",
+            "hello Ωmega world",
+        ],
+        capture_output=True,
+        cwd=ROOT,
+        env=env,
+        check=False,
+    )
+
+    out = done.stdout.decode("cp1252")
+    assert done.returncode == 0
+    assert done.stderr == b""
+    assert "Restored:" in out
+    assert "\\u03c9mega" in out
+
+
+def test_demo_interactive_survives_cp1252_stdout(
+    hmm_json: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    buffer = io.BytesIO()
+    monkeypatch.setattr(sys, "stdout", io.TextIOWrapper(buffer, encoding="cp1252", errors="strict"))
+    lines = iter(["hello Ωmega world", "quit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(lines))
+
+    code = run_demo.main(["--model-path", str(hmm_json)])
+
+    sys.stdout.flush()
+    out = buffer.getvalue().decode("cp1252")
+    assert code == 0
+    assert "Restored:" in out
+    assert "\\u03c9mega" in out
 
 
 def test_label_sets_path_is_the_labeling_default() -> None:

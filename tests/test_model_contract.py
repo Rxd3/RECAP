@@ -129,6 +129,28 @@ def test_load_model_dispatches_on_suffix(tmp_path: Path, fitted_hmm: HMMModel) -
     assert isinstance(load_model(model_path), HMMModel)
 
 
+def test_load_model_suffix_is_case_insensitive(
+    tmp_path: Path, fitted_hmm: HMMModel, fitted_crf: CRFModel
+) -> None:
+    hmm_path = tmp_path / "M.JSON"
+    fitted_hmm.save_model(hmm_path)
+    crf_paths = [tmp_path / "M.JOBLIB", tmp_path / "M.PKL"]
+    for crf_path in crf_paths:
+        fitted_crf.save_model(crf_path)
+
+    for model_path in (hmm_path, *crf_paths):
+        labels = ModelAdapter(model_path).predict_tokens(["hello", "world"])
+        assert len(labels) == 2
+        assert set(labels) <= set(load_label_sets()["A"])
+    assert isinstance(load_model(hmm_path), HMMModel)
+    assert all(isinstance(load_model(p), CRFModel) for p in crf_paths)
+
+    unsupported = tmp_path / "M.TXT"
+    unsupported.write_text("not a model")
+    with pytest.raises(ValueError, match="unsupported model file"):
+        ModelAdapter(unsupported)
+
+
 def test_rejects_unknown_extension(tmp_path: Path) -> None:
     model_path = tmp_path / "model.txt"
     model_path.write_text("not a model")
