@@ -150,7 +150,7 @@ report `test` and `test_amb` separately (they share 25 videos).
 | Path | What it holds |
 | --- | --- |
 | `artifacts/` | Ignored local model and data bundles (handoff ZIPs). Only `artifacts/README.md` is tracked. |
-| `configs/` | `configs/label_sets.yaml` (label vocabularies), `configs/datasets.yaml` (source checklist), `configs/hmm_sponspeech_v2.yaml` (frozen HMM search), `configs/experiment.example.yaml` (run template). |
+| `configs/` | `configs/label_sets.yaml` (label vocabularies), `configs/datasets.yaml` (source checklist), `configs/hmm_sponspeech_v2.yaml` (frozen HMM search). |
 | `contributions/` | One file per team member: role, branch, pull request, commits and files. |
 | `data/` | Ignored local data: `data/raw/`, `data/processed/`, `data/splits/`. `data/README.md` explains how to rebuild or download a release. |
 | `docs/` | Contracts, dataset documentation, decisions, evaluation protocol and results; listed below. |
@@ -216,7 +216,7 @@ Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM
 | `docs/RELATED_WORK.md` | Prior work, checked online, and how RECAP differs. |
 | `docs/REPRODUCIBILITY.md` | Every command, with the environments actually used. |
 | `docs/PRESENTATION_OUTLINE.md` | Four-slide outline with verified numbers. |
-| `docs/GIT_WORKFLOW.md`, `docs/MEMBER2_COMPLETION.md`, `docs/INITIAL_VERIFICATION.md`, `docs/REFERENCE_REVIEW.md` | Git workflow, the HMM completion audit, and historical setup records. |
+| `docs/GIT_WORKFLOW.md` | Clone, branch, commit, push, pull-request and conflict commands. |
 
 ## Team
 

@@ -157,8 +157,24 @@ The local handoff is `artifacts/hmm/hmm-sponspeech-v2-20261029.zip`, with an out
 the three selected artifacts; the packager verifies every archived byte. The raw
 dataset is distributed separately. Give the ZIP to Members 3, 5 and 6 through
 the team Drive folder; individual acknowledgments are separate from technical
-verification. See the [completion audit](../docs/MEMBER2_COMPLETION.md) in the
-repository for the final archive fingerprint and handoff acceptance checks.
+verification.
+
+### Handoff archive and delivery checks
+
+- **Archive:** `hmm-sponspeech-v2-20261029.zip`, 27,095,563 bytes, 365 checksummed files plus the
+  checksum index. Outer SHA-256 `4cdc5725b6538d87a1c9aa237b47743683f547e11061b208be8ce1436880aa02`.
+  It was packaged from commit `34849b9dca7eea8b6a60ff0ac9889a908d1cf38b` (clean) and is shared on the team
+  Drive as `Models/hmm-sponspeech-v2-20261029.zip` ([REPRODUCIBILITY.md](../docs/REPRODUCIBILITY.md)).
+- **Fresh extraction:** all 365 file hashes passed, each model loaded through `MODEL_INDEX.json`,
+  and 20 gold-free test predictions per mode were reproduced.
+- **Portable verification:** the documented verifier, run on the freshly extracted study with a separate
+  output directory, refit all three models, reproduced every full-split prediction (178,257 sequence
+  predictions in total), rechecked all 27 candidate primary scores and recounted every final metric block.
+- **Frozen code:** training implementation `e4c31834799bb261e78218c67dd85e148ad8d493`. Later
+  documentation and packaging commits keep all six frozen implementation files byte-identical, and the
+  study's `verification/verification.json` reports PASS.
+- **Use:** load a selected model with `HMMModel.load_model(path)` and pass gold-free records
+  (`sample_id`, `tokens`) to `predict`; `scripts/run_demo.py --model-path <model>.json` does this for raw text.
 
 Selected model SHA-256 values:
 

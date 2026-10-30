@@ -11,7 +11,6 @@ team's shared Drive folder, the HMM handoff ZIP and the Member 5 results bundle,
 | [HMM_RESULTS.md](HMM_RESULTS.md) | The completed HMM study: 27 validation candidates, selected settings, scores and independent reproduction. |
 | [CRF_NOTES.md](CRF_NOTES.md) | CRF model, CLI, artifact and test notes (Member 3). |
 | [FEATURE_NOTES.md](FEATURE_NOTES.md) | Basic and improved CRF features, and the feature ablations as run on validation. |
-| [runs/recap_m3_handoff_eval/README.md](runs/recap_m3_handoff_eval/README.md) | Contents of Member 3's CRF validation-prediction handoff. |
 
 Results:
 

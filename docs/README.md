@@ -14,7 +14,5 @@ The [root README](../README.md) maps every folder, script and guide. By topic:
 - **Prior work:** [RELATED_WORK.md](RELATED_WORK.md).
 - **Running and presenting:** [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [PRESENTATION_OUTLINE.md](PRESENTATION_OUTLINE.md),
   [GIT_WORKFLOW.md](GIT_WORKFLOW.md).
-- **History:** [MEMBER2_COMPLETION.md](MEMBER2_COMPLETION.md), [REFERENCE_REVIEW.md](REFERENCE_REVIEW.md),
-  [INITIAL_VERIFICATION.md](INITIAL_VERIFICATION.md).
 
 [TEAM_TASKS.md](../TEAM_TASKS.md) is the shared work board.
