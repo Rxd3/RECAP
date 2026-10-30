@@ -315,7 +315,7 @@ def test_tune_with_train_searches_tau_and_gamma(
     assert tune_threshold.main(_train_argv(mode_a, out, train, ids)) == 0
     written = _read(out)
 
-    assert set(written) == {"tau", "gamma", "priors", "grid", "model_sha256"}
+    assert set(written) == {"tau", "gamma", "priors", "grid", "model_sha256", "split", "inputs"}
     # Hand priors from the six listed rows: 21 tokens, K = 4, COMMA 3, PERIOD 4, QUESTION 2.
     assert written["priors"] == pytest.approx({"COMMA": 4 / 25, "PERIOD": 5 / 25, "QUESTION": 3 / 25})
     grid = written["grid"]
@@ -342,7 +342,7 @@ def test_tune_without_train_keeps_gamma_zero_and_has_no_priors(mode_a: Fixture, 
     out = tmp_path / "tau.json"
     assert tune_threshold.main(_tune_argv(mode_a, out)) == 0
     written = _read(out)
-    assert set(written) == {"tau", "gamma", "grid", "model_sha256"} and written["gamma"] == 0
+    assert set(written) == {"tau", "gamma", "grid", "model_sha256", "split", "inputs"} and written["gamma"] == 0
     assert len(written["grid"]) == 5 and all(p["gamma"] == 0 for p in written["grid"])
 
 

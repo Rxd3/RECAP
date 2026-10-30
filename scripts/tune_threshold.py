@@ -2,13 +2,16 @@
 
 Usage:
     python scripts/tune_threshold.py tune --model M.joblib --gold GOLD.jsonl --ids VAL.ids \
-        [--masks MASKS.jsonl] [--grid 0.05:0.95:0.05] \
+        [--masks MASKS.jsonl] [--grid 0.05:0.95:0.05] [--split NAME] \
         [--train TRAIN.jsonl --train-ids TRAIN.ids] --out tau.json
     python scripts/tune_threshold.py predict --model M.joblib --input IN.jsonl --ids IDS \
         --tau-file tau.json --out PRED.jsonl --manifest-out PRED.manifest.json
 
 ``tune`` scores every tau of the grid with the project evaluator (primary macro F1) on the
-validation gold and writes the best one next to the model's SHA-256. With ``--train`` and
+validation gold and writes the best one next to the model's SHA-256, the split name (``--split``, default
+the gold file's stem) and the identity (repo-relative path and SHA-256) of every input file: gold, ids,
+masks, train and train ids (null when not given). ``predict`` ignores those two keys, so tau files written
+before they existed still work. With ``--train`` and
 ``--train-ids`` (given together) it also searches gamma over ``GAMMAS``: the label priors come
 from the listed training records, and a token that passes the tau gate gets the label with the
 best ``P(c|x) / prior(c) ** gamma``. Without them gamma is 0 and nothing changes. ``predict``
@@ -32,6 +35,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # Support the documented source-checkout command before an editable install.
 sys.path.insert(0, str(ROOT / "src"))
 from punct_restore.evaluation.inputs import (  # noqa: E402
+    file_identity,
     load_bundle,
     load_scored_gold,
     load_vocab,
@@ -199,18 +203,30 @@ def _train_priors(train: Path, train_ids: Path, model: CRFModel) -> dict[str, fl
         raise ValueError("--train and --train-ids must be UTF-8 text files") from None
 
 
+def _identity_or_none(path: str | None) -> dict[str, str] | None:
+    return file_identity(path) if path is not None else None
+
+
+def _provenance(args: argparse.Namespace) -> dict[str, Any]:
+    """The split name and the identity (repo-relative path and SHA-256) of every input file of a tune run."""
+    inputs = {"gold": file_identity(args.gold), "ids": file_identity(args.ids)}
+    inputs |= {key: _identity_or_none(getattr(args, key)) for key in ("masks", "train", "train_ids")}
+    return {"split": args.split or Path(args.gold).stem, "inputs": inputs}
+
+
 def _tau_result(
     best: tuple[float, float],
     scores: Sequence[tuple[float, float, float]],
     priors: Mapping[str, float] | None,
     model_sha256: str,
+    provenance: Mapping[str, Any],
 ) -> dict[str, Any]:
     result: dict[str, Any] = {"tau": best[0], "gamma": best[1]}
     if priors is not None:
         result["priors"] = dict(priors)
     result["grid"] = [{"tau": tau, "gamma": gamma, "macro_f1": f1} for tau, gamma, f1 in scores]
     result["model_sha256"] = model_sha256
-    return result
+    return {**result, **provenance}
 
 
 def cmd_tune(args: argparse.Namespace) -> int:
@@ -245,8 +261,9 @@ def cmd_tune(args: argparse.Namespace) -> int:
     scores = _score_grid(model.model_name, mode, sample_ids, marginals, args.grid, score_file,
                          out.parent, gammas=GAMMAS if priors is not None else (0.0,), priors=priors)
     best = pick_tau_gamma(scores)
+    result = _tau_result(best, scores, priors, sha256_file(args.model), _provenance(args))  # before out exists
     with open(out, "x", encoding="utf-8") as handle:
-        json.dump(_tau_result(best, scores, priors, sha256_file(args.model)), handle, indent=2)
+        json.dump(result, handle, indent=2)
     best_f1 = next(f1 for tau, gamma, f1 in scores if (tau, gamma) == best)
     print(f"tau={best[0]:g} gamma={best[1]:g} macro_f1={best_f1:.6f} ({len(scores)} values scored)")
     return 0
@@ -324,6 +341,12 @@ def cmd_predict(args: argparse.Namespace) -> int:
     return 0
 
 
+def _split_name(text: str) -> str:
+    if not text.strip():
+        raise argparse.ArgumentTypeError("--split must not be blank")
+    return text
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Top-level parser with the ``tune`` and ``predict`` subcommands."""
     parser = argparse.ArgumentParser(
@@ -339,6 +362,8 @@ def build_parser() -> argparse.ArgumentParser:
     tune.add_argument("--masks", default=None, help="Casing masks JSONL (mode C only).")
     tune.add_argument("--grid", type=parse_grid, default=DEFAULT_GRID,
                       help=f"start:stop:step, stop inclusive (default: {DEFAULT_GRID}).")
+    tune.add_argument("--split", type=_split_name, default=None,
+                      help="Split name recorded in the tau file (default: the gold file's name without extension).")
     tune.add_argument("--train", default=None,
                       help="Training JSONL for the label priors; also searches gamma (needs --train-ids).")
     tune.add_argument("--train-ids", default=None, help="ID list selecting the --train records.")
