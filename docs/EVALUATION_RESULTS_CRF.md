@@ -253,6 +253,21 @@ Primary = macro F1 % with 95% CI (grouped bootstrap by video, 1,000 resamples, s
 | C | M3 basic − HMM | +6.83 (5.22 to 8.44) * | +12.19 (11.05 to 13.41) * |
 | C | M3 improved − HMM | +10.64 (8.91 to 12.86) * | +20.84 (19.59 to 22.09) * |
 
+### Sensitivity to the CRF settings (validation, mode A)
+
+Member 3's settings were fixed, not tuned. To check whether the conclusions depend on them, both presets were retrained on the same 50,000-sequence sample as the ablations (`train_crf.py train --ids sample.ids --c1 --c2 --max-iterations`). They were scored on the primary validation list only; test was not used. Primary macro F1 %, and improved − basic with paired 95% CI (* = interval excludes 0):
+
+| c1 = c2 | Iterations | CRF basic | CRF improved | Improved − basic |
+|---|---|---|---|---|
+| 0.01 | 100 | 42.30 | 46.67 | +4.37 (3.68 to 5.07) * |
+| 0.1 | 100 (delivered setting) | 43.58 | 49.96 | +6.38 (5.71 to 7.07) * |
+| 1.0 | 100 | 44.56 | 50.36 | +5.79 (5.13 to 6.44) * |
+| 0.01 | 300 | 41.76 | 47.63 | +5.87 (5.23 to 6.50) * |
+| 0.1 | 300 | 43.60 | 50.14 | +6.53 (5.90 to 7.18) * |
+| 1.0 | 300 | 44.64 | 50.28 | +5.65 (5.06 to 6.25) * |
+
+The improved preset beats the basic one at every setting, by +4.37 to +6.53 points. The delivered setting (0.1, 100 iterations) is within 0.40 points of the best improved score on this sample, so leaving the settings untuned costs little. Files: `results/scores/sensitivity/`.
+
 ## 6. Feature ablations of the improved CRF (validation)
 
 Member 5 retrained Member 3's improved preset with one feature group switched off at a time, using `scripts/run_ablations.py`. The feature code is Member 3's from `aa232be`, unchanged on `release/final` apart from the filler switch, which is off by default. The settings match the delivered models (c1 = c2 = 0.1, 100 iterations). Unlike them, each ablation model trains on a fixed sample of 50,000 `default_train` sequences per mode, drawn with seed 2026; modes A and B share one sample. All models are scored on the primary validation lists. Test was not used.
@@ -528,7 +543,7 @@ The p-values are recomputed from the committed compare JSONs in `results/scores/
 
 ## Limitations
 
-- **CRF settings were not tuned.** Every model uses c1 = c2 = 0.1 and 100 L-BFGS iterations, and every fit stopped at the iteration cap. Only τ was tuned, so the gaps may move with other settings.
+- **CRF settings were not tuned.** Every model uses c1 = c2 = 0.1 and 100 L-BFGS iterations, and every fit stopped at the iteration cap. Only τ was tuned. The validation sensitivity check in section 5 shows the improved − basic gap holds (+4.37 to +6.53) across six settings, but the absolute scores could move a little with tuning.
 - **Intervals cover sample variance only.** Each setting has one fit. The intervals are not adjusted for the number of comparisons; the Holm check above shows which conclusions survive.
 - **Ablation and filler models use a 50k-sequence sample.** Read only their differences; each comes from one fit.
 - **Rare classes stay low.** In mode B the improved CRF scores under 8 F1 on COLON, DASH, EXCLAMATION and SEMICOLON on test. `QUESTION|ALL_UPPER` has 9 test tokens.
