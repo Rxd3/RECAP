@@ -282,3 +282,12 @@ def test_filler_features():
     assert "+1:starts_filler_bigram" not in feats[5]
     assert "+1:starts_filler_bigram" not in feats[6]
     assert "starts_filler_bigram" not in feats[6]
+
+
+def test_is_repeat_never_wraps_to_the_last_token():
+    """Index 0 has no previous token; tokens[-1] must not count as one."""
+    tokens = ["um", "so", "um"]
+    feats = extract_sequence_features(tokens, config=FeatureConfig.improved(use_filler_cues=True))
+
+    assert "is_repeat" not in feats[0]
+    assert "is_repeat" not in feats[2]
