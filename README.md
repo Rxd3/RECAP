@@ -45,7 +45,7 @@ record format and alignment.
 
 ## What is new
 
-**Data** (built by us from the SponSpeech transcripts):
+**Data** (built by us from the SponSpeech transcripts; [DATASET_CARD.md](docs/DATASET_CARD.md)):
 
 - **Three label views of the same tokens.** Upstream SponSpeech scores three marks (full stop,
   comma, question mark). We add an 8-class extended view (mode B), a 3-way casing label with
@@ -67,6 +67,8 @@ record format and alignment.
 - **The end-of-utterance shortcut, measured.** Every utterance ends in PERIOD or QUESTION, so
   we report a rule-based shortcut baseline and a `non_final` view that drops each
   utterance's last token.
+- **Positioned against prior work** in [RELATED_WORK.md](docs/RELATED_WORK.md): classical
+  sequence labelers on spontaneous speech rather than transformers on TED talks.
 - **Grouped bootstrap by video** for every 95% interval, and paired intervals for every model
   comparison.
 - **Feature ablations** on validation only, one feature group at a time.
@@ -193,6 +195,7 @@ Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM
 | File | Content |
 | --- | --- |
 | `docs/PROJECT_SCOPE.md`, `docs/ARCHITECTURE.md` | Scope, components and ownership. |
+| `docs/DATASET_CARD.md` | What SponSpeech ships, what RECAP adds, splits, labels, leakage, licence. |
 | `docs/DATASET_PLAN.md` | Source, annotation policy, released counts and limitations (preprocessing). |
 | `docs/DATA_CONTRACT.md` | Record schema, alignment and approved projections. |
 | `docs/DATA_RELEASE_VALIDATION.md` | Checks and fingerprints of release `sponspeech-m1-v2`. |
@@ -203,6 +206,7 @@ Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM
 | `docs/EVALUATION_RESULTS.md` | HMM and shortcut results (validation, test, test_amb). |
 | `docs/EVALUATION_RESULTS_CRF.md` | CRF results and ablations (validation). |
 | `docs/CRF_EXPERIMENTS.md` | The six CRF runs: features, settings, hashes, commands. |
+| `docs/RELATED_WORK.md` | Prior work, checked online, and how RECAP differs. |
 | `docs/REPRODUCIBILITY.md` | Every command, with the environments actually used. |
 | `docs/PRESENTATION_OUTLINE.md` | Four-slide outline with verified numbers. |
 | `docs/GIT_WORKFLOW.md`, `docs/MEMBER2_COMPLETION.md`, `docs/INITIAL_VERIFICATION.md`, `docs/REFERENCE_REVIEW.md` | Git workflow, the HMM completion audit, and historical setup records. |
