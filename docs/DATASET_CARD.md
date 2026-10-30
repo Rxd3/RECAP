@@ -63,8 +63,9 @@ matches between each primary subset and its reference splits ([DATA_RELEASE_VALI
 ### Raw overlap between the official splits
 
 Before any filtering, the official splits overlap. Each row compares every record of the first split with
-the whole second split. Source: `data/splits/sponspeech-m1-v2/leakage_controlled/report.json`, `overlap`
-block (shipped with the release, not committed); percentages computed.
+the whole second split. Source: the `overlap` block of
+`data/release_metadata/sponspeech-m1-v2/splits/leakage_controlled/report.json` (committed, byte-identical to
+the release); percentages computed.
 
 | Official pair | Records | Shared videos | Records in shared videos | Identical model inputs | Identical texts | Near duplicates (≥ 50% shared 6-grams) |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -138,7 +139,8 @@ the share of non-O tokens is computed:
 O is 87.3% of training tokens (computed). The four extended classes together are 3.1% of non-O
 training labels and 2.4% of non-O test labels (computed). Masked casing positions: train 9,075,
 validation 1,212, test 900, test_amb 697 ([DATASET_PLAN.md](DATASET_PLAN.md)). Full casing and
-per-mode distributions are in the release's `stats.json`.
+per-mode distributions are in `data/release_metadata/sponspeech-m1-v2/processed/stats.json`. Ten example
+records with their masks are in `data/sample/`.
 
 ## Known gold issues
 

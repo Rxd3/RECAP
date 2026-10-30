@@ -33,6 +33,9 @@ utterance for the improved CRF ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_C
 | CRF models (six `.joblib` files) | [`RECAP_M3_DRIVE_MODELS`](https://drive.google.com/drive/folders/1jSfe5U8yZJxseU7aA9p6ycQNoZCtx7e_), as shared by Member 3, with a `SHA256SUMS` file | per-model SHA-256 in [CRF_EXPERIMENTS.md](CRF_EXPERIMENTS.md) §7 |
 | Evaluator outputs behind every number | committed in `results/scores/` | each JSON records its input SHA-256s ([results/scores/README.md](../results/scores/README.md)) |
 
+Code blocks marked `bash` use `\` to continue a line (bash or Git Bash on Windows); blocks marked
+`powershell` use a backtick.
+
 ## 1. Environment and tests
 
 ```powershell
@@ -43,7 +46,8 @@ python -m pytest -q
 ```
 
 On macOS/Linux, activate with `source .venv/bin/activate`. The tests use small fixtures and
-download nothing.
+download nothing. Checked on 2026-10-30: a fresh `git clone` of the final branch (commit `f5a4721`) passes
+`python -m pytest -q` (1164 tests) with the pinned dependency versions installed.
 
 ## 2. Data
 
@@ -74,7 +78,7 @@ The expected fingerprints are in [DATA_RELEASE_VALIDATION.md](DATA_RELEASE_VALID
 
 ## 3. Shortcut baseline
 
-```text
+```bash
 python scripts/evaluate_models.py baseline --gold <processed>/mode_A/validation.jsonl \
     --ids <splits>/primary_eval/validation_mode_A.ids --out results/predictions/shortcut_A_validation.jsonl
 ```
@@ -113,7 +117,7 @@ Train one model (repeat for each mode and preset; the six runs and their hashes 
 .\.venv\Scripts\python.exe scripts/train_crf.py train `
   --mode <A|B|C> `
   --input data/processed/sponspeech-m1-v2/mode_<A|B|C>/train.jsonl `
-  --ids data/splits/sponspeech-m1-v2/default_train/mode_<A|C>.ids `
+  --ids data/splits/sponspeech-m1-v2/default_train/mode_<A|B|C>.ids `
   --output experiments/runs/<run_dir>/<run_id>.joblib `
   --manifest-out experiments/runs/<run_dir>/<run_id>.manifest.json `
   --preset <basic|improved> `
@@ -130,7 +134,7 @@ Predict the primary validation list with the prediction manifest:
 .\.venv\Scripts\python.exe scripts/train_crf.py predict `
   --model experiments/runs/<run_dir>/<run_id>.joblib `
   --input data/processed/sponspeech-m1-v2/mode_<A|B|C>/validation.jsonl `
-  --ids data/splits/sponspeech-m1-v2/primary_eval/validation_mode_<A|C>.ids `
+  --ids data/splits/sponspeech-m1-v2/primary_eval/validation_mode_<A|B|C>.ids `
   --output experiments/runs/<run_dir>/<run_id>_val_predictions.jsonl `
   --manifest-out experiments/runs/<run_dir>/<run_id>_val_predictions.manifest.json
 ```
@@ -141,7 +145,7 @@ with `--ids .../primary_eval/test_mode_<X>.ids`, and `--input .../test_amb.jsonl
 
 ## 6. Scoring
 
-```text
+```bash
 python scripts/evaluate_models.py score --gold <processed>/mode_C/validation.jsonl \
     --ids <splits>/primary_eval/validation_mode_C.ids --predictions <model predictions>.jsonl \
     --masks <processed>/masks/case_joint/validation.jsonl --out results/tables/<run_id>.json
@@ -151,7 +155,7 @@ Modes A and B take the same command without `--masks`. Add `--bootstrap 1000` fo
 intervals (seed 2026 by default) and `--manifest <predictions>.manifest.json` to check the
 prediction manifest. Paired comparisons and error examples:
 
-```text
+```bash
 python scripts/evaluate_models.py compare --gold <gold> --ids <ids> --out <report>.json \
     --predictions-a <A>.jsonl --predictions-b <B>.jsonl --bootstrap 1000
 python scripts/evaluate_models.py errors --gold <gold> --ids <ids> --predictions <pred>.jsonl \
@@ -162,7 +166,7 @@ python scripts/evaluate_models.py errors --gold <gold> --ids <ids> --predictions
 
 ## 7. Ablations and threshold decoding (validation only)
 
-```text
+```bash
 python scripts/run_ablations.py --mode A --out experiments/runs/ablations_A --sample 50000 \
     --data-root data --release sponspeech-m1-v2
 python scripts/tune_threshold.py tune --model <model>.joblib --gold <processed>/mode_A/validation.jsonl \
@@ -187,7 +191,7 @@ validation; test is predicted once with the frozen τ.
 
 ## 8. Studies: joint vs punctuation-only (H1) and leakage subsets
 
-```text
+```bash
 python scripts/project_joint.py --predictions <mode C validation predictions>.jsonl \
     --gold <processed>/mode_A/validation.jsonl \
     --out experiments/runs/h1_A_from_C.jsonl --manifest-out experiments/runs/h1_A_from_C.manifest.json
@@ -201,11 +205,14 @@ python scripts/build_leakage_subsets.py --mode A --split test --out experiments/
 The leakage command writes `all.ids`, `kept.ids`, `excluded_train_video.ids`, `excluded_other_leak.ids`
 and `excluded_quality.ids` with `counts.json`. For mode A test the counts are 17,695 / 12,668 / 2,706 /
 2,130 / 191 ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §8). Score each list with
-`evaluate_models.py score --ids`.
+`evaluate_models.py score --ids`. The "all excluded" set (5,027 utterances for mode A test) is the
+union of the three `excluded_*.ids` lists, for example
+`cat excluded_train_video.ids excluded_other_leak.ids excluded_quality.ids > excluded_all.ids`
+(the three lists are disjoint: 2,706 + 2,130 + 191 = 5,027).
 
 ## 9. Tables and runtime
 
-```text
+```bash
 python scripts/reporting/build_m3_tables.py --split test --tau --out experiments/runs/crf_test_tables.md
 python scripts/reporting/build_m3_final_sections.py --manifests results/scores/crf_training_manifests \
     --out experiments/runs/crf_sections_7_10.md
@@ -222,7 +229,7 @@ confusion matrices, §7–10, §6). `time_models.py` needs a saved model and the
 The demo takes any saved model. To fit a small HMM `.json` for it (full mode C training list, about
 9 s, with the selected mode C settings), then restore one sentence:
 
-```text
+```bash
 python scripts/train_hmm.py --train data/processed/sponspeech-m1-v2/mode_C/train.jsonl \
     --train-ids data/splits/sponspeech-m1-v2/default_train/mode_C.ids \
     --output-dir experiments/runs/hmm_demo_C --label-mode C --smoothing 0.01 --min-token-count 2 \

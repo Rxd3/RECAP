@@ -62,8 +62,8 @@ for individual teammates' review or resolve CRF and integration choices.
   nine-candidate grid per mode. No validation data enters parameter estimation.
 - D11, HMM: versioned JSON artifacts, explicit training/prediction IDs and an
   authenticated release manifest. CPython 3.13.5 / PyYAML 6.0.3 passed isolated
-  reproduction. The checksummed local handoff is ready for the team's preferred
-  Drive distribution; no public model release or teammate receipt is implied.
+  reproduction. The checksummed handoff is on the team Drive
+  (`Models/hmm-sponspeech-v2-20261029.zip`); teammate receipt is not recorded.
 - D12, HMM measurement: common validation tokens, one model thread, 200 warmup
   sequences, three in-memory prediction repetitions and a separate decode
   latency pass. Hardware, timing scope and raw repetitions are preserved. No

@@ -48,12 +48,16 @@ record format and alignment.
 
 ## Models
 
-| Architecture | Trained model | Settings | Source |
+| Architecture | Implementation | Specific model | Settings |
 | --- | --- | --- | --- |
-| First-order HMM, Viterbi decoding | HMM, one per mode | additive smoothing α = 0.01 in A/B/C; rare-word cutoff 1 (A, B) and 2 (C); chosen on validation from 9 candidates per mode | [HMM_RESULTS.md](experiments/HMM_RESULTS.md) |
-| Linear-chain CRF (`sklearn-crfsuite`, L-BFGS) | CRF basic preset | ±1 window, affixes, token shape, utterance boundaries; c1 = c2 = 0.1, 100 iterations, fixed | [CRF_EXPERIMENTS.md](docs/CRF_EXPERIMENTS.md) §3, §6 |
-| Linear-chain CRF (`sklearn-crfsuite`, L-BFGS) | CRF improved preset | basic plus ±2 window, word pairs, question, clause, casing and position cues; same settings | [CRF_EXPERIMENTS.md](docs/CRF_EXPERIMENTS.md) §3 |
-| Linear-chain CRF + threshold decoding (ours) | CRF improved + τ | a token is non-O when 1 − P(O) > τ; τ = 0.40 (A), 0.30 (B), 0.35 (C), chosen on validation | [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §7 |
+| First-order HMM + Viterbi | own code, `src/punct_restore/models/hmm.py` | `hmm-sponspeech-v2-20261029` bundle, one model per mode | additive smoothing α = 0.01 (A, B, C); rare-word cutoff 1 (A, B) and 2 (C); chosen on validation from 9 candidates per mode |
+| Linear-chain CRF | CRFsuite via `sklearn-crfsuite` 0.5.0, L-BFGS; `src/punct_restore/models/crf.py` | `crf_mode_<a\|b\|c>_basic_full_01` (basic preset: ±1 window, affixes, token shape, utterance boundaries) | c1 = c2 = 0.1, 100 iterations, fixed |
+| Linear-chain CRF | same | `crf_mode_<a\|b\|c>_improved_full_01` (improved preset: adds ±2 window, word pairs, question, clause, casing and position cues) | c1 = c2 = 0.1, 100 iterations, fixed |
+| + threshold decoding (ours) | `src/punct_restore/models/threshold.py` on the improved CRF's marginals | improved CRF + τ: a token is non-O when 1 − P(O) > τ | τ = 0.40 (A), 0.30 (B), 0.35 (C), chosen on validation |
+
+Sources: [HMM_RESULTS.md](experiments/HMM_RESULTS.md), [CRF_EXPERIMENTS.md](docs/CRF_EXPERIMENTS.md) §3, §6–7
+and [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §7. Where to download each model:
+[REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md).
 
 ## What is new
 
@@ -153,7 +157,7 @@ Every command, from rebuilding the data to scoring a model, is in
 ## Data access
 
 - **Upstream:** SponSpeech (Liu & Beigi, 2024, [arXiv:2409.11241](https://arxiv.org/abs/2409.11241)),
-  CC BY-NC 4.0. No data is committed to this repository.
+  CC BY-NC 4.0. No dataset files are committed apart from a 10-utterance sample (`data/sample/`) and small release metadata (`data/release_metadata/`); `results/scores/*.errors.json` contain short SponSpeech excerpts as error examples (CC BY-NC 4.0, attribution in [DATA_LICENSE.md](docs/DATA_LICENSE.md)).
 - **Rebuild from source:** `scripts/prepare_data.py` with `extract` reads only about 97 MB of pinned
   byte ranges from the official archive; `build` creates release `sponspeech-m1-v2`. Steps
   and checksums: [data/README.md](data/README.md).
@@ -174,11 +178,11 @@ report `test` and `test_amb` separately (they share 25 videos).
 | `artifacts/` | Ignored local model and data bundles (handoff ZIPs). Only `artifacts/README.md` is tracked. |
 | `configs/` | `configs/label_sets.yaml` (label vocabularies), `configs/datasets.yaml` (source checklist), `configs/hmm_sponspeech_v2.yaml` (frozen HMM search). |
 | `contributions/` | One file per team member: role, branch, pull request, commits and files. |
-| `data/` | Ignored local data: `data/raw/`, `data/processed/`, `data/splits/`. `data/README.md` explains how to rebuild or download a release. |
+| `data/` | Ignored local data: `data/raw/`, `data/processed/`, `data/splits/`. Committed: a 10-utterance sample in `data/sample/` and release metadata in `data/release_metadata/`. `data/README.md` explains how to rebuild or download a release. |
 | `docs/` | Contracts, dataset documentation, decisions, evaluation protocol and results; listed below. Index: `docs/README.md`. |
 | `experiments/` | Model notes and runbooks: `experiments/HMM_NOTES.md`, `experiments/HMM_RUNBOOK.md`, `experiments/HMM_RESULTS.md`, `experiments/CRF_NOTES.md`, `experiments/FEATURE_NOTES.md`. Run outputs go to the ignored `experiments/runs/`. |
-| `presentation/` | Presentation workspace; the outline is `docs/PRESENTATION_OUTLINE.md`. |
-| `results/` | `results/scores/` holds the committed evaluator JSON behind every reported number (`results/scores/README.md`), including Member 3's six CRF training manifests in `results/scores/crf_training_manifests/`. Local outputs in `results/predictions/`, `results/tables/` and `results/figures/` are ignored. |
+| `presentation/` | Presentation workspace (`presentation/README.md`); the outline is `docs/PRESENTATION_OUTLINE.md`. |
+| `results/` | `results/scores/` holds the committed evaluator JSON behind every reported number (`results/scores/README.md`), including Member 3's six CRF training manifests in `results/scores/crf_training_manifests/`. Local outputs in `results/predictions/` and `results/tables/` (kept as empty folders, because the evaluator never creates folders) are ignored. |
 | `scripts/` | Command-line entry points; see the table below and `scripts/README.md`. |
 | `src/punct_restore/` | The Python package; every module is listed in the package table below. |
 | `tests/` | The pytest suite for data, models, features, CLIs and evaluation; fixtures only. |
@@ -196,14 +200,14 @@ package initializer, `<folder>/__init__.py`):
 | `src/punct_restore/models/threshold.py` | Threshold decoding of CRF marginals (τ tuned on validation only). |
 | `src/punct_restore/features/crf_features.py` | CRF features: basic and improved presets, ablation switches and the filler cue. |
 | `src/punct_restore/evaluation/` | Member 5's evaluator: `inputs` (input checks), `views` (scored positions and report blocks), `metrics` (token-level P/R/F1), `uncertainty` (bootstrap grouped by video), `comparison` (paired comparison), `error_analysis` (error examples), `baseline` (shortcut baseline), `manifest` (prediction-manifest check), `report` (JSON and Markdown reports). |
-| `src/punct_restore/prediction_io.py` | Gold-free prediction JSONL and manifest writing, shared by `scripts/train_crf.py` and `scripts/tune_threshold.py`. |
+| `src/punct_restore/prediction_io.py` | Gold-free prediction JSONL and manifest writing, shared by `scripts/train_crf.py`, `scripts/tune_threshold.py` and `scripts/project_joint.py`. |
 | `src/punct_restore/pipeline.py` | Demo inference: load a trained HMM or CRF, clean raw text, predict labels, rebuild text. |
 
 Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM_TASKS.md`
 (work board), `pyproject.toml` and `requirements.txt` (package and dependencies),
 `requirements-hmm.txt` (the pinned HMM reproduction environment), `.gitignore`, `.gitattributes`.
 
-**Scripts** (run from the repository root; each has `--help`):
+**Scripts** (run from the repository root; each has `--help` except the two reporting helper modules):
 
 | Script | Stage | What it does |
 | --- | --- | --- |
@@ -213,7 +217,7 @@ Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM
 | `scripts/run_hmm_experiments.py` | HMM | `tune` runs the frozen validation search; `finalize` predicts and scores the selected models. |
 | `scripts/verify_hmm_experiments.py` | HMM | Audits an HMM study: recounts scores, refits the winners and compares predictions. |
 | `scripts/package_hmm_handoff.py` | HMM | Packages a verified HMM study as a checksummed ZIP. |
-| `scripts/train_crf.py` | CRF | `train` fits a CRF (basic or improved features); `predict` writes predictions and a manifest; `inspect` prints artifact metadata. |
+| `scripts/train_crf.py` | CRF | `train` fits a CRF (basic or improved features); `predict` writes predictions, and the prediction manifest with `--manifest-out`; `inspect` prints artifact metadata. |
 | `scripts/run_ablations.py` | CRF | Trains the feature-group ablations and writes their validation predictions (never reads test). |
 | `scripts/tune_threshold.py` | CRF | Threshold decoding: `tune` picks τ on validation, `predict` applies the frozen τ. |
 | `scripts/evaluate_models.py` | Evaluation | `score`, `compare` (paired), `errors` and `baseline` (the shortcut). |
@@ -224,8 +228,8 @@ Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM
 | `scripts/reporting/build_m3_final_sections.py` | Reporting | Rebuilds the threshold, leakage, test_amb and runtime sections from `results/scores/` and the training manifests. |
 | `scripts/reporting/build_ablation_table.py` | Reporting | Rebuilds the feature-ablation tables from `results/scores/ablations/`. |
 | `scripts/reporting/time_models.py` | Reporting | Times HMM or CRF prediction (and an HMM fit) with the protocol used in the runtime tables. |
-| `scripts/reporting/build_tables.py` | Reporting | Shared helpers for the table builders (half-up percentages, cells, JSON loading). |
-| `scripts/reporting/_cli.py` | Reporting | Shared one-line error handling for the reporting scripts. |
+| `scripts/reporting/build_tables.py` | Reporting | Helper module, not run directly: shared helpers for the table builders (half-up percentages, cells, JSON loading). |
+| `scripts/reporting/_cli.py` | Reporting | Helper module, not run directly: shared one-line error handling for the reporting scripts. |
 
 **Docs:**
 
@@ -237,16 +241,16 @@ Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM
 | `docs/DATA_CONTRACT.md` | Record schema, alignment and approved projections. |
 | `docs/DATA_RELEASE_VALIDATION.md` | Checks and fingerprints of release `sponspeech-m1-v2`. |
 | `docs/DATA_LICENSE.md` | SponSpeech licence and the upstream attribution text. |
-| `docs/DECISIONS.md` | Approved data decisions D1–D6 and the open questions D7–D12. |
+| `docs/DECISIONS.md` | Data decisions D1–D6 and the resolved decisions D7–D12. |
 | `docs/MODEL_CONTRACT.md` | Model inputs, prediction records and manifests. |
 | `docs/EVALUATION_PROTOCOL.md` | Metrics, views, masks, bootstrap and known gold issues. |
 | `docs/EVALUATION_RESULTS.md` | HMM and shortcut results (validation, test, test_amb). |
+| `docs/HYPOTHESES.md` | The six team hypotheses, written before any CRF result existed (outcomes in the CRF results). |
 | `docs/EVALUATION_RESULTS_CRF.md` | CRF test results, validation selection, ablations, threshold decoding, filler cue, leakage, runtime. |
 | `docs/CRF_EXPERIMENTS.md` | The six CRF runs: features, settings, hashes, commands. |
 | `docs/RELATED_WORK.md` | Prior work, checked online, and how RECAP differs. |
 | `docs/REPRODUCIBILITY.md` | Every command, with the environments actually used. |
 | `docs/PRESENTATION_OUTLINE.md` | Four-slide outline with verified numbers. |
-| `docs/GIT_WORKFLOW.md` | Clone, branch, commit, push, pull-request and conflict commands. |
 
 ## Team
 
@@ -259,8 +263,7 @@ Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM
 | 5 Abd Raouf | Evaluation and error analysis | `feat/m5-evaluation` | `contributions/AbdRaouf_STUDENT_ID_afel6.md` |
 | 6 Abdulla | Integration and presentation | `feat/m6-integration-presentation` | `contributions/Abdulla_STUDENT_ID_abdu3061.md` |
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) for the
-branch and pull-request workflow.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch, commit and pull-request rules.
 
 ## Licence
 

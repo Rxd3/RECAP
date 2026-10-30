@@ -1,24 +1,14 @@
-# Contract tests
+# Tests
 
-Run `python -m pytest -q` from the repository root. Member 1's data contract and
-release regression suites use tiny local fixtures and cover annotation policies,
-alignment, masks, split integrity, checksums, extraction and immutable releases.
-Member 5's evaluation tests are implemented: `test_evaluation_*.py` and
-`test_evaluate_models_cli*.py`, with shared fixtures in `conftest.py`,
-`eval_fixtures.py` and `cli_analysis_cases.py`.
+Run `python -m pytest -q` from the repository root. Every test uses tiny local fixtures: no
+downloads, no real data, no trained weights.
 
-`test_hmm.py` and `test_hmm_cli.py` cover hand-calculated probabilities,
-exhaustive Viterbi/END checks, OOV handling, all modes, gold-field invariance,
-input failures, persistence and CLI manifests. These fixture fits are compatibility
-tests, not research experiments.
-
-`test_hmm_workflow.py` checks strict selections and release checksum failures.
-`test_hmm_experiments.py` checks validation-only freeze gates, tie-breaking,
-saved-model inference and the independent metric counter.
-
-- Member 1: records, labels, IDs, policy edge cases and fixed split integrity.
-- Member 6 with Members 2–3: adapters, gold-free inputs, alignment and persistence.
-- Member 5: hand-checkable metrics, O handling, zero division and projections.
-
-Add tiny meaningful fixtures as behavior is implemented. Do not download full
-datasets, weights or live API resources in unit tests.
+| Group | Files | What they check |
+| --- | --- | --- |
+| Data (Member 1) | `test_data_contract.py`, `test_data_release_regressions.py` | Records, labels, IDs, annotation policies, masks, split integrity, checksums and release audits. |
+| HMM (Member 2) | `test_hmm.py`, `test_hmm_cli.py`, `test_hmm_workflow.py`, `test_hmm_experiments.py` | Hand-computed probabilities, Viterbi, unknown words, gold-field invariance, persistence, CLI manifests, frozen selections. |
+| CRF (Member 3) | `test_crf_features.py`, `test_crf_model.py`, `test_train_crf_cli.py`, `test_train_crf_standalone.py` | Feature extraction, CRF fit/predict/save/load, the training CLI and running it from a plain checkout. |
+| Evaluation (Member 5) | `test_evaluation_*.py`, `test_evaluate_models_cli*.py`, with `conftest.py`, `eval_fixtures.py`, `cli_analysis_cases.py` | Metrics, views, masks, bootstrap, paired comparison, errors, manifest check, reports and the evaluator CLI. |
+| Final-push extensions | `test_threshold.py`, `test_run_ablations.py`, `test_project_joint.py`, `test_build_leakage_subsets.py`, `test_reporting.py` (with `reporting_fixtures.py`) | Threshold decoding, feature ablations, the H1 projection, leakage subsets and the table builders. |
+| Integration (Member 6) | `test_model_contract.py`, `test_pipeline.py`, `test_prediction_outputs.py` | Loading saved models, the model contract, text reconstruction, the demo CLI and safe prediction outputs. |
+| Repository | `test_dependencies.py`, `test_repo_hygiene.py` | Exact dependency pins and no scaffold leftovers. |

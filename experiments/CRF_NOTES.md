@@ -2,7 +2,7 @@
 
 **Modules:** `src/punct_restore/models/crf.py`, `scripts/train_crf.py`, `src/punct_restore/features/crf_features.py`
 **CRF Tests:** `tests/test_crf_features.py`, `tests/test_crf_model.py`, `tests/test_train_crf_cli.py`
-**Status:** Six full-data CRF models (modes A, B, C × basic, improved) were trained on the official `sponspeech-m1-v2` `default_train` lists; see [CRF_EXPERIMENTS.md](../docs/CRF_EXPERIMENTS.md) §7. Member 5 reproduced all six validation prediction files byte for byte from the shared models and scored each frozen model once on test and test_amb. Validation chose the HMM smoothing and the threshold τ; the CRF settings (c1 = c2 = 0.1, 100 iterations) were fixed and not tuned; no test result influenced any choice. The final results are the final results are in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md). The test counts below describe the suite at commit `aa232be`.
+**Status:** Six full-data CRF models (modes A, B, C × basic, improved) were trained on the official `sponspeech-m1-v2` `default_train` lists; see [CRF_EXPERIMENTS.md](../docs/CRF_EXPERIMENTS.md) §7. Member 5 reproduced all six validation prediction files byte for byte from the shared models and scored each frozen model once on test and test_amb. Validation chose the HMM smoothing and the threshold τ; the CRF settings (c1 = c2 = 0.1, 100 iterations) were fixed and not tuned; no test result influenced any choice. The final results are in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md). The test counts below describe the suite at commit `aa232be`.
 
 ---
 
@@ -64,12 +64,10 @@ class CRFModel:
     def load_model(cls, path: str | Path) -> CRFModel: ...
 ```
 
-### Integration Interface Recommendation for Member 6
-- **Observation:** Member 6's initial draft in `pipeline.py:ModelAdapter.predict_tokens` calls `self.model.predict(clean_tokens)` passing a raw `List[str]`.
-- **Contract Reality:** [docs/MODEL_CONTRACT.md](../docs/MODEL_CONTRACT.md) specifies a record-oriented signature: `predict(records) -> list[dict]`.
-- **Recommendation:** Member 6 can achieve 100% contract compliance with either of two clean options:
-  1. *Direct adapter call:* `self.model.predict_tokens(clean_tokens)`
-  2. *Standard record packaging:* `self.model.predict([{"sample_id": "demo", "tokens": clean_tokens}])[0]["predicted_labels"]`
+### Integration with the demo (historical note)
+An early draft of `pipeline.py` called `predict` with a bare token list. The final
+`src/punct_restore/pipeline.py` calls `predict_tokens`, as recommended here; see
+[MODEL_CONTRACT.md](../docs/MODEL_CONTRACT.md).
 
 ---
 
@@ -303,6 +301,7 @@ A teammate reported the following initial benchmark numbers from a local rebuild
 
 ### 9.4 Result Claims & Prohibitions
 - **CRF Benchmark Claims:** The six CRF models were trained on the full official training lists ([CRF_EXPERIMENTS.md](../docs/CRF_EXPERIMENTS.md) §7). Benchmark numbers come only from Member 5's evaluator in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md): final test results in §1–4 and test_amb in §9, with validation (model selection) in §5.
+- **Training data identity:** the six training manifests record `input_sha256` and `ids_sha256`, which match the release `SHA256SUMS` (checked 2026-10-30).
 - **Configurable vs Tuned Hyperparameters:** CLI regularization options (`--c1`, `--c2`) are user-configurable runtime arguments. No validation-based hyperparameter tuning has been performed; all six models use c1 = c2 = 0.1 and 100 iterations.
 
 ### 9.5 Follow-up Work (status)
@@ -311,28 +310,19 @@ A teammate reported the following initial benchmark numbers from a local rebuild
 
 ---
 
-## 10. Dataset Verification (historical)
+## 10. Team Integration Interface Specification
 
-A 13-point pre-training audit was planned here before the release was distributed. It is superseded by
-the release validation ([DATA_RELEASE_VALIDATION.md](../docs/DATA_RELEASE_VALIDATION.md)) and by the six
-training manifests' `input_sha256` and `ids_sha256`, which match the release `SHA256SUMS` (checked
-2026-10-30).
-
----
-
-## 11. Team Integration Interface Specification (Kamal & Abdulla)
-
-### 11.1 Target Consumers
+### 10.1 Target Consumers
 - **Member 6's demo path:** `src/punct_restore/pipeline.py` loads a saved CRF with `CRFModel.load_model` and calls `predict_tokens`; `scripts/run_demo.py` wraps it. No web application was built.
 
-### 11.2 Required Input Representation
+### 10.2 Required Input Representation
 Input tokens must be:
 - A sequence of **lowercased**, whitespace-tokenized string words.
 - Strictly gold-free (no ground-truth punctuation or casing hints).
 - Free of empty strings (`""`) or non-string objects.
 - *Critical Caveat:* Input text must be explicitly lowercased prior to inference. Uppercase characters in input tokens will bypass casing restoration in Mode C and corrupt token shape features.
 
-### 11.3 Interface Signatures
+### 10.3 Interface Signatures
 
 `CRFModel` exposes two complementary inference methods:
 
@@ -367,7 +357,7 @@ Input tokens must be:
      ["O", "PERIOD"]
      ```
 
-### 11.4 Model Loading
+### 10.4 Model Loading
 ```python
 from punct_restore.models.crf import CRFModel
 
@@ -378,14 +368,14 @@ print("Loaded model mode:", model.label_mode)
 print("Vocabulary:", model.vocabulary)
 ```
 
-### 11.5 Error Handling & Guarantees
+### 10.5 Error Handling & Guarantees
 - Calling `predict()` on an unfitted model raises `RuntimeError`.
 - Empty token sequences or non-string tokens raise `ValueError`.
 - Output sequence length is guaranteed to be strictly equal to input token length (`len(predicted_labels) == len(tokens)`).
 
 ---
 
-## 12. Smoke-Test Protocol (historical)
+## 11. Smoke-Test Protocol (historical)
 
 A 1,000-sequence smoke-test protocol was written before the first real-data run. It is superseded by the
 six full-data runs ([CRF_EXPERIMENTS.md](../docs/CRF_EXPERIMENTS.md) §7) and by Member 5's scoring with

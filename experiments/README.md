@@ -1,8 +1,9 @@
 # Experiment records
 
-Notes and runbooks for every model. Run outputs (models, predictions, score JSON) are written
-under the ignored `experiments/runs/<run_id>/` and are not committed. They are distributed through the
-team's shared Drive folder, the HMM handoff ZIP and the Member 5 results bundle, with SHA-256 sums.
+Notes and runbooks for every model. Local run outputs (models, predictions) go under the ignored
+`experiments/runs/<run_id>/`. The trained models are on the team Drive with SHA-256 sums
+([REPRODUCIBILITY.md](../docs/REPRODUCIBILITY.md)); the evaluator score JSON behind every reported
+number is committed in [`results/scores/`](../results/scores/README.md).
 
 | File | Content |
 | --- | --- |

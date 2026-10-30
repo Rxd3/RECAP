@@ -1,8 +1,7 @@
 # Contributing
 
 Work on your assigned member branch and open focused pull requests into `main`.
-Use [TEAM_TASKS.md](TEAM_TASKS.md) to find owners/reviewers and
-[docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) for detailed beginner commands.
+Use [TEAM_TASKS.md](TEAM_TASKS.md) to find owners and reviewers.
 
 ## Daily workflow
 
@@ -10,13 +9,13 @@ Use [TEAM_TASKS.md](TEAM_TASKS.md) to find owners/reviewers and
 2. Check `git status`, switch to your branch, then merge updated `main` regularly.
 3. Edit primarily your assigned files. Discuss shared interfaces before coding
    and ask affected owners to review coordinated changes.
-4. Keep logic in `src/punct_restore/` and future scripts thin. Put adjustable
+4. Keep logic in `src/punct_restore/` and scripts thin. Put adjustable
    settings in `configs/` and use repository-relative paths.
 5. Add small meaningful tests with actual behavior. Tests must not download data,
    contact live APIs, require pretrained weights or need a GPU.
 6. Inspect `git diff`, stage named files, inspect `git diff --cached`, then commit.
-7. Push only to the team's Project 2 remote after it has been provided. Open a
-   PR with problem/behavior, affected contracts, checks and pending work.
+7. Push to the team remote (`https://github.com/Rxd3/RECAP.git`). Open a PR with the
+   problem or behaviour, affected contracts, checks run and open work.
 8. Obtain review before merging into `main`. Do not force-push another member's
    branch or make direct feature-development commits to `main`.
 
@@ -37,8 +36,11 @@ python -m pytest -q
 - **One branch per member:** work on your `feat/m<N>-...` branch (owners and branches are in
   [TEAM_TASKS.md](TEAM_TASKS.md)), not on `main`.
 - **Conventional commit subjects:** `type(scope): summary`, for example
-  `feat(data): add verified preprocessing pipeline` ([GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md)) or
-  `fix(eval): ...`, `docs: ...`, `test: ...`, `chore: ...`.
+  `feat(data): add verified preprocessing pipeline` or `fix(eval): ...`, `docs: ...`, `test: ...`,
+  `chore: ...`.
+- **Stage named files, check, then commit:** `git status`, `git add <paths>` (not `git add .`),
+  `git diff --cached`, `git commit`. Merge `main` into your branch regularly and never force-push
+  another member's branch.
 - **Merge through pull requests, as merge commits,** so every member keeps their own commits. The
   integration branch `release/final` merged the member branches in this order: M5 evaluation,
   M2 HMM, M3 CRF, M6 integration (`git log --merges release/final`).

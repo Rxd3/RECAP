@@ -2,8 +2,8 @@
 
 **Status (2026-10-30):** the data release and the HMM baseline are verified
 ([release validation](docs/DATA_RELEASE_VALIDATION.md), [HMM results](experiments/HMM_RESULTS.md)).
-The six CRF models are trained, selected on validation and scored once on test and test_amb
-([CRF results](docs/EVALUATION_RESULTS_CRF.md)). A ticked item
+The six CRF models are trained and scored once on test and test_amb
+([CRF results](docs/EVALUATION_RESULTS_CRF.md)). Validation chose the HMM smoothing and the threshold τ; the CRF settings (c1 = c2 = 0.1, 100 iterations) were fixed and not tuned; no test result influenced any choice. A ticked item
 names its evidence in the repository; an unticked one is not done or has no such evidence. Every
 member must understand their component's assumptions, label schemes, leakage
 risks, evaluation choices and the overall methodology.
@@ -13,7 +13,7 @@ contracts alone. Discuss shared changes before coding, then obtain affected
 owners' review. See [architecture](docs/ARCHITECTURE.md) and
 [decision register](docs/DECISIONS.md).
 
-## Member 1 — Dataset and Preprocessing Mutasim  member 1
+## Member 1 — Dataset and Preprocessing (Mutasim)
 
 **Branch:** `feat/m1-data-preprocessing`
 
@@ -46,16 +46,14 @@ Member 6 for portable handoff and artifact distribution. No model is required.
 - [x] Approved policies cover ambiguous punctuation/casing and rejected records. (evidence: [DECISIONS.md](docs/DECISIONS.md) D3–D4, [DATASET_PLAN.md](docs/DATASET_PLAN.md))
 - [x] IDs, lengths, labels and splits validate; primary subsets pass video, raw/normalized exact and six-gram overlap checks against their reference splits. (evidence: [DATA_RELEASE_VALIDATION.md](docs/DATA_RELEASE_VALIDATION.md))
 - [x] Regeneration command, source revision, environment and hashes are recorded. (evidence: [data/README.md](data/README.md), [DATA_RELEASE_VALIDATION.md](docs/DATA_RELEASE_VALIDATION.md))
-- [ ] Members 2, 3, 5 and 6 acknowledge the same distributed release without retokenizing/resplitting.
+- [ ] Members 2, 3, 5 and 6 acknowledge the same distributed release without retokenizing/resplitting. — not done: no member acknowledgment is recorded
 
 **Handoff:** [PR #1](https://github.com/Rxd3/RECAP/pull/1) contains the pipeline,
-contracts and regression tests. Provide the corrected `sponspeech-m1-v2` bundle
-from `artifacts/data/sponspeech-m1-v2/` through the shared Drive folder, then ask
-Members 2–6 to acknowledge its ID lists, checksums and documented limitations.
-The old `sponspeech-m1-v1-rev2` bundle is superseded. The v2 handoff ZIP is on the team Drive
-(`dataset/`); individual member acknowledgments remain pending. The team lead authorized this review.
+contracts and regression tests. The corrected `sponspeech-m1-v2` bundle is on the team Drive
+(`dataset/sponspeech-m1-v2-handoff.zip`); the old `sponspeech-m1-v1-rev2` bundle is superseded.
+Individual member acknowledgments are not recorded. The team lead authorized this review.
 
-## Member 2 — HMM Baseline Raşit  
+## Member 2 — HMM Baseline (Raşit)
 
 **Branch:** `feat/m2-hmm-baseline`
 
@@ -83,7 +81,7 @@ the shared record contract; integrated demo acceptance remains Member 6's work.
 **Definition of Done:**
 
 - [x] Tiny hand-checkable sequences verify probability/Viterbi and OOV behavior. (evidence: [tests/test_hmm.py](tests/test_hmm.py))
-- [x] HMM input/output contract, gold-invariance and save/load hold on synthetic tests and real data; integrated demo review remains pending. (evidence: [tests/test_hmm.py](tests/test_hmm.py), [tests/test_hmm_workflow.py](tests/test_hmm_workflow.py), [HMM_RESULTS.md](experiments/HMM_RESULTS.md))
+- [x] HMM input/output contract, gold-invariance and save/load hold on synthetic tests and real data; the demo loads the selected HMM JSON. (evidence: [tests/test_hmm.py](tests/test_hmm.py), [tests/test_hmm_workflow.py](tests/test_hmm_workflow.py), [HMM_RESULTS.md](experiments/HMM_RESULTS.md))
 - [x] Artifact, data/mode/configuration hashes and actual commands are recorded. (evidence: [HMM_RUNBOOK.md](experiments/HMM_RUNBOOK.md), [HMM_RESULTS.md](experiments/HMM_RESULTS.md))
 - [x] Member 5's pinned shared scorer validates prediction alignment and computes the baseline scores; an independent counter verifies them. (evidence: [HMM_RESULTS.md](experiments/HMM_RESULTS.md), [EVALUATION_RESULTS.md](docs/EVALUATION_RESULTS.md))
 
@@ -92,11 +90,11 @@ the shared record contract; integrated demo acceptance remains Member 6's work.
 candidate evidence, predictions, scores, configuration, runtime and reproduction
 proof. See [results](experiments/HMM_RESULTS.md) and
 [runbook](experiments/HMM_RUNBOOK.md). Distribute it through the team Drive folder
-to Members 3, 5 and 6. Individual acknowledgments and Member 6's integrated demo
-are separate remaining team actions. Running the shared scorer records technical
+to Members 3, 5 and 6; it is on the team Drive (`Models/`). Individual acknowledgments are not
+recorded; the integrated demo exists (`scripts/run_demo.py`, `tests/test_pipeline.py`). Running the shared scorer records technical
 validation, not a human Member 5 sign-off.
 
-## Member 3 — CRF Main Model Omar
+## Member 3 — CRF Main Model (Omar)
 
 **Branch:** `feat/m3-crf-model`
 
@@ -106,7 +104,7 @@ Member 4's feature module is a coordinated contribution, not overlapping ownersh
 
 **Tasks:**
 
-- [ ] Agree the injected feature interface with Member 4 before implementing it.
+- [ ] Agree the injected feature interface with Member 4 before implementing it. — not done: Member 4 has no commits; Member 3 wrote the interface alone (`aa232be`)
 - [x] Choose a linear-chain CRF backend and document assumptions/optimizer settings. (evidence: [CRF_EXPERIMENTS.md](docs/CRF_EXPERIMENTS.md) §2, §6)
 - [ ] Define a basic token-feature preset with Member 4 through one reviewed PR. — basic preset written by Member 3 alone in `aa232be`; no PR with Member 4
 - [x] Implement fit/predict/save/load under the common contract. (evidence: [crf.py](src/punct_restore/models/crf.py), [tests/test_crf_model.py](tests/test_crf_model.py))
@@ -132,7 +130,7 @@ for integration. CRF implementation need not wait for HMM training.
 **Handoff:** give Member 4 the stable CRF adapter/extractor signature and basic
 preset; give Members 5 and 6 compatible artifacts, predictions and provenance.
 
-## Member 4 — Feature Engineering and Model Improvement Mohamed Kamaleldin
+## Member 4 — Feature Engineering and Model Improvement (Mohamed Kamaleldin)
 
 **Branch:** `feat/m4-feature-engineering`
 
@@ -167,7 +165,7 @@ Do not independently rewrite or replace the CRF model.
 **Handoff:** provide Member 3 the versioned extractor/configuration, Member 5 the
 paired run bundles and hypothesis list, and Member 6 feature-loading requirements.
 
-## Member 5 — Evaluation and Error Analysis Abd Raouf
+## Member 5 — Evaluation and Error Analysis (Abd Raouf)
 
 **Branch:** `feat/m5-evaluation`
 
@@ -206,7 +204,7 @@ and tiny fixture tests can be prepared before trained models exist.
 representative errors, selection/test separation and limitations; return failure
 cases to Members 1–4 for analysis without silently changing the frozen test.
 
-## Member 6 — Integration, Reproducibility and Presentation Abdulla Jamal
+## Member 6 — Integration, Reproducibility and Presentation (Abdulla Jamal)
 
 **Branch:** `feat/m6-integration-presentation`
 
@@ -217,16 +215,16 @@ cases to Members 1–4 for analysis without silently changing the frozen test.
 
 **Tasks:**
 
-- [ ] Coordinate interface versions, compatibility checks and integration PR order.
-- [ ] Define CLI prediction inputs/flags and artifact-loading/model selection adapters.
-- [ ] Route identical gold-free token sequences to each trained model.
+- [ ] Coordinate interface versions, compatibility checks and integration PR order. — not done by Member 6: Member 5 merged the member branches into `release/final` (097c87b, 0790467, 611f3f4, ddba805)
+- [x] Define CLI prediction inputs/flags and artifact-loading/model selection adapters. (evidence: `load_model` in [pipeline.py](src/punct_restore/pipeline.py), [scripts/README.md](scripts/README.md), [tests/test_pipeline.py](tests/test_pipeline.py); completed during release integration)
+- [x] Route identical gold-free token sequences to each trained model. (evidence: `ModelAdapter` in [pipeline.py](src/punct_restore/pipeline.py) sends the same gold-free record to an HMM or a CRF; [tests/test_model_contract.py](tests/test_model_contract.py), [tests/test_pipeline.py](tests/test_pipeline.py))
 - [x] Integrate approved punctuation/casing reconstruction and error handling. (evidence: `RestorationPipeline` in [pipeline.py](src/punct_restore/pipeline.py), [tests/test_pipeline.py](tests/test_pipeline.py); completed during release integration)
 - [x] Build a command-line demonstration; add interactive UI only if later agreed. (evidence: [scripts/run_demo.py](scripts/run_demo.py), [tests/test_pipeline.py](tests/test_pipeline.py); completed during release integration)
 - [x] Document exact preparation, training, prediction and evaluation commands as built. (evidence: [REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md))
-- [ ] Record dependency locks, seeds, code/data/artifact hashes and hardware needs.
-- [ ] Run a tiny end-to-end reproduction in a clean environment.
+- [x] Record dependency locks, seeds, code/data/artifact hashes and hardware needs. (evidence: exact pins in [pyproject.toml](pyproject.toml) checked by [tests/test_dependencies.py](tests/test_dependencies.py); seed 2026, data and model hashes and hardware in [REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md))
+- [x] Run a tiny end-to-end reproduction in a clean environment. (evidence: the fixture suite in `tests/` passes in a fresh clone ([REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md) §1), and the demo command there fits and runs a small HMM)
 - [x] Collect verified evidence and limitations from every member for the presentation. (evidence: [PRESENTATION_OUTLINE.md](docs/PRESENTATION_OUTLINE.md))
-- [ ] Rehearse the demo and verify the final integrated release with all owners.
+- [ ] Rehearse the demo and verify the final integrated release with all owners. — not done: no rehearsal or owner sign-off is recorded
 
 **Deliverables:** integrated inference workflow and demo; reproducibility runbook;
 integration/contract checks; final presentation backed by real findings.
@@ -238,9 +236,9 @@ Member 5 verified outputs. CLI/manifest planning starts before models are traine
 **Definition of Done:**
 
 - [x] Compatible artifacts load and incompatible ones fail with useful messages. (evidence: `src/punct_restore/pipeline.py` `load_model`, [tests/test_model_contract.py](tests/test_model_contract.py); completed during release integration)
-- [ ] Shared inputs, IDs and output alignment survive every adapter; no gold leakage.
-- [ ] Documented commands reproduce a small complete workflow from a clean setup.
-- [ ] Demo and slides accurately distinguish trained behavior, targets and limitations.
+- [x] Shared inputs, IDs and output alignment survive every adapter; no gold leakage. (evidence: label-count and vocabulary checks in [pipeline.py](src/punct_restore/pipeline.py), [tests/test_pipeline.py](tests/test_pipeline.py); gold-field invariance in [tests/test_hmm.py](tests/test_hmm.py); gold-free CLI inputs in [prediction_io.py](src/punct_restore/prediction_io.py))
+- [x] Documented commands reproduce a small complete workflow from a clean setup. (evidence: [REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md) §1 (fresh clone, tests) and §10 (fit a small HMM, run the demo))
+- [ ] Demo and slides accurately distinguish trained behavior, targets and limitations. — not done: the slide deck is made after the repository freeze
 
 **Handoff:** publish a reviewed integration/reproduction checklist for the team,
 collect sign-off on each technical claim, and prepare the final demonstration.
@@ -248,16 +246,16 @@ This is a technical integration role, not only slide preparation.
 
 ## Shared milestones and integration checkpoints
 
-- [ ] M0 — Everyone reads the scope/contracts and checks out their member branch.
+- [ ] M0 — Everyone reads the scope/contracts and checks out their member branch. — not recorded: no evidence of each member's reading
 - [ ] M1 — Member 1 source/policy PR and Member 5 metric/projection review accepted;
-  Members 3–4 feature-interface PR and Member 6 artifact/CLI plan accepted.
-- [ ] M2 — Member 1 data release validated; all consumers agree identical IDs/splits.
-- [ ] M3 — HMM and basic CRF contract tests pass; Member 5 scores validation bundles;
-  Member 6 verifies shared-input inference and save/load compatibility.
+  Members 3–4 feature-interface PR and Member 6 artifact/CLI plan accepted. — not done: no Members 3–4 feature-interface PR (Member 4 has no commits)
+- [ ] M2 — Member 1 data release validated; all consumers agree identical IDs/splits. — partly: the release is validated ([DATA_RELEASE_VALIDATION.md](docs/DATA_RELEASE_VALIDATION.md)); consumer agreement is not recorded
+- [x] M3 — HMM and basic CRF contract tests pass; Member 5 scores validation bundles;
+  Member 6 verifies shared-input inference and save/load compatibility. (evidence: [tests/test_model_contract.py](tests/test_model_contract.py), [tests/test_pipeline.py](tests/test_pipeline.py), [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §5; the shared-input part was completed during release integration)
 - [x] M4 — Improved CRF and ablations reviewed on fixed validation settings. (evidence: [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §5, §6)
 - [x] M5 — Freeze settings; Member 5 runs final held-out evaluation and error analysis. (evidence: [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md), [EVALUATION_RESULTS.md](docs/EVALUATION_RESULTS.md))
 - [ ] M6 — Member 6 verifies clean-environment reproduction, demo and presentation;
-  all members review assumptions and evidence before the final release.
+  all members review assumptions and evidence before the final release. — partly: clean-clone tests and the demo are recorded; member review is not
 
 No dates are assigned. HMM and CRF can develop in parallel after interface
 agreement; meaningful model comparison depends on the data release and common
@@ -272,13 +270,19 @@ synthetic noise/alignment; artifacts/CLI/environment; uncertainty/runtime policy
 
 ## Final project readiness
 
-- [ ] Every member can explain their assumptions and the shared methodology.
+- [ ] Every member can explain their assumptions and the shared methodology. — not recorded: no evidence in the repository
 - [x] All data sources/policies, labels and split manifests are verified/versioned. (evidence: [DATA_RELEASE_VALIDATION.md](docs/DATA_RELEASE_VALIDATION.md), [DATASET_PLAN.md](docs/DATASET_PLAN.md))
 - [x] All models use common contracts, frozen splits and gold-free inference. (evidence: [MODEL_CONTRACT.md](docs/MODEL_CONTRACT.md), [scripts/train_crf.py](scripts/train_crf.py) predict passes only sample_id and tokens, [HMM_RESULTS.md](experiments/HMM_RESULTS.md), [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) Provenance)
-- [ ] Results and projections are compatible, supported and reproducible.
+- [x] Results and projections are compatible, supported and reproducible. (evidence: evaluator JSON in `results/scores/`, table builders in `scripts/reporting/`, reproduction levels in [REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md))
 - [x] O policy, zero division, class imbalance and limitations are reported. (evidence: [EVALUATION_PROTOCOL.md](docs/EVALUATION_PROTOCOL.md), [EVALUATION_RESULTS.md](docs/EVALUATION_RESULTS.md) §3 and Limitations)
 - [x] Test data was held out for final reporting; selection used validation. (evidence: [HMM_RUNBOOK.md](experiments/HMM_RUNBOOK.md), [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md))
 - [x] Models/predictions are shared as checksummed artifacts, not large Git files. (evidence: [HMM_RUNBOOK.md](experiments/HMM_RUNBOOK.md), [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) Provenance, [.gitignore](.gitignore))
 - [x] No credentials or personal absolute paths are committed. (evidence: `git grep` for absolute user paths finds none, 2026-10-30)
-- [ ] Integration tests, documented workflow and demonstration work on a clean setup.
-- [ ] Presentation claims/figures trace to real experiments and all owners review them.
+- [x] Integration tests, documented workflow and demonstration work on a clean setup. (evidence: [REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md) §1 (fresh clone, 1164 tests) and §10 (demo))
+- [ ] Presentation claims/figures trace to real experiments and all owners review them. — partly: the outline's numbers trace to `results/scores/` ([PRESENTATION_OUTLINE.md](docs/PRESENTATION_OUTLINE.md)); owner review is not recorded
+
+## Final state
+
+Final state at commit `f5a4721` (the final `release/final` content with the final documentation),
+2026-10-30. A ticked item names its evidence; every unticked item gives its reason. Commits
+after it change wording only (this board, REPRODUCIBILITY.md §1 and CONTRIBUTING.md).

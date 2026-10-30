@@ -83,9 +83,9 @@ by relative path and hash. Load it with `HMMModel.load_model(path)`; predict on
 shared gold-free records. The raw dataset is distributed separately as the
 Member 1 release. The handoff's `HANDOFF.md` explains use by Members 3, 5 and 6.
 
-The repository is public; local packaging does not publish model files. Give
-the leader the ZIP for the shared Drive handoff. Consumer acknowledgments and
-Member 6's text reconstruction/demo remain separate team responsibilities.
+The repository is public; local packaging does not publish model files. The ZIP
+is on the team Drive (`Models/hmm-sponspeech-v2-20261029.zip`). Consumer acknowledgments
+are not recorded; the demo (`scripts/run_demo.py`) loads a selected HMM JSON.
 
 Give Members 3, 5 and 6 selected models, configurations/selections, prediction
 JSONL/sidecars, reports, timing/environment, verification evidence, license and

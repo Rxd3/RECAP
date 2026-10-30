@@ -1,6 +1,8 @@
 # Data storage and release plan
 
-Owner: Member 1. Generated contents of these folders are ignored by Git; only markers and this guide are tracked.
+Owner: Member 1. Generated contents of `raw/`, `processed/` and `splits/` are ignored by Git. Tracked: this guide,
+the folder markers, a 10-utterance sample in [`sample/`](sample/README.md) and small release metadata in
+[`release_metadata/`](release_metadata/README.md).
 Do not add large data with `git add -f`. Releases are shared through the team's Google Drive folder
 ([RECAP -NLP2](https://drive.google.com/drive/folders/1ZKDNnRHXsLJf3UjOdKVgQ0bYpo12IQfH?usp=sharing); decision D11) with SHA-256 sums.
 Current release `sponspeech-m1-v2` uses policy `m1-v2` and supersedes `sponspeech-m1-v1-rev2`.
@@ -26,7 +28,8 @@ RAW/sponspeech_text/              train/ dev/ test-amb/ test/ (text/*.txt, utt2s
 ```
 
 1. **Environment.** From the repository root: `python -m venv .venv`, activate it, then
-   `python -m pip install -e ".[dev]"` (pytest and PyYAML only; the data code otherwise uses the standard library).
+   `python -m pip install -e ".[dev]"` (the pinned PyYAML, sklearn-crfsuite, python-crfsuite and joblib, plus pytest;
+   the data code itself needs only PyYAML and the standard library).
 2. **Provenance files.** Take `<release>-provenance.tar.gz` from the Drive handoff ZIP (below), check it against
    `<release>.SHA256SUMS`, and unpack it into `RAW`. Do not re-fetch the title snapshot: titles change over time.
 3. **Recreate the transcripts** (no audio):
@@ -121,7 +124,7 @@ train = [r for r in load_records(f"{rel}/mode_A/train.jsonl") if r["sample_id"] 
   primary casing and joint metrics (punctuation at those positions is still scored); report all-token scores separately.
 - `benchmark_native/` is only for comparison with the original SponSpeech four-class benchmark; never compare its
   scores with canonical mode A scores as if the gold labels were identical.
-- Every canonical A/C sequence ends in PERIOD or QUESTION; Member 5 decides whether to also report scores without the final token.
+- Every canonical A/C sequence ends in PERIOD or QUESTION, so the evaluation also reports scores without the final token (the `non_final` view).
 
 ## Release validation and immutability
 
