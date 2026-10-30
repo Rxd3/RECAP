@@ -14,8 +14,8 @@ Use [TEAM_TASKS.md](TEAM_TASKS.md) to find owners and reviewers.
 5. Add small meaningful tests with actual behavior. Tests must not download data,
    contact live APIs, require pretrained weights or need a GPU.
 6. Inspect `git diff`, stage named files, inspect `git diff --cached`, then commit.
-7. Push only to the team's Project 2 remote after it has been provided. Open a
-   PR with problem/behavior, affected contracts, checks and pending work.
+7. Push to the team remote (`https://github.com/Rxd3/RECAP.git`). Open a PR with the
+   problem or behaviour, affected contracts, checks run and open work.
 8. Obtain review before merging into `main`. Do not force-push another member's
    branch or make direct feature-development commits to `main`.
 

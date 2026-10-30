@@ -25,7 +25,7 @@ feature configuration selects behavior; versioned contracts fix alignment.
 | `src/punct_restore/data/`, `scripts/prepare_data.py`, data documentation | Member 1 | Source text → records; no model training |
 | `models/hmm.py`, `scripts/train_hmm.py` | Member 2 | Records → HMM artifacts/predictions |
 | `models/crf.py`, `scripts/train_crf.py` | Member 3 | Records + injected features → CRF artifacts/predictions |
-| `features/`, `scripts/run_ablations.py` | Member 4 | Observable tokens → aligned feature dictionaries |
+| `features/`, `scripts/run_ablations.py` | Member 4 (role); code by Member 3, ablation runner by Member 5 | Observable tokens → aligned feature dictionaries |
 | `evaluation/`, `scripts/evaluate_models.py`, results | Member 5 | Gold + predictions → verified reports |
 | `pipeline.py` (`load_model`, `ModelAdapter`, `RestorationPipeline`) and `scripts/run_demo.py` (the demo path), presentation | Member 6 | Text + saved HMM (`.json`) or CRF (`.joblib`) artifact → restored text |
 

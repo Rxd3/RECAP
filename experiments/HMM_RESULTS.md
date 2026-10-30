@@ -82,7 +82,7 @@ Punctuation remains scored at casing-mask positions. A/C punctuation comparisons
 | DASH | 784 | 2674 | 0.60 | 2.04 | 0.93 |
 | EXCLAMATION | 204 | 348 | 2.01 | 3.43 | 2.54 |
 | O | 354902 | 383758 | 91.15 | 98.56 | 94.71 |
-| PERIOD | 20246 | 12320 | 89.85 | 54.68 | 67.98 |
+| PERIOD | 20246 | 12320 | 89.85 | 54.68 | 67.99 |
 | QUESTION | 2175 | 260 | 55.38 | 6.62 | 11.83 |
 | SEMICOLON | 120 | 81 | 1.23 | 0.83 | 1.00 |
 
@@ -155,9 +155,8 @@ errors, full commands, model/prediction manifests and verification evidence.
 The local handoff is `artifacts/hmm/hmm-sponspeech-v2-20261029.zip`, with an outer
 `.zip.sha256` and internal per-file `SHA256SUMS`. Its `MODEL_INDEX.json` identifies
 the three selected artifacts; the packager verifies every archived byte. The raw
-dataset is distributed separately. Give the ZIP to Members 3, 5 and 6 through
-the team Drive folder; individual acknowledgments are separate from technical
-verification.
+dataset is distributed separately. The ZIP is on the team Drive
+(`Models/hmm-sponspeech-v2-20261029.zip`); individual acknowledgments are not recorded.
 
 ### Handoff archive and delivery checks
 

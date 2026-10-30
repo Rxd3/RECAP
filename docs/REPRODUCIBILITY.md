@@ -204,7 +204,10 @@ python scripts/build_leakage_subsets.py --mode A --split test --out experiments/
 The leakage command writes `all.ids`, `kept.ids`, `excluded_train_video.ids`, `excluded_other_leak.ids`
 and `excluded_quality.ids` with `counts.json`. For mode A test the counts are 17,695 / 12,668 / 2,706 /
 2,130 / 191 ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §8). Score each list with
-`evaluate_models.py score --ids`.
+`evaluate_models.py score --ids`. The "all excluded" set (5,027 utterances for mode A test) is the
+union of the three `excluded_*.ids` lists, for example
+`cat excluded_train_video.ids excluded_other_leak.ids excluded_quality.ids > excluded_all.ids`
+(the three lists are disjoint: 2,706 + 2,130 + 191 = 5,027).
 
 ## 9. Tables and runtime
 

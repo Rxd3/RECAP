@@ -200,14 +200,14 @@ package initializer, `<folder>/__init__.py`):
 | `src/punct_restore/models/threshold.py` | Threshold decoding of CRF marginals (τ tuned on validation only). |
 | `src/punct_restore/features/crf_features.py` | CRF features: basic and improved presets, ablation switches and the filler cue. |
 | `src/punct_restore/evaluation/` | Member 5's evaluator: `inputs` (input checks), `views` (scored positions and report blocks), `metrics` (token-level P/R/F1), `uncertainty` (bootstrap grouped by video), `comparison` (paired comparison), `error_analysis` (error examples), `baseline` (shortcut baseline), `manifest` (prediction-manifest check), `report` (JSON and Markdown reports). |
-| `src/punct_restore/prediction_io.py` | Gold-free prediction JSONL and manifest writing, shared by `scripts/train_crf.py` and `scripts/tune_threshold.py`. |
+| `src/punct_restore/prediction_io.py` | Gold-free prediction JSONL and manifest writing, shared by `scripts/train_crf.py`, `scripts/tune_threshold.py` and `scripts/project_joint.py`. |
 | `src/punct_restore/pipeline.py` | Demo inference: load a trained HMM or CRF, clean raw text, predict labels, rebuild text. |
 
 Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM_TASKS.md`
 (work board), `pyproject.toml` and `requirements.txt` (package and dependencies),
 `requirements-hmm.txt` (the pinned HMM reproduction environment), `.gitignore`, `.gitattributes`.
 
-**Scripts** (run from the repository root; each has `--help`):
+**Scripts** (run from the repository root; each has `--help` except the two reporting helper modules):
 
 | Script | Stage | What it does |
 | --- | --- | --- |
@@ -217,7 +217,7 @@ Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM
 | `scripts/run_hmm_experiments.py` | HMM | `tune` runs the frozen validation search; `finalize` predicts and scores the selected models. |
 | `scripts/verify_hmm_experiments.py` | HMM | Audits an HMM study: recounts scores, refits the winners and compares predictions. |
 | `scripts/package_hmm_handoff.py` | HMM | Packages a verified HMM study as a checksummed ZIP. |
-| `scripts/train_crf.py` | CRF | `train` fits a CRF (basic or improved features); `predict` writes predictions and a manifest; `inspect` prints artifact metadata. |
+| `scripts/train_crf.py` | CRF | `train` fits a CRF (basic or improved features); `predict` writes predictions, and the prediction manifest with `--manifest-out`; `inspect` prints artifact metadata. |
 | `scripts/run_ablations.py` | CRF | Trains the feature-group ablations and writes their validation predictions (never reads test). |
 | `scripts/tune_threshold.py` | CRF | Threshold decoding: `tune` picks τ on validation, `predict` applies the frozen τ. |
 | `scripts/evaluate_models.py` | Evaluation | `score`, `compare` (paired), `errors` and `baseline` (the shortcut). |
