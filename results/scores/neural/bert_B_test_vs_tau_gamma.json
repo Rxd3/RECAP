@@ -1,0 +1,297 @@
+{
+ "blocks": {
+  "punctuation/all": {
+   "difference": 0.121772,
+   "difference_ci": {
+    "groups": 153,
+    "high": 0.138286,
+    "level": 0.95,
+    "low": 0.104506,
+    "resamples": 1000,
+    "seed": 2026,
+    "share_b_better": 1.0,
+    "unit": "group_id"
+   },
+   "macro_f1_a": 0.242517,
+   "macro_f1_b": 0.364289
+  },
+  "punctuation/non_final": {
+   "difference": 0.140221,
+   "difference_ci": {
+    "groups": 153,
+    "high": 0.158083,
+    "level": 0.95,
+    "low": 0.121513,
+    "resamples": 1000,
+    "seed": 2026,
+    "share_b_better": 1.0,
+    "unit": "group_id"
+   },
+   "macro_f1_a": 0.181394,
+   "macro_f1_b": 0.321615
+  }
+ },
+ "classes": {
+  "COLON": {
+   "punctuation/all": {
+    "difference": 0.104024,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.194531,
+     "level": 0.95,
+     "low": 0.017412,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 0.995,
+     "unit": "group_id"
+    },
+    "f1_a": 0.077135,
+    "f1_b": 0.181159
+   },
+   "punctuation/non_final": {
+    "difference": 0.104024,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.194531,
+     "level": 0.95,
+     "low": 0.017412,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 0.995,
+     "unit": "group_id"
+    },
+    "f1_a": 0.077135,
+    "f1_b": 0.181159
+   }
+  },
+  "COMMA": {
+   "punctuation/all": {
+    "difference": 0.153316,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.172208,
+     "level": 0.95,
+     "low": 0.138833,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 1.0,
+     "unit": "group_id"
+    },
+    "f1_a": 0.529959,
+    "f1_b": 0.683274
+   },
+   "punctuation/non_final": {
+    "difference": 0.153316,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.172208,
+     "level": 0.95,
+     "low": 0.138833,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 1.0,
+     "unit": "group_id"
+    },
+    "f1_a": 0.529959,
+    "f1_b": 0.683274
+   }
+  },
+  "DASH": {
+   "punctuation/all": {
+    "difference": 0.0769,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.119467,
+     "level": 0.95,
+     "low": 0.031033,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 1.0,
+     "unit": "group_id"
+    },
+    "f1_a": 0.019342,
+    "f1_b": 0.096243
+   },
+   "punctuation/non_final": {
+    "difference": 0.0769,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.119467,
+     "level": 0.95,
+     "low": 0.031033,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 1.0,
+     "unit": "group_id"
+    },
+    "f1_a": 0.019342,
+    "f1_b": 0.096243
+   }
+  },
+  "EXCLAMATION": {
+   "punctuation/all": {
+    "difference": -0.028388,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.009778,
+     "level": 0.95,
+     "low": -0.05843,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 0.066,
+     "unit": "group_id"
+    },
+    "f1_a": 0.054475,
+    "f1_b": 0.026087
+   },
+   "punctuation/non_final": {
+    "difference": -0.028388,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.009778,
+     "level": 0.95,
+     "low": -0.05843,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 0.066,
+     "unit": "group_id"
+    },
+    "f1_a": 0.054475,
+    "f1_b": 0.026087
+   }
+  },
+  "PERIOD": {
+   "punctuation/all": {
+    "difference": 0.119062,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.133506,
+     "level": 0.95,
+     "low": 0.106447,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 1.0,
+     "unit": "group_id"
+    },
+    "f1_a": 0.695703,
+    "f1_b": 0.814766
+   },
+   "punctuation/non_final": {
+    "difference": 0.259968,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.284384,
+     "level": 0.95,
+     "low": 0.237455,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 1.0,
+     "unit": "group_id"
+    },
+    "f1_a": 0.352848,
+    "f1_b": 0.612816
+   }
+  },
+  "QUESTION": {
+   "punctuation/all": {
+    "difference": 0.440267,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.472408,
+     "level": 0.95,
+     "low": 0.404875,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 1.0,
+     "unit": "group_id"
+    },
+    "f1_a": 0.308224,
+    "f1_b": 0.748491
+   },
+   "punctuation/non_final": {
+    "difference": 0.428509,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.467923,
+     "level": 0.95,
+     "low": 0.387844,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 1.0,
+     "unit": "group_id"
+    },
+    "f1_a": 0.223219,
+    "f1_b": 0.651727
+   }
+  },
+  "SEMICOLON": {
+   "punctuation/all": {
+    "difference": -0.01278,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.0,
+     "level": 0.95,
+     "low": -0.026956,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 0.0,
+     "unit": "group_id"
+    },
+    "f1_a": 0.01278,
+    "f1_b": 0.0
+   },
+   "punctuation/non_final": {
+    "difference": -0.01278,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.0,
+     "level": 0.95,
+     "low": -0.026956,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 0.0,
+     "unit": "group_id"
+    },
+    "f1_a": 0.01278,
+    "f1_b": 0.0
+   }
+  }
+ },
+ "inputs_a": {
+  "gold": {
+   "path": "data/processed/sponspeech-m1-v2/mode_B/test.jsonl",
+   "sha256": "b708b8e3f4e93c5f6aa37c231b320fbe419e00f81a1945f7d50a55e2c25a4959"
+  },
+  "ids": {
+   "path": "data/splits/sponspeech-m1-v2/primary_eval/test_mode_B.ids",
+   "sha256": "207f414dbc649808729aeb92ee160c9a9bb57e066260d207c4a643cbfe75c3a1"
+  },
+  "masks": null,
+  "predictions": {
+   "path": "c1/tg_B_test.jsonl",
+   "sha256": "827435ff631bffb66c309a5b91459e0c650be19b5c8ae0dbaad44b9b8fabd5d0"
+  }
+ },
+ "inputs_b": {
+  "gold": {
+   "path": "data/processed/sponspeech-m1-v2/mode_B/test.jsonl",
+   "sha256": "b708b8e3f4e93c5f6aa37c231b320fbe419e00f81a1945f7d50a55e2c25a4959"
+  },
+  "ids": {
+   "path": "data/splits/sponspeech-m1-v2/primary_eval/test_mode_B.ids",
+   "sha256": "207f414dbc649808729aeb92ee160c9a9bb57e066260d207c4a643cbfe75c3a1"
+  },
+  "masks": null,
+  "predictions": {
+   "path": "bert_tagger_B/test.jsonl",
+   "sha256": "64db886ceda10ace0b14fdc66e2788042ed415ed412a36b4bd17648d61a6e29e"
+  }
+ },
+ "label_mode": "B",
+ "model_a": "crf_improved_tau0.45_gamma0.5",
+ "model_b": "bert_tagger",
+ "policy_version": "m1-v2",
+ "primary_block": "punctuation/all",
+ "schema": "recap-compare-v1",
+ "sequences": 12321
+}
