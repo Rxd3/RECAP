@@ -1,8 +1,8 @@
-# Mutasim — Member 1: dataset and preprocessing
+# Almutesim Alakili (Mutasim) — Member 1: dataset and preprocessing
 
 | Field | Value |
 | --- | --- |
-| Student ID | `<STUDENT_ID>` (filled in by the member) |
+| Student ID | 220911336 |
 | GitHub | [@Sam-Ali23](https://github.com/Sam-Ali23) |
 | Git author name(s) | `mutesim` (GitHub profile name: Almutesim Alakili) |
 | Branch | `feat/m1-data-preprocessing` |
@@ -28,4 +28,4 @@
 - `src/punct_restore/data/`: `__init__.py` (M in eaed76b), `extraction.py` (A in eaed76b), `labeling.py` (M in eaed76b), `preprocessing.py` (M in eaed76b), `release.py` (A in eaed76b), `splits.py` (A in eaed76b), `validation.py` (A in eaed76b)
 - `tests/`: `test_data_contract.py` (M in eaed76b)
 
-Generated from `git log HEAD --author="mutesim"` at commit `4b2c616` of `release/final` on 2026-10-31. Only the member's own commits are listed; later changes by others are not shown. The member fills in the student ID.
+Generated from `git log HEAD --author="mutesim"` at commit `2831c4c` of `release/final` on 2026-10-31. Only the member's own commits are listed; later changes by others are not shown.

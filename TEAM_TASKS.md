@@ -13,7 +13,7 @@ contracts alone. Discuss shared changes before coding, then obtain affected
 owners' review. See [architecture](docs/ARCHITECTURE.md) and
 [decision register](docs/DECISIONS.md).
 
-## Member 1 — Dataset and Preprocessing (Mutasim)
+## Member 1 — Dataset and Preprocessing (Almutesim Alakili)
 
 **Branch:** `feat/m1-data-preprocessing`
 
@@ -139,10 +139,10 @@ preset; give Members 5 and 6 compatible artifacts, predictions and provenance.
 
 **Tasks:**
 
-- [ ] Agree a feature interface with Member 3 and version its configuration. — implemented by Member 3 (see [contributions](contributions/Omar_STUDENT_ID_Devinci101.md))
-- [ ] Develop improved context-window, neighbor, prefix and suffix features. — implemented by Member 3 (see [contributions](contributions/Omar_STUDENT_ID_Devinci101.md))
-- [ ] Investigate question-detection patterns and observable capitalization cues. — implemented by Member 3 (see [contributions](contributions/Omar_STUDENT_ID_Devinci101.md))
-- [ ] Explicitly account for lowercased input; never use hidden gold casing. — implemented by Member 3 (see [contributions](contributions/Omar_STUDENT_ID_Devinci101.md))
+- [ ] Agree a feature interface with Member 3 and version its configuration. — implemented by Member 3 (see [contributions](contributions/Omar_2409015412_Devinci101.md))
+- [ ] Develop improved context-window, neighbor, prefix and suffix features. — implemented by Member 3 (see [contributions](contributions/Omar_2409015412_Devinci101.md))
+- [ ] Investigate question-detection patterns and observable capitalization cues. — implemented by Member 3 (see [contributions](contributions/Omar_2409015412_Devinci101.md))
+- [ ] Explicitly account for lowercased input; never use hidden gold casing. — implemented by Member 3 (see [contributions](contributions/Omar_2409015412_Devinci101.md))
 - [ ] Compare basic versus improved features through Member 3's CRF implementation. — done by Member 5 ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §1)
 - [ ] Design separate punctuation/casing versus joint experiments with Members 3 and 5. — joint vs punctuation-only comparison done by Member 5 ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md), H1)
 - [ ] Run controlled one-change ablations with fixed splits and selection rules. — done by Member 5 ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §6, validation)
@@ -157,8 +157,8 @@ Do not independently rewrite or replace the CRF model.
 
 **Definition of Done:**
 
-- [ ] Extractors return one feature dictionary per input token with no gold access. — implemented by Member 3 (see [contributions](contributions/Omar_STUDENT_ID_Devinci101.md))
-- [ ] Basic and improved variants share model/data/evaluation code. — implemented by Member 3 (see [contributions](contributions/Omar_STUDENT_ID_Devinci101.md))
+- [ ] Extractors return one feature dictionary per input token with no gold access. — implemented by Member 3 (see [contributions](contributions/Omar_2409015412_Devinci101.md))
+- [ ] Basic and improved variants share model/data/evaluation code. — implemented by Member 3 (see [contributions](contributions/Omar_2409015412_Devinci101.md))
 - [ ] Ablations change declared factors only and select on validation. — done by Member 5 ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §6)
 - [ ] Gains or negative findings have reproducible evidence and support counts. — done by Member 5 ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §6 ablations, §4 class supports)
 
@@ -204,7 +204,7 @@ and tiny fixture tests can be prepared before trained models exist.
 representative errors, selection/test separation and limitations; return failure
 cases to Members 1–4 for analysis without silently changing the frozen test.
 
-## Member 6 — Integration, Reproducibility and Presentation (Abdulla Jamal)
+## Member 6 — Integration, Reproducibility and Presentation (Abdullah Gamal)
 
 **Branch:** `feat/m6-integration-presentation`
 
