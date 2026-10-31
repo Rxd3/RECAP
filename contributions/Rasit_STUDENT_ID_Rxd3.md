@@ -55,4 +55,4 @@ Merge commits:
 - `src/punct_restore/models/`: `__init__.py` (M in 2b530a2), `hmm.py` (M in 2b530a2), `hmm_workflow.py` (A in e4c3183)
 - `tests/`: `README.md` (M in e4c3183, 1e638d3, 2b530a2), `test_data_contract.py` (M in d30df5e), `test_data_release_regressions.py` (A in d30df5e; M in f259b4a), `test_hmm.py` (A in 2b530a2), `test_hmm_cli.py` (A in 2b530a2; M in e4c3183), `test_hmm_experiments.py` (A in e4c3183), `test_hmm_workflow.py` (A in e4c3183), `test_model_contract.py` (M in 2b530a2)
 
-Generated from `git log HEAD --author="Rxd3\|Rasit"` at commit `2831c4c` of `release/final` on 2026-10-31. Only the member's own commits are listed; later changes by others are not shown. The member fills in the student ID.
+Generated from `git log HEAD --author="Rxd3\|Rasit"` at commit `16f4b74` of `release/final` on 2026-10-31. Only the member's own commits are listed; later changes by others are not shown. The member fills in the student ID.

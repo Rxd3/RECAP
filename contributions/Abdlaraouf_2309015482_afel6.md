@@ -23,6 +23,7 @@
 
 | Commit | Date | Subject |
 | --- | --- | --- |
+| `16f4b74` | 2026-10-31 | docs(contributions): add student IDs for Members 1, 3 and 6 |
 | `2831c4c` | 2026-10-31 | docs(contributions): regenerate the contribution files at the current release/final head |
 | `4b2c616` | 2026-10-31 | docs: map the ASR-noise report modules and refresh the section 13.1 seed-spread line |
 | `e543704` | 2026-10-31 | docs(eval): regenerate ASR_NOISE_V2.md and its summary with the fixed generator |
@@ -166,11 +167,11 @@ Merge commits:
 
 ## Files added or changed
 
-- repository root: 9 files (2 added); commits 0eeffba, 1bc35eb, 1c1ebd5, 1da392b, 284c593, 345bc97, 3645bfb, 4b2c616, 4c7619b, 4d33521, 5002994, 54a5666, 54eed84, 55eb978, 5c786a4, 6c8130c, 6d72f6d, 6e125d5, 71886ec, 72b9148, 766aeb7, 8c52025, 8c65522, 8fecfbd, 9802964, 9d26cb6, 9fe6f00, a7ab470, b2840dc, b6a3799, bbf8367, c3030b9, cfc8b20, d27de6f, d2953ce, d418fc5, d4ab315, e377552, eafde4c, f5a4721, f889d0f, f9082a7, f97855a, fbd8d45, fe9710b
+- repository root: 9 files (2 added); commits 0eeffba, 16f4b74, 1bc35eb, 1c1ebd5, 1da392b, 284c593, 345bc97, 3645bfb, 4b2c616, 4c7619b, 4d33521, 5002994, 54a5666, 54eed84, 55eb978, 5c786a4, 6c8130c, 6d72f6d, 6e125d5, 71886ec, 72b9148, 766aeb7, 8c52025, 8c65522, 8fecfbd, 9802964, 9d26cb6, 9fe6f00, a7ab470, b2840dc, b6a3799, bbf8367, c3030b9, cfc8b20, d27de6f, d2953ce, d418fc5, d4ab315, e377552, eafde4c, f5a4721, f889d0f, f9082a7, f97855a, fbd8d45, fe9710b
 - `artifacts/`: `README.md` (M in f9082a7, 5c786a4, 766aeb7)
 - `artifacts/models/`: `.gitkeep` (D in 5c786a4)
 - `configs/`: `README.md` (M in f97855a, 766aeb7), `datasets.yaml` (M in 3645bfb), `experiment.example.yaml` (D in 766aeb7)
-- `contributions/`: `AbdRaouf_STUDENT_ID_afel6.md` (A in 54a5666; M in 73618ee, 45554af, b752c42, a7ab470, renamed to `Abdlaraouf_2309015482_afel6.md` in 345bc97), `Abdlaraouf_2309015482_afel6.md` (M in 2831c4c, a2df0db; R in 345bc97), `Abdulla_STUDENT_ID_abdu3061.md` (A in 54a5666; M in 2831c4c, a2df0db, 73618ee, 45554af, not in the final tree), `Mohamed_STUDENT_ID_GITHUB.md` (A in 54a5666; M in 2831c4c, a2df0db, 73618ee, 45554af), `Mutasim_STUDENT_ID_Sam-Ali23.md` (A in 54a5666; M in 2831c4c, a2df0db, 73618ee, 45554af, not in the final tree), `Omar_STUDENT_ID_Devinci101.md` (A in 54a5666; M in 2831c4c, a2df0db, 73618ee, 45554af, b752c42, not in the final tree), `Rasit_STUDENT_ID_Rxd3.md` (A in 54a5666; M in 2831c4c, a2df0db, 73618ee, 45554af)
+- `contributions/`: 10 files (6 added); commits 16f4b74, 2831c4c, 345bc97, 45554af, 54a5666, 73618ee, a2df0db, a7ab470, b752c42
 - `data/`: `README.md` (M in 55eb978, 1c1ebd5, 3645bfb)
 - `data/processed/`: `.gitkeep` (D in 55eb978)
 - `data/raw/`: `.gitkeep` (D in 55eb978)
@@ -240,4 +241,4 @@ Merge commits:
 - `src/punct_restore/models/`: `__init__.py` (M in 5002994), `crf.py` (M in 649bd53, fbd8d45), `factored.py` (A in 649bd53), `gap_classifier.py` (A in cfc8b20; M in eafde4c, 649bd53, 5373a82), `hidden_event_lm.py` (A in e743928), `ngram_lm.py` (A in e743928), `threshold.py` (A in a930859; M in b875ea3), `truecaser.py` (A in e743928)
 - `tests/`: 55 files (48 added); commits 01858ae, 1da392b, 31e59f9, 3ca76d5, 3ec548b, 4304e4c, 4998b31, 4b2c616, 5002994, 5373a82, 54eed84, 596310b, 597dd43, 6340b59, 6356916, 649bd53, 6507152, 680438f, 6d72f6d, 766aeb7, 7c75d4e, 84f10d5, 910e552, 9155a7e, a930859, aad6c70, b2840dc, b875ea3, b973981, c0453c8, c575279, c7934ef, ca96025, cfc8b20, d3284b9, d4ab315, dcfe950, e377552, e7095cf, e743928, eb6afa7, ec37d19, efdd761, f4dee77, f9082a7, fbd8d45
 
-Generated from `git log HEAD --author="Raouf"` at commit `2831c4c` of `release/final` on 2026-10-31. Only the member's own commits are listed; later changes by others are not shown.
+Generated from `git log HEAD --author="Raouf"` at commit `16f4b74` of `release/final` on 2026-10-31. Only the member's own commits are listed; later changes by others are not shown.
