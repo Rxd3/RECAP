@@ -36,6 +36,7 @@ like the tokens. Other fields are left unchanged.
 
 from __future__ import annotations
 
+import math
 import random
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Iterator, Mapping, Sequence
@@ -52,6 +53,9 @@ COST = {"delete": 1, "replace": 1, "swap": 2, "insert": 1}
 TURN_ORDER = ("delete", "replace", "swap")  # the v1 round-robin order of the candidate types
 V2_TURN_ORDER = ("replace", "delete", "insert", "swap")
 V2_WEIGHTS = {"replace": 9, "delete": 6, "insert": 3, "swap": 2}  # 45%, 30%, 15%, 10% of a 20-cost cycle
+# Least common multiple of the weights (18): V2_WEIGHT_LCM // weight is a whole number, so the turn-order key
+# (spent + cost) * (V2_WEIGHT_LCM // weight) ranks spent / weight with integers, no floats.
+V2_WEIGHT_LCM = math.lcm(*V2_WEIGHTS.values())
 INSERT_WORDS = ("um", "uh", "the", "a", "and", "so", "like", "i")
 FUNCTION_WORDS = frozenset({
     "a", "an", "the", "is", "are", "was", "were", "do", "does", "did", "have", "has", "had",
@@ -283,7 +287,7 @@ def _build_plan_v2(
             break
         kind = min(
             eligible,
-            key=lambda k: ((spent_by_kind[k] + COST[k]) * (18 // V2_WEIGHTS[k]), V2_TURN_ORDER.index(k)),
+            key=lambda k: ((spent_by_kind[k] + COST[k]) * (V2_WEIGHT_LCM // V2_WEIGHTS[k]), V2_TURN_ORDER.index(k)),
         )
         spent = _next_accepted(builder, active[kind], left)
         if not spent:

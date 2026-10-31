@@ -350,6 +350,14 @@ def with_offsets_cut(rows_path: Path) -> None:
     rewrite(rows_path, lambda rows: rows[2]["metadata"].update(offsets=rows[2]["metadata"]["offsets"][1:]))
 
 
+def with_offset(rows_path: Path, index: int, value: Any) -> None:
+    rewrite(rows_path, lambda rows: rows[2]["metadata"]["offsets"].__setitem__(index, value))
+
+
+BAD_SPAN = "metadata.offsets[3] must be [start, end] with 0 <= start <= end, both integers"
+LINE_OF_ROW_2 = "mode_A/validation.jsonl line 3"  # row 2 is the third line of the file
+
+
 DAMAGE = [  # (what to break under the data root, file the error must name, what the error must say)
     (lambda r: with_token(r / DATA["B"], 0, "zzz"), "mode_B/validation.jsonl", "tokens differ from another mode"),
     (lambda r: set_sample(r / DATA["C"], punct_labels=["O"]), "mode_C/validation.jsonl",
@@ -363,6 +371,12 @@ DAMAGE = [  # (what to break under the data root, file the error must name, what
     (lambda r: with_token(r / DATA["A"], 1, 5), "mode_A/validation.jsonl", "nonempty list of nonempty strings"),
     (lambda r: with_offsets_cut(r / DATA["A"]), "mode_A/validation.jsonl",
      "metadata.offsets must hold one entry per token"),
+    (lambda r: with_offset(r / DATA["A"], 3, 5), LINE_OF_ROW_2, BAD_SPAN),  # not a list
+    (lambda r: with_offset(r / DATA["A"], 3, [0, 1, 2]), LINE_OF_ROW_2, BAD_SPAN),  # three elements
+    (lambda r: with_offset(r / DATA["A"], 3, ["0", 5]), LINE_OF_ROW_2, BAD_SPAN),  # string start
+    (lambda r: with_offset(r / DATA["A"], 3, [True, 5]), LINE_OF_ROW_2, BAD_SPAN),  # bool is not an int here
+    (lambda r: with_offset(r / DATA["A"], 3, [9, 3]), LINE_OF_ROW_2, BAD_SPAN),  # start after end
+    (lambda r: with_offset(r / DATA["A"], 3, [-1, 5]), LINE_OF_ROW_2, BAD_SPAN),  # negative start
     (lambda r: (r / DATA["B"]).write_bytes(b"\xff\xfe\n"), "mode_B/validation.jsonl", "not UTF-8 text"),
     (lambda r: (r / IDS["B"]).unlink(), "validation_mode_B.ids", "No such file"),
     (lambda r: append(r / IDS["A"], b"nope\n"), "mode_A/validation.jsonl", "1 listed ID(s) not found"),
@@ -469,9 +483,21 @@ def write_train(root: Path, words_with_counts: dict[str, int], unlisted_words: l
     ids_path.write_bytes(("\n".join(listed_ids) + "\n").encode())
 
 
-def test_v2_uses_only_default_train_vocabulary_with_min_count_five_never_val_or_test(sim, capsys, tmp_path):
-    # Validation has "mark" (target to replace) and "marx" 30 times in validation;
-    # unlisted train has "mart" 10 times; default_train has "mare" 4 times (<5) and "mars" 5 times (>=5).
+def replacement_words(before: list[dict[str, Any]], after: list[dict[str, Any]]) -> set[str]:
+    """Words that substitutions put in: output tokens that keep an input token's offsets but change its text."""
+    found: set[str] = set()
+    for old, new in zip(before, after, strict=True):
+        source = {tuple(span): token for span, token in zip(old["metadata"]["offsets"], old["tokens"], strict=True)}
+        found |= {token for span, token in zip(new["metadata"]["offsets"], new["tokens"], strict=True)
+                  if span[0] != span[1] and token != source[tuple(span)]}  # an empty span is an inserted token
+    return found
+
+
+def test_v2_replacements_come_only_from_default_train_with_min_count_five_never_the_evaluation_records(
+        sim, capsys, tmp_path):
+    # Every utterance is "mark" + 19 x "marx" (validation only, 570 times, so it would qualify if the evaluation
+    # tokens were counted; "mark" would too, 30 times). Train: "mars" 5 times (default_train, qualifies), "mare" 4
+    # times (below 5) and "mart" 10 times in a train record that default_train does not list.
     samples = [make_sample(i, ["mark"] + ["marx"] * 19) for i in range(SAMPLES)]
     data_root = write_root(tmp_path / "data", samples, LISTED_C)
     write_train(data_root, {"mars": 5, "mare": 4}, unlisted_words=["mart"] * 10)
@@ -482,9 +508,8 @@ def test_v2_uses_only_default_train_vocabulary_with_min_count_five_never_val_or_
     assert summary["edit_model"] == "v2"
     assert summary["vocabulary_source"] == "default_train"
     assert summary["edits"]["substitution"] > 0
-    after_words = {w for r in read_rows(out / "mode_A" / "validation.jsonl") for w in r["tokens"]}
-    assert "mars" in after_words
-    assert "mare" not in after_words and "mart" not in after_words
+    after = read_rows(out / "mode_A" / "validation.jsonl")
+    assert replacement_words(listed_input(data_root, "A"), after) == {"mars"}
 
 
 def test_v2_outputs_validate_and_summary_records_shares_and_masks_insertions(sim, capsys, root, tmp_path):
@@ -519,6 +544,17 @@ def test_v2_missing_train_file_exits_one_naming_the_file(sim, capsys, root, tmp_
     assert code == 1 and stdout == ""
     assert_one_error_line(err)
     assert "mode_A.ids" in err and str(tmp_path) not in err
+
+
+def test_v2_bad_offsets_exit_one_instead_of_crashing_on_an_insertion(sim, capsys, root, tmp_path):
+    write_train(root, {"cap": 5, "map": 5, "hat": 5, "ran": 5, "tan": 5, "fan": 5, "now": 5, "new": 5})
+    rewrite(root / DATA["A"], lambda rows: [r["metadata"].update(offsets=[5] * len(r["tokens"])) for r in rows])
+    out = tmp_path / "out_v2"
+    code, stdout, err = run(sim, capsys, argv_for(root, out, 0.10, "--edit-model", "v2"))
+    assert code == 1 and stdout == ""
+    assert_one_error_line(err)
+    assert "mode_A/validation.jsonl line" in err and "metadata.offsets[0] must be" in err and str(tmp_path) not in err
+    assert not out.exists() and [p.name for p in tmp_path.iterdir()] == ["data"]
 
 
 def test_invalid_edit_model_exits_two(sim, root, tmp_path):

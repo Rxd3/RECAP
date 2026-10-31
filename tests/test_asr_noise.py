@@ -283,3 +283,6 @@ def test_unknown_edit_model_raises():
         noise.build_plan({"s": ["the", "cat"]}, 0.1, 2026, edit_model="v3")
 
 
+def test_v2_weight_lcm_is_the_least_common_multiple_of_the_weights():
+    assert noise.V2_WEIGHT_LCM == 18  # the value the turn-order key used as a bare number
+    assert all(noise.V2_WEIGHT_LCM % weight == 0 for weight in noise.V2_WEIGHTS.values())

@@ -107,6 +107,12 @@ def scan(path: Path, wanted: frozenset[str]) -> Iterator[tuple[int, dict[str, An
         raise InputError(f"{label}: {len(wanted) - len(seen)} listed ID(s) not found")
 
 
+def _is_span(span: Any) -> bool:
+    """[start, end] with two real ints (not bool) and 0 <= start <= end."""
+    return (isinstance(span, list) and len(span) == 2 and all(type(x) is int for x in span)
+            and 0 <= span[0] <= span[1])
+
+
 def check_record(record: Mapping[str, Any], mode: str, where: str) -> None:
     if record.get("label_mode") != mode:
         raise InputError(f"{where}: label_mode must be {mode}")
@@ -122,6 +128,10 @@ def check_record(record: Mapping[str, Any], mode: str, where: str) -> None:
         offsets = metadata["offsets"]
         if not isinstance(offsets, list) or len(offsets) != len(tokens):
             raise InputError(f"{where}: metadata.offsets must hold one entry per token")
+        for k, span in enumerate(offsets):
+            if not _is_span(span):
+                raise InputError(
+                    f"{where}: metadata.offsets[{k}] must be [start, end] with 0 <= start <= end, both integers")
 
 
 @dataclass(frozen=True)
