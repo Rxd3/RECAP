@@ -11,7 +11,7 @@
 ## Contributions in this repository
 
 - Built the SponSpeech data pipeline and release (eaed76b): source extraction, labeling, preprocessing, release building, split assignment and validation in `src/punct_restore/data/`, the `scripts/prepare_data.py` CLI, and the data docs and contract tests.
-- PR #1 also carries five v2-correction commits by Rxd3 (d30df5e, f259b4a, 9b91467, 1e638d3, 263472e); they are listed in `Rasit_STUDENT_ID_Rxd3.md`.
+- PR #1 also carries five v2-correction commits by Rxd3 (d30df5e, f259b4a, 9b91467, 1e638d3, 263472e); they are listed in `Rasit_2309015397_Rxd3.md`.
 
 ## Commits
 
@@ -28,4 +28,4 @@
 - `src/punct_restore/data/`: `__init__.py` (M in eaed76b), `extraction.py` (A in eaed76b), `labeling.py` (M in eaed76b), `preprocessing.py` (M in eaed76b), `release.py` (A in eaed76b), `splits.py` (A in eaed76b), `validation.py` (A in eaed76b)
 - `tests/`: `test_data_contract.py` (M in eaed76b)
 
-Generated from `git log HEAD --author="mutesim"` at commit `c685d08` of `release/final` on 2026-10-31. Only the member's own commits are listed; later changes by others are not shown.
+Generated from `git log HEAD --author="mutesim"` at commit `cc55140` of `release/final` on 2026-10-31. Only the member's own commits are listed; later changes by others are not shown.
