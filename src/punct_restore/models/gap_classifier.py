@@ -50,7 +50,7 @@ _BUNDLE_PARTS: dict[str, type] = {
 }
 # Opt-in switches added to FeatureConfig after the first gap models were saved. An older bundle lacks
 # them, which means "off" (the field default), so a missing key is tolerated for these only.
-_OPTIONAL_CONFIG_KEYS = frozenset({"use_question_lookback"})
+_OPTIONAL_CONFIG_KEYS = frozenset({"use_question_lookback", "use_word_clusters", "word_clusters"})
 
 
 def _flat(sequences: Iterable[Iterable[dict[str, Any]]]) -> Iterator[dict[str, Any]]:
@@ -101,7 +101,10 @@ def _config_is_sound(config: Mapping[str, Any]) -> bool:
     fields = FeatureConfig.__dataclass_fields__.keys()  # type: ignore[attr-defined]
     if config.keys() - fields or (fields - config.keys()) - _OPTIONAL_CONFIG_KEYS:
         return False
-    rebuilt = FeatureConfig.from_dict(config).to_dict()
+    try:
+        rebuilt = FeatureConfig.from_dict(config).to_dict()
+    except (TypeError, ValueError):  # e.g. the cluster switch on without a usable map
+        return False
     return all(rebuilt[key] == value for key, value in config.items())
 
 
@@ -121,7 +124,7 @@ def _bundle_problem(bundle: Any) -> str | None:
     if bundle["vocabulary"] != get_mode_vocabulary(bundle["label_mode"]):
         return "vocabulary does not match the label mode"
     if not _config_is_sound(bundle["feature_config"]):
-        return "feature_config has unknown or missing keys"
+        return "feature_config has unknown, missing or invalid keys"
     hyper = bundle["hyperparameters"]
     try:
         _check_hyperparameters(hyper.get("C"), hyper.get("max_iter"), bundle["model_name"])

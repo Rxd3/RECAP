@@ -14,7 +14,8 @@ read and write files, and report errors as one line on stderr. Full command sequ
 | `verify_hmm_experiments.py` | Member 2 | HMM | Independent audit of a study: score recounts, refits of the winners, prediction comparison. |
 | `package_hmm_handoff.py` | Member 2 | HMM | Packages a verified study as a ZIP with internal and outer SHA-256 sums. |
 | `train_crf.py` | Member 3 | CRF | `train` fits a linear-chain CRF (`--preset basic` or `improved`) on an explicit `--ids` list and writes a `.joblib` model and manifest. `predict` writes prediction JSONL and, with `--manifest-out`, the prediction manifest. `inspect` prints an artifact's metadata. |
-| `run_ablations.py` | Team (final push) | CRF | Trains the improved CRF with one feature group removed (or the filler cue added) on a training sample and writes each variant's primary-validation predictions; score them with `evaluate_models.py`. Never reads test. |
+| `run_ablations.py` | Team (final push) | CRF | Trains the improved CRF with one feature group removed (or the filler cue added) on a training sample and writes each variant's primary-validation predictions; score them with `evaluate_models.py`. `improved_plus_clusters` adds the word-cluster features and needs `--cluster-map` (a map from `build_word_clusters.py`; its mode, release and train-ids sha256 must match). Never reads test. |
+| `build_word_clusters.py` | Team (final push) | CRF (features) | Builds a word-cluster map from `default_train` only (lowercased words with count ≥ `--min-count`, ±`--window` co-occurrences, PPMI, TruncatedSVD to `--dims`, k-means with `--k` and `--seed`) and writes it as JSON with the train-ids sha256, k, the seed and the vocabulary size. `--out` must not exist. |
 | `tune_threshold.py` | Team (final push) | CRF | Threshold decoding of CRF marginals: `tune` picks τ on validation, `predict` applies the frozen τ once. |
 | `evaluate_models.py` | Member 5 | Evaluation | `score` one prediction file, `compare` two on the same IDs (paired bootstrap), `errors` (confusion pairs and examples), `baseline` (the end-of-utterance shortcut). |
 | `project_joint.py` | Team (final push) | Study (H1, B→A) | Projects mode C (`--from C`, default; `model_name` `<name>_joint_C`) or mode B predictions (`--from B`, the approved D5 mapping; `<name>_from_B`) onto mode A punctuation labels, with a manifest. |
@@ -61,10 +62,12 @@ train_crf.py predict --model MODEL.joblib --input JSONL --output PRED.jsonl [--i
     [--manifest-out PATH] [--overwrite]
 train_crf.py inspect --model MODEL.joblib
 run_ablations.py --mode {A,B,C} --out DIR [--sample 50000] [--variants V1,V2,...]
-    [--data-root data] [--release sponspeech-m1-v2]
+    [--cluster-map MAP.json] [--data-root data] [--release sponspeech-m1-v2]
     variants: improved, improved_minus_{window2,ngrams,question,clause,casing,position},
-              improved_plus_filler, improved_plus_question2, gap_improved,
-              case_improved and factored (mode C only)
+              improved_plus_filler, improved_plus_question2, improved_plus_clusters
+              (needs --cluster-map), gap_improved, case_improved and factored (mode C only)
+build_word_clusters.py [--data-root data] [--release sponspeech-m1-v2] [--mode {A,B,C}] --k K
+    [--seed 2026] [--min-count 5] [--dims 100] [--window 2] --out MAP.json
 tune_threshold.py tune --model M --gold G --ids I [--masks K] [--grid 0.05:0.95:0.05] [--split NAME]
     [--train TRAIN.jsonl --train-ids TRAIN.ids] --out experiments/runs/tau_<mode>.json
     (the tau file records the split and the sha256 of every input)

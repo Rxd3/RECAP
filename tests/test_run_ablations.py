@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import builtins
 import fnmatch
+import hashlib
 import io
 import json
 import os
@@ -12,15 +13,18 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
 
 from punct_restore.features.crf_features import FeatureConfig
+from punct_restore.features.word_clusters import ClusterMap, map_to_json
 from scripts import run_ablations
 
 ROOT = Path(__file__).resolve().parents[1]
 RELEASE = "rel"
+CLUSTERS_VARIANT = "improved_plus_clusters"
 
 _SEQUENCES: dict[str, tuple[list[str], list[str]]] = {
     "t1": (["hello", "everyone", "welcome", "to", "the", "show"], ["O", "O", "O", "O", "O", "PERIOD"]),
@@ -116,7 +120,7 @@ def forbid_test_files(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(io, "open", guarded)
 
 
-def test_variants_are_the_twelve_expected_names_in_order():
+def test_variants_are_the_thirteen_expected_names_in_order():
     assert list(run_ablations.VARIANTS) == [
         "improved",
         "improved_minus_window2",
@@ -127,6 +131,7 @@ def test_variants_are_the_twelve_expected_names_in_order():
         "improved_minus_position",
         "improved_plus_filler",
         "improved_plus_question2",
+        "improved_plus_clusters",
         "gap_improved",
         "case_improved",
         "factored",
@@ -135,6 +140,7 @@ def test_variants_are_the_twelve_expected_names_in_order():
     assert run_ablations.VARIANTS["improved_minus_window2"] == {"window_size": 1}
     assert run_ablations.VARIANTS["improved_plus_filler"] == {"use_filler_cues": True}
     assert run_ablations.VARIANTS["improved_plus_question2"] == {"use_question_lookback": True}
+    assert run_ablations.VARIANTS["improved_plus_clusters"] == {"use_word_clusters": True}  # map added at run time
     assert run_ablations.VARIANTS["gap_improved"] == {}  # the improved features, no removed group
     assert run_ablations.VARIANTS["case_improved"] == {} and run_ablations.VARIANTS["factored"] == {}
     assert run_ablations.SEED == 2026
@@ -413,6 +419,7 @@ def test_script_runs_standalone_and_has_no_personal_paths():
     )
     assert result.returncode == 0, result.stderr
     assert "--data-root" in result.stdout and "--release" in result.stdout
+    assert "--cluster-map" in result.stdout
     assert "--code" not in result.stdout
     source = script.read_text(encoding="utf-8")
     assert not re.search(r"[A-Za-z]:[/\\]", source)
@@ -431,12 +438,13 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
 
 def test_default_variants_leave_out_the_mode_c_only_ones_for_a_and_b_and_keep_them_in_order_for_c(tmp_path):
     root = build_root(tmp_path)
-    everything = list(run_ablations.VARIANTS)
+    today = [v for v in run_ablations.VARIANTS if v != CLUSTERS_VARIANT]  # no --cluster-map: defaults unchanged
+    assert len(today) == 12
     for mode in ("A", "B"):
         chosen = run_ablations.parse_args(_argv(root, tmp_path / "out", mode=mode)).variants
-        assert chosen == [v for v in everything if v not in C_ONLY] and len(chosen) == 10
+        assert chosen == [v for v in today if v not in C_ONLY] and len(chosen) == 10
     chosen = run_ablations.parse_args(_argv(root, tmp_path / "out", mode="C")).variants
-    assert chosen == everything
+    assert chosen == today
     assert chosen.index("case_improved") < chosen.index("factored")
 
 
@@ -550,8 +558,8 @@ def test_factored_fails_with_one_line_when_the_case_predictions_are_unusable(tmp
     root = build_root(tmp_path, mode="C")
     real = run_ablations.run_variant
 
-    def run_then_empty_the_case_file(mode: str, variant: str, *args: Any) -> None:
-        real(mode, variant, *args)
+    def run_then_empty_the_case_file(mode: str, variant: str, *args: Any, **kwargs: Any) -> None:
+        real(mode, variant, *args, **kwargs)
         if variant == "case_improved":
             (args[-1] / "validation.jsonl").write_text("", encoding="utf-8")
 
@@ -565,3 +573,210 @@ def test_factored_fails_with_one_line_when_the_case_predictions_are_unusable(tmp
     assert len(err.splitlines()) == 1 and err.startswith("error: ") and "validation.jsonl" in err
     assert str(tmp_path) not in err
     assert not (tmp_path / "out" / "mode_C" / "factored" / "validation.jsonl").exists()
+
+
+# --- improved_plus_clusters: opt-in word-cluster variant, fed by --cluster-map -----------------------------------
+
+TINY_CLUSTERS = {"hello": 1, "everyone": 1, "did": 2, "you": 2, "see": 3, "it": 3, "we": 4, "are": 5}
+
+
+def ids_sha(root: Path, mode: str = "A") -> str:
+    return hashlib.sha256((root / "splits" / RELEASE / "default_train" / f"mode_{mode}.ids").read_bytes()).hexdigest()
+
+
+def fake_cluster_loader(
+    monkeypatch,
+    root: Path,
+    *,
+    mode: str = "A",
+    release: str = RELEASE,
+    sha: str | None = None,
+    clusters: dict[str, int] | None = None,
+) -> list[Any]:
+    """Replace the cluster-map loader with a fake map (by default one that matches the fixture's release and
+    default_train IDs); returns the list of paths it was asked to load."""
+    asked: list[Any] = []
+    loaded = SimpleNamespace(
+        mode=mode,
+        release=release,
+        train_ids_sha256=ids_sha(root) if sha is None else sha,
+        clusters=TINY_CLUSTERS if clusters is None else clusters,
+    )
+
+    def load(path: Any) -> Any:
+        asked.append(path)
+        return loaded
+
+    monkeypatch.setattr(run_ablations, "load_cluster_map", load)
+    return asked
+
+
+def test_clusters_variant_trains_with_the_loaded_map_and_is_written_like_the_others(tmp_path, monkeypatch):
+    root = build_root(tmp_path)
+    out = tmp_path / "out"
+    asked = fake_cluster_loader(monkeypatch, root)
+    built: list[dict[str, Any]] = []
+    real = run_ablations.CRFModel
+
+    def spy(**kwargs: Any) -> Any:
+        built.append(kwargs)
+        return real(**kwargs)
+
+    monkeypatch.setattr(run_ablations, "CRFModel", spy)
+    forbid_test_files(monkeypatch)
+
+    code = run_ablations.main(
+        _argv(root, out, "--sample", "4", "--cluster-map", "tiny.json", "--variants", f"improved,{CLUSTERS_VARIANT}")
+    )
+
+    assert code == 0
+    assert asked == [Path("tiny.json")]
+    expected = FeatureConfig.improved(use_word_clusters=True, word_clusters=TINY_CLUSTERS)
+    assert [(b["feature_config"], b["model_name"]) for b in built] == [
+        (FeatureConfig.improved(), "crf_improved"),
+        (expected, "crf_improved_plus_clusters"),
+    ]
+    assert {b["c1"] for b in built} == {0.1} and {b["c2"] for b in built} == {0.1}
+    assert {b["max_iterations"] for b in built} == {100} and {b["label_mode"] for b in built} == {"A"}
+    base = out / "mode_A"
+    preds = _read_jsonl(base / CLUSTERS_VARIANT / "validation.jsonl")
+    assert [p["sample_id"] for p in preds] == VAL_IDS
+    assert {p["model_name"] for p in preds} == {"crf_improved_plus_clusters"}
+    assert {p["label_mode"] for p in preds} == {"A"}
+    assert all(len(p["predicted_labels"]) == len(_SEQUENCES[p["sample_id"]][0]) for p in preds)
+    assert sorted(path.name for path in base.iterdir()) == ["improved", CLUSTERS_VARIANT, "sample.ids"]
+    assert (base / "sample.ids").read_text(encoding="utf-8") == sample_text_for(TRAIN_IDS, 4)
+
+
+def sample_text_for(ids: list[str], size: int) -> str:
+    return "\n".join(sorted(random.Random(run_ablations.SEED).sample(sorted(ids), size))) + "\n"
+
+
+def test_clusters_variant_shares_the_sample_with_the_other_variants(tmp_path, monkeypatch):
+    root = build_root(tmp_path)
+    fake_cluster_loader(monkeypatch, root)
+    out = tmp_path / "out"
+    argv = _argv(root, out, "--sample", "4", "--cluster-map", "m.json", "--variants", f"{CLUSTERS_VARIANT},improved")
+    assert run_ablations.main(argv) == 0
+    sample = (out / "mode_A" / "sample.ids").read_text(encoding="utf-8")
+    assert sample == sample_text_for(TRAIN_IDS, 4)
+
+
+def test_clusters_variant_without_a_cluster_map_is_an_argparse_error(tmp_path, capsys, monkeypatch):
+    root = build_root(tmp_path)
+    asked = fake_cluster_loader(monkeypatch, root)
+    with pytest.raises(SystemExit) as exc:
+        run_ablations.main(_argv(root, tmp_path / "out", "--variants", f"improved,{CLUSTERS_VARIANT}"))
+    assert exc.value.code == 2
+    assert f"--variants: {CLUSTERS_VARIANT} needs --cluster-map" in capsys.readouterr().err
+    assert asked == [] and not (tmp_path / "out").exists()
+
+
+def test_cluster_map_with_a_different_mode_is_one_line_error_before_any_training(tmp_path, capsys, monkeypatch):
+    root = build_root(tmp_path)
+    out = tmp_path / "out"
+    fake_cluster_loader(monkeypatch, root, mode="B")
+
+    def boom(**_: Any) -> None:
+        raise AssertionError("trained although the cluster map is for another mode")
+
+    monkeypatch.setattr(run_ablations, "CRFModel", boom)
+    monkeypatch.setattr(run_ablations, "GapClassifier", boom)
+
+    code = run_ablations.main(
+        _argv(root, out, "--sample", "3", "--cluster-map", str(tmp_path / "secret" / "m.json"),
+              "--variants", CLUSTERS_VARIANT)
+    )
+
+    assert code == 1
+    assert capsys.readouterr().err.splitlines() == ["error: --cluster-map was built for mode B, not --mode A"]
+    assert not out.exists()
+
+
+def test_cluster_map_file_that_matches_release_and_ids_is_accepted(tmp_path):
+    root = build_root(tmp_path)
+    path = tmp_path / "map.json"
+    cluster_map = ClusterMap(
+        k=2, seed=1, min_count=1, dims=2, window=1, vocabulary_size=2, train_ids_sha256=ids_sha(root),
+        release=RELEASE, mode="A", clusters={"hello": 0, "you": 1},
+    )
+    path.write_text(map_to_json(cluster_map), encoding="utf-8", newline="\n")
+
+    assert run_ablations.load_clusters(path, "A", RELEASE, root) == {"hello": 0, "you": 1}
+
+
+@pytest.mark.parametrize(
+    ("changes", "message"),
+    [
+        ({"release": "other"}, "error: --cluster-map was built for release 'other', not --release 'rel'"),
+        ({"sha": "0" * 64}, "error: --cluster-map does not match the default_train IDs of --release 'rel' mode A"),
+    ],
+    ids=["wrong release", "wrong ids sha"],
+)
+def test_cluster_map_from_another_release_or_ids_is_one_line_error_before_any_training(
+    tmp_path, capsys, monkeypatch, changes, message
+):
+    root = build_root(tmp_path)
+    out = tmp_path / "out"
+    fake_cluster_loader(monkeypatch, root, **changes)
+
+    def boom(**_: Any) -> None:
+        raise AssertionError("trained although the cluster map does not belong to this release")
+
+    monkeypatch.setattr(run_ablations, "CRFModel", boom)
+    monkeypatch.setattr(run_ablations, "GapClassifier", boom)
+
+    code = run_ablations.main(
+        _argv(root, out, "--sample", "3", "--cluster-map", str(tmp_path / "secret" / "m.json"),
+              "--variants", CLUSTERS_VARIANT)
+    )
+
+    err = capsys.readouterr().err
+    assert code == 1
+    assert err.splitlines() == [message] and str(tmp_path) not in err
+    assert not out.exists()
+
+
+def test_cluster_map_load_failure_is_one_friendly_line(tmp_path, capsys, monkeypatch):
+    root = build_root(tmp_path)
+
+    def broken(path: Any) -> Any:
+        raise FileNotFoundError(2, "No such file or directory", str(path))
+
+    monkeypatch.setattr(run_ablations, "load_cluster_map", broken)
+    missing = tmp_path / "deep" / "missing_map.json"
+
+    code = run_ablations.main(
+        _argv(root, tmp_path / "out", "--sample", "3", "--cluster-map", str(missing), "--variants", CLUSTERS_VARIANT)
+    )
+
+    err = capsys.readouterr().err
+    assert code == 1
+    assert err.splitlines() == ["error: No such file or directory: missing_map.json"]
+    assert str(tmp_path) not in err
+
+
+def test_cluster_map_given_adds_the_variant_to_the_defaults_in_variant_order(tmp_path):
+    root = build_root(tmp_path)
+    everything = list(run_ablations.VARIANTS)
+    for mode in ("A", "B"):
+        chosen = run_ablations.parse_args(_argv(root, tmp_path / "out", "--cluster-map", "m.json", mode=mode)).variants
+        assert chosen == [v for v in everything if v not in C_ONLY] and len(chosen) == 11
+        assert chosen.index(CLUSTERS_VARIANT) == chosen.index("improved_plus_question2") + 1
+    chosen = run_ablations.parse_args(_argv(root, tmp_path / "out", "--cluster-map", "m.json", mode="C")).variants
+    assert chosen == everything and len(chosen) == 13
+
+
+def test_explicit_variants_without_the_clusters_one_ignore_the_map_in_the_list(tmp_path):
+    root = build_root(tmp_path)
+    args = run_ablations.parse_args(_argv(root, tmp_path / "out", "--cluster-map", "m.json", "--variants", "improved"))
+    assert args.variants == ["improved"] and args.cluster_map == Path("m.json")
+
+
+def test_cluster_map_defaults_to_none(tmp_path):
+    root = build_root(tmp_path)
+    assert run_ablations.parse_args(_argv(root, tmp_path / "out")).cluster_map is None
+
+
+def test_the_docstring_documents_the_cluster_variant_and_option():
+    assert "improved_plus_clusters" in run_ablations.__doc__ and "--cluster-map" in run_ablations.__doc__

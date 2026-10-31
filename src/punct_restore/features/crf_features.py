@@ -14,7 +14,7 @@ Guarantees:
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field, fields
 import json
 from typing import Any, Mapping, Sequence
 
@@ -70,6 +70,10 @@ LOOKBACK_WINDOW = 12
 TAG_CUE_WORDS: frozenset[str] = frozenset({"right", "correct", "huh", "eh"})
 TAG_CUE_PRONOUNS: frozenset[str] = frozenset({"it", "they", "you", "we", "he", "she", "there"})
 
+# Word clusters: a word -> cluster id map built offline. It travels inside the config, hence inside every
+# saved model, so a trained model needs no side file. A word missing from the map gets this label.
+UNKNOWN_CLUSTER_LABEL = "unk"
+
 
 @dataclass(frozen=True)
 class FeatureConfig:
@@ -91,7 +95,15 @@ class FeatureConfig:
             immediate word repeats. Team extension.
         use_question_lookback: Extract wh_aux_lookback (wh-word + auxiliary within the last 12
             tokens) and is_tag_question_cue (tag-question endings). Team extension.
+        use_word_clusters: Extract the cluster label of the current, previous and next word and of the
+            current+next pair (cl0, cl-1, cl+1, cl0|cl+1). Needs word_clusters. Team extension.
+        word_clusters: Word -> cluster id map read by use_word_clusters; None when the switch is off.
+            Stored as a plain-dict copy. Part of ==, left out of the hash (a dict is unhashable) and of the repr (it is huge).
+            Team extension.
         version: Version identifier for reproducibility.
+
+    Raises:
+        ValueError: use_word_clusters is on but word_clusters is None or empty.
     """
     preset: str = "basic"
     window_size: int = 1
@@ -107,7 +119,15 @@ class FeatureConfig:
     # --- team extensions (off in both course presets) ---
     use_filler_cues: bool = False
     use_question_lookback: bool = False
+    use_word_clusters: bool = False
+    word_clusters: Mapping[str, int] | None = field(default=None, hash=False, repr=False)
     version: str = "v1"
+
+    def __post_init__(self) -> None:
+        if self.use_word_clusters and not self.word_clusters:
+            raise ValueError("use_word_clusters=True needs a non-empty word_clusters map")
+        if self.word_clusters is not None:  # own plain-dict copy: detached from the caller, picklable
+            object.__setattr__(self, "word_clusters", dict(self.word_clusters))
 
     @classmethod
     def basic(cls, **overrides: Any) -> FeatureConfig:
@@ -126,6 +146,8 @@ class FeatureConfig:
             "use_positional_buckets": False,
             "use_filler_cues": False,
             "use_question_lookback": False,
+            "use_word_clusters": False,
+            "word_clusters": None,
             "version": "v1-basic",
         }
         defaults.update(overrides)
@@ -148,14 +170,19 @@ class FeatureConfig:
             "use_positional_buckets": True,
             "use_filler_cues": False,
             "use_question_lookback": False,
+            "use_word_clusters": False,
+            "word_clusters": None,
             "version": "v1-improved",
         }
         defaults.update(overrides)
         return cls(**defaults)
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert config to serializable dictionary."""
-        return asdict(self)
+        """Convert config to a serializable dictionary (the cluster map becomes a plain dict copy)."""
+        data = {f.name: getattr(self, f.name) for f in fields(self)}
+        if self.word_clusters is not None:
+            data["word_clusters"] = dict(self.word_clusters)
+        return data
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> FeatureConfig:
@@ -213,6 +240,25 @@ def _question_lookback_features(tokens: Sequence[str], i: int) -> dict[str, bool
         "is_tag_question_cue": tokens[i] in TAG_CUE_WORDS or tag_pronoun,
     }
     return {name: True for name, on in flags.items() if on}
+
+
+def _cluster_label(clusters: Mapping[str, int], word: str) -> str:
+    """'c<id>' for a clustered word (looked up in lowercase), UNKNOWN_CLUSTER_LABEL otherwise (id 0 is real)."""
+    cluster_id = clusters.get(word.lower())
+    return UNKNOWN_CLUSTER_LABEL if cluster_id is None else f"c{cluster_id}"
+
+
+def _cluster_features(tokens: Sequence[str], i: int, clusters: Mapping[str, int]) -> dict[str, str]:
+    """Cluster labels of the word at i, its left neighbour and its right neighbour, and the current+next pair."""
+    current = _cluster_label(clusters, tokens[i])
+    feats = {"cl0": current}
+    if i > 0:
+        feats["cl-1"] = _cluster_label(clusters, tokens[i - 1])
+    if i < len(tokens) - 1:
+        following = _cluster_label(clusters, tokens[i + 1])
+        feats["cl+1"] = following
+        feats["cl0|cl+1"] = f"{current}|{following}"
+    return feats
 
 
 def _extract_token_features(token: str, config: FeatureConfig) -> dict[str, str | int | float | bool]:
@@ -380,6 +426,8 @@ def extract_sequence_features(
             token_feats.update(_filler_features(tokens, i))
         if cfg.use_question_lookback:
             token_feats.update(_question_lookback_features(tokens, i))
+        if cfg.use_word_clusters:  # __post_init__ guarantees a non-empty map
+            token_feats.update(_cluster_features(tokens, i, cfg.word_clusters))
 
         seq_features.append(token_feats)
 

@@ -97,6 +97,9 @@ improved-feature CRF above, in modes A, B and C. Member 3 wrote both CRF feature
   features, a factored casing pipeline (punctuation CRF + casing-only CRF), and simulated ASR noise on the test
   inputs (results in [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md)).
 - **A filler-word cue** (`improved_plus_filler` in `scripts/run_ablations.py`), tested on validation.
+- **Word-cluster features** (`improved_plus_clusters` in `scripts/run_ablations.py`, with `--cluster-map` from
+  `scripts/build_word_clusters.py`): clusters induced from `default_train` only (PPMI, SVD, k-means with k = 100 or 300),
+  tested on validation.
 - **Label granularity (B→A):** mode B models projected to the four mode A labels with the D5 mapping,
   compared with their mode A twins on mode A validation gold
   ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §11).
@@ -215,7 +218,7 @@ report `test` and `test_amb` separately (they share 25 videos).
 | `results/` | `results/scores/` holds the committed evaluator JSON behind every reported number (`results/scores/README.md`), including Member 3's six CRF training manifests in `results/scores/crf_training_manifests/`. Local evaluator outputs go to the ignored folders results/predictions/ and results/tables/; create them with `mkdir -p` first, because the evaluator never creates folders. |
 | `scripts/` | Command-line entry points; see the table below and `scripts/README.md`. |
 | `src/punct_restore/` | The Python package; every module is listed in the package table below. |
-| `tests/` | The pytest suite for data, models, features, CLIs and evaluation; fixtures only. Groups are listed in `tests/README.md`; the comparison-method and robustness tests are `tests/test_gap_classifier.py`, `tests/test_hidden_event_lm.py`, `tests/test_train_hidden_event_lm_cli.py`, `tests/test_factored.py`, `tests/test_factor_predictions.py`, `tests/test_crf_case_mode.py`, `tests/test_threshold_priors.py`, `tests/test_asr_noise.py`, `tests/test_simulate_asr_noise.py`, `tests/test_asr_noise_table.py`, `tests/test_asr_noise_findings.py` (with the fixture module `tests/asr_noise_table_fixtures.py`), `tests/test_prediction_io_helpers.py`, `tests/test_gold_noise.py`, `tests/test_find_gold_noise.py`, `tests/test_threshold_provenance.py`, `tests/test_crf_convergence.py`, `tests/test_length_position.py`. |
+| `tests/` | The pytest suite for data, models, features, CLIs and evaluation; fixtures only. Groups are listed in `tests/README.md`; the comparison-method and robustness tests are `tests/test_gap_classifier.py`, `tests/test_hidden_event_lm.py`, `tests/test_train_hidden_event_lm_cli.py`, `tests/test_factored.py`, `tests/test_factor_predictions.py`, `tests/test_crf_case_mode.py`, `tests/test_threshold_priors.py`, `tests/test_asr_noise.py`, `tests/test_simulate_asr_noise.py`, `tests/test_asr_noise_table.py`, `tests/test_asr_noise_findings.py` (with the fixture module `tests/asr_noise_table_fixtures.py`), `tests/test_prediction_io_helpers.py`, `tests/test_gold_noise.py`, `tests/test_find_gold_noise.py`, `tests/test_threshold_provenance.py`, `tests/test_crf_convergence.py`, `tests/test_length_position.py`, `tests/test_word_clusters.py`, `tests/test_build_word_clusters.py`, `tests/test_crf_word_clusters.py`. |
 
 **Evaluator outputs** (`results/scores/`, one folder per study; details in `results/scores/README.md`):
 
@@ -260,7 +263,8 @@ package initializer, `<folder>/__init__.py`):
 | `src/punct_restore/models/ngram_lm.py` | N-gram counting and interpolated absolute-discount probabilities for the hidden-event LM. |
 | `src/punct_restore/models/truecaser.py` | Unigram truecaser: the most frequent casing per word, with a sentence-start rule for unseen words. |
 | `src/punct_restore/models/factored.py` | Factored casing pipeline: joins mode A punctuation and CASE predictions into mode C labels. |
-| `src/punct_restore/features/crf_features.py` | CRF features: basic and improved presets, ablation switches and the filler cue. |
+| `src/punct_restore/features/crf_features.py` | CRF features: basic and improved presets, ablation switches, the filler cue and the opt-in word-cluster features (`use_word_clusters` / `word_clusters`: `cl0`, `cl-1`, `cl+1`, `cl0|cl+1`; the map is stored in the CRF bundle). |
+| `src/punct_restore/features/word_clusters.py` | Word clusters induced from `default_train` only: lowercased words with count ≥ 5, ±2 co-occurrence matrix, PPMI, TruncatedSVD (about 100 dimensions), L2-normalised rows, k-means (k ∈ {100, 300}, fixed seed); unknown words get `unk`. The JSON map records the train-ids sha256, k, the seed and the vocabulary size. |
 | `src/punct_restore/evaluation/` | Member 5's evaluator: `inputs` (input checks), `views` (scored positions and report blocks), `metrics` (token-level P/R/F1), `uncertainty` (bootstrap grouped by video), `comparison` (paired comparison), `error_analysis` (error examples), `baseline` (shortcut baseline), `manifest` (prediction-manifest check), `report` (JSON and Markdown reports). |
 | `src/punct_restore/prediction_io.py` | Gold-free prediction JSONL and manifest writing, shared by `scripts/train_crf.py`, `scripts/tune_threshold.py` and `scripts/project_joint.py`. |
 | `src/punct_restore/pipeline.py` | Demo inference: load a trained HMM, hidden-event LM, CRF or gap classifier (`load_model`), clean raw text, predict labels, rebuild text. |
@@ -281,7 +285,7 @@ Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM
 | `scripts/verify_hmm_experiments.py` | HMM | Audits an HMM study: recounts scores, refits the winners and compares predictions. |
 | `scripts/package_hmm_handoff.py` | HMM | Packages a verified HMM study as a checksummed ZIP. |
 | `scripts/train_crf.py` | CRF | `train` fits a CRF (basic or improved features); `predict` writes predictions, and the prediction manifest with `--manifest-out`; `inspect` prints artifact metadata. |
-| `scripts/run_ablations.py` | CRF | Trains the feature-group ablations and writes their validation predictions (never reads test). |
+| `scripts/run_ablations.py` | CRF | Trains the feature-group ablations and writes their validation predictions (never reads test); `improved_plus_clusters` with `--cluster-map` adds the word-cluster features (the map's mode, release and train-ids sha256 must match). |
 | `scripts/tune_threshold.py` | CRF | Threshold decoding: `tune` picks τ on validation, `predict` applies the frozen τ. |
 | `scripts/evaluate_models.py` | Evaluation | `score`, `compare` (paired), `errors` and `baseline` (the shortcut). |
 | `scripts/run_demo.py` | Demo | Restores punctuation and casing for one text with a saved HMM, hidden-event LM, CRF or gap classifier. |
@@ -291,6 +295,7 @@ Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM
 | `scripts/simulate_asr_noise.py` | Robustness | Writes copies of the validation or test inputs with simulated ASR word errors (`--edit-model {v1,v2}`) at a target WER, labels and masks kept aligned. |
 | `scripts/build_leakage_subsets.py` | Study (leakage) | Splits an official evaluation file into kept and excluded ID lists by exclusion cause, for the leakage-cost analysis. |
 | `scripts/find_gold_noise.py` | Study (gold noise) | Flags speaker labels, subtitle cue residue and auto-caption videos on the primary mode B lists; writes the flagged IDs and summaries. |
+| `scripts/build_word_clusters.py` | CRF (features) | Builds a word-cluster map (`--mode {A,B,C} --k K --out MAP.json`) from `default_train` only; the map feeds `run_ablations.py --cluster-map`. |
 | `scripts/reporting/asr_noise_table.py` | Reporting | Builds the ASR noise `v2` summary JSON and `docs/ASR_NOISE_V2.md` from `results/scores/`. |
 | `scripts/reporting/asr_noise_stats.py`, `asr_noise_report.py`, `asr_noise_findings.py` | Reporting (modules) | Helpers of `asr_noise_table.py`: exact seed statistics and rounding, the report's Markdown, and the findings computed from the summary. Not run on their own. |
 | `scripts/reporting/build_m3_tables.py` | Reporting | Rebuilds the CRF result tables for one split (main, paired, views, per class, errors, confusion) from `results/scores/`. |

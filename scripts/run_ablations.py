@@ -3,13 +3,17 @@
 Usage:
     python scripts/run_ablations.py --mode {A,B,C} --out DIR [--sample 50000]
         [--variants improved,improved_minus_window2,...,improved_plus_filler,
-         improved_plus_question2,gap_improved,case_improved,factored]
-        [--data-root DATA] [--release sponspeech-m1-v2]
+         improved_plus_question2,improved_plus_clusters,gap_improved,case_improved,factored]
+        [--cluster-map PATH] [--data-root DATA] [--release sponspeech-m1-v2]
 
 Trains this repository's CRFModel (c1 = c2 = 0.1, 100 L-BFGS iterations) on a fixed seeded sample
 of default_train, once with the full improved preset, once per removed feature group, once with
 the filler cues added and once with the question-lookback features added (improved_plus_question2:
-wh_aux_lookback and is_tag_question_cue). The last variant, gap_improved, trains GapClassifier
+wh_aux_lookback and is_tag_question_cue). improved_plus_clusters adds the word-cluster features
+(cl0, cl-1, cl+1, cl0|cl+1) from the map given by --cluster-map (a map file built by
+scripts/build_word_clusters.py); it needs --cluster-map, and the map must have been built for the
+same --mode and --release, from this release's default_train IDs (otherwise the run stops before any
+training). The gap_improved variant trains GapClassifier
 ("CRF without transitions": per-token logistic regression, C = 1, 200 L-BFGS iterations) on the
 same improved features and the same sample, so its difference from improved measures label
 transitions together with the different training settings. Primary-validation predictions are written to
@@ -21,18 +25,20 @@ sample. case_improved trains a casing-only CRF (label mode CASE, from the record
 factored trains a mode A improved CRF on the same records (their punct_labels), writes its predictions to
 factored/punct_A.jsonl, and joins them with the case_improved predictions into mode C labels
 (factored/validation.jsonl); it needs case_improved earlier in --variants. Without --variants, modes A and B
-run the first ten variants and mode C runs all twelve.
+run ten variants and mode C twelve (all of them but improved_plus_clusters); with --cluster-map they also
+run improved_plus_clusters, eleven and thirteen variants.
 """
 
 from __future__ import annotations
 
 import argparse
 import gc
+import hashlib
 import json
 import random
 import sys
 import time
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +46,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # Support the documented source-checkout command before an editable install.
 sys.path.insert(0, str(ROOT / "src"))
 from punct_restore.features.crf_features import FeatureConfig
+from punct_restore.features.word_clusters import load_cluster_map
 from punct_restore.models.crf import CRFModel
 from punct_restore.models.factored import combine
 from punct_restore.models.gap_classifier import GapClassifier
@@ -54,6 +61,7 @@ GROUPS: dict[str, dict[str, Any]] = {
     "casing": {"use_casing_cues": False},
     "position": {"use_positional_buckets": False},
 }
+CLUSTERS_VARIANT = "improved_plus_clusters"  # needs --cluster-map; the map itself is added at run time
 GAP_VARIANT = "gap_improved"
 CASE_VARIANT = "case_improved"
 FACTORED_VARIANT = "factored"
@@ -63,6 +71,7 @@ VARIANTS: dict[str, dict[str, Any]] = {
     **{f"improved_minus_{group}": override for group, override in GROUPS.items()},
     "improved_plus_filler": {"use_filler_cues": True},
     "improved_plus_question2": {"use_question_lookback": True},
+    CLUSTERS_VARIANT: {"use_word_clusters": True},
     GAP_VARIANT: {},  # improved features, trained with GapClassifier instead of the CRF
     CASE_VARIANT: {},  # mode C only: casing-only CRF
     FACTORED_VARIANT: {},  # mode C only: mode A CRF + the case_improved predictions -> joint labels
@@ -97,20 +106,39 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--sample", type=positive_int, default=50000)
     parser.add_argument("--variants", type=variant_list, default=None)
+    parser.add_argument(
+        "--cluster-map",
+        type=Path,
+        default=None,
+        help=f"word-cluster map file for {CLUSTERS_VARIANT}; it must have been built for the same --mode",
+    )
     parser.add_argument("--data-root", type=Path, default=ROOT / "data")
     parser.add_argument("--release", default="sponspeech-m1-v2")
     args = parser.parse_args(argv)
-    problem = variants_problem(args.mode, args.variants)
+    problem = variants_problem(args.mode, args.variants, args.cluster_map is not None)
     if problem:
         parser.error(f"--variants: {problem}")
     if args.variants is None:
-        args.variants = [v for v in VARIANTS if args.mode == "C" or v not in C_ONLY_VARIANTS]
+        args.variants = default_variants(args.mode, args.cluster_map is not None)
     return args
 
 
-def variants_problem(mode: str, variants: list[str] | None) -> str | None:
-    """Why an explicit --variants list does not fit --mode, or None (the C-only variants need mode C)."""
+def default_variants(mode: str, has_cluster_map: bool) -> list[str]:
+    """Every variant that fits the mode; the cluster variant only when a cluster map was given."""
+    return [
+        v for v in VARIANTS
+        if (mode == "C" or v not in C_ONLY_VARIANTS) and (has_cluster_map or v != CLUSTERS_VARIANT)
+    ]
+
+
+def variants_problem(mode: str, variants: list[str] | None, has_cluster_map: bool = False) -> str | None:
+    """Why an explicit --variants list does not fit --mode or the options, or None.
+
+    The C-only variants need mode C; the cluster variant needs --cluster-map.
+    """
     names = variants or []
+    if CLUSTERS_VARIANT in names and not has_cluster_map:
+        return f"{CLUSTERS_VARIANT} needs --cluster-map"
     for name in names:
         if name in C_ONLY_VARIANTS and mode != "C":
             return f"{name} is only valid with --mode C"
@@ -202,14 +230,24 @@ def run_factored(
     write_predictions(out_dir / "validation.jsonl", joint)
 
 
+def variant_config(variant: str, clusters: Mapping[str, int] | None) -> FeatureConfig:
+    """The improved preset with the variant's override; the cluster variant also gets its word -> id map."""
+    overrides = dict(VARIANTS[variant])
+    if variant == CLUSTERS_VARIANT:
+        overrides["word_clusters"] = clusters
+    return FeatureConfig.improved(**overrides)
+
+
 def run_variant(
     mode: str,
     variant: str,
     records: list[dict[str, Any]],
     gold_free: list[dict[str, Any]],
     out_dir: Path,
+    *,
+    clusters: Mapping[str, int] | None = None,
 ) -> None:
-    feature_config = FeatureConfig.improved(**VARIANTS[variant])
+    feature_config = variant_config(variant, clusters)
     if variant == FACTORED_VARIANT:
         run_factored(records, gold_free, out_dir, feature_config)
         return
@@ -233,6 +271,25 @@ def describe(exc: Exception) -> str:
     return str(exc)
 
 
+def load_clusters(path: Path | None, mode: str, release: str, data_root: Path) -> Mapping[str, int] | None:
+    """The word -> cluster id map from --cluster-map (None when not given).
+
+    It must have been built for this --mode and --release, from exactly this release's default_train IDs
+    (else another release's training text could leak in).
+    """
+    if path is None:
+        return None
+    cluster_map = load_cluster_map(path)
+    if cluster_map.mode != mode:
+        raise ValueError(f"--cluster-map was built for mode {cluster_map.mode}, not --mode {mode}")
+    if cluster_map.release != release:
+        raise ValueError(f"--cluster-map was built for release {cluster_map.release!r}, not --release {release!r}")
+    ids_file = data_root / "splits" / release / "default_train" / f"mode_{mode}.ids"
+    if cluster_map.train_ids_sha256 != hashlib.sha256(ids_file.read_bytes()).hexdigest():
+        raise ValueError(f"--cluster-map does not match the default_train IDs of --release {release!r} mode {mode}")
+    return cluster_map.clusters
+
+
 def _already_exists(root: Path) -> ValueError:
     return ValueError(f"{root.name} already exists under --out; remove it or pick another --out")
 
@@ -241,6 +298,8 @@ def run(args: argparse.Namespace) -> None:
     root = args.out / f"mode_{args.mode}"
     if root.exists():  # fail early, before reading the large train.jsonl
         raise _already_exists(root)
+    # cheap, and a wrong map must stop the run first
+    clusters = load_clusters(args.cluster_map, args.mode, args.release, args.data_root)
     sample, records, gold_free = load_inputs(args)
     try:
         root.mkdir(parents=True, exist_ok=False)  # the real guard against a concurrent run
@@ -249,7 +308,7 @@ def run(args: argparse.Namespace) -> None:
     (root / "sample.ids").write_text("\n".join(sample) + "\n", encoding="utf-8", newline="\n")
     for variant in args.variants:
         start = time.perf_counter()
-        run_variant(args.mode, variant, records, gold_free, root / variant)
+        run_variant(args.mode, variant, records, gold_free, root / variant, clusters=clusters)
         print(f"{args.mode} {variant}: {time.perf_counter() - start:.0f}s", flush=True)
 
 
