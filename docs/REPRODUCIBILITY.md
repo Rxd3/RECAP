@@ -3,7 +3,7 @@
 Every command below comes from the owning member's runbook: [data/README.md](../data/README.md),
 [HMM_RUNBOOK.md](../experiments/HMM_RUNBOOK.md), [CRF_EXPERIMENTS.md](CRF_EXPERIMENTS.md) and
 [EVALUATION_PROTOCOL.md](EVALUATION_PROTOCOL.md), plus the final-push CLIs
-(`scripts/run_ablations.py`, `scripts/tune_threshold.py`, `scripts/run_demo.py`). Run everything
+(`scripts/run_ablations.py`, `scripts/build_word_clusters.py`, `scripts/tune_threshold.py`, `scripts/run_demo.py`). Run everything
 from the repository root. Each script prints its full options with `--help`; see also
 [scripts/README.md](../scripts/README.md).
 
@@ -204,7 +204,8 @@ repository root makes a later HMM `tune` refuse to start, because it requires a 
 Modes B and C use `tau_B.json` and `tau_C.json` in the same folder.
 
 `run_ablations.py` takes `--variants` to run a subset (`improved`,
-`improved_minus_{window2,ngrams,question,clause,casing,position}`, `improved_plus_filler`).
+`improved_minus_{window2,ngrams,question,clause,casing,position}`, `improved_plus_filler`,
+`improved_plus_clusters` with `--cluster-map`, see section 11).
 `--data-root` (default `data`) and `--release` (default `sponspeech-m1-v2`) locate the release.
 It writes `DIR/mode_X/sample.ids` and one `DIR/mode_X/<variant>/validation.jsonl` per variant and
 never reads test; score each file with `evaluate_models.py score` (section 6).
@@ -351,6 +352,29 @@ python scripts/factor_predictions.py --punct <mode A predictions>.jsonl --case <
     --gold <processed>/mode_C/validation.jsonl --out experiments/runs/factored_C.jsonl \
     --manifest-out experiments/runs/factored_C.manifest.json
 ```
+
+**Word-cluster features** (`improved_plus_clusters`, validation, 50k training sample). Build one map per mode and
+k from `default_train` only (`--out` must not exist; the map records the sha256 of the train-ids file, k, the seed and
+the vocabulary size), train the variant with it, then compare with `improved` from the section 7 ablation run
+(same seeded sample). `run_ablations.py` stops before training if the map's mode, release or train-ids sha256
+does not match:
+
+```bash
+mkdir -p experiments/runs
+python scripts/build_word_clusters.py --mode <M> --k 100 --out experiments/runs/clusters/clusters_<M>_k100.json
+python scripts/build_word_clusters.py --mode <M> --k 300 --out experiments/runs/clusters/clusters_<M>_k300.json
+python scripts/run_ablations.py --mode <M> --sample 50000 --variants improved_plus_clusters \
+    --cluster-map experiments/runs/clusters/clusters_<M>_k100.json --out experiments/runs/clusters_<M>_k100
+python scripts/evaluate_models.py compare --gold <processed>/mode_<M>/validation.jsonl \
+    --ids <splits>/primary_eval/validation_mode_<M>.ids \
+    --predictions-a experiments/runs/ablations_<M>/mode_<M>/improved/validation.jsonl \
+    --predictions-b experiments/runs/clusters_<M>_k100/mode_<M>/improved_plus_clusters/validation.jsonl \
+    --bootstrap 1000 --seed 2026 --class COMMA --class PERIOD --class QUESTION \
+    --out experiments/runs/clusters_<M>_k100_compare.json
+```
+
+Repeat with k 300. `build_word_clusters.py` defaults to `--seed 2026 --min-count 5 --dims 100 --window 2`. In mode C, add `--masks <processed>/masks/case_joint/validation.jsonl` to `compare` and name joint labels
+in quotes, for example `--class "COMMA|LOWER" --class "PERIOD|LOWER" --class "QUESTION|LOWER"`.
 
 **Simulated ASR noise.** Write corrupted copies of the test inputs, then predict and score them with the
 frozen models as in sections 5 and 6, using the noisy files, ID lists and masks:
