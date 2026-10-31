@@ -9,8 +9,9 @@ the B→A study, the settings sensitivity check, the gold-noise check (`gold_noi
 (`gap/`, `hidden_event_lm/`, `question2/`, `factored/`, `clusters/`). [`scores/README.md`](scores/README.md) lists every
 folder. The score, compare and errors files record the SHA-256 of their inputs; the τ files record the model
 hash, the split and the SHA-256 of every input; the runtime files record the model file name. So any table can
-be recomputed or checked from them. The `*.errors.json` files contain short SponSpeech excerpts (CC BY-NC 4.0,
-attribution in [DATA_LICENSE.md](../docs/DATA_LICENSE.md)). `scores/crf_training_manifests/` holds Member 3's six CRF training
+be recomputed or checked from them. The `*.errors.json` files contain short SponSpeech excerpts, and `scores/gold_noise/label_audit_sheet.csv` the
+upstream transcripts of the 100 audited validation utterances (CC BY-NC 4.0, attribution in
+[DATA_LICENSE.md](../docs/DATA_LICENSE.md)). `scores/crf_training_manifests/` holds Member 3's six CRF training
 manifests (settings, data hashes, fit time, peak memory, environment). The scripts in
 `scripts/reporting/` rebuild the result tables from these files ([REPRODUCIBILITY.md](../docs/REPRODUCIBILITY.md)).
 
