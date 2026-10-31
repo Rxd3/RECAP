@@ -1,0 +1,391 @@
+{
+ "blocks": {
+  "punctuation/all": {
+   "accuracy": 0.907418,
+   "confusion": [
+    [
+     344501,
+     5962,
+     1372,
+     30,
+     7,
+     37,
+     1,
+     8
+    ],
+    [
+     18105,
+     9426,
+     1507,
+     30,
+     8,
+     10,
+     1,
+     3
+    ],
+    [
+     5197,
+     1847,
+     13075,
+     106,
+     4,
+     4,
+     0,
+     4
+    ],
+    [
+     619,
+     166,
+     1178,
+     210,
+     0,
+     1,
+     0,
+     0
+    ],
+    [
+     102,
+     54,
+     43,
+     1,
+     3,
+     1,
+     0,
+     0
+    ],
+    [
+     124,
+     23,
+     11,
+     1,
+     0,
+     7,
+     0,
+     0
+    ],
+    [
+     75,
+     22,
+     22,
+     0,
+     0,
+     0,
+     1,
+     0
+    ],
+    [
+     591,
+     110,
+     79,
+     0,
+     0,
+     1,
+     0,
+     1
+    ]
+   ],
+   "empty_support": false,
+   "labels": [
+    "O",
+    "COMMA",
+    "PERIOD",
+    "QUESTION",
+    "EXCLAMATION",
+    "COLON",
+    "SEMICOLON",
+    "DASH"
+   ],
+   "macro_f1": 0.196019,
+   "macro_f1_ci": {
+    "groups": 153,
+    "high": 0.212666,
+    "level": 0.95,
+    "low": 0.182709,
+    "resamples": 1000,
+    "seed": 2026,
+    "unit": "group_id"
+   },
+   "macro_over": [
+    "COMMA",
+    "PERIOD",
+    "QUESTION",
+    "EXCLAMATION",
+    "COLON",
+    "SEMICOLON",
+    "DASH"
+   ],
+   "micro": {
+    "f1": 0.515553,
+    "precision": 0.64231,
+    "recall": 0.43058
+   },
+   "per_class": {
+    "COLON": {
+     "f1": 0.061674,
+     "precision": 0.114754,
+     "predicted": 61,
+     "recall": 0.042169,
+     "support": 166
+    },
+    "COMMA": {
+     "f1": 0.403683,
+     "precision": 0.535264,
+     "predicted": 17610,
+     "recall": 0.324029,
+     "support": 29090
+    },
+    "DASH": {
+     "f1": 0.002506,
+     "precision": 0.0625,
+     "predicted": 16,
+     "recall": 0.001279,
+     "support": 782
+    },
+    "EXCLAMATION": {
+     "f1": 0.026549,
+     "precision": 0.136364,
+     "predicted": 22,
+     "recall": 0.014706,
+     "support": 204
+    },
+    "O": {
+     "f1": 0.955313,
+     "precision": 0.932813,
+     "predicted": 369314,
+     "recall": 0.978924,
+     "support": 351918
+    },
+    "PERIOD": {
+     "f1": 0.696887,
+     "precision": 0.756349,
+     "predicted": 17287,
+     "recall": 0.646094,
+     "support": 20237
+    },
+    "QUESTION": {
+     "f1": 0.164577,
+     "precision": 0.555556,
+     "predicted": 378,
+     "recall": 0.096596,
+     "support": 2174
+    },
+    "SEMICOLON": {
+     "f1": 0.01626,
+     "precision": 0.333333,
+     "predicted": 3,
+     "recall": 0.008333,
+     "support": 120
+    }
+   },
+   "scored_positions": 404691
+  },
+  "punctuation/non_final": {
+   "accuracy": 0.907327,
+   "confusion": [
+    [
+     344501,
+     5962,
+     1372,
+     30,
+     7,
+     37,
+     1,
+     8
+    ],
+    [
+     18105,
+     9426,
+     1506,
+     30,
+     8,
+     10,
+     1,
+     3
+    ],
+    [
+     5192,
+     1847,
+     2007,
+     38,
+     4,
+     4,
+     0,
+     4
+    ],
+    [
+     619,
+     166,
+     147,
+     62,
+     0,
+     1,
+     0,
+     0
+    ],
+    [
+     102,
+     54,
+     43,
+     1,
+     3,
+     1,
+     0,
+     0
+    ],
+    [
+     124,
+     23,
+     11,
+     1,
+     0,
+     7,
+     0,
+     0
+    ],
+    [
+     75,
+     22,
+     22,
+     0,
+     0,
+     0,
+     1,
+     0
+    ],
+    [
+     591,
+     110,
+     79,
+     0,
+     0,
+     1,
+     0,
+     1
+    ]
+   ],
+   "empty_support": false,
+   "labels": [
+    "O",
+    "COMMA",
+    "PERIOD",
+    "QUESTION",
+    "EXCLAMATION",
+    "COLON",
+    "SEMICOLON",
+    "DASH"
+   ],
+   "macro_f1": 0.128413,
+   "macro_f1_ci": {
+    "groups": 153,
+    "high": 0.144347,
+    "level": 0.95,
+    "low": 0.11527,
+    "resamples": 1000,
+    "seed": 2026,
+    "unit": "group_id"
+   },
+   "macro_over": [
+    "COMMA",
+    "PERIOD",
+    "QUESTION",
+    "EXCLAMATION",
+    "COLON",
+    "SEMICOLON",
+    "DASH"
+   ],
+   "micro": {
+    "f1": 0.362351,
+    "precision": 0.498981,
+    "recall": 0.284461
+   },
+   "per_class": {
+    "COLON": {
+     "f1": 0.061674,
+     "precision": 0.114754,
+     "predicted": 61,
+     "recall": 0.042169,
+     "support": 166
+    },
+    "COMMA": {
+     "f1": 0.403692,
+     "precision": 0.535264,
+     "predicted": 17610,
+     "recall": 0.32404,
+     "support": 29089
+    },
+    "DASH": {
+     "f1": 0.002506,
+     "precision": 0.0625,
+     "predicted": 16,
+     "recall": 0.001279,
+     "support": 782
+    },
+    "EXCLAMATION": {
+     "f1": 0.026549,
+     "precision": 0.136364,
+     "predicted": 22,
+     "recall": 0.014706,
+     "support": 204
+    },
+    "O": {
+     "f1": 0.955319,
+     "precision": 0.932826,
+     "predicted": 369309,
+     "recall": 0.978924,
+     "support": 351918
+    },
+    "PERIOD": {
+     "f1": 0.281033,
+     "precision": 0.386929,
+     "predicted": 5187,
+     "recall": 0.220646,
+     "support": 9096
+    },
+    "QUESTION": {
+     "f1": 0.107174,
+     "precision": 0.382716,
+     "predicted": 162,
+     "recall": 0.062312,
+     "support": 995
+    },
+    "SEMICOLON": {
+     "f1": 0.01626,
+     "precision": 0.333333,
+     "predicted": 3,
+     "recall": 0.008333,
+     "support": 120
+    }
+   },
+   "scored_positions": 392370
+  }
+ },
+ "counts": {
+  "ignored_prediction_ids": 0,
+  "sequences": 12321,
+  "tokens": 404691
+ },
+ "inputs": {
+  "gold": {
+   "path": "mode_B/test.jsonl",
+   "sha256": "01d5fc5622ad1c4a3e415cc6cbcc21c834498205b6f2b28e52e246bbcb8153be"
+  },
+  "ids": {
+   "path": "seed2027/test_mode_B.ids",
+   "sha256": "207f414dbc649808729aeb92ee160c9a9bb57e066260d207c4a643cbfe75c3a1"
+  },
+  "masks": null,
+  "predictions": {
+   "path": "seed2027/crf_basic_B.jsonl",
+   "sha256": "7ce3623645468190d528d18ab6aae5df432f1963e6ce47b24a31234455a7ba69"
+  }
+ },
+ "label_mode": "B",
+ "model_name": "crf_basic",
+ "policy_version": "m1-v2",
+ "primary": {
+  "block": "punctuation/all",
+  "metric": "macro_f1",
+  "value": 0.196019
+ },
+ "schema": "recap-eval-v1"
+}

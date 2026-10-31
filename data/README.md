@@ -1,12 +1,14 @@
 # Data storage and release plan
 
-Owner: Member 1. Generated contents of these folders are ignored by Git; only markers and this guide are tracked.
+Owner: Member 1. Generated contents of `raw/`, `processed/` and `splits/` are ignored by Git. Tracked: this guide,
+a 10-utterance sample in [`sample/`](sample/README.md) and small release metadata in
+[`release_metadata/`](release_metadata/README.md).
 Do not add large data with `git add -f`. Releases are shared through the team's Google Drive folder
-([RECAP -NLP2](https://drive.google.com/drive/folders/1ZKDNnRHXsLJf3UjOdKVgQ0bYpo12IQfH?usp=sharing); preferred by the team lead, to be recorded under D11) with SHA-256 sums.
+([RECAP -NLP2](https://drive.google.com/drive/folders/1ZKDNnRHXsLJf3UjOdKVgQ0bYpo12IQfH?usp=sharing); decision D11) with SHA-256 sums.
 Current release `sponspeech-m1-v2` uses policy `m1-v2` and supersedes `sponspeech-m1-v1-rev2`.
 Version 2 fixes Windows paths/newlines, flags mixed ellipsis boundaries, and excludes exact model-input duplicates
-from primary subsets. Version 1 remains unchanged as historical data. The corrected bundle is prepared under
-`artifacts/data/sponspeech-m1-v2/`; its upload to the shared Drive is a separate handoff step.
+from primary subsets. Version 1 remains unchanged as historical data. The corrected bundle is on the team
+Drive as `dataset/sponspeech-m1-v2-handoff.zip` (see [below](#getting-the-release-from-google-drive)).
 
 - `raw/`: immutable source files, one folder per source revision.
 - `processed/`: versioned JSONL releases following the [contract](../docs/DATA_CONTRACT.md).
@@ -26,9 +28,11 @@ RAW/sponspeech_text/              train/ dev/ test-amb/ test/ (text/*.txt, utt2s
 ```
 
 1. **Environment.** From the repository root: `python -m venv .venv`, activate it, then
-   `python -m pip install -e ".[dev]"` (pytest and PyYAML only; the data code otherwise uses the standard library).
-2. **Provenance files.** Download `<release>-provenance.tar.gz` from Google Drive (below), check it against
-   `<release>.SHA256SUMS`, and unpack it into `RAW`. Do not re-fetch the title snapshot: titles change over time.
+   `python -m pip install -e ".[dev]"` (the pinned PyYAML, sklearn-crfsuite, python-crfsuite and joblib, plus pytest;
+   the data code itself needs only PyYAML and the standard library).
+2. **Provenance files.** Take `<release>-provenance.tar.gz` from the Drive handoff ZIP (below), check it against
+   `<release>.SHA256SUMS`, and unpack it into `RAW` (create it first with
+   `mkdir -p data/raw/sponspeech-gcs-generation-1716975130398953`). Do not re-fetch the title snapshot: titles change over time.
 3. **Recreate the transcripts** (no audio):
 
    ```bash
@@ -79,17 +83,24 @@ All views hold the same records in the same order with the same `sample_id`, `to
 `test_amb.jsonl` is SponSpeech's second test set: `split: "test"`, `metadata.source_split: "test-amb"`; never
 concatenate it with `test.jsonl` and report it separately (D6).
 
-## Getting a release from Google Drive (after it is published)
+## Getting the release from Google Drive
 
-Each release `<id>` is published as a folder in [RECAP -NLP2](https://drive.google.com/drive/folders/1ZKDNnRHXsLJf3UjOdKVgQ0bYpo12IQfH?usp=sharing)
-containing `<id>-processed.tar.gz`, `<id>-splits.tar.gz`, `<id>-provenance.tar.gz` (raw manifest, title snapshot,
-extraction logs; only needed to rebuild from source), `<id>.SHA256SUMS`, `<id>-RELEASE_NOTES.md` and
-`SPONSPEECH_LICENSE_AND_ATTRIBUTION.txt`. A re-packaged release gets a new folder `<id>-rev<N>` with unchanged file
-names. The old Drive folder `sponspeech-m1-v1-rev2` contains version 1; it is not the corrected version 2.
-Data/selection changes require a new release ID, not replacement files under an old name. From the repository root:
+The team Drive folder [`dataset/`](https://drive.google.com/drive/folders/1jVl5pOQ6PvWPQ6MQxXLcbUksJJ1KDo5u) holds:
+
+- `sponspeech-m1-v2-handoff.zip`: the current release, 224,632,100 bytes, SHA-256
+  `1e4b4a9504c68cd8e3af8d6a2a0ef7de5de0146c76457752a56a90dcf6504b9f` ([DATA_RELEASE_VALIDATION.md](../docs/DATA_RELEASE_VALIDATION.md));
+- `sponspeech-m1-v1-rev2/`: version 1, superseded and kept as history only.
+
+The ZIP contains one folder, `sponspeech-m1-v2/`, with seven files: `<id>-processed.tar.gz`,
+`<id>-splits.tar.gz`, `<id>-provenance.tar.gz` (raw manifest, title snapshot, extraction logs; only
+needed to rebuild from source), `<id>.SHA256SUMS`, `<id>-RELEASE_NOTES.md`, `<id>-VALIDATION.json` and
+`SPONSPEECH_LICENSE_AND_ATTRIBUTION.txt` (here `<id>` is `sponspeech-m1-v2`). Data or selection changes
+need a new release ID, not replacement files under an old name. Check the ZIP's SHA-256, unzip it, then
+run these from the extracted `sponspeech-m1-v2/` folder, with `data/` meaning the repository's data folder:
 
 ```bash
 shasum -a 256 -c <id>.SHA256SUMS
+mkdir -p data/processed data/splits
 tar -xzf <id>-processed.tar.gz -C data/processed
 tar -xzf <id>-splits.tar.gz -C data/splits
 (cd data/processed/<id> && shasum -a 256 -c SHA256SUMS)
@@ -115,7 +126,7 @@ train = [r for r in load_records(f"{rel}/mode_A/train.jsonl") if r["sample_id"] 
   primary casing and joint metrics (punctuation at those positions is still scored); report all-token scores separately.
 - `benchmark_native/` is only for comparison with the original SponSpeech four-class benchmark; never compare its
   scores with canonical mode A scores as if the gold labels were identical.
-- Every canonical A/C sequence ends in PERIOD or QUESTION; Member 5 decides whether to also report scores without the final token.
+- Every canonical A/C sequence ends in PERIOD or QUESTION, so the evaluation also reports scores without the final token (the `non_final` view).
 
 ## Release validation and immutability
 

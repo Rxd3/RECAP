@@ -1,0 +1,395 @@
+{
+ "blocks": {
+  "punctuation/all": {
+   "accuracy": 0.91399,
+   "confusion": [
+    [
+     410067,
+     7326,
+     2015,
+     249,
+     74,
+     75,
+     58,
+     306
+    ],
+    [
+     14621,
+     16502,
+     2849,
+     325,
+     156,
+     86,
+     91,
+     438
+    ],
+    [
+     4364,
+     4093,
+     15198,
+     1004,
+     154,
+     59,
+     99,
+     140
+    ],
+    [
+     578,
+     302,
+     1028,
+     820,
+     15,
+     5,
+     5,
+     20
+    ],
+    [
+     52,
+     46,
+     35,
+     4,
+     14,
+     1,
+     1,
+     2
+    ],
+    [
+     130,
+     69,
+     31,
+     2,
+     2,
+     35,
+     1,
+     3
+    ],
+    [
+     59,
+     53,
+     24,
+     1,
+     1,
+     0,
+     1,
+     0
+    ],
+    [
+     332,
+     160,
+     86,
+     9,
+     7,
+     2,
+     7,
+     12
+    ]
+   ],
+   "empty_support": false,
+   "labels": [
+    "O",
+    "COMMA",
+    "PERIOD",
+    "QUESTION",
+    "EXCLAMATION",
+    "COLON",
+    "SEMICOLON",
+    "DASH"
+   ],
+   "macro_f1": 0.241429,
+   "macro_f1_ci": {
+    "groups": 314,
+    "high": 0.252212,
+    "level": 0.95,
+    "low": 0.229064,
+    "resamples": 1000,
+    "seed": 2026,
+    "unit": "group_id"
+   },
+   "macro_over": [
+    "COMMA",
+    "PERIOD",
+    "QUESTION",
+    "EXCLAMATION",
+    "COLON",
+    "SEMICOLON",
+    "DASH"
+   ],
+   "micro": {
+    "f1": 0.55114,
+    "precision": 0.602244,
+    "recall": 0.50803
+   },
+   "per_class": {
+    "COLON": {
+     "f1": 0.130597,
+     "precision": 0.13308,
+     "predicted": 263,
+     "recall": 0.128205,
+     "support": 273
+    },
+    "COMMA": {
+     "f1": 0.518776,
+     "precision": 0.577983,
+     "predicted": 28551,
+     "recall": 0.470571,
+     "support": 35068
+    },
+    "DASH": {
+     "f1": 0.015625,
+     "precision": 0.013029,
+     "predicted": 921,
+     "recall": 0.019512,
+     "support": 615
+    },
+    "EXCLAMATION": {
+     "f1": 0.048443,
+     "precision": 0.033097,
+     "predicted": 423,
+     "recall": 0.090323,
+     "support": 155
+    },
+    "O": {
+     "f1": 0.96444,
+     "precision": 0.953194,
+     "predicted": 430203,
+     "recall": 0.975955,
+     "support": 420170
+    },
+    "PERIOD": {
+     "f1": 0.655411,
+     "precision": 0.714662,
+     "predicted": 21266,
+     "recall": 0.605233,
+     "support": 25111
+    },
+    "QUESTION": {
+     "f1": 0.316175,
+     "precision": 0.339685,
+     "predicted": 2414,
+     "recall": 0.295709,
+     "support": 2773
+    },
+    "SEMICOLON": {
+     "f1": 0.004975,
+     "precision": 0.003802,
+     "predicted": 263,
+     "recall": 0.007194,
+     "support": 139
+    }
+   },
+   "scored_positions": 484304
+  },
+  "punctuation/non_final": {
+   "accuracy": 0.91457,
+   "confusion": [
+    [
+     410067,
+     7326,
+     2015,
+     249,
+     74,
+     75,
+     58,
+     306
+    ],
+    [
+     14621,
+     16502,
+     2849,
+     325,
+     156,
+     86,
+     91,
+     438
+    ],
+    [
+     4361,
+     4093,
+     4284,
+     403,
+     154,
+     59,
+     99,
+     140
+    ],
+    [
+     578,
+     302,
+     263,
+     369,
+     15,
+     5,
+     5,
+     20
+    ],
+    [
+     52,
+     46,
+     35,
+     4,
+     14,
+     1,
+     1,
+     2
+    ],
+    [
+     130,
+     69,
+     31,
+     2,
+     2,
+     35,
+     1,
+     3
+    ],
+    [
+     59,
+     53,
+     24,
+     1,
+     1,
+     0,
+     1,
+     0
+    ],
+    [
+     332,
+     160,
+     86,
+     9,
+     7,
+     2,
+     7,
+     12
+    ]
+   ],
+   "empty_support": false,
+   "labels": [
+    "O",
+    "COMMA",
+    "PERIOD",
+    "QUESTION",
+    "EXCLAMATION",
+    "COLON",
+    "SEMICOLON",
+    "DASH"
+   ],
+   "macro_f1": 0.191553,
+   "macro_f1_ci": {
+    "groups": 314,
+    "high": 0.202332,
+    "level": 0.95,
+    "low": 0.178639,
+    "resamples": 1000,
+    "seed": 2026,
+    "unit": "group_id"
+   },
+   "macro_over": [
+    "COMMA",
+    "PERIOD",
+    "QUESTION",
+    "EXCLAMATION",
+    "COLON",
+    "SEMICOLON",
+    "DASH"
+   ],
+   "micro": {
+    "f1": 0.457411,
+    "precision": 0.51286,
+    "recall": 0.412782
+   },
+   "per_class": {
+    "COLON": {
+     "f1": 0.130597,
+     "precision": 0.13308,
+     "predicted": 263,
+     "recall": 0.128205,
+     "support": 273
+    },
+    "COMMA": {
+     "f1": 0.518776,
+     "precision": 0.577983,
+     "predicted": 28551,
+     "recall": 0.470571,
+     "support": 35068
+    },
+    "DASH": {
+     "f1": 0.015625,
+     "precision": 0.013029,
+     "predicted": 921,
+     "recall": 0.019512,
+     "support": 615
+    },
+    "EXCLAMATION": {
+     "f1": 0.048443,
+     "precision": 0.033097,
+     "predicted": 423,
+     "recall": 0.090323,
+     "support": 155
+    },
+    "O": {
+     "f1": 0.964444,
+     "precision": 0.953201,
+     "predicted": 430200,
+     "recall": 0.975955,
+     "support": 420170
+    },
+    "PERIOD": {
+     "f1": 0.369629,
+     "precision": 0.446855,
+     "predicted": 9587,
+     "recall": 0.315162,
+     "support": 13593
+    },
+    "QUESTION": {
+     "f1": 0.252826,
+     "precision": 0.270925,
+     "predicted": 1362,
+     "recall": 0.236994,
+     "support": 1557
+    },
+    "SEMICOLON": {
+     "f1": 0.004975,
+     "precision": 0.003802,
+     "predicted": 263,
+     "recall": 0.007194,
+     "support": 139
+    }
+   },
+   "scored_positions": 471570
+  }
+ },
+ "counts": {
+  "ignored_prediction_ids": 0,
+  "sequences": 12734,
+  "tokens": 484304
+ },
+ "inputs": {
+  "gold": {
+   "path": "data/processed/sponspeech-m1-v2/mode_B/test_amb.jsonl",
+   "sha256": "a25d57177ea8c0497a8ec92f9077bad3a83138da4c32a82bc7267057ff7a5c81"
+  },
+  "ids": {
+   "path": "data/splits/sponspeech-m1-v2/primary_eval/test_amb_mode_B.ids",
+   "sha256": "7e58a830903d3c271614acef04d878d094a12d390e9826cad7271b831d49253e"
+  },
+  "manifest": {
+   "path": "c1/tg_B_test_amb.manifest.json",
+   "sha256": "bb558142ceefe6e4c6616bbbeeb6a3bb35c2aeca31092769eadaed8cebb317c9"
+  },
+  "masks": null,
+  "predictions": {
+   "path": "c1/tg_B_test_amb.jsonl",
+   "sha256": "60f2740c9d97a5ce794e23e665c1bd2ba08a0c05410835045d29918c4f1c3a2c"
+  }
+ },
+ "label_mode": "B",
+ "model_name": "crf_improved_tau0.45_gamma0.5",
+ "policy_version": "m1-v2",
+ "primary": {
+  "block": "punctuation/all",
+  "metric": "macro_f1",
+  "value": 0.241429
+ },
+ "schema": "recap-eval-v1"
+}

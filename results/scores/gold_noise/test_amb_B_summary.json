@@ -1,0 +1,19 @@
+{
+  "release": "sponspeech-m1-v2",
+  "mode": "B",
+  "split": "test_amb",
+  "records": 12734,
+  "records_per_rule": {
+    "speaker_label": 63,
+    "cue_number": 0,
+    "auto_caption_video": 0
+  },
+  "records_flagged": 63,
+  "gold_colon_labels": 273,
+  "speaker_label_colons": 76,
+  "speaker_label_colon_share": 0.278388,
+  "input_sha256": {
+    "processed/sponspeech-m1-v2/mode_B/test_amb.jsonl": "a25d57177ea8c0497a8ec92f9077bad3a83138da4c32a82bc7267057ff7a5c81",
+    "splits/sponspeech-m1-v2/primary_eval/test_amb_mode_B.ids": "7e58a830903d3c271614acef04d878d094a12d390e9826cad7271b831d49253e"
+  }
+}

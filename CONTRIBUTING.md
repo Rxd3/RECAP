@@ -1,9 +1,7 @@
 # Contributing
 
 Work on your assigned member branch and open focused pull requests into `main`.
-Use [TEAM_TASKS.md](TEAM_TASKS.md) to find owners/reviewers and
-[docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) for detailed beginner commands.
-Current code is intentionally unfinished; a placeholder is not a working model.
+Use [TEAM_TASKS.md](TEAM_TASKS.md) to find owners and reviewers.
 
 ## Daily workflow
 
@@ -11,34 +9,44 @@ Current code is intentionally unfinished; a placeholder is not a working model.
 2. Check `git status`, switch to your branch, then merge updated `main` regularly.
 3. Edit primarily your assigned files. Discuss shared interfaces before coding
    and ask affected owners to review coordinated changes.
-4. Keep logic in `src/punct_restore/` and future scripts thin. Put adjustable
+4. Keep logic in `src/punct_restore/` and scripts thin. Put adjustable
    settings in `configs/` and use repository-relative paths.
 5. Add small meaningful tests with actual behavior. Tests must not download data,
    contact live APIs, require pretrained weights or need a GPU.
 6. Inspect `git diff`, stage named files, inspect `git diff --cached`, then commit.
-7. Push only to the team's Project 2 remote after it has been provided. Open a
-   PR with problem/behavior, affected contracts, checks and pending work.
+7. Push to the team remote (`https://github.com/Rxd3/RECAP.git`). Open a PR with the
+   problem or behaviour, affected contracts, checks run and open work.
 8. Obtain review before merging into `main`. Do not force-push another member's
    branch or make direct feature-development commits to `main`.
 
 ## Environment and validation
 
-Follow the README environment setup. Runtime dependencies are planned, not yet
-installed or pinned for experiments. Add only needed dependencies with a clear
-reason and a compatible tested environment in implementation PRs.
+Follow the README environment setup. The completed HMM study pins PyYAML in
+`requirements-hmm.txt` and records its tested Python version. Add only needed
+dependencies with a clear reason and a compatible tested environment in
+implementation PRs.
 
-The three `tests/test_*_contract.py` files contain TODO plans, not real tests.
-Do not call a zero-test collection a successful functional test. Until behavior
-exists, safe checks are Python syntax parsing, TOML/YAML parsing, label counts,
-file/link structure and ignore rules, as recorded in
-[initial verification](docs/INITIAL_VERIFICATION.md). Once genuine tests exist:
+The whole suite runs with pytest from the repository root, on small fixtures only.
+It must pass before you open a pull request and again before it is merged:
 
 ```powershell
-python -m pytest
+python -m pytest -q
 ```
 
-No training, feature extraction, inference or scoring is expected to work today.
-The six task scripts intentionally return a nonzero exit with an unfinished message.
+- **One branch per member:** work on your `feat/m<N>-...` branch (owners and branches are in
+  [TEAM_TASKS.md](TEAM_TASKS.md)), not on `main`.
+- **Conventional commit subjects:** `type(scope): summary`, for example
+  `feat(data): add verified preprocessing pipeline` or `fix(eval): ...`, `docs: ...`, `test: ...`,
+  `chore: ...`.
+- **Stage named files, check, then commit:** `git status`, `git add <paths>` (not `git add .`),
+  `git diff --cached`, `git commit`. Merge `main` into your branch regularly and never force-push
+  another member's branch.
+- **Merge through pull requests, as merge commits,** so every member keeps their own commits. The
+  integration branch `release/final` merged the member branches in this order: M5 evaluation,
+  M2 HMM, M3 CRF, M6 integration (`git log --merges release/final`).
+
+Completed results and how to rerun them: [REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md),
+[HMM results](experiments/HMM_RESULTS.md) and [CRF results](docs/EVALUATION_RESULTS_CRF.md).
 
 ## Data, artifacts and claims
 

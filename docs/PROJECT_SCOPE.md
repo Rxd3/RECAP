@@ -2,32 +2,31 @@
 
 RECAP — Restoring English Casing and Punctuation.
 COE025 Group Project 2: Extended Punctuation and Truecasing Restoration Using
-Sequence Labeling. Six members; Python; one independent repository.
+Sequence Labeling. Six members; Python; one repository.
 
-## Current deliverable
+## Deliverable
 
-Initial scaffolding only: package folders, intentionally unfinished modules,
-configuration templates, common contracts, team board, Git workflow and local
-branches. No training algorithms, probability estimation, Viterbi implementation,
-feature extraction, scoring, text reconstruction, or data download is included.
+Restore the punctuation mark after each English word and the casing of each word, on SponSpeech
+transcripts, in three label modes: A (4 punctuation labels), B (8) and C (4 punctuation × 3 casing
+= 12 joint labels). Compare the three models the course asks for on fixed, shared splits: an HMM
+with Viterbi decoding, a linear-chain CRF with basic features, and the same CRF with improved
+features.
 
-## Future research scope
+All three are trained and evaluated. Results: [EVALUATION_RESULTS.md](EVALUATION_RESULTS.md) (HMM and
+shortcut) and [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) (CRF, final test results).
+The course-baseline settings (HMM smoothing, CRF settings, the plain threshold τ) were fixed or chosen on validation before any test result. The comparison methods in sections 13–14 of [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) (simulated ASR noise, gap classifier, hidden-event LM, prior-adjusted decoding, question lookback, factored casing) were added on 2026-10-30, after the first test report, in response to a review that cited test results. They are exploratory; their settings were still chosen on validation only, and each test list was predicted once. The team's additions beyond the course baselines are listed in the
+[README](../README.md#what-is-new).
 
-Restore a punctuation boundary after each English word and casing of each word.
-Compare HMM + Viterbi, a basic linear-chain CRF, and that CRF with improved
-features on fixed, shared splits. Support A (4 punctuation), B (8 punctuation),
-and C (4 punctuation × 3 casing = 12 joint labels) through configuration.
-Investigate clean text and a separately verified ASR condition. Future separate
-casing models are a research question; no new label types are introduced here.
+## Out of scope
 
-## Limits and evidence
+- Audio, prosody and real speech-recognition (ASR) output: RECAP uses the transcripts only, and there is no
+  real-ASR condition (a simulated ASR-noise check is in [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §13).
+- Neural models (for example BiLSTM-CRF or transformers), GPU frameworks and pretrained-model
+  downloads.
+- An interactive application beyond the command-line demo (`scripts/run_demo.py`).
 
-Do not claim ready-made extended annotations, source compatibility, dataset
-sizes, trained models, or measured gains before verification. BiLSTM-CRF, GPU
-frameworks, pretrained model downloads and a finished interactive UI are outside
-initial setup. The user separately authorized creating and publishing the Project 2
-repository under their account. NALTRA remains a read-only reference. Deadlines
-and personal names remain unassigned.
+## Evidence rules
 
-Success later means reproducible data, comparable within-task experiments,
-honest error analysis, an integrated demo, and an evidence-based presentation.
+Every reported number comes from an evaluator output file under `results/scores/`. Validation is
+used for selection; each frozen model predicts the test lists once. Limitations and negative
+findings are reported with the results.

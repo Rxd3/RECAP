@@ -1,0 +1,412 @@
+{
+ "block": "punctuation/all",
+ "errors_total": 59145,
+ "examples": [
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 what i've been talking about that the vast majority of christians do not, do not, interpret that passage the way i'm interpreting it.",
+   "group_id": "EEj137ADBzY",
+   "position": 48,
+   "pred": "O",
+   "pred_text": "\u2026 what i've been talking about that the vast majority of christians do not do not interpret that passage the way i'm interpreting it.",
+   "sample_id": "sponspeech:dev:EEj137ADBzY-43"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "and then we take those videos and edit them. and we, you know, i use camtasia and we timecode them.",
+   "group_id": "Vy_Da5DC35I",
+   "position": 10,
+   "pred": "O",
+   "pred_text": "and then we take those videos and edit them and we you know, i use camtasia and we timecode them.",
+   "sample_id": "sponspeech:dev:Vy_Da5DC35I-157"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "and i don't know which languages you're looking at, or what country or region you're looking at.",
+   "group_id": "r1lc2fmU_Rg",
+   "position": 8,
+   "pred": "O",
+   "pred_text": "and i don't know, which languages you're looking at or what country or region you're looking at.",
+   "sample_id": "sponspeech:dev:r1lc2fmU_Rg-1427"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "it could be a mantra. taking correction without defense. happy day, happy day. i like that, taking \u2026",
+   "group_id": "ARYwJXcPpoo",
+   "position": 4,
+   "pred": "O",
+   "pred_text": "it could be a mantra taking correction without defense happy day happy day i like that taking \u2026",
+   "sample_id": "sponspeech:dev:ARYwJXcPpoo-13"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 from, so there was a researchers in 2005, which was kind of academic. and then there were two talks at black hat d.c..",
+   "group_id": "Y-0oHxzpJ-8",
+   "position": 20,
+   "pred": "O",
+   "pred_text": "\u2026 from so there was a researchers in 2005, which was kind of academic and then there were two talks at black hat d.c..",
+   "sample_id": "sponspeech:dev:Y-0oHxzpJ-8-155"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "she was one of our directors for purdue space day. so welcome jen. then to jen's left is margot wint.",
+   "group_id": "kRsB1irX_5E",
+   "position": 9,
+   "pred": "O",
+   "pred_text": "she was one of our directors for purdue space day so welcome jen then to jen's left is margot wint.",
+   "sample_id": "sponspeech:dev:kRsB1irX_5E-34"
+  },
+  {
+   "gold": "O",
+   "gold_text": "although, will anybody ever get hired again for anything? it's like a very scary time.",
+   "group_id": "MmJRbY53RwE",
+   "position": 6,
+   "pred": "COMMA",
+   "pred_text": "although will anybody ever get hired again, for anything it's like a very scary time.",
+   "sample_id": "sponspeech:dev:MmJRbY53RwE-416"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 2020, we didn't have nfts mentioned, we didn't have anything regarding algorithmic stablecoins mentioned.",
+   "group_id": "mkUcA44eTmY",
+   "position": 24,
+   "pred": "COMMA",
+   "pred_text": "\u2026 2020 we didn't have nfts mentioned we didn't have anything regarding algorithmic stablecoins, mentioned.",
+   "sample_id": "sponspeech:dev:mkUcA44eTmY-59"
+  },
+  {
+   "gold": "O",
+   "gold_text": "playbook 2026 is transformational, where its internal library learning impacting our external library learning \u2026",
+   "group_id": "vzzrSpA9Xo8",
+   "position": 1,
+   "pred": "COMMA",
+   "pred_text": "playbook 2026, is transformational where its internal library learning impacting our external library learning \u2026",
+   "sample_id": "sponspeech:dev:vzzrSpA9Xo8-208"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "how do we create a safe space? how do we create a culture where people can be authentic and \u2026",
+   "group_id": "UQKnxulx0WA",
+   "position": 6,
+   "pred": "O",
+   "pred_text": "how do we create a safe space how do we create a culture where people can be authentic and \u2026",
+   "sample_id": "sponspeech:dev:UQKnxulx0WA-198"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "deist, okay, where's our mic? oh it's this young man.",
+   "group_id": "gMcBTwru5go",
+   "position": 4,
+   "pred": "O",
+   "pred_text": "deist, okay, where's our mic oh, it's this young man.",
+   "sample_id": "sponspeech:dev:gMcBTwru5go-30"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "so the trivia question is, what is a pollutant? anybody? it's whatever the government says it is, right?",
+   "group_id": "zX0Zl7uQXbw",
+   "position": 9,
+   "pred": "O",
+   "pred_text": "so the trivia question is what is a pollutant anybody it's whatever the government says it is right?",
+   "sample_id": "sponspeech:dev:zX0Zl7uQXbw-334"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 off from our chimpanzee relatives, why would we have this emotion of awe?",
+   "group_id": "1StHS716-D0",
+   "position": 53,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 off from our chimpanzee relatives why would we have this emotion of awe.",
+   "sample_id": "sponspeech:dev:1StHS716-D0-35"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 live. no, but it's going to be recorded multi track. what's going on?",
+   "group_id": "KoI34I2kyUA",
+   "position": 35,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 live no but it's going to be recorded multi track what's going on.",
+   "sample_id": "sponspeech:dev:KoI34I2kyUA-266"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "uh, what do you think of freebsd and all the other bsds?",
+   "group_id": "r1lc2fmU_Rg",
+   "position": 11,
+   "pred": "PERIOD",
+   "pred_text": "uh, what do you think of freebsd and all the other bsds.",
+   "sample_id": "sponspeech:dev:r1lc2fmU_Rg-1463"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 areas of the company. and then they each have their own little turf. but ideally you wanna avoid these ego, these people with huge egos \u2026",
+   "group_id": "712noCp8JlE",
+   "position": 37,
+   "pred": "COMMA",
+   "pred_text": "\u2026 areas of the company and then they each have their own little turf, but ideally you wanna avoid these ego these people with huge egos \u2026",
+   "sample_id": "sponspeech:dev:712noCp8JlE-82"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "okay. people who represent your company and you're paying them for, you know, \u2026",
+   "group_id": "8TFw_Tew8Wc",
+   "position": 0,
+   "pred": "COMMA",
+   "pred_text": "okay, people who represent your company and you're paying them for you know, \u2026",
+   "sample_id": "sponspeech:dev:8TFw_Tew8Wc-83"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 every list of what the web superpower is, and like, the linkable, yeah. it's one of the things we always list.",
+   "group_id": "GJRkEYRHVsk",
+   "position": 17,
+   "pred": "COMMA",
+   "pred_text": "\u2026 every list of what the web superpower is and like the linkable, yeah, it's one of the things we always list.",
+   "sample_id": "sponspeech:dev:GJRkEYRHVsk-115"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 poor, mahatma gandhi is all awe, it's all just transforming history through nonviolence that we really respond to other people with a sense of wonder \u2026",
+   "group_id": "1StHS716-D0",
+   "position": 46,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 poor mahatma gandhi is all awe it's all just transforming history through nonviolence. that we really respond to other people with a sense of wonder \u2026",
+   "sample_id": "sponspeech:dev:1StHS716-D0-77"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 is really nice. this is way more flattering for brides, especially for brides like her, who are gorgeous and wantably flattered. and i love here, \u2026",
+   "group_id": "G3RIq_F2jC8",
+   "position": 20,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 is really nice this is way more flattering for brides. especially for brides. like her who are gorgeous and wantably, flattered, and i love here \u2026",
+   "sample_id": "sponspeech:dev:G3RIq_F2jC8-22"
+  },
+  {
+   "gold": "O",
+   "gold_text": "but if you have government with its unique ability, wrongness can go on for a very long time at very high cost.",
+   "group_id": "pF3ME1phx5Q",
+   "position": 9,
+   "pred": "PERIOD",
+   "pred_text": "but if you have government with its unique ability wrongness. can go on for a very long time at very high cost.",
+   "sample_id": "sponspeech:dev:pF3ME1phx5Q-274"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 these this requires, you know. attila the hun, alexander the great genghis khan.",
+   "group_id": "X4pZA3OFJaI",
+   "position": 33,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 these this requires you know, attila the hun alexander the great genghis, khan?",
+   "sample_id": "sponspeech:dev:X4pZA3OFJaI-720"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 and we'll say like, make us paperclips. and it's like ok, making paperclips.",
+   "group_id": "nCJ_NZ1e2oY",
+   "position": 22,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 and we'll say like make us paperclips? and it's like ok, making paperclips?",
+   "sample_id": "sponspeech:dev:nCJ_NZ1e2oY-220"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "build the paper clips. yeah, yeah, right.",
+   "group_id": "nCJ_NZ1e2oY",
+   "position": 6,
+   "pred": "QUESTION",
+   "pred_text": "build the paper clips yeah, yeah, right?",
+   "sample_id": "sponspeech:dev:nCJ_NZ1e2oY-382"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "hmm? it's the most fundamental requirement, but now people are pushing it to \u2026",
+   "group_id": "FkOwRj2iZxQ",
+   "position": 0,
+   "pred": "COMMA",
+   "pred_text": "hmm, it's the most fundamental requirement but now people are pushing it to \u2026",
+   "sample_id": "sponspeech:dev:FkOwRj2iZxQ-26"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "when you when you talk about it, you know what i mean? like like when somebody reads that article, they know that they don't \u2026",
+   "group_id": "L4xH_WqnP8Y",
+   "position": 11,
+   "pred": "COMMA",
+   "pred_text": "when you when you talk about it you know, what i mean, like like when somebody reads that article they know, that they don't \u2026",
+   "sample_id": "sponspeech:dev:L4xH_WqnP8Y-333"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "yes? right now, probably that's all they are capable of.",
+   "group_id": "OzA6ZXpMH64",
+   "position": 0,
+   "pred": "COMMA",
+   "pred_text": "yes, right now probably that's all they are capable of.",
+   "sample_id": "sponspeech:dev:OzA6ZXpMH64-30"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 themselves to all sorts of chemicals for beauty products and tanning and whatnot, and, you know, and they're nails and getting perms and and bleaches \u2026",
+   "group_id": "Fync2ldqHWc",
+   "position": 80,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 themselves to all sorts of chemicals for beauty products and tanning and whatnot. and you know, and they're nails and getting perms and and bleaches \u2026",
+   "sample_id": "sponspeech:dev:Fync2ldqHWc-157"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 love. if you say joy, they say divine joy. if you say bliss, they say divine bliss. you don't need any god's help to be \u2026",
+   "group_id": "I9wMOxjNFDA",
+   "position": 19,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 love if you say joy they say divine joy if you say bliss. they say divine bliss. you don't need any god's help to be \u2026",
+   "sample_id": "sponspeech:dev:I9wMOxjNFDA-15"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 children in their schools study, and they know from history that indian sculptors, indian labor, indian elephants came to work on the phoenician temples. if \u2026",
+   "group_id": "Ilj5ikf5E7o",
+   "position": 13,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 children in their schools study and they know, from history that indian sculptors. indian labor indian elephants, came to work on the phoenician temples if \u2026",
+   "sample_id": "sponspeech:dev:Ilj5ikf5E7o-108"
+  },
+  {
+   "gold": "O",
+   "gold_text": "in german, the book is called sprache ohne worte, speaking without words.",
+   "group_id": "DdxPLoSzzLk",
+   "position": 7,
+   "pred": "QUESTION",
+   "pred_text": "in german the book is called sprache, ohne? worte, speaking without words.",
+   "sample_id": "sponspeech:dev:DdxPLoSzzLk-139"
+  },
+  {
+   "gold": "O",
+   "gold_text": "felix91gr, right, so definitely well right felix91gr, yeah, that's, that's a, that's a really good point because felix91gr, \u2026",
+   "group_id": "dSMQ1Iy3S1o",
+   "position": 5,
+   "pred": "QUESTION",
+   "pred_text": "felix91gr, right so definitely well, right? felix91gr, yeah, that's that's a that's a really good point because felix91gr \u2026",
+   "sample_id": "sponspeech:dev:dSMQ1Iy3S1o-65"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 idea that came out of rational optimist was that basically it's about recombining ideas, that you take two ideas, meld them together and make a \u2026",
+   "group_id": "pF3ME1phx5Q",
+   "position": 38,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 idea that came out of rational optimist was that basically it's about recombining? ideas that you take two ideas meld them together and make a \u2026",
+   "sample_id": "sponspeech:dev:pF3ME1phx5Q-15"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "you can do japa, tapa, dharana, dhyana, samadhi, shoonya, samyama, or you might have just mastered the art of \u2026",
+   "group_id": "Hzi3PDz1AWU",
+   "position": 6,
+   "pred": "QUESTION",
+   "pred_text": "you can do japa tapa dharana, dhyana? samadhi, shoonya samyama or you might have just mastered the art of \u2026",
+   "sample_id": "sponspeech:dev:Hzi3PDz1AWU-6"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 they are sitting there, if you go there to manikarnika and harishchandra ghat, aghoris will be sitting there, watching. everybody who'll come, they enquire, how \u2026",
+   "group_id": "VMCHDRcDSNw",
+   "position": 13,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 they are sitting there if you go there to manikarnika and harishchandra, ghat? aghoris, will be sitting there watching everybody who'll come they enquire how \u2026",
+   "sample_id": "sponspeech:dev:VMCHDRcDSNw-4"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 animals grouped in our collection and to our primary collection, rest, rehabs, stranding, etcetera. so go ahead to the next one there.",
+   "group_id": "XV9Qlbw_-vg",
+   "position": 74,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 animals grouped in our collection and to our primary collection rest rehabs, stranding? etcetera, so go ahead to the next one there.",
+   "sample_id": "sponspeech:dev:XV9Qlbw_-vg-199"
+  }
+ ],
+ "inputs": {
+  "gold": {
+   "path": "data/processed/sponspeech-m1-v2/mode_A/validation.jsonl",
+   "sha256": "7ececedac4e58c307df0daaf6190b61b2ea715344b72a2910d9541e07b1ecf27"
+  },
+  "ids": {
+   "path": "data/splits/sponspeech-m1-v2/primary_eval/validation_mode_A.ids",
+   "sha256": "15e43a80088a2189f0f0d34c6e1fc5dd867a2ee42637fc5e80d106c7eed487db"
+  },
+  "masks": null,
+  "predictions": {
+   "path": "validation/predictions.jsonl",
+   "sha256": "5593b14cf67dcbf5178235af5f783f01df0f9e9737e43f5033d025adfc76d62e"
+  }
+ },
+ "label_mode": "A",
+ "model_name": "hmm",
+ "pair_counts": [
+  {
+   "count": 37206,
+   "gold": "COMMA",
+   "pred": "O"
+  },
+  {
+   "count": 13108,
+   "gold": "PERIOD",
+   "pred": "O"
+  },
+  {
+   "count": 4239,
+   "gold": "O",
+   "pred": "COMMA"
+  },
+  {
+   "count": 1545,
+   "gold": "QUESTION",
+   "pred": "O"
+  },
+  {
+   "count": 1438,
+   "gold": "QUESTION",
+   "pred": "PERIOD"
+  },
+  {
+   "count": 914,
+   "gold": "PERIOD",
+   "pred": "COMMA"
+  },
+  {
+   "count": 259,
+   "gold": "O",
+   "pred": "PERIOD"
+  },
+  {
+   "count": 199,
+   "gold": "PERIOD",
+   "pred": "QUESTION"
+  },
+  {
+   "count": 114,
+   "gold": "QUESTION",
+   "pred": "COMMA"
+  },
+  {
+   "count": 93,
+   "gold": "COMMA",
+   "pred": "PERIOD"
+  },
+  {
+   "count": 20,
+   "gold": "O",
+   "pred": "QUESTION"
+  },
+  {
+   "count": 10,
+   "gold": "COMMA",
+   "pred": "QUESTION"
+  }
+ ],
+ "per_pair": 3,
+ "schema": "recap-errors-v1",
+ "seed": 2026
+}

@@ -1,0 +1,415 @@
+{
+ "block": "punctuation/all",
+ "errors_total": 31614,
+ "examples": [
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 that you walk in busting with emotion and to elicit whatever you need, you're going to have to first feel it in yourself. And it \u2026",
+   "group_id": "8P5o-XQ4C-E",
+   "position": 15,
+   "pred": "O",
+   "pred_text": "\u2026 that you walk in busting with emotion and to elicit, whatever you need you're going to have to first feel it in yourself, and it \u2026",
+   "sample_id": "sponspeech:test:8P5o-XQ4C-E-482"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 a long time ago, which turned into a book of a different title, that book is called Assimilation Blues, Black Families in a White Community, \u2026",
+   "group_id": "NVn-Ug_XTpw",
+   "position": 46,
+   "pred": "O",
+   "pred_text": "\u2026 a long time ago, which turned into a book of a different title that book is called assimilation blues black families in a white community \u2026",
+   "sample_id": "sponspeech:test:NVn-Ug_XTpw-131"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "Two warm afternoons, and I found I wasn't eating nearly as well.",
+   "group_id": "ZRVKU0p-LHE",
+   "position": 2,
+   "pred": "O",
+   "pred_text": "Two warm afternoons and I found, I wasn't eating nearly as well.",
+   "sample_id": "sponspeech:test:ZRVKU0p-LHE-381"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 being gathered up by police departments because there are huge privacy concerns there and we don't want them sucking down all the information about our \u2026",
+   "group_id": "BvGdNpvulhE",
+   "position": 56,
+   "pred": "COMMA",
+   "pred_text": "\u2026 being gathered up by police departments because there are huge privacy concerns, there, and we don't want them sucking down all the information about our \u2026",
+   "sample_id": "sponspeech:test:BvGdNpvulhE-190"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 consultant, sometimes coming to do professional development in schools that were majority white but had a significant population of black students, enough for them to \u2026",
+   "group_id": "NVn-Ug_XTpw",
+   "position": 79,
+   "pred": "COMMA",
+   "pred_text": "\u2026 consultant, sometimes coming to do professional development in schools that were majority white, but had a significant population of black students enough for them to \u2026",
+   "sample_id": "sponspeech:test:NVn-Ug_XTpw-90"
+  },
+  {
+   "gold": "O",
+   "gold_text": "Otherwise this just bloody sappy love without any joy and bliss around it \u2026",
+   "group_id": "mFpeT662yJc",
+   "position": 0,
+   "pred": "COMMA",
+   "pred_text": "Otherwise, this just bloody sappy love without any joy and bliss around it \u2026",
+   "sample_id": "sponspeech:test:mFpeT662yJc-6"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 met a lot of people at different courses, yeah, by going to societies. I used to work in campus. I used to work at Subway. \u2026",
+   "group_id": "h72oWk4xM04",
+   "position": 65,
+   "pred": "O",
+   "pred_text": "\u2026 met a lot of people at different courses. Yeah, by going to societies I used to work in campus. I used to work at subway. \u2026",
+   "sample_id": "sponspeech:test:h72oWk4xM04-52"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "I'm like, Yes. There I am. Whoo. Represented. I got very excited both every time Australia was mentioned on \u2026",
+   "group_id": "iMftglGCi_0",
+   "position": 6,
+   "pred": "O",
+   "pred_text": "I'm like, yes, there I am whoo represented. I got very excited both every time Australia was mentioned, on \u2026",
+   "sample_id": "sponspeech:test:iMftglGCi_0-50"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 well, now you said the word fragility which I think is so important. to not be ready to share, but to also enjoy for yourself \u2026",
+   "group_id": "y75_LBqYyvs",
+   "position": 18,
+   "pred": "O",
+   "pred_text": "\u2026 Well, now you said the word fragility, which I think is so important to not be ready to share, but to also enjoy for yourself \u2026",
+   "sample_id": "sponspeech:test:y75_LBqYyvs-247"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 you know, I think if you talk to Asian Americans from Southeast Asia, you know, they came at a very later period in our streak, \u2026",
+   "group_id": "dtzzvUTlZa0",
+   "position": 16,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 you know, I think if you talk to Asian Americans from Southeast Asia. You know, they came at a very later period in our streak. \u2026",
+   "sample_id": "sponspeech:test:dtzzvUTlZa0-551"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "Yeah, so this gets global attention. It would have recently gotten a huge \u2026",
+   "group_id": "mnZ_ou-0sNI",
+   "position": 0,
+   "pred": "PERIOD",
+   "pred_text": "Yeah. So this gets global attention, it would have recently gotten a huge \u2026",
+   "sample_id": "sponspeech:test:mnZ_ou-0sNI-4"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 because they're probably not going to stick around when things get ugly. Yeah, and that's literally exactly my life. And what's happened to me over \u2026",
+   "group_id": "nSVl92jJbwk",
+   "position": 35,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 because they're probably not going to stick around when things get ugly. Yeah. And that's literally exactly my life and what's happened to me over \u2026",
+   "sample_id": "sponspeech:test:nSVl92jJbwk-280"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 be sharing some words that discuss things like identity, so who you are. But also things like sexual orientation, so who you love.",
+   "group_id": "mXp5sEm6QWg",
+   "position": 19,
+   "pred": "COMMA",
+   "pred_text": "\u2026 be sharing some words that discuss things like identity. So who you are, but also things like sexual orientation, so who you love.",
+   "sample_id": "sponspeech:test:mXp5sEm6QWg-51"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 visits have been cited as a legitimate reason for protesting outside healthcare facilities. The UK legislation, if I understand it correctly, some of the witnesses \u2026",
+   "group_id": "oUDYQTwr0b0",
+   "position": 46,
+   "pred": "COMMA",
+   "pred_text": "\u2026 visits have been cited as a legitimate reason for protesting outside healthcare facilities, the UK legislation if I understand it correctly, some of the witnesses \u2026",
+   "sample_id": "sponspeech:test:oUDYQTwr0b0-290"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 interfaces where people feel engaged with the issue where they feel it responsibility. And of course, it's so visual, we see it all around us. \u2026",
+   "group_id": "yRKP9kvoJxk",
+   "position": 79,
+   "pred": "COMMA",
+   "pred_text": "\u2026 interfaces where people feel engaged with the issue where they feel it responsibility, and of course, it's so visual we see it all around us. \u2026",
+   "sample_id": "sponspeech:test:yRKP9kvoJxk-10"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 sustainable seafood, sustainable fisheries. And so, when we have this network of partners it really creates this amazing landscape from which we can do work. \u2026",
+   "group_id": "-7CrCik2Cgo",
+   "position": 29,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 sustainable seafood sustainable fisheries. And so when we have this network of partners. It really creates this amazing landscape from which we can do work. \u2026",
+   "sample_id": "sponspeech:test:-7CrCik2Cgo-27"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 the main thing that we've been working on lately. One of the other researchers, is a professor for San Jose, she took all the data \u2026",
+   "group_id": "MhGzVd_DrLw",
+   "position": 15,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 the main thing that we've been working on lately one of the other. Researchers is a professor for San Jose. She took all the data \u2026",
+   "sample_id": "sponspeech:test:MhGzVd_DrLw-105"
+  },
+  {
+   "gold": "O",
+   "gold_text": "But my dad refused to wear it and that's because he believed fervently that the Japanese community should be \u2026",
+   "group_id": "dtzzvUTlZa0",
+   "position": 6,
+   "pred": "PERIOD",
+   "pred_text": "But my dad refused to wear it. And that's because he believed fervently that the Japanese community should be \u2026",
+   "sample_id": "sponspeech:test:dtzzvUTlZa0-101"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 probiotics and metabolic health, and how does GLP-1 probiotic fit into this vision?",
+   "group_id": "BYhh9P5Kf0Q",
+   "position": 29,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 probiotics and metabolic health and how does GLP-1 probiotic fit into this vision.",
+   "sample_id": "sponspeech:test:BYhh9P5Kf0Q-130"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 your mix between just yourselves talking about a topic or just a guest? What do you feel like that mixture looks like for you? Wait, \u2026",
+   "group_id": "D_uVLUAmG4E",
+   "position": 22,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 your mix between just yourselves talking about a topic or just a guest. What do you feel like that mixture looks like for you, wait, \u2026",
+   "sample_id": "sponspeech:test:D_uVLUAmG4E-393"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "And what are the tools for this understanding?",
+   "group_id": "XJVsSV5VFC4",
+   "position": 7,
+   "pred": "PERIOD",
+   "pred_text": "And what are the tools for this understanding.",
+   "sample_id": "sponspeech:test:XJVsSV5VFC4-192"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 help me with this part that I've got, that I'm starting to develop? And so that's what I do.",
+   "group_id": "7VjUCYhY7fc",
+   "position": 83,
+   "pred": "O",
+   "pred_text": "\u2026 help me with this part that I've got that I'm starting to develop and so that's what I do.",
+   "sample_id": "sponspeech:test:7VjUCYhY7fc-187"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 to bring the frame of bees, without the queen and without the brood? More than one frame combination of brood frames, multiple frames, is it \u2026",
+   "group_id": "Yncw-5PfC0I",
+   "position": 20,
+   "pred": "O",
+   "pred_text": "\u2026 to bring the frame of bees without the queen and without the brood more than one frame combination of brood frames multiple frames is it \u2026",
+   "sample_id": "sponspeech:test:Yncw-5PfC0I-164"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "Do people describe you as kind and compassionate? Near the top of every list describing what everyone wants as a \u2026",
+   "group_id": "v7_-Zc8ByTI",
+   "position": 7,
+   "pred": "O",
+   "pred_text": "Do people describe you as kind and compassionate near the top of every list describing what everyone wants as a \u2026",
+   "sample_id": "sponspeech:test:v7_-Zc8ByTI-1"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 that schedule. And it'll make sure it's impossible to forget it, you know? So it's it's depressing to study things that then disappear.",
+   "group_id": "0AlSPyGWNr4",
+   "position": 95,
+   "pred": "COMMA",
+   "pred_text": "\u2026 that schedule and it'll make sure it's impossible to forget it. You know, so it's, it's depressing to study things that then disappear.",
+   "sample_id": "sponspeech:test:0AlSPyGWNr4-155"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 happens now because I just hadn't engaged in the idea of toys, right? Except we leveraged that. So I think we got really lucky.",
+   "group_id": "l9jBfT5KsZY",
+   "position": 49,
+   "pred": "COMMA",
+   "pred_text": "\u2026 happens now because I just hadn't engaged in the idea of toys, right, except we leveraged that so I think we got really lucky.",
+   "sample_id": "sponspeech:test:l9jBfT5KsZY-9"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "Do I have as much attention as somebody else? Maybe not. I never had any attention for what was happening in \u2026",
+   "group_id": "xSFtKjdhBTk",
+   "position": 8,
+   "pred": "COMMA",
+   "pred_text": "Do I have as much attention as somebody else, maybe not. I never had any attention for what was happening in \u2026",
+   "sample_id": "sponspeech:test:xSFtKjdhBTk-40"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 of us, we're drawn to the spiritual path because we do intuit this.",
+   "group_id": "XJVsSV5VFC4",
+   "position": 35,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 of us we're drawn to the spiritual path because we do intuit this?",
+   "sample_id": "sponspeech:test:XJVsSV5VFC4-182"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 to this. So, yeah. Prioritising and being okay with that decision, you know. So, again, the fear of missing out or, you know, I'm doomed \u2026",
+   "group_id": "h72oWk4xM04",
+   "position": 19,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 to this. So yeah, prioritising and being okay with that decision, you know? So again, the fear of missing out or you know, I'm doomed \u2026",
+   "sample_id": "sponspeech:test:h72oWk4xM04-79"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 accounts and types of things now that are associated with your Gmail account.",
+   "group_id": "ttcowRvcP34",
+   "position": 21,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 accounts and types of things. Now, that are associated with your Gmail account?",
+   "sample_id": "sponspeech:test:ttcowRvcP34-4"
+  },
+  {
+   "gold": "O",
+   "gold_text": "thousand cats and a thousand dogs out of the thousand actual cats How many did we predict were cats? This is obviously in the \u2026",
+   "group_id": "JNxcznsrRb8",
+   "position": 11,
+   "pred": "QUESTION",
+   "pred_text": "Thousand cats and a thousand dogs out of the thousand actual cats? How many did we predict were cats. This is obviously in the \u2026",
+   "sample_id": "sponspeech:test:JNxcznsrRb8-65"
+  },
+  {
+   "gold": "O",
+   "gold_text": "So from what you read, nowhere does it say that he was insecure, nowhere does it is say, \u2026",
+   "group_id": "PoSIhO-hYC8",
+   "position": 5,
+   "pred": "QUESTION",
+   "pred_text": "So from what you read nowhere? Does it say that he was insecure nowhere. Does it is say \u2026",
+   "sample_id": "sponspeech:test:PoSIhO-hYC8-101"
+  },
+  {
+   "gold": "O",
+   "gold_text": "When you get momentum you launch a Youtube channel. When you get momentum you become the \u2026",
+   "group_id": "_zS0fKSJC64",
+   "position": 3,
+   "pred": "QUESTION",
+   "pred_text": "When you get momentum? You launch a Youtube channel when you get momentum? You become the \u2026",
+   "sample_id": "sponspeech:test:_zS0fKSJC64-69"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 enough, when I came here and I was a teen services librarian, right, the teens thought I was really cool.",
+   "group_id": "dtzzvUTlZa0",
+   "position": 14,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 enough, when I came here and I was a teen services librarian, right? The teens thought I was really cool.",
+   "sample_id": "sponspeech:test:dtzzvUTlZa0-437"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "What does this mean, and how do you feel it's experienced by its members?",
+   "group_id": "dtzzvUTlZa0",
+   "position": 3,
+   "pred": "QUESTION",
+   "pred_text": "What does this mean? And how do you feel it's experienced by its members.",
+   "sample_id": "sponspeech:test:dtzzvUTlZa0-580"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "How powerful is that? In the middle of your interview, I didn't get the job, the senior partner from the firm, who \u2026",
+   "group_id": "h72oWk4xM04",
+   "position": 9,
+   "pred": "QUESTION",
+   "pred_text": "How powerful is that in the middle of your interview? I didn't get the job, the senior partner from the firm who \u2026",
+   "sample_id": "sponspeech:test:h72oWk4xM04-34"
+  }
+ ],
+ "inputs": {
+  "gold": {
+   "path": "data/processed/sponspeech-m1-v2/mode_C/test.jsonl",
+   "sha256": "7e0a4aef9311799d5a961027d9f0c9256836c64c3fa71503b31aedb92b662472"
+  },
+  "ids": {
+   "path": "data/splits/sponspeech-m1-v2/primary_eval/test_mode_C.ids",
+   "sha256": "252534c7c5b037c79c496ffe5098170502e92bb423cf5de2d91850aede5bd20a"
+  },
+  "masks": {
+   "path": "data/processed/sponspeech-m1-v2/masks/case_joint/test.jsonl",
+   "sha256": "b95c93d9953a5c6ad378698bdea548ddc000a6db462bb27fdda825c74c30cc94"
+  },
+  "predictions": {
+   "path": "RECAP_m3_final/crf_mode_c_improved_full_01_test.jsonl",
+   "sha256": "4077d257443fa8bc61b2a10ed64fbf494788bb712ee329e8b795cd44bf5976f3"
+  }
+ },
+ "label_mode": "C",
+ "model_name": "crf_improved",
+ "pair_counts": [
+  {
+   "count": 14127,
+   "gold": "COMMA",
+   "pred": "O"
+  },
+  {
+   "count": 5167,
+   "gold": "O",
+   "pred": "COMMA"
+  },
+  {
+   "count": 3724,
+   "gold": "PERIOD",
+   "pred": "O"
+  },
+  {
+   "count": 2654,
+   "gold": "COMMA",
+   "pred": "PERIOD"
+  },
+  {
+   "count": 2423,
+   "gold": "PERIOD",
+   "pred": "COMMA"
+  },
+  {
+   "count": 1394,
+   "gold": "O",
+   "pred": "PERIOD"
+  },
+  {
+   "count": 1133,
+   "gold": "QUESTION",
+   "pred": "PERIOD"
+  },
+  {
+   "count": 440,
+   "gold": "QUESTION",
+   "pred": "O"
+  },
+  {
+   "count": 211,
+   "gold": "QUESTION",
+   "pred": "COMMA"
+  },
+  {
+   "count": 187,
+   "gold": "PERIOD",
+   "pred": "QUESTION"
+  },
+  {
+   "count": 83,
+   "gold": "O",
+   "pred": "QUESTION"
+  },
+  {
+   "count": 71,
+   "gold": "COMMA",
+   "pred": "QUESTION"
+  }
+ ],
+ "per_pair": 3,
+ "schema": "recap-errors-v1",
+ "seed": 2026
+}

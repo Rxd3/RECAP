@@ -1,0 +1,122 @@
+{
+ "label_mode": "A",
+ "inputs": {
+  "gold": {
+   "path": "mode_A/test.jsonl",
+   "sha256": "c18017d6b76a34c19ead4ad6c38ed9199ff61a6db7d464418391533765217caf"
+  },
+  "ids": {
+   "path": "primary_eval/test_mode_A.ids",
+   "sha256": "207f414dbc649808729aeb92ee160c9a9bb57e066260d207c4a643cbfe75c3a1"
+  },
+  "masks": null
+ },
+ "models": {
+  "shortcut": {
+   "model_name": "shortcut_baseline",
+   "predictions": {
+    "path": "backend/shortcut_A_test.jsonl",
+    "sha256": "d3932ce0fd9dfee246ef31c762ef316afc54801d8ea933f00320a41785c41c45"
+   },
+   "length_buckets": [
+    {
+     "label": "1-10",
+     "min_tokens": 1,
+     "max_tokens": 10,
+     "sequences": 1009,
+     "micro_f1": 0.657092,
+     "micro_f1_pct": "65.71"
+    },
+    {
+     "label": "11-25",
+     "min_tokens": 11,
+     "max_tokens": 25,
+     "sequences": 5081,
+     "micro_f1": 0.502202,
+     "micro_f1_pct": "50.22"
+    },
+    {
+     "label": "26-50",
+     "min_tokens": 26,
+     "max_tokens": 50,
+     "sequences": 4013,
+     "micro_f1": 0.324016,
+     "micro_f1_pct": "32.40"
+    },
+    {
+     "label": ">50",
+     "min_tokens": 51,
+     "max_tokens": null,
+     "sequences": 2218,
+     "micro_f1": 0.175692,
+     "micro_f1_pct": "17.57"
+    }
+   ],
+   "question_recall": {
+    "final": {
+     "support": 1180,
+     "recall": 0.184746,
+     "recall_pct": "18.47"
+    },
+    "inside": {
+     "support": 995,
+     "recall": 0.0,
+     "recall_pct": "0.00"
+    }
+   }
+  },
+  "hmm": {
+   "model_name": "hmm",
+   "predictions": {
+    "path": "test/predictions.jsonl",
+    "sha256": "7e819a04de360802e0830779f9385a6ea12aec1f7a7775dbc98fe388c0eb047b"
+   },
+   "length_buckets": [
+    {
+     "label": "1-10",
+     "min_tokens": 1,
+     "max_tokens": 10,
+     "sequences": 1009,
+     "micro_f1": 0.68475,
+     "micro_f1_pct": "68.48"
+    },
+    {
+     "label": "11-25",
+     "min_tokens": 11,
+     "max_tokens": 25,
+     "sequences": 5081,
+     "micro_f1": 0.574443,
+     "micro_f1_pct": "57.44"
+    },
+    {
+     "label": "26-50",
+     "min_tokens": 26,
+     "max_tokens": 50,
+     "sequences": 4013,
+     "micro_f1": 0.434981,
+     "micro_f1_pct": "43.50"
+    },
+    {
+     "label": ">50",
+     "min_tokens": 51,
+     "max_tokens": null,
+     "sequences": 2218,
+     "micro_f1": 0.312242,
+     "micro_f1_pct": "31.22"
+    }
+   ],
+   "question_recall": {
+    "final": {
+     "support": 1180,
+     "recall": 0.121186,
+     "recall_pct": "12.12"
+    },
+    "inside": {
+     "support": 995,
+     "recall": 0.001005,
+     "recall_pct": "0.10"
+    }
+   }
+  }
+ }
+}

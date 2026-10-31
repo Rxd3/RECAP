@@ -1,0 +1,412 @@
+{
+ "block": "punctuation/all",
+ "errors_total": 39586,
+ "examples": [
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 into them that much except for traffic violations, they don't have a record, they've never spent time in jail and so they don't have that \u2026",
+   "group_id": "BvGdNpvulhE",
+   "position": 27,
+   "pred": "O",
+   "pred_text": "\u2026 into them that much except for traffic violations they don't have a record they've never spent time in jail and so they don't have that \u2026",
+   "sample_id": "sponspeech:test:BvGdNpvulhE-133"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 nowhere does it say that he was insecure, nowhere does it is say, he went for his pride. nowhere does it say that he no, \u2026",
+   "group_id": "PoSIhO-hYC8",
+   "position": 17,
+   "pred": "O",
+   "pred_text": "\u2026 nowhere does it say that he was insecure nowhere does it is say he went for his pride nowhere does it say that he no \u2026",
+   "sample_id": "sponspeech:test:PoSIhO-hYC8-101"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "that's always, i think, been central also to the work of asian american studies, which really \u2026",
+   "group_id": "dtzzvUTlZa0",
+   "position": 3,
+   "pred": "O",
+   "pred_text": "that's always i think been central also to the work of asian american studies which really \u2026",
+   "sample_id": "sponspeech:test:dtzzvUTlZa0-463"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 really say his sophomore year is when i really became, that's my team. so 37 seasons later.",
+   "group_id": "D_uVLUAmG4E",
+   "position": 17,
+   "pred": "O",
+   "pred_text": "\u2026 really say his sophomore year is when i really became that's my team so 37 seasons later.",
+   "sample_id": "sponspeech:test:D_uVLUAmG4E-265"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "there's no such thing as a useless question. if they say it's useless, say what didn't make sense you?",
+   "group_id": "SlitPrPIH-A",
+   "position": 7,
+   "pred": "O",
+   "pred_text": "there's no such thing as a useless question if they say it's useless say what didn't make sense you.",
+   "sample_id": "sponspeech:test:SlitPrPIH-A-206"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 in order, even if you are ahead, you've got to then stay ahead. um, whereas i think stepping off the hamster wheel together and opting \u2026",
+   "group_id": "v5i_AYmqTbQ",
+   "position": 13,
+   "pred": "O",
+   "pred_text": "\u2026 in order even if you are ahead you've got to then stay ahead um, whereas i think stepping off the hamster wheel together and opting \u2026",
+   "sample_id": "sponspeech:test:v5i_AYmqTbQ-66"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 created math problem. but with almost every other kind of problem, you know that if it is unclear that's actually a pretty good sign that \u2026",
+   "group_id": "lBJVyCYuu78",
+   "position": 52,
+   "pred": "COMMA",
+   "pred_text": "\u2026 created math problem but with almost every other kind of problem you know, that if it is unclear that's actually a pretty good sign that \u2026",
+   "sample_id": "sponspeech:test:lBJVyCYuu78-11"
+  },
+  {
+   "gold": "O",
+   "gold_text": "now the second thing that happens is great number of us unfortunately drink a lot of water or drink alcohol for dinner or late \u2026",
+   "group_id": "nIWnC9RMW08",
+   "position": 11,
+   "pred": "COMMA",
+   "pred_text": "now the second thing that happens is great number of us unfortunately, drink a lot of water or drink alcohol for dinner or late \u2026",
+   "sample_id": "sponspeech:test:nIWnC9RMW08-38"
+  },
+  {
+   "gold": "O",
+   "gold_text": "is awful really awful and resulted in my dad's sufferance of massive burnout, and being a bed that we took four weeks, \u2026",
+   "group_id": "nSVl92jJbwk",
+   "position": 9,
+   "pred": "COMMA",
+   "pred_text": "is awful really awful and resulted in my dad's sufferance, of massive burnout and being a bed that we took four weeks \u2026",
+   "sample_id": "sponspeech:test:nSVl92jJbwk-89"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 you work out what questions to ask, where could you go for things?",
+   "group_id": "mLtDDXhcdpU",
+   "position": 49,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 you work out what questions to ask where could you go for things.",
+   "sample_id": "sponspeech:test:mLtDDXhcdpU-15"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "okay, i love what do you instagram stories?",
+   "group_id": "nSVl92jJbwk",
+   "position": 7,
+   "pred": "PERIOD",
+   "pred_text": "okay, i love what do you instagram stories.",
+   "sample_id": "sponspeech:test:nSVl92jJbwk-410"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "the thing is, how to maximize who you are, isn't it?",
+   "group_id": "xSFtKjdhBTk",
+   "position": 10,
+   "pred": "PERIOD",
+   "pred_text": "the thing is how to maximize who you are isn't it.",
+   "sample_id": "sponspeech:test:xSFtKjdhBTk-4"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 you all, what do you, will be, how would you describe american culture? and so, feel free to put in the chat box, you know, \u2026",
+   "group_id": "-kHx2GE19tI",
+   "position": 19,
+   "pred": "O",
+   "pred_text": "\u2026 you all what do you will be how would you describe american culture and so feel free to put in the chat box you know, \u2026",
+   "sample_id": "sponspeech:test:-kHx2GE19tI-151"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "was that enough? do i want to look at something else? what might i do \u2026",
+   "group_id": "IMRlL4ei4mM",
+   "position": 2,
+   "pred": "O",
+   "pred_text": "was that enough do i want to look at something else what might i do \u2026",
+   "sample_id": "sponspeech:test:IMRlL4ei4mM-31"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 what we're building, which is. amazing, fantastic. are you going to the awards? oh, yes, ma'am. have you picked up your dress and? everything i \u2026",
+   "group_id": "gTfjU40n6b8",
+   "position": 30,
+   "pred": "O",
+   "pred_text": "\u2026 what we're building which is amazing fantastic are you going to the awards oh, yes, ma'am. have you picked up your dress and everything i \u2026",
+   "sample_id": "sponspeech:test:gTfjU40n6b8-8"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "okay. so you're laughing at the moment, which means that i, and just \u2026",
+   "group_id": "8P5o-XQ4C-E",
+   "position": 0,
+   "pred": "COMMA",
+   "pred_text": "okay, so you're laughing at the moment which means that i and just \u2026",
+   "sample_id": "sponspeech:test:8P5o-XQ4C-E-284"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "uh, yeah. so he's an investigator and author. so we even get that we \u2026",
+   "group_id": "D_uVLUAmG4E",
+   "position": 1,
+   "pred": "COMMA",
+   "pred_text": "uh, yeah, so he's an investigator and author so we even get that we \u2026",
+   "sample_id": "sponspeech:test:D_uVLUAmG4E-247"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "i totally agree, yeah. we have a question from, a couple of questions in the chat. \u2026",
+   "group_id": "WfQ2DO2ZF_o",
+   "position": 3,
+   "pred": "COMMA",
+   "pred_text": "i totally agree yeah, we have a question from a couple of questions in the chat \u2026",
+   "sample_id": "sponspeech:test:WfQ2DO2ZF_o-195"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 language and the things that we cherish, you know, but there's also isms and phobias.",
+   "group_id": "-kHx2GE19tI",
+   "position": 66,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 language and the things that we cherish you know, but there's also isms. and phobias.",
+   "sample_id": "sponspeech:test:-kHx2GE19tI-83"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 as a student podcast reflecting to improve with john hill and naomi bowers-joseph hello there, and welcome to success as a student, a skills podcast \u2026",
+   "group_id": "IMRlL4ei4mM",
+   "position": 13,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 as a student podcast reflecting to improve with john hill and naomi bowers-joseph. hello, there and welcome to success as a student a skills podcast \u2026",
+   "sample_id": "sponspeech:test:IMRlL4ei4mM-0"
+  },
+  {
+   "gold": "O",
+   "gold_text": "or if the plows or farm workers or farmland magically increased, then we could make more food everyone would be better \u2026",
+   "group_id": "kkEQ6bNU6A8",
+   "position": 8,
+   "pred": "PERIOD",
+   "pred_text": "or if the plows or farm workers or farmland. magically increased then we could make more food everyone would be better \u2026",
+   "sample_id": "sponspeech:test:kkEQ6bNU6A8-16"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "we don't even realize that that's not the natural order of things, right.",
+   "group_id": "dtzzvUTlZa0",
+   "position": 12,
+   "pred": "QUESTION",
+   "pred_text": "we don't even realize that that's not the natural order of things right?",
+   "sample_id": "sponspeech:test:dtzzvUTlZa0-593"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 you know, boston university is just a mile or so from brookline booksmith.",
+   "group_id": "jZ_UOSDR-gI",
+   "position": 16,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 you know, boston university is just a mile or so from brookline, booksmith?",
+   "sample_id": "sponspeech:test:jZ_UOSDR-gI-135"
+  },
+  {
+   "gold": "PERIOD",
+   "gold_text": "\u2026 one's own experience, something which the careers of dictators more than amply illustrate.",
+   "group_id": "q8qWKlUJ8M8",
+   "position": 28,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 one's own experience something which the careers of dictators more than amply, illustrate?",
+   "sample_id": "sponspeech:test:q8qWKlUJ8M8-127"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "i ended up on the point they couldn't take anymore, and i was sad online and then i met jasmine and now \u2026",
+   "group_id": "SlitPrPIH-A",
+   "position": 9,
+   "pred": "PERIOD",
+   "pred_text": "i ended up on the point they couldn't take anymore. and i was sad online and then i met jasmine, and now \u2026",
+   "sample_id": "sponspeech:test:SlitPrPIH-A-458"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 potentially meeting someone, you know, to network with or a friend or etc., your future interviewer.",
+   "group_id": "h72oWk4xM04",
+   "position": 31,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 potentially meeting someone you know, to network with or a friend or etc.. your future interviewer.",
+   "sample_id": "sponspeech:test:h72oWk4xM04-38"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 ask questions about how their own language shapes their identity and vice versa, how their identity shapes, the way that they use language, was really \u2026",
+   "group_id": "jZ_UOSDR-gI",
+   "position": 47,
+   "pred": "PERIOD",
+   "pred_text": "\u2026 ask questions about how their own language shapes their identity and vice versa. how their identity shapes the way that they use language was really \u2026",
+   "sample_id": "sponspeech:test:jZ_UOSDR-gI-226"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "\u2026 ants are gone. we think this is science. this is madness, you know? this is sheer madness.",
+   "group_id": "IR5iNeAmWV0",
+   "position": 37,
+   "pred": "COMMA",
+   "pred_text": "\u2026 ants are gone we think this is science this is madness you know, this is sheer madness.",
+   "sample_id": "sponspeech:test:IR5iNeAmWV0-8"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "what went well? what did not go well? what ideas do you have for next year?",
+   "group_id": "SlitPrPIH-A",
+   "position": 7,
+   "pred": "COMMA",
+   "pred_text": "what went well, what did not go well, what ideas do you have for next year.",
+   "sample_id": "sponspeech:test:SlitPrPIH-A-623"
+  },
+  {
+   "gold": "QUESTION",
+   "gold_text": "but there's still more life. you know what i mean? i remember taking that step of i'm going to move forward. and \u2026",
+   "group_id": "VANAe5GULk8",
+   "position": 9,
+   "pred": "COMMA",
+   "pred_text": "but there's still more life you know, what i mean, i remember taking that step of i'm going to move forward and \u2026",
+   "sample_id": "sponspeech:test:VANAe5GULk8-38"
+  },
+  {
+   "gold": "O",
+   "gold_text": "ctfs don't need to be really competitive. i know so+people are really competitive. \u2026",
+   "group_id": "SlitPrPIH-A",
+   "position": 0,
+   "pred": "QUESTION",
+   "pred_text": "ctfs? don't need to be really competitive i know, so+people, are really competitive \u2026",
+   "sample_id": "sponspeech:test:SlitPrPIH-A-573"
+  },
+  {
+   "gold": "O",
+   "gold_text": "well in french, actually, i don't use s'il vous plait, because it requires me to commit to whether i want to \u2026",
+   "group_id": "iMftglGCi_0",
+   "position": 8,
+   "pred": "QUESTION",
+   "pred_text": "well, in french actually i don't use s'il, vous? plait, because it requires me to commit to whether i want to \u2026",
+   "sample_id": "sponspeech:test:iMftglGCi_0-217"
+  },
+  {
+   "gold": "O",
+   "gold_text": "\u2026 law as it stands? i am interested in catriona mcmillan's and eilidh dickson's perspective on that. many of the discussions come down to questions about \u2026",
+   "group_id": "oUDYQTwr0b0",
+   "position": 46,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 law as it stands i am interested in catriona, mcmillan's, and eilidh, dickson's? perspective, on that many of the discussions come down to questions about \u2026",
+   "sample_id": "sponspeech:test:oUDYQTwr0b0-225"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "so, racism, sexism, classism, sexism, ableism, ethnocentrism, anti-semitism, ageism, and phobias, such as homophobia, islamophobia, xenophobia, \u2026",
+   "group_id": "-kHx2GE19tI",
+   "position": 3,
+   "pred": "QUESTION",
+   "pred_text": "so racism sexism, classism? sexism, ableism ethnocentrism, anti-semitism? ageism, and phobias such as homophobia islamophobia, xenophobia, \u2026",
+   "sample_id": "sponspeech:test:-kHx2GE19tI-84"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "\u2026 can even begin from the first point, in which, after he rescues sita, sita has to sit through a fire to prove that she is \u2026",
+   "group_id": "PoSIhO-hYC8",
+   "position": 17,
+   "pred": "QUESTION",
+   "pred_text": "\u2026 can even begin from the first point in which after he rescues, sita? sita, has to sit through a fire to prove that she is \u2026",
+   "sample_id": "sponspeech:test:PoSIhO-hYC8-69"
+  },
+  {
+   "gold": "COMMA",
+   "gold_text": "well, so americans went north first, well, proto-americans, non-americans, went north to ontario and then from there, people spread west.",
+   "group_id": "iMftglGCi_0",
+   "position": 7,
+   "pred": "QUESTION",
+   "pred_text": "well, so americans went north first well, proto-americans? non-americans, went north to ontario and then from there people spread west.",
+   "sample_id": "sponspeech:test:iMftglGCi_0-92"
+  }
+ ],
+ "inputs": {
+  "gold": {
+   "path": "data/processed/sponspeech-m1-v2/mode_A/test.jsonl",
+   "sha256": "c18017d6b76a34c19ead4ad6c38ed9199ff61a6db7d464418391533765217caf"
+  },
+  "ids": {
+   "path": "data/splits/sponspeech-m1-v2/primary_eval/test_mode_A.ids",
+   "sha256": "207f414dbc649808729aeb92ee160c9a9bb57e066260d207c4a643cbfe75c3a1"
+  },
+  "masks": null,
+  "predictions": {
+   "path": "test/predictions.jsonl",
+   "sha256": "7e819a04de360802e0830779f9385a6ea12aec1f7a7775dbc98fe388c0eb047b"
+  }
+ },
+ "label_mode": "A",
+ "model_name": "hmm",
+ "pair_counts": [
+  {
+   "count": 24933,
+   "gold": "COMMA",
+   "pred": "O"
+  },
+  {
+   "count": 8778,
+   "gold": "PERIOD",
+   "pred": "O"
+  },
+  {
+   "count": 2892,
+   "gold": "O",
+   "pred": "COMMA"
+  },
+  {
+   "count": 1037,
+   "gold": "QUESTION",
+   "pred": "PERIOD"
+  },
+  {
+   "count": 943,
+   "gold": "QUESTION",
+   "pred": "O"
+  },
+  {
+   "count": 604,
+   "gold": "PERIOD",
+   "pred": "COMMA"
+  },
+  {
+   "count": 147,
+   "gold": "O",
+   "pred": "PERIOD"
+  },
+  {
+   "count": 111,
+   "gold": "PERIOD",
+   "pred": "QUESTION"
+  },
+  {
+   "count": 69,
+   "gold": "COMMA",
+   "pred": "PERIOD"
+  },
+  {
+   "count": 51,
+   "gold": "QUESTION",
+   "pred": "COMMA"
+  },
+  {
+   "count": 11,
+   "gold": "O",
+   "pred": "QUESTION"
+  },
+  {
+   "count": 10,
+   "gold": "COMMA",
+   "pred": "QUESTION"
+  }
+ ],
+ "per_pair": 3,
+ "schema": "recap-errors-v1",
+ "seed": 2026
+}

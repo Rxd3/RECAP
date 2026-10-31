@@ -1,0 +1,207 @@
+{
+ "blocks": {
+  "punctuation/all": {
+   "accuracy": 0.899225,
+   "confusion": [
+    [
+     336585,
+     2910,
+     147,
+     13
+    ],
+    [
+     24878,
+     5105,
+     70,
+     8
+    ],
+    [
+     8777,
+     603,
+     11074,
+     115
+    ],
+    [
+     942,
+     52,
+     1035,
+     145
+    ]
+   ],
+   "empty_support": false,
+   "labels": [
+    "O",
+    "COMMA",
+    "PERIOD",
+    "QUESTION"
+   ],
+   "macro_f1": 0.351678,
+   "macro_f1_ci": {
+    "groups": 153,
+    "high": 0.373637,
+    "level": 0.95,
+    "low": 0.328601,
+    "resamples": 1000,
+    "seed": 2026,
+    "unit": "group_id"
+   },
+   "macro_over": [
+    "COMMA",
+    "PERIOD",
+    "QUESTION"
+   ],
+   "micro": {
+    "f1": 0.440707,
+    "precision": 0.767213,
+    "recall": 0.309143
+   },
+   "per_class": {
+    "COMMA": {
+     "f1": 0.263613,
+     "precision": 0.588812,
+     "predicted": 8670,
+     "recall": 0.169821,
+     "support": 30061
+    },
+    "O": {
+     "f1": 0.94701,
+     "precision": 0.906792,
+     "predicted": 371182,
+     "recall": 0.990961,
+     "support": 339655
+    },
+    "PERIOD": {
+     "f1": 0.673294,
+     "precision": 0.898426,
+     "predicted": 12326,
+     "recall": 0.538383,
+     "support": 20569
+    },
+    "QUESTION": {
+     "f1": 0.118126,
+     "precision": 0.516014,
+     "predicted": 281,
+     "recall": 0.066697,
+     "support": 2174
+    }
+   },
+   "scored_positions": 392459
+  },
+  "punctuation/non_final": {
+   "accuracy": 0.898976,
+   "confusion": [
+    [
+     336585,
+     2910,
+     147,
+     13
+    ],
+    [
+     24878,
+     5105,
+     69,
+     8
+    ],
+    [
+     8777,
+     603,
+     44,
+     4
+    ],
+    [
+     942,
+     52,
+     0,
+     1
+    ]
+   ],
+   "empty_support": false,
+   "labels": [
+    "O",
+    "COMMA",
+    "PERIOD",
+    "QUESTION"
+   ],
+   "macro_f1": 0.091554,
+   "macro_f1_ci": {
+    "groups": 153,
+    "high": 0.102045,
+    "level": 0.95,
+    "low": 0.079826,
+    "resamples": 1000,
+    "seed": 2026,
+    "unit": "group_id"
+   },
+   "macro_over": [
+    "COMMA",
+    "PERIOD",
+    "QUESTION"
+   ],
+   "micro": {
+    "f1": 0.208338,
+    "precision": 0.575033,
+    "recall": 0.127214
+   },
+   "per_class": {
+    "COMMA": {
+     "f1": 0.26362,
+     "precision": 0.588812,
+     "predicted": 8670,
+     "recall": 0.169827,
+     "support": 30060
+    },
+    "O": {
+     "f1": 0.94701,
+     "precision": 0.906792,
+     "predicted": 371182,
+     "recall": 0.990961,
+     "support": 339655
+    },
+    "PERIOD": {
+     "f1": 0.009083,
+     "precision": 0.169231,
+     "predicted": 260,
+     "recall": 0.004667,
+     "support": 9428
+    },
+    "QUESTION": {
+     "f1": 0.001959,
+     "precision": 0.038462,
+     "predicted": 26,
+     "recall": 0.001005,
+     "support": 995
+    }
+   },
+   "scored_positions": 380138
+  }
+ },
+ "counts": {
+  "ignored_prediction_ids": 0,
+  "sequences": 12321,
+  "tokens": 392459
+ },
+ "inputs": {
+  "gold": {
+   "path": "mode_A/test.jsonl",
+   "sha256": "a3521aa49a85d3058bd06c9a0daf1b0a03b3f63b2ab8b4a1dd82712105bf99c7"
+  },
+  "ids": {
+   "path": "seed2028/test_mode_A.ids",
+   "sha256": "207f414dbc649808729aeb92ee160c9a9bb57e066260d207c4a643cbfe75c3a1"
+  },
+  "masks": null,
+  "predictions": {
+   "path": "hmm_A/predictions.jsonl",
+   "sha256": "499f5568642b5cfb4cc83834a0a5e9381eeb3fcf673c4641b8b336da1034f4a8"
+  }
+ },
+ "label_mode": "A",
+ "model_name": "hmm",
+ "policy_version": "m1-v2",
+ "primary": {
+  "block": "punctuation/all",
+  "metric": "macro_f1",
+  "value": 0.351678
+ },
+ "schema": "recap-eval-v1"
+}

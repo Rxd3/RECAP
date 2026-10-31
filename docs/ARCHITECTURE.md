@@ -1,14 +1,16 @@
 # Architecture and ownership
 
-This is a design for future implementation. Python modules currently contain
-descriptions and TODOs only; the six task scripts deliberately exit unfinished.
+Every component is implemented: the data release (Member 1), the HMM workflow (Member 2), the CRF
+and its features (Member 3), the evaluator (Member 5) and the demo pipeline. Results are in
+[EVALUATION_RESULTS.md](EVALUATION_RESULTS.md) (HMM and shortcut) and
+[EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) (CRF, threshold decoding, leakage, runtime).
 
 ```text
 verified source text
   -> data preprocessing and labels (Member 1)
   -> immutable JSONL release + shared split manifest
   -> HMM (Member 2) or CRF (Member 3)
-                         ^ basic/improved feature extractor (Members 3–4)
+                         ^ basic/improved feature extractor (Member 3)
   -> standard prediction JSONL
   -> common evaluation and error analysis (Member 5)
   -> integration/demo and documented evidence (Member 6)
@@ -23,15 +25,17 @@ feature configuration selects behavior; versioned contracts fix alignment.
 | `src/punct_restore/data/`, `scripts/prepare_data.py`, data documentation | Member 1 | Source text → records; no model training |
 | `models/hmm.py`, `scripts/train_hmm.py` | Member 2 | Records → HMM artifacts/predictions |
 | `models/crf.py`, `scripts/train_crf.py` | Member 3 | Records + injected features → CRF artifacts/predictions |
-| `features/`, `scripts/run_ablations.py` | Member 4 | Observable tokens → aligned feature dictionaries |
+| `features/`, `scripts/run_ablations.py` | Member 4 (role); code by Member 3, ablation runner by Member 5 | Observable tokens → aligned feature dictionaries |
 | `evaluation/`, `scripts/evaluate_models.py`, results | Member 5 | Gold + predictions → verified reports |
-| `pipeline.py`, `demo/`, `scripts/run_demo.py`, presentation | Member 6 | Validated input + artifact → inference and integration |
+| Comparison methods and robustness checks: `models/gap_classifier.py`, `models/hidden_event_lm.py` (+ `ngram_lm.py`, `truecaser.py`), τ × γ in `models/threshold.py`, question lookback, `models/factored.py` and the CRF `CASE` mode, `data/asr_noise.py`, `data/gold_noise.py` (the gold-noise check), the demo loader; scripts `train_hidden_event_lm.py`, `factor_predictions.py`, `simulate_asr_noise.py`, `find_gold_noise.py`, `reporting/crf_convergence.py`, `reporting/length_position.py`, `reporting/asr_noise_table.py` (+ `asr_noise_stats.py`, `asr_noise_report.py`, `asr_noise_findings.py`) | Member 5 | Exploratory comparisons and checks next to the course baselines |
+| `pipeline.py` (`load_model`, `ModelAdapter`, `RestorationPipeline`) and `scripts/run_demo.py` (the demo path), presentation | Member 6 | Text + saved HMM or hidden-event LM (`.json`), or CRF or gap classifier (`.joblib`, `.pkl`) → restored text |
 
-Member 4 owns `crf_features.py`; Member 3 reviews its interface and contributes
-the basic preset through a coordinated PR. Member 4 does not replace or fork
-Member 3's model. Shared documents/configs need affected owners' review.
+The feature code in `crf_features.py`, both presets included, was written by Member 3; Member 4's
+branch has no commits ([contributions](../contributions/Mohamed_2309015740_Mokamaleldin.md)). The threshold
+decoder and the filler cue were added by Member 5 during release integration. Shared documents and
+configs need affected owners' review.
 
-## Planned boundaries
+## Boundaries
 
 - Data loading validates [DATA_CONTRACT.md](DATA_CONTRACT.md), records rejection
   counts and never silently changes sequence lengths.
@@ -43,8 +47,8 @@ Member 3's model. Shared documents/configs need affected owners' review.
   verifies artifact compatibility and delegates to model adapters.
 - Evaluation joins by ID, checks order/length/release and applies a named,
   approved projection. It never repairs mismatches by truncating or zipping.
-- Task scripts will be thin entry points around package code. Configuration and
-  paths are repository-relative; scripts currently have no real CLI parser.
+- Task scripts are thin entry points around package code, with repository-relative
+  configuration and paths. Every script is implemented; see [scripts/README.md](../scripts/README.md).
 
 Future neural adapters may implement the common contract; add complexity only
 when an agreed experiment requires it. Separate dataset, artifact and prediction

@@ -1,5 +1,9 @@
-# Development setup, not a frozen experiment environment. Run from repo root.
+# Exact pins of the tested environment (CPython 3.13). Run from the repo root.
 -e .[dev]
-# Planned only: numpy, pandas, scikit-learn, sklearn-crfsuite, datasets, matplotlib.
-# Add reviewed dependencies to pyproject.toml as implementations need them.
-# PyTorch/neural dependencies are outside the initial project scaffold.
+PyYAML==6.0.3
+sklearn-crfsuite==0.5.0
+python-crfsuite==0.9.12
+joblib==1.6.0
+scikit-learn==1.9.1
+scipy==1.18.1
+pytest==9.2.0

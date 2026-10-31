@@ -1,0 +1,32 @@
+schema_version: 1
+experiment_id: hmm-sponspeech-v2-20261029
+dataset_release_id: sponspeech-m1-v2
+policy_version: m1-v2
+processed_dir: data/processed/sponspeech-m1-v2
+splits_dir: data/splits/sponspeech-m1-v2
+label_config: configs/label_sets.yaml
+modes: [A, B, C]
+search:
+  smoothing: [0.01, 0.1, 1.0]
+  min_token_count: [1, 2, 5]
+  selection_split: validation
+  selection_blocks:
+    A: punctuation/all
+    B: punctuation/all
+    C: joint/unmasked
+  metric: macro_f1
+  score_precision: 6
+  tie_break: [lower_min_token_count, lower_smoothing]
+  retrain_on_validation: false
+evaluation:
+  repository_commit: 3044a58e777200bcac64e6e3364922404be359bf
+  label: Member 5 shared scorer, PR 2
+  test_sets: [test, test_amb]
+  zero_division: 0
+runtime:
+  comparison_ids: primary_eval/validation_mode_C.ids
+  warmup_sequences: 200
+  repetitions: 3
+  model_threads: 1
+random_seed: null
+deterministic: true

@@ -1,0 +1,105 @@
+{
+ "blocks": {
+  "punctuation/all": {
+   "difference": 0.001681,
+   "difference_ci": {
+    "groups": 218,
+    "high": 0.003519,
+    "level": 0.95,
+    "low": 0.000376,
+    "resamples": 1000,
+    "seed": 2026,
+    "share_b_better": 0.994,
+    "unit": "group_id"
+   },
+   "macro_f1_a": 0.232455,
+   "macro_f1_b": 0.234136
+  },
+  "punctuation/non_final": {
+   "difference": 0.001598,
+   "difference_ci": {
+    "groups": 218,
+    "high": 0.003645,
+    "level": 0.95,
+    "low": -2.8e-05,
+    "resamples": 1000,
+    "seed": 2026,
+    "share_b_better": 0.972,
+    "unit": "group_id"
+   },
+   "macro_f1_a": 0.167971,
+   "macro_f1_b": 0.169569
+  }
+ },
+ "classes": {
+  "COMMA": {
+   "punctuation/all": {
+    "difference": 0.000528,
+    "difference_ci": {
+     "groups": 218,
+     "high": 0.001846,
+     "level": 0.95,
+     "low": -0.000783,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 0.784,
+     "unit": "group_id"
+    },
+    "f1_a": 0.500949,
+    "f1_b": 0.501477
+   },
+   "punctuation/non_final": {
+    "difference": 0.000528,
+    "difference_ci": {
+     "groups": 218,
+     "high": 0.001846,
+     "level": 0.95,
+     "low": -0.000783,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 0.784,
+     "unit": "group_id"
+    },
+    "f1_a": 0.500949,
+    "f1_b": 0.501477
+   }
+  }
+ },
+ "inputs_a": {
+  "gold": {
+   "path": "data/processed/sponspeech-m1-v2/mode_B/validation.jsonl",
+   "sha256": "efbc877efa64abb85579889c1c08ef5faf89b0b22a0eb3e629ca76c73f690fb0"
+  },
+  "ids": {
+   "path": "data/splits/sponspeech-m1-v2/primary_eval/validation_mode_B.ids",
+   "sha256": "15e43a80088a2189f0f0d34c6e1fc5dd867a2ee42637fc5e80d106c7eed487db"
+  },
+  "masks": null,
+  "predictions": {
+   "path": "improved/validation.jsonl",
+   "sha256": "92be8acee2ccc860476354761c3e880ccb7ec8609ab7eb85e747b642c66e8910"
+  }
+ },
+ "inputs_b": {
+  "gold": {
+   "path": "data/processed/sponspeech-m1-v2/mode_B/validation.jsonl",
+   "sha256": "efbc877efa64abb85579889c1c08ef5faf89b0b22a0eb3e629ca76c73f690fb0"
+  },
+  "ids": {
+   "path": "data/splits/sponspeech-m1-v2/primary_eval/validation_mode_B.ids",
+   "sha256": "15e43a80088a2189f0f0d34c6e1fc5dd867a2ee42637fc5e80d106c7eed487db"
+  },
+  "masks": null,
+  "predictions": {
+   "path": "improved_minus_clause/validation.jsonl",
+   "sha256": "5806e71535424f94c2f5d4328dd4dc3ba81b63ffc34522373712dd276f39d012"
+  }
+ },
+ "label_mode": "B",
+ "model_a": "crf_improved",
+ "model_b": "crf_improved_minus_clause",
+ "policy_version": "m1-v2",
+ "primary_block": "punctuation/all",
+ "schema": "recap-compare-v1",
+ "sequences": 20040
+}

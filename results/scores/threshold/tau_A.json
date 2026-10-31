@@ -1,0 +1,116 @@
+{
+  "tau": 0.4,
+  "gamma": 0.0,
+  "grid": [
+    {
+      "tau": 0.05,
+      "gamma": 0.0,
+      "macro_f1": 0.450978
+    },
+    {
+      "tau": 0.1,
+      "gamma": 0.0,
+      "macro_f1": 0.483302
+    },
+    {
+      "tau": 0.15,
+      "gamma": 0.0,
+      "macro_f1": 0.499666
+    },
+    {
+      "tau": 0.2,
+      "gamma": 0.0,
+      "macro_f1": 0.507834
+    },
+    {
+      "tau": 0.25,
+      "gamma": 0.0,
+      "macro_f1": 0.512937
+    },
+    {
+      "tau": 0.3,
+      "gamma": 0.0,
+      "macro_f1": 0.515532
+    },
+    {
+      "tau": 0.35,
+      "gamma": 0.0,
+      "macro_f1": 0.517233
+    },
+    {
+      "tau": 0.4,
+      "gamma": 0.0,
+      "macro_f1": 0.518016
+    },
+    {
+      "tau": 0.45,
+      "gamma": 0.0,
+      "macro_f1": 0.517122
+    },
+    {
+      "tau": 0.5,
+      "gamma": 0.0,
+      "macro_f1": 0.514599
+    },
+    {
+      "tau": 0.55,
+      "gamma": 0.0,
+      "macro_f1": 0.511433
+    },
+    {
+      "tau": 0.6,
+      "gamma": 0.0,
+      "macro_f1": 0.507329
+    },
+    {
+      "tau": 0.65,
+      "gamma": 0.0,
+      "macro_f1": 0.503076
+    },
+    {
+      "tau": 0.7,
+      "gamma": 0.0,
+      "macro_f1": 0.49675
+    },
+    {
+      "tau": 0.75,
+      "gamma": 0.0,
+      "macro_f1": 0.488549
+    },
+    {
+      "tau": 0.8,
+      "gamma": 0.0,
+      "macro_f1": 0.477386
+    },
+    {
+      "tau": 0.85,
+      "gamma": 0.0,
+      "macro_f1": 0.462507
+    },
+    {
+      "tau": 0.9,
+      "gamma": 0.0,
+      "macro_f1": 0.440434
+    },
+    {
+      "tau": 0.95,
+      "gamma": 0.0,
+      "macro_f1": 0.397662
+    }
+  ],
+  "model_sha256": "f9e50d34528432507fcdb2f1c570408ffce743aa94ecc5a2024e00a0687a6b55",
+  "split": "validation",
+  "inputs": {
+    "gold": {
+      "path": "data/processed/sponspeech-m1-v2/mode_A/validation.jsonl",
+      "sha256": "7ececedac4e58c307df0daaf6190b61b2ea715344b72a2910d9541e07b1ecf27"
+    },
+    "ids": {
+      "path": "data/splits/sponspeech-m1-v2/primary_eval/validation_mode_A.ids",
+      "sha256": "15e43a80088a2189f0f0d34c6e1fc5dd867a2ee42637fc5e80d106c7eed487db"
+    },
+    "masks": null,
+    "train": null,
+    "train_ids": null
+  }
+}
