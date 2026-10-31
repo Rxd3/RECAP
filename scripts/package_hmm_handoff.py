@@ -11,13 +11,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+from run_hmm_experiments import frozen, now, read_json  # noqa: E402
+
 from punct_restore.models.hmm_workflow import (  # noqa: E402
     code_identity,
     file_identity,
     sha256,
     write_json,
 )
-from run_hmm_experiments import frozen, now, read_json  # noqa: E402
 
 
 def package(run, evaluator, output):

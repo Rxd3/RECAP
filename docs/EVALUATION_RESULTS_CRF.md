@@ -587,11 +587,29 @@ Every mode gets the same edits, and the mode C casing masks are remapped through
 | C | CRF improved | 47.02 | 45.97 | 45.00 | 44.12 (42.13–45.98) |
 
 What the table shows:
-- **The HMM does not move.** It mostly predicts the utterance-final mark, which word errors inside the utterance do not touch.
+- **Under v1, the HMM does not move.** It mostly predicts the utterance-final mark, which word errors inside the utterance do not touch.
 - **In mode A, the improved CRF loses about 1.5 points per 5% of word errors (49.92 → 45.42), and the basic CRF about 0.65 (43.65 → 41.68).** The improved CRF's word-pair features depend on the exact words, so it drops faster.
 - **The ranking holds at every noise level:** CRF improved > CRF basic > HMM in every mode, and at 15% the intervals of the improved CRF and the HMM still do not overlap.
 
 Files: `results/scores/asr_noise/wer<rate>/`, including `summary.json` with the achieved WER and the edit counts.
+
+### 13.1 A more realistic edit mix, with seed variance (v2)
+
+[ASR_NOISE_V2.md](ASR_NOISE_V2.md) reruns this check with a substitution-dominant edit model (`--edit-model v2`): 45.00% substitution, 30.00% deletion, 15.00% insertion and 10.00% swaps, against v1's 50% swaps. Substitutions are edit-distance-1 words from the `default_train` vocabulary plus the homophones, and insertions are fillers and short function words. Seeds 2026, 2027, 2028; nothing was retuned. Primary macro F1 %, clean → mean at 15% WER (min–max over the seeds):
+
+| Mode | HMM | CRF basic | CRF improved |
+|---|---|---|---|
+| A | 35.12 → 33.82 (33.75–33.87) | 43.65 → 39.30 (39.13–39.51) | 49.92 → 43.46 (43.10–43.88) |
+| B | 16.79 → 15.94 (15.84–15.99) | 20.25 → 17.97 (17.72–18.26) | 22.82 → 19.73 (19.50–20.02) |
+| C | 37.41 → 30.43 (30.14–30.92) | 43.85 → 33.23 (33.10–33.46) | 47.02 → 35.93 (35.43–36.84) |
+
+What changes from v1:
+- **The HMM now degrades too:** −1.31 in A, −0.86 in B and −6.98 in C. Half of v1's budget was swaps of non-final words, which leave the utterance-final word in place.
+- **The improved CRF still drops most in every mode:** −6.47 / −3.09 / −11.09 in A / B / C.
+- **The ranking CRF improved > CRF basic > HMM holds for every seed, WER and mode.**
+- **Seed variance is small:** the min–max spread over the three seeds is 0.02–1.60 points per cell.
+
+Files: `results/scores/asr_noise_v2/` (`summary.json` and one folder per edit model, WER and seed).
 
 ## 14. Team comparison methods
 

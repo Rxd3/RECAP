@@ -1,10 +1,15 @@
 # Evaluation outputs
 
 Owner: Member 5. [`scores/`](scores/README.md) holds the committed evaluator JSON behind every
-number in the evaluation documents: HMM, CRF validation and test, threshold decoding, ablations,
-filler cue, H1, leakage, runtime, per-class intervals, the B→A study and the settings sensitivity check. The score, compare and errors files record the SHA-256 of their
-inputs (the τ files record the model hash, the runtime files the model file name), so any table can be
-recomputed or checked from them. The `*.errors.json` files contain short SponSpeech excerpts (CC BY-NC 4.0,
+number in the evaluation documents: HMM, CRF validation and test, threshold decoding (`threshold/`) and
+prior-adjusted decoding (`threshold_prior/`), ablations, filler cue, H1, leakage, runtime, per-class intervals,
+the B→A study, the settings sensitivity check, the gold-noise check (`gold_noise/`), simulated ASR noise
+(`asr_noise/`, and `asr_noise_v2/` for the v2 edit model and seed variance in
+[ASR_NOISE_V2.md](../docs/ASR_NOISE_V2.md)), CRF convergence (`crf_convergence/`) and the comparison methods
+(`gap/`, `hidden_event_lm/`, `question2/`, `factored/`). [`scores/README.md`](scores/README.md) lists every
+folder. The score, compare and errors files record the SHA-256 of their inputs; the τ files record the model
+hash, the split and the SHA-256 of every input; the runtime files record the model file name. So any table can
+be recomputed or checked from them. The `*.errors.json` files contain short SponSpeech excerpts (CC BY-NC 4.0,
 attribution in [DATA_LICENSE.md](../docs/DATA_LICENSE.md)). `scores/crf_training_manifests/` holds Member 3's six CRF training
 manifests (settings, data hashes, fit time, peak memory, environment). The scripts in
 `scripts/reporting/` rebuild the result tables from these files ([REPRODUCIBILITY.md](../docs/REPRODUCIBILITY.md)).

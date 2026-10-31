@@ -611,9 +611,8 @@ def _sec_findings(summary: dict[str, Any]) -> list[str]:
             f"({bas_clean_a} {ARROW} {bas_15_a}) and {hmm_drop_a} points for the HMM "
             f"({hmm_clean_a} {ARROW} {hmm_15_a}). The same pattern holds in mode B (improved CRF {MINUS}{imp_drop_b} "
             f"pts vs HMM {MINUS}{hmm_drop_b} pts) and mode C (improved CRF {MINUS}{imp_drop_c} pts vs HMM "
-            f"{MINUS}{hmm_drop_c} pts). Because the improved CRF relies on wide context windows and exact lexical "
-            "word-pair features, token corruptions perturb more active features per edit than in the basic CRF or "
-            "the 1st-order HMM."
+            f"{MINUS}{hmm_drop_c} pts). A likely reason, not tested here, is that the improved CRF's word-pair and window "
+            "features depend on the exact neighbouring words, so each edit changes more of its active features."
         ),
         (
             f"2. **Is the ranking stable across seeds?** {rank_phrase} Seed variance is small: across all 27 "
@@ -632,11 +631,9 @@ def _sec_findings(summary: dict[str, Any]) -> list[str]:
             "half-budget swaps with confusion substitutions, short-word deletions, and filler/function-word insertions "
             f"shifts mean macro F1 from {v1_hmm_a} to {hmm_15_a} ({diff_hmm_a} pts) for the HMM, from {v1_bas_a} to "
             f"{bas_15_a} ({diff_bas_a} pts) for CRF basic, and from {v1_imp_a} to {imp_15_a} ({diff_imp_a} pts) for "
-            f"CRF improved (and {diff_imp_c} pts for CRF improved in mode C). Unlike `v1`, where the HMM barely "
-            "moved because non-final swaps left utterance-final transitions intact, `v2` deletions of short words "
-            "(<= 3 characters) and insertions of fillers/short function words also degrade the HMM; in mode C, "
-            "confusion substitutions that replace a `LOWER` word with a short token that models capitalise (such as "
-            "an acronym in `default_train`) also reduce precision on the rare `*|ALL_UPPER` joint classes."
+            f"CRF improved (and {diff_imp_c} pts for CRF improved in mode C). Under `v1` the HMM barely moved, and half "
+            "of `v1`'s budget was swaps of non-final words, which leave the utterance-final word in place; under `v2` "
+            "the HMM also loses. Which `v2` edit type causes which loss was not measured separately."
         ),
         "",
     ]

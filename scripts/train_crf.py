@@ -13,15 +13,15 @@ Adheres strictly to docs/DATA_CONTRACT.md, docs/MODEL_CONTRACT.md, and docs/DECI
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
 import hashlib
 import json
 import os
-from pathlib import Path
 import platform
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 import joblib
@@ -31,7 +31,11 @@ ROOT = Path(__file__).resolve().parents[1]
 # Support the documented source-checkout command before an editable install.
 sys.path.insert(0, str(ROOT / "src"))
 from punct_restore.features.crf_features import FeatureConfig  # noqa: E402
-from punct_restore.models.crf import CRFModel, get_mode_vocabulary, require_scoring_mode  # noqa: E402
+from punct_restore.models.crf import (  # noqa: E402
+    CRFModel,
+    get_mode_vocabulary,
+    require_scoring_mode,
+)
 from punct_restore.prediction_io import (  # noqa: E402
     check_new_output_paths,
     read_frozen_ids,

@@ -30,7 +30,7 @@ All files were written by `scripts/evaluate_models.py` (`score`, `compare`, `err
 | `factored/` | Mode C joint improved CRF vs the factored pipeline (mode A punctuation + CASE casing) on validation (50k sample) |
 | `ablations/mode_<M>/` | One-feature-group-removed ablations on validation (50k-sequence training sample) |
 | `filler/mode_<M>/` | Improved CRF with and without the filler-word cue on validation (same sample) |
-| `h1_joint/` | Mode A model vs the mode C model projected to punctuation, on mode A validation gold over the mode C IDs: paired comparisons (`*_jointC_vs_A.json`) and per-model scores (`*_A_on_C_ids.json`, `*_C_as_A_on_C_ids.json`) |
+| `h1_joint/` | Mode A model vs the mode C model projected to punctuation, on mode A validation gold over the mode C IDs: paired comparisons (`*_jointC_vs_A.json`, with per-class COMMA/PERIOD/QUESTION blocks), the controlled check with the mode A HMM and CRF basic retrained on the mode C training IDs (`*_jointC_vs_A_sameids.json`), and per-model scores (`*_A_on_C_ids.json`, `*_C_as_A_on_C_ids.json`) |
 | `b_to_a/` | Mode B models projected to mode A (D5 mapping) vs their mode A twins, mode A validation gold, with per-class intervals |
 | `per_class/` | Paired per-class F1 intervals (`compare --class`) behind hypotheses H2–H4 |
 | `sensitivity/` | Mode A CRF basic and improved retrained on the 50k sample at c1 = c2 ∈ {0.01, 0.1, 1.0} and 100 or 300 iterations, scored on validation |

@@ -10,6 +10,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+from run_hmm_experiments import authenticate, frozen, now, read_json  # noqa: E402
+
 from punct_restore.data.labeling import load_label_sets  # noqa: E402
 from punct_restore.models.hmm import HMMModel  # noqa: E402
 from punct_restore.models.hmm_workflow import (  # noqa: E402
@@ -20,7 +22,6 @@ from punct_restore.models.hmm_workflow import (  # noqa: E402
     sha256,
     write_json,
 )
-from run_hmm_experiments import authenticate, frozen, now, read_json  # noqa: E402
 
 
 def assert_close(value, expected):
