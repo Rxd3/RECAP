@@ -607,7 +607,7 @@ What changes from v1:
 - **The HMM now degrades too:** −1.31 in A, −0.86 in B and −6.98 in C. Half of v1's budget was swaps of non-final words, which leave the utterance-final word in place.
 - **The improved CRF still drops most in every mode:** −6.47 / −3.09 / −11.09 in A / B / C.
 - **The ranking CRF improved > CRF basic > HMM holds for every seed, WER and mode.**
-- **Seed variance is small:** the min–max spread over the three seeds is 0.02–1.60 points per cell.
+- **Seed spread:** 0.02–1.60 points per cell. The largest (1.60) is close to the smallest gap between adjacent models (1.76), so single-seed differences that small are not reliable; every model gap still held on every seed.
 
 Files: `results/scores/asr_noise_v2/` (`summary.json` and one folder per edit model, WER and seed).
 
