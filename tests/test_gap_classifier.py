@@ -542,6 +542,78 @@ def test_save_load_round_trip_with_the_question_lookback_switch_on(tmp_path):
     assert joblib.load(path)["feature_config"]["use_question_lookback"] is True
 
 
+_CLUSTERS = {"did": 4, "you": 9, "understand": 0, "hello": 2, "everyone": 2, "yes": 7}
+_NO_CLUSTER_KEYS = {k: v for k, v in _IMPROVED.items() if k not in {"use_word_clusters", "word_clusters"}}
+
+
+def _clustered() -> FeatureConfig:
+    return FeatureConfig.improved(window_size=1, use_word_clusters=True, word_clusters=_CLUSTERS)
+
+
+def test_load_accepts_a_feature_config_saved_before_the_word_cluster_switch(tmp_path):
+    model, path = _saved(tmp_path)
+    _rewrite(path, feature_config=_NO_CLUSTER_KEYS)
+
+    loaded = GapClassifier.load_model(path)
+
+    assert loaded.feature_config == FeatureConfig.improved()
+    assert loaded.feature_config.use_word_clusters is False and loaded.feature_config.word_clusters is None
+    assert loaded.predict(GOLD_FREE) == model.predict(GOLD_FREE)
+
+
+def test_load_accepts_a_feature_config_older_than_both_later_switches(tmp_path):
+    model, path = _saved(tmp_path)
+    oldest = {k: v for k, v in _NO_CLUSTER_KEYS.items() if k != "use_question_lookback"}
+    _rewrite(path, feature_config=oldest)
+
+    loaded = GapClassifier.load_model(path)
+
+    assert loaded.feature_config == FeatureConfig.improved()
+    assert loaded.predict(GOLD_FREE) == model.predict(GOLD_FREE)
+
+
+def test_load_still_refuses_an_unknown_key_next_to_a_pre_cluster_feature_config(tmp_path):
+    _, path = _saved(tmp_path)
+    _rewrite(path, feature_config={**_NO_CLUSTER_KEYS, "bogus": True})
+    with pytest.raises(ValueError, match=r"Corrupt model artifact gap\.joblib: .*feature_config"):
+        GapClassifier.load_model(path)
+
+
+def test_load_refuses_a_cluster_switch_that_is_on_without_a_map(tmp_path):
+    _, path = _saved(tmp_path)
+    _rewrite(path, feature_config={**_IMPROVED, "use_word_clusters": True})
+    with pytest.raises(ValueError, match=r"Corrupt model artifact gap\.joblib: .*feature_config") as exc:
+        GapClassifier.load_model(path)
+    assert "\n" not in str(exc.value)
+
+
+def test_load_refuses_a_cluster_map_that_is_not_a_mapping(tmp_path):
+    _, path = _saved(tmp_path)
+    _rewrite(path, feature_config={**_IMPROVED, "use_word_clusters": True, "word_clusters": ["did", "you"]})
+    with pytest.raises(ValueError, match=r"Corrupt model artifact gap\.joblib: .*feature_config"):
+        GapClassifier.load_model(path)
+
+
+def test_save_load_round_trip_keeps_the_cluster_map_inside_the_one_file(tmp_path):
+    model, path = _saved(tmp_path, feature_config=_clustered())
+
+    assert [p.name for p in path.parent.iterdir()] == ["gap.joblib"]
+    saved_config = joblib.load(path)["feature_config"]
+    assert saved_config["use_word_clusters"] is True
+    assert type(saved_config["word_clusters"]) is dict and saved_config["word_clusters"] == _CLUSTERS
+
+    loaded = GapClassifier.load_model(path)
+
+    assert loaded.feature_config == _clustered()
+    assert loaded.predict(GOLD_FREE) == model.predict(GOLD_FREE)
+
+
+def test_cluster_features_reach_the_gap_classifiers_vectorizer(tmp_path):
+    model, _ = _saved(tmp_path, feature_config=_clustered())
+    names = model._vectorizer.get_feature_names_out()
+    assert {"cl0=c4", "cl0=c9", "cl0|cl+1=c4|c9", "cl-1=c4"} <= set(names)
+
+
 def test_load_rejects_classes_outside_the_vocabulary(tmp_path):
     path = tmp_path / "b.joblib"
     GapClassifier("B").fit(MODE_B).save_model(path)  # trained on EXCLAMATION, COLON, ...

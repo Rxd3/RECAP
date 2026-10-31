@@ -216,7 +216,11 @@ FILLER_KEYS = (
 
 
 def test_improved_and_basic_presets_unchanged():
-    """Presets keep today's values (plus the new flag off); no filler keys leak when off."""
+    """Presets keep today's values plus the opt-in switches off; no filler keys leak when off.
+
+    Deliberate rule change: the snapshot gains use_word_clusters=False and word_clusters=None (the
+    word-cluster switch), and nothing else.
+    """
     assert FeatureConfig.basic().to_dict() == {
         "preset": "basic",
         "window_size": 1,
@@ -231,6 +235,8 @@ def test_improved_and_basic_presets_unchanged():
         "use_positional_buckets": False,
         "use_filler_cues": False,
         "use_question_lookback": False,
+        "use_word_clusters": False,
+        "word_clusters": None,
         "version": "v1-basic",
     }
     assert FeatureConfig.improved().to_dict() == {
@@ -247,6 +253,8 @@ def test_improved_and_basic_presets_unchanged():
         "use_positional_buckets": True,
         "use_filler_cues": False,
         "use_question_lookback": False,
+        "use_word_clusters": False,
+        "word_clusters": None,
         "version": "v1-improved",
     }
     tokens = ["so", "um", "i", "i", "mean", "you", "know"]
