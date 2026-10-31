@@ -28,4 +28,4 @@
 - `src/punct_restore/data/`: `__init__.py` (M in eaed76b), `extraction.py` (A in eaed76b), `labeling.py` (M in eaed76b), `preprocessing.py` (M in eaed76b), `release.py` (A in eaed76b), `splits.py` (A in eaed76b), `validation.py` (A in eaed76b)
 - `tests/`: `test_data_contract.py` (M in eaed76b)
 
-Generated from `git log HEAD --author="mutesim"` at commit `72b9148` (the final `release/final` docs state) on 2026-10-30. Only the member's own commits are listed; later changes by others are not shown. The member fills in the student ID.
+Generated from `git log HEAD --author="mutesim"` at commit `f889d0f` of `release/final` on 2026-10-31. Only the member's own commits are listed; later changes by others are not shown. The member fills in the student ID.

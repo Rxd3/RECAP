@@ -34,4 +34,4 @@
 - `src/punct_restore/models/`: `crf.py` (M in aa232be)
 - `tests/`: `test_crf_features.py` (A in aa232be), `test_crf_model.py` (A in aa232be), `test_train_crf_cli.py` (A in aa232be)
 
-Generated from `git log HEAD --author="Devinci101\|Omar"` at commit `72b9148` (the final `release/final` docs state) on 2026-10-30. Only the member's own commits are listed; later changes by others are not shown. The member fills in the student ID.
+Generated from `git log HEAD --author="Devinci101\|Omar"` at commit `f889d0f` of `release/final` on 2026-10-31. Only the member's own commits are listed; later changes by others are not shown. The member fills in the student ID.
