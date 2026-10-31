@@ -92,7 +92,7 @@ labels directly.
 
 ## Label audit (100 primary-validation records, 2026-11-01)
 
-Two team members compared 100 primary-validation utterances with the upstream transcripts: 60 drawn at random and 40 from utterances with a rare mark, an ALL-CAPS word or a masked casing position (seed 2026). Each counted wrong and missed marks and casing errors per row with an AI agent's help. **Only rows 51–100 were then checked by hand** (by Abdullah Gamal); rows 1–50 are the agent's counts, not checked by a person, and are reported separately. Marks are `, . ? ! : ; -`; label precision = correct / our marks, label recall = correct / (correct + missed), casing accuracy over the words whose casing is scored. 95% Wilson intervals; marks in one utterance are not independent, so the intervals are somewhat narrow.
+With an AI agent's help, two team members compared 100 primary-validation utterances with the upstream transcripts: 60 drawn at random and 40 from utterances with a rare mark, an ALL-CAPS word or a masked casing position (seed 2026), counting wrong and missed marks and casing errors per row. **Only rows 51–100 were then checked by hand** (by Abdullah Gamal); rows 1–50 are the agent's counts, not checked by a person, and are reported separately. Marks are `, . ? ! : ; -`; label precision = correct / our marks, label recall = correct / (correct + missed), casing accuracy over the words whose casing is scored. 95% Wilson intervals; marks in one utterance are not independent, so the intervals are somewhat narrow.
 
 | Rows | Count | Our marks | Label precision | Label recall | Scored words | Casing accuracy |
 |---|---|---|---|---|---|---|

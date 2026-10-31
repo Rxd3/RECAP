@@ -192,7 +192,7 @@ Every command, from rebuilding the data to scoring a model, is in
 ## Data access
 
 - **Upstream:** SponSpeech (Liu & Beigi, 2024, [arXiv:2409.11241](https://arxiv.org/abs/2409.11241)),
-  CC BY-NC 4.0. No dataset files are committed apart from a 10-utterance sample (`data/sample/`) and small release metadata (`data/release_metadata/`); `results/scores/*.errors.json` contain short SponSpeech excerpts as error examples (CC BY-NC 4.0, attribution in [DATA_LICENSE.md](docs/DATA_LICENSE.md)).
+  CC BY-NC 4.0. No dataset files are committed apart from a 10-utterance sample (`data/sample/`) and small release metadata (`data/release_metadata/`); `results/scores/*.errors.json` contain short SponSpeech excerpts as error examples, and `results/scores/gold_noise/label_audit_sheet.csv` holds the upstream transcripts and our rendered labels of the 100 validation utterances in the label audit (both CC BY-NC 4.0, attribution in [DATA_LICENSE.md](docs/DATA_LICENSE.md)).
 - **Rebuild from source:** `scripts/prepare_data.py` with `extract` reads only about 97 MB of pinned
   byte ranges from the official archive; `build` creates release `sponspeech-m1-v2`. Steps
   and checksums: [data/README.md](data/README.md).
