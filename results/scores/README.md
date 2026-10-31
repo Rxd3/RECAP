@@ -7,6 +7,7 @@ All files were written by `scripts/evaluate_models.py` (`score`, `compare`, `err
 - `runtime/` comes from the timing script;
 - `crf_training_manifests/*.manifest.json` come from `scripts/train_crf.py train` (Member 3);
 - `asr_noise/wer<rate>/summary.json` and `asr_noise_v2/<edit_model>/wer<rate>/seed<seed>/summary.json` come from `scripts/simulate_asr_noise.py`, and `asr_noise_v2/summary.json` comes from `scripts/reporting/asr_noise_table.py`;
+- `clusters/clusters_summary.json` was assembled from the six `clusters/compare_*.json` files during the word-cluster run (the K choice and its caveat; every number in it repeats a compare file);
 - `gold_noise/*_B_noisy.tsv` (sample ID, exclusion rule) and `gold_noise/*_B_summary.json` (counts, including test_amb and `default_train`) come from `scripts/find_gold_noise.py`;
 - `crf_convergence/convergence.json` comes from `scripts/reporting/crf_convergence.py`;
 - `hmm/length_position_A_test.json` comes from `scripts/reporting/length_position.py`.
@@ -28,6 +29,7 @@ All files were written by `scripts/evaluate_models.py` (`score`, `compare`, `err
 | `hidden_event_lm/` | Hidden-event LM: order × discount grid on validation, chosen setting on test and test_amb, paired comparisons against the HMM and the improved CRF |
 | `question2/` | Improved CRF with vs without the question-lookback features on validation (50k sample), with QUESTION per-class intervals |
 | `factored/` | Mode C joint improved CRF vs the factored pipeline (mode A punctuation + CASE casing) on validation (50k sample) |
+| `clusters/` | Improved CRF with vs without the data-driven word-cluster features on validation (50k sample), K = 100 and 300 (`compare_<mode>_k<K>.json`), with the K choice and its caveat in `clusters_summary.json` |
 | `ablations/mode_<M>/` | One-feature-group-removed ablations on validation (50k-sequence training sample) |
 | `filler/mode_<M>/` | Improved CRF with and without the filler-word cue on validation (same sample) |
 | `h1_joint/` | Mode A model vs the mode C model projected to punctuation, on mode A validation gold over the mode C IDs: paired comparisons (`*_jointC_vs_A.json`, with per-class COMMA/PERIOD/QUESTION blocks), the controlled check with the mode A HMM and CRF basic retrained on the mode C training IDs (`*_jointC_vs_A_sameids.json`), and per-model scores (`*_A_on_C_ids.json`, `*_C_as_A_on_C_ids.json`) |

@@ -85,6 +85,7 @@ This is Member 5's evaluation of Member 3's six CRF models (modes A, B and C × 
    - The CRF's transitions, together with its different training settings, are worth 1.3–4.7 points over a per-token classifier (validation, 50k sample).
    - Question-lookback features add +6.11 / +7.12 / +6.01 QUESTION F1 (validation, 50k sample).
    - Separate punctuation and casing models beat the joint mode C model on the joint metric (+2.08; validation, 50k sample).
+   - Data-driven word clusters (K = 300) help commas in A and B and add +0.90 to the mode C joint score; mode A's macro does not move (validation, 50k sample).
 
 ## Team hypotheses
 
@@ -700,6 +701,18 @@ Findings:
 
 Joint training helps punctuation inside the utterance; a separate model helps casing.
 
+### 14.6 Data-driven word clusters (validation)
+
+This extension is off by default (`FeatureConfig.improved(use_word_clusters=True)` with a cluster map). Word classes are induced from the `default_train` tokens only: lowercased words seen at least 5 times, ±2 co-occurrence counts, PPMI weighting, a 100-dimensional truncated SVD and k-means (seed 2026), built by `scripts/build_word_clusters.py`. The CRF gets the cluster of the previous, current and next word and the (current, next) cluster pair. It was trained on the same 50k sample as the ablations (`--variants improved_plus_clusters`). K ∈ {100, 300} was chosen once for all modes by the mean primary difference on validation (K = 300); because the same validation lists choose K and report it, the K = 300 differences are slightly optimistic. With − without, paired 95% CI:
+
+| Mode | Improved | + clusters (K = 300) | Difference | Comma class | Question class | K = 100 difference |
+|---|---|---|---|---|---|---|
+| A | 49.96 | 49.80 | −0.16 (−0.45 to 0.13) | COMMA +0.44 (0.27 to 0.63) * | QUESTION −0.80 (−1.62 to 0.01) | −0.25 (−0.55 to 0.03) |
+| B | 23.25 | 23.59 | +0.34 (0.11 to 0.64) * | COMMA +0.25 (0.06 to 0.44) * | QUESTION +1.23 (0.57 to 1.82) * | −0.20 (−0.71 to 0.20) |
+| C | 47.70 | 48.60 | +0.90 (0.23 to 1.64) * | `COMMA\|LOWER` +0.20 (−0.00 to 0.42) | `QUESTION\|LOWER` +0.30 (−0.44 to 0.96) | +1.01 (0.37 to 1.75) * |
+
+Clusters help commas in modes A and B, the question mark in mode B, and the mode C joint score. In mode A the question mark falls slightly (its interval just includes 0) and the macro score does not move. Like question lookback, this was tested at the 50k-sample scale on validation only and is not in the delivered models.
+
 ## Multiple comparisons (Holm)
 
 The intervals in this document are not adjusted for the number of comparisons. As a check, two-sided bootstrap p-values were taken from each paired comparison's share of resamples in which B beats A (resolution 0.001), and Holm's step-down correction was applied at α = 0.05 within two families.
@@ -724,7 +737,7 @@ The p-values are recomputed from the committed compare JSONs in `results/scores/
 - **Training environment.** Fit times, memory and the Python version come from Member 3's training manifests and were not re-measured.
 - **test and test_amb share 25 videos.** They are reported separately and never pooled.
 - **The comparison methods of sections 13–14 are post hoc.** They were added after the first test report, in response to a review that cited test results. Their settings were chosen on validation and each test list was predicted once, but they are exploratory, and the hypotheses H1–H6 are judged on the course models.
-- **Some comparison methods were run on validation only, at the 50k-sample scale:** the gap classifier, the question-lookback features and the factored pipeline (section 14). Their differences are controlled; their absolute scores sit below the full-data models.
+- **Some comparison methods were run on validation only, at the 50k-sample scale:** the gap classifier, the question-lookback features, the factored pipeline and the word clusters (section 14). Their differences are controlled; their absolute scores sit below the full-data models.
 - **Section 8 is supplementary.** It scores the frozen models on additional official-test utterances; nothing was selected on it.
 
 ## Reproduce

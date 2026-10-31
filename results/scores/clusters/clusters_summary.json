@@ -1,0 +1,210 @@
+{
+ "baseline_predictions": "RECAP_m3_ablations/mode_<M>/improved/validation.jsonl",
+ "bootstrap": {
+  "resamples": 1000,
+  "seed": 2026,
+  "unit": "group_id"
+ },
+ "k_selection": {
+  "caveat": "K is chosen on the same validation lists the comparison is reported on, so the chosen K's difference is optimistically biased; no test data was used",
+  "chosen_k": 300,
+  "mean_primary_difference": {
+   "100": 0.0018396666666666665,
+   "300": 0.0035936666666666665
+  },
+  "rule": "one K for all modes: the K with the higher mean primary macro-F1 difference over modes A, B, C on validation; ties go to the smaller K"
+ },
+ "results_by_k": {
+  "100": {
+   "A": {
+    "classes": {
+     "COMMA": {
+      "ci_high": 0.005172,
+      "ci_low": 0.001491,
+      "difference": 0.003331
+     },
+     "PERIOD": {
+      "ci_high": -0.000607,
+      "ci_low": -0.002956,
+      "difference": -0.001804
+     },
+     "QUESTION": {
+      "ci_high": -0.001099,
+      "ci_low": -0.017472,
+      "difference": -0.009171
+     }
+    },
+    "compare_file": "compare_A_k100.json",
+    "compare_sha256": "95ec17bf2a685608549a33002936a96c59eaa99bacb4e57c50699897a8e2de16",
+    "map_file": "maps/clusters_A_k100.json",
+    "primary": {
+     "ci_high": 0.000345,
+     "ci_low": -0.005494,
+     "difference": -0.002548,
+     "macro_f1_a": 0.499606,
+     "macro_f1_b": 0.497058,
+     "share_b_better": 0.041
+    },
+    "primary_block": "punctuation/all"
+   },
+   "B": {
+    "classes": {
+     "COMMA": {
+      "ci_high": 0.002507,
+      "ci_low": -0.000945,
+      "difference": 0.000739
+     },
+     "PERIOD": {
+      "ci_high": 0.0006,
+      "ci_low": -0.001919,
+      "difference": -0.000668
+     },
+     "QUESTION": {
+      "ci_high": 0.008426,
+      "ci_low": -0.004771,
+      "difference": 0.002001
+     }
+    },
+    "compare_file": "compare_B_k100.json",
+    "compare_sha256": "7d2859b0508199db43bb5af1117dc8791c26c7b55f3d8295a836cf1cc55bee2b",
+    "map_file": "maps/clusters_B_k100.json",
+    "primary": {
+     "ci_high": 0.002004,
+     "ci_low": -0.007056,
+     "difference": -0.002007,
+     "macro_f1_a": 0.232455,
+     "macro_f1_b": 0.230448,
+     "share_b_better": 0.206
+    },
+    "primary_block": "punctuation/all"
+   },
+   "C": {
+    "classes": {
+     "COMMA|LOWER": {
+      "ci_high": 0.001702,
+      "ci_low": -0.002506,
+      "difference": -0.00047
+     },
+     "PERIOD|LOWER": {
+      "ci_high": 0.003655,
+      "ci_low": 0.000348,
+      "difference": 0.001958
+     },
+     "QUESTION|LOWER": {
+      "ci_high": 0.018051,
+      "ci_low": 0.002653,
+      "difference": 0.010192
+     }
+    },
+    "compare_file": "compare_C_k100.json",
+    "compare_sha256": "03f7b80569e8865cb4cc86b1236c5bcb92596cbac2f12bffbd77d3f9774db667",
+    "map_file": "maps/clusters_C_k100.json",
+    "primary": {
+     "ci_high": 0.017481,
+     "ci_low": 0.003747,
+     "difference": 0.010074,
+     "macro_f1_a": 0.477024,
+     "macro_f1_b": 0.487097,
+     "share_b_better": 1.0
+    },
+    "primary_block": "joint/unmasked"
+   }
+  },
+  "300": {
+   "A": {
+    "classes": {
+     "COMMA": {
+      "ci_high": 0.006316,
+      "ci_low": 0.002678,
+      "difference": 0.004446
+     },
+     "PERIOD": {
+      "ci_high": 0.000139,
+      "ci_low": -0.002348,
+      "difference": -0.001135
+     },
+     "QUESTION": {
+      "ci_high": 7.4e-05,
+      "ci_low": -0.016226,
+      "difference": -0.008016
+     }
+    },
+    "compare_file": "compare_A_k300.json",
+    "compare_sha256": "4e8647381140412ecc13ad56dc68bf56e2e5c256fd4bc078b1dc90443cb5fd24",
+    "map_file": "maps/clusters_A_k300.json",
+    "primary": {
+     "ci_high": 0.001292,
+     "ci_low": -0.004455,
+     "difference": -0.001569,
+     "macro_f1_a": 0.499606,
+     "macro_f1_b": 0.498038,
+     "share_b_better": 0.14
+    },
+    "primary_block": "punctuation/all"
+   },
+   "B": {
+    "classes": {
+     "COMMA": {
+      "ci_high": 0.004382,
+      "ci_low": 0.000607,
+      "difference": 0.002538
+     },
+     "PERIOD": {
+      "ci_high": 0.001384,
+      "ci_low": -0.001456,
+      "difference": 1.6e-05
+     },
+     "QUESTION": {
+      "ci_high": 0.018227,
+      "ci_low": 0.005676,
+      "difference": 0.012345
+     }
+    },
+    "compare_file": "compare_B_k300.json",
+    "compare_sha256": "0c2a4d0b3dc4d493c5061b98b8b89038aaf247df734f377e86cdfca091ab6d41",
+    "map_file": "maps/clusters_B_k300.json",
+    "primary": {
+     "ci_high": 0.006446,
+     "ci_low": 0.001076,
+     "difference": 0.003398,
+     "macro_f1_a": 0.232455,
+     "macro_f1_b": 0.235853,
+     "share_b_better": 0.998
+    },
+    "primary_block": "punctuation/all"
+   },
+   "C": {
+    "classes": {
+     "COMMA|LOWER": {
+      "ci_high": 0.004167,
+      "ci_low": -4.1e-05,
+      "difference": 0.002049
+     },
+     "PERIOD|LOWER": {
+      "ci_high": 0.002256,
+      "ci_low": -0.000662,
+      "difference": 0.000793
+     },
+     "QUESTION|LOWER": {
+      "ci_high": 0.00957,
+      "ci_low": -0.00439,
+      "difference": 0.003049
+     }
+    },
+    "compare_file": "compare_C_k300.json",
+    "compare_sha256": "228f68b6a68260c3362aa145b32696cc99664c5e532f9e0d9668c9ea872397d1",
+    "map_file": "maps/clusters_C_k300.json",
+    "primary": {
+     "ci_high": 0.016415,
+     "ci_low": 0.002272,
+     "difference": 0.008952,
+     "macro_f1_a": 0.477024,
+     "macro_f1_b": 0.485975,
+     "share_b_better": 0.995
+    },
+    "primary_block": "joint/unmasked"
+   }
+  }
+ },
+ "what": "improved_plus_clusters vs improved (same seeded 50k default_train sample, primary validation lists)"
+}

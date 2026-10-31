@@ -94,7 +94,8 @@ improved-feature CRF above, in modes A, B and C. Member 3 wrote both CRF feature
 - **Threshold decoding** of the CRF marginals (`scripts/tune_threshold.py`), with τ tuned on validation.
 - **Comparison methods and robustness checks** (exploratory, added on 2026-10-30 after the first test report; settings chosen on validation): a gap classifier (the CRF features without transitions), a
   Stolcke-style hidden-event language model, prior-adjusted threshold decoding (τ × γ), question-lookback
-  features, a factored casing pipeline (punctuation CRF + casing-only CRF), and simulated ASR noise on the test
+  features, data-driven word clusters (PPMI + SVD + k-means from the training text), a factored casing pipeline
+  (punctuation CRF + casing-only CRF), and simulated ASR noise on the test
   inputs (results in [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md)).
 - **A filler-word cue** (`improved_plus_filler` in `scripts/run_ablations.py`), tested on validation.
 - **Word-cluster features** (`improved_plus_clusters` in `scripts/run_ablations.py`, with `--cluster-map` from
@@ -152,6 +153,7 @@ the shortcut, hidden-event LM and threshold columns are our additions):
 - **A gap classifier** (the same features without label-to-label transitions) loses 1.27 / 1.70 / 4.74 to the improved CRF on validation (50k sample). The gap is transitions plus training differences: the gap classifier is an L2 logistic regression with C = 1.0 and 200 iterations, while the CRF uses c1 = c2 = 0.1 and 100 iterations.
 - **Question-lookback features** (a wh-word plus an auxiliary anywhere in the last 12 words, and tag questions) raise QUESTION F1 by 6–7 points in every mode on validation (+6.11 / +7.12 / +6.01, every interval excludes 0).
 - **Punctuation and casing as separate models** beat the joint mode C model on the joint metric (+2.08, validation, 50k sample), because a dedicated casing CRF is better at casing. Joint training still helps punctuation inside the utterance.
+- **Data-driven word clusters** (K = 300; validation, 50k sample) raise COMMA F1 by +0.44 in A and +0.25 in B and the mode C joint score by +0.90; the mode A macro score does not move ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §14.6).
 - **Under simulated ASR noise** (15% word errors) the ranking holds: the improved CRF drops from 49.92 to 45.42 in mode A, still well above the HMM (35.16). With a more realistic, substitution-heavy edit mix over three seeds ([ASR_NOISE_V2.md](docs/ASR_NOISE_V2.md)), it drops to 43.46 (43.10–43.88) and the HMM to 33.82; the ranking holds for every seed.
 
 **Other analyses:**
@@ -246,6 +248,7 @@ report `test` and `test_amb` separately (they share 25 videos).
 | `results/scores/hidden_event_lm/` | Hidden-event LM: validation grid, test and test_amb, comparisons against the HMM and the improved CRF |
 | `results/scores/question2/` | Question-lookback features vs the improved CRF on validation |
 | `results/scores/factored/` | Factored vs joint punctuation and casing, mode C validation |
+| `results/scores/clusters/` | Word-cluster features vs the improved CRF on validation (50k sample), K = 100 and 300, with the K choice in `clusters_summary.json` |
 
 **Package** (`src/punct_restore/`; each package folder `src/punct_restore/`, `src/punct_restore/data/`,
 `src/punct_restore/models/`, `src/punct_restore/features/` and `src/punct_restore/evaluation/` has a
