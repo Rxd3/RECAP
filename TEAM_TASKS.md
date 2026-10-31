@@ -53,7 +53,7 @@ contracts and regression tests. The corrected `sponspeech-m1-v2` bundle is on th
 (`dataset/sponspeech-m1-v2-handoff.zip`); the old `sponspeech-m1-v1-rev2` bundle is superseded.
 Individual member acknowledgments are not recorded. The team lead authorized this review.
 
-## Member 2 — HMM Baseline (Raşit)
+## Member 2 — HMM Baseline (Raşit İsaoğlu)
 
 **Branch:** `feat/m2-hmm-baseline`
 
