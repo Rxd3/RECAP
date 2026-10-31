@@ -1,9 +1,9 @@
-# Mohamed Kamaleldin — Member 4: feature engineering and improvement
+# Mohamed Kamaleldin Eliwa — Member 4: feature engineering and improvement
 
 | Field | Value |
 | --- | --- |
-| Student ID | `<STUDENT_ID>` (filled in by the member) |
-| GitHub | `<GITHUB>` (filled in by the member) |
+| Student ID | 2309015740 |
+| GitHub | [@Mokamaleldin](https://github.com/Mokamaleldin) |
 | Git author name(s) | none (no commits by him in this repository) |
 | Branch | `feat/m4-feature-engineering` |
 | Pull request | none |
@@ -23,4 +23,4 @@ None in this repository.
 
 None in this repository.
 
-Generated from `git log HEAD` at commit `16f4b74` of `release/final` on 2026-10-31. Only the member's own commits are listed; later changes by others are not shown. The member fills in the student ID.
+Generated from `git log HEAD` at commit `c685d08` of `release/final` on 2026-10-31. Only the member's own commits are listed; later changes by others are not shown.
