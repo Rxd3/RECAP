@@ -8,6 +8,7 @@ All files were written by `scripts/evaluate_models.py` (`score`, `compare`, `err
 - `crf_training_manifests/*.manifest.json` come from `scripts/train_crf.py train` (Member 3);
 - `asr_noise/wer<rate>/summary.json` and `asr_noise_v2/<edit_model>/wer<rate>/seed<seed>/summary.json` come from `scripts/simulate_asr_noise.py`, and `asr_noise_v2/summary.json` comes from `scripts/reporting/asr_noise_table.py`;
 - `clusters/clusters_summary.json` was assembled from the six `clusters/compare_*.json` files during the word-cluster run (the K choice and its caveat; every number in it repeats a compare file);
+- `gold_noise/label_audit_sheet.csv` is the team's filled audit sheet (100 primary-validation records; rows 51–100 checked by hand, rows 1–50 agent counts only), and `gold_noise/label_audit.json` holds the precision, recall and casing accuracy computed from it with 95% Wilson intervals;
 - `gold_noise/*_B_noisy.tsv` (sample ID, exclusion rule) and `gold_noise/*_B_summary.json` (counts, including test_amb and `default_train`) come from `scripts/find_gold_noise.py`;
 - `crf_convergence/convergence.json` comes from `scripts/reporting/crf_convergence.py`;
 - `hmm/length_position_A_test.json` comes from `scripts/reporting/length_position.py`.

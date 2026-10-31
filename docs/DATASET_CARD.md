@@ -39,6 +39,7 @@ numbers; nothing else was calculated for this card.
 | Leak-free primary splits | Validation is filtered against train; test and test_amb against train ∪ validation, by shared video, exact text, exact token tuple and ≥ 50% shared word 6-grams. | D6, [DATASET_PLAN.md](DATASET_PLAN.md) |
 | Unresolved-record flags | Ambiguous records stay in the full views with reasons and positions, and are excluded from default training and primary evaluation. | D3, [DATASET_PLAN.md](DATASET_PLAN.md) |
 | Gold-noise audit | Known gold errors are listed, not relabelled. | [EVALUATION_PROTOCOL.md](EVALUATION_PROTOCOL.md) |
+| Label audit | A 100-record label audit gives label precision 99.10% (96.79–99.75), label recall 100.00% (98.29–100.00) and casing accuracy 100.00% (99.79–100.00) on the 50 rows checked by hand (AI-assisted; the other 50 are agent counts only) | [DATA_RELEASE_VALIDATION.md](DATA_RELEASE_VALIDATION.md) |
 | Robustness and noise checks | Mode B rescored without the known noisy records, and the test inputs with simulated ASR word errors | [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §12, §13 |
 
 The projection changes 13,721 labels relative to the native view, all O → COMMA at DASH

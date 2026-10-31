@@ -71,6 +71,8 @@ drive-download-*/
 *.tsv
 # ...except the evaluator's excluded-ID lists (IDs and rule names only)
 !/results/scores/**/*.tsv
+# ...and the filled label-audit sheet (record IDs, upstream text excerpts and the checkers' counts)
+!/results/scores/gold_noise/label_audit_sheet.csv
 *.zip
 *.tar
 *.tar.gz

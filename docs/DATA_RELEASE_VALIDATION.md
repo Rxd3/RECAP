@@ -87,8 +87,20 @@ noise on the primary mode B lists:
 Counts from `results/scores/gold_noise/*_B_summary.json`. They are an upper estimate: a few single-word
 headings such as "Disclaimer:" also match the speaker-label rule. The release was not changed: the flagged IDs are listed in
 `results/scores/gold_noise/*_B_noisy.tsv` and the effect on scores is in
-[EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §12. The rules are heuristics; a 100-record hand audit
-of them is in progress.
+[EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §12. The rules are heuristics; the label audit below checks the
+labels directly.
+
+## Label audit (100 primary-validation records, 2026-11-01)
+
+Two team members compared 100 primary-validation utterances with the upstream transcripts: 60 drawn at random and 40 from utterances with a rare mark, an ALL-CAPS word or a masked casing position (seed 2026). Each counted wrong and missed marks and casing errors per row with an AI agent's help. **Only rows 51–100 were then checked by hand** (by Abdullah Gamal); rows 1–50 are the agent's counts, not checked by a person, and are reported separately. Marks are `, . ? ! : ; -`; label precision = correct / our marks, label recall = correct / (correct + missed), casing accuracy over the words whose casing is scored. 95% Wilson intervals; marks in one utterance are not independent, so the intervals are somewhat narrow.
+
+| Rows | Count | Our marks | Label precision | Label recall | Scored words | Casing accuracy |
+|---|---|---|---|---|---|---|
+| 51–100, checked by hand | 50 | 223 | 99.10% (96.79–99.75) | 100.00% (98.29–100.00) | 1,786 | 100.00% (99.79–100.00) |
+| 1–50, agent only | 50 | 255 | 100.00% (98.52–100.00) | 96.96% (94.11–98.45) | 1,809 | 100.00% (99.79–100.00) |
+| All 100 | 100 | 478 | 99.58% (98.49–99.89) | 98.35% (96.77–99.16) | 3,595 | 100.00% (99.89–100.00) |
+
+The two halves counted one case differently: in rows 1–50 the agent counted 8 marks that the normalization removes on purpose (leftover speaker names before a colon, leading turn dashes and a hyphen glued to a word) as missed; the hand-checked half did not. Without those, recall in rows 1–50 is 100.00% (98.52–100.00). The checkers' notes mention speaker labels in 11 rows (kept in our text or removed by the normalization); the gold-noise rules above count the kept ones. The sheet is `results/scores/gold_noise/label_audit_sheet.csv` and the numbers are in `results/scores/gold_noise/label_audit.json`.
 
 ## Handoff
 
