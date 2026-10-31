@@ -1,0 +1,297 @@
+{
+ "blocks": {
+  "punctuation/all": {
+   "difference": 0.139701,
+   "difference_ci": {
+    "groups": 153,
+    "high": 0.160549,
+    "level": 0.95,
+    "low": 0.11601,
+    "resamples": 1000,
+    "seed": 2026,
+    "share_b_better": 1.0,
+    "unit": "group_id"
+   },
+   "macro_f1_a": 0.2282,
+   "macro_f1_b": 0.367901
+  },
+  "punctuation/non_final": {
+   "difference": 0.160607,
+   "difference_ci": {
+    "groups": 153,
+    "high": 0.18263,
+    "level": 0.95,
+    "low": 0.135034,
+    "resamples": 1000,
+    "seed": 2026,
+    "share_b_better": 1.0,
+    "unit": "group_id"
+   },
+   "macro_f1_a": 0.168311,
+   "macro_f1_b": 0.328918
+  }
+ },
+ "classes": {
+  "COLON": {
+   "punctuation/all": {
+    "difference": 0.128465,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.267082,
+     "level": 0.95,
+     "low": 0.005295,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 0.983,
+     "unit": "group_id"
+    },
+    "f1_a": 0.078431,
+    "f1_b": 0.206897
+   },
+   "punctuation/non_final": {
+    "difference": 0.128465,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.267082,
+     "level": 0.95,
+     "low": 0.005295,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 0.983,
+     "unit": "group_id"
+    },
+    "f1_a": 0.078431,
+    "f1_b": 0.206897
+   }
+  },
+  "COMMA": {
+   "punctuation/all": {
+    "difference": 0.170308,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.18805,
+     "level": 0.95,
+     "low": 0.155408,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 1.0,
+     "unit": "group_id"
+    },
+    "f1_a": 0.524221,
+    "f1_b": 0.694529
+   },
+   "punctuation/non_final": {
+    "difference": 0.17032,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.188086,
+     "level": 0.95,
+     "low": 0.155421,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 1.0,
+     "unit": "group_id"
+    },
+    "f1_a": 0.524221,
+    "f1_b": 0.694541
+   }
+  },
+  "DASH": {
+   "punctuation/all": {
+    "difference": 0.022167,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.043022,
+     "level": 0.95,
+     "low": 0.004619,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 0.994,
+     "unit": "group_id"
+    },
+    "f1_a": 0.002372,
+    "f1_b": 0.02454
+   },
+   "punctuation/non_final": {
+    "difference": 0.022167,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.043022,
+     "level": 0.95,
+     "low": 0.004619,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 0.994,
+     "unit": "group_id"
+    },
+    "f1_a": 0.002372,
+    "f1_b": 0.02454
+   }
+  },
+  "EXCLAMATION": {
+   "punctuation/all": {
+    "difference": 0.01019,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.035176,
+     "level": 0.95,
+     "low": 0.0,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 0.641,
+     "unit": "group_id"
+    },
+    "f1_a": 0.018519,
+    "f1_b": 0.028708
+   },
+   "punctuation/non_final": {
+    "difference": 0.01019,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.035176,
+     "level": 0.95,
+     "low": 0.0,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 0.641,
+     "unit": "group_id"
+    },
+    "f1_a": 0.018519,
+    "f1_b": 0.028708
+   }
+  },
+  "PERIOD": {
+   "punctuation/all": {
+    "difference": 0.113237,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.131095,
+     "level": 0.95,
+     "low": 0.097535,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 1.0,
+     "unit": "group_id"
+    },
+    "f1_a": 0.711586,
+    "f1_b": 0.824823
+   },
+   "punctuation/non_final": {
+    "difference": 0.285045,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.312654,
+     "level": 0.95,
+     "low": 0.260012,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 1.0,
+     "unit": "group_id"
+    },
+    "f1_a": 0.353872,
+    "f1_b": 0.638917
+   }
+  },
+  "QUESTION": {
+   "punctuation/all": {
+    "difference": 0.502045,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.549016,
+     "level": 0.95,
+     "low": 0.455667,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 1.0,
+     "unit": "group_id"
+    },
+    "f1_a": 0.262272,
+    "f1_b": 0.764317
+   },
+   "punctuation/non_final": {
+    "difference": 0.476565,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.526531,
+     "level": 0.95,
+     "low": 0.427206,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 1.0,
+     "unit": "group_id"
+    },
+    "f1_a": 0.20076,
+    "f1_b": 0.677326
+   }
+  },
+  "SEMICOLON": {
+   "punctuation/all": {
+    "difference": 0.031496,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.076433,
+     "level": 0.95,
+     "low": 0.0,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 0.626,
+     "unit": "group_id"
+    },
+    "f1_a": 0.0,
+    "f1_b": 0.031496
+   },
+   "punctuation/non_final": {
+    "difference": 0.031496,
+    "difference_ci": {
+     "groups": 153,
+     "high": 0.076433,
+     "level": 0.95,
+     "low": 0.0,
+     "resamples": 1000,
+     "seed": 2026,
+     "share_b_better": 0.626,
+     "unit": "group_id"
+    },
+    "f1_a": 0.0,
+    "f1_b": 0.031496
+   }
+  }
+ },
+ "inputs_a": {
+  "gold": {
+   "path": "data/processed/sponspeech-m1-v2/mode_B/test.jsonl",
+   "sha256": "b708b8e3f4e93c5f6aa37c231b320fbe419e00f81a1945f7d50a55e2c25a4959"
+  },
+  "ids": {
+   "path": "data/splits/sponspeech-m1-v2/primary_eval/test_mode_B.ids",
+   "sha256": "207f414dbc649808729aeb92ee160c9a9bb57e066260d207c4a643cbfe75c3a1"
+  },
+  "masks": null,
+  "predictions": {
+   "path": "RECAP_m3_final/crf_mode_b_improved_full_01_test.jsonl",
+   "sha256": "cfd326154d0720546d7c668ae39dcc8026988ca5e61e6681aa584fcb53876f70"
+  }
+ },
+ "inputs_b": {
+  "gold": {
+   "path": "data/processed/sponspeech-m1-v2/mode_B/test.jsonl",
+   "sha256": "b708b8e3f4e93c5f6aa37c231b320fbe419e00f81a1945f7d50a55e2c25a4959"
+  },
+  "ids": {
+   "path": "data/splits/sponspeech-m1-v2/primary_eval/test_mode_B.ids",
+   "sha256": "207f414dbc649808729aeb92ee160c9a9bb57e066260d207c4a643cbfe75c3a1"
+  },
+  "masks": null,
+  "predictions": {
+   "path": "t5_seq2seq_B/test.jsonl",
+   "sha256": "f50380b0cbaa21c951b4dcf03a45bfc99fc8cd064bf175b7b13fb1f0b4aa6563"
+  }
+ },
+ "label_mode": "B",
+ "model_a": "crf_improved",
+ "model_b": "t5_seq2seq",
+ "policy_version": "m1-v2",
+ "primary_block": "punctuation/all",
+ "schema": "recap-compare-v1",
+ "sequences": 12321
+}

@@ -133,6 +133,16 @@ the shortcut, hidden-event LM and threshold columns are our additions):
 | B | 11.87 | 16.79 (15.28–18.49) | 22.51 (21.08–23.98) | 20.25 (18.87–21.95) | 22.82 (21.42–24.42) | **24.25** (23.06–25.54) |
 | C | 18.09 | 37.41 (34.56–40.71) | 41.18 (39.42–42.70) | 43.85 (42.13–45.47) | 47.02 (44.97–49.00) | **49.77** (47.26–51.95) |
 
+**Pretrained neural taggers** (Member 2; fine-tuned BERT and FLAN-T5, exploratory and not course baselines; test, [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §15):
+
+| Mode | BERT | FLAN-T5 |
+| --- | --- | --- |
+| A | 76.25 (74.51–77.90) | 76.76 (74.78–78.38) |
+| B | 36.43 (34.41–38.26) | 36.79 (34.32–39.28) |
+| C | not run | not run |
+
+They beat the improved CRF by +26.33 to +26.84 points in A and +13.61 to +13.97 in B (every interval excludes 0). They start from large pretrained corpora, which may overlap with these transcripts.
+
 - **The improved CRF beats the HMM** by +14.80 (A), +6.03 (B) and +9.61 (C) points on test. It beats the basic CRF by +6.27, +2.57 and +3.17, and the basic CRF beats the HMM by +8.53, +3.46 and +6.43. All nine paired intervals exclude 0, and the ranking holds on test_amb.
 - **The CRF gain is mostly COMMA and QUESTION** (mode A test F1, HMM → CRF improved): COMMA 26.28 → 52.52, QUESTION 11.75 → 26.23, PERIOD 67.34 → 71.02.
 - **Casing** (mode C, masked casing F1, test): HMM 79.81, CRF improved 85.09.
@@ -248,6 +258,7 @@ report `test` and `test_amb` separately (they share 25 videos).
 | `results/scores/hidden_event_lm/` | Hidden-event LM: validation grid, test and test_amb, comparisons against the HMM and the improved CRF |
 | `results/scores/question2/` | Question-lookback features vs the improved CRF on validation |
 | `results/scores/factored/` | Factored vs joint punctuation and casing, mode C validation |
+| `results/scores/neural/` | Member 2's BERT and FLAN-T5 predictions scored on validation, test and test_amb, with paired comparisons against the improved CRF, τ × γ and the HMM |
 | `results/scores/clusters/` | Word-cluster features vs the improved CRF on validation (50k sample), K = 100 and 300, with the K choice in `clusters_summary.json` |
 
 **Package** (`src/punct_restore/`; each package folder `src/punct_restore/`, `src/punct_restore/data/`,

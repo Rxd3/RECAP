@@ -1,0 +1,395 @@
+{
+ "blocks": {
+  "punctuation/all": {
+   "accuracy": 0.943604,
+   "confusion": [
+    [
+     412669,
+     5811,
+     1245,
+     148,
+     5,
+     20,
+     4,
+     268
+    ],
+    [
+     9406,
+     22202,
+     2763,
+     271,
+     4,
+     28,
+     7,
+     387
+    ],
+    [
+     2023,
+     2673,
+     19916,
+     413,
+     10,
+     17,
+     6,
+     53
+    ],
+    [
+     222,
+     151,
+     276,
+     2120,
+     1,
+     0,
+     0,
+     3
+    ],
+    [
+     24,
+     49,
+     71,
+     2,
+     5,
+     1,
+     0,
+     3
+    ],
+    [
+     97,
+     82,
+     36,
+     6,
+     1,
+     50,
+     0,
+     1
+    ],
+    [
+     23,
+     50,
+     61,
+     1,
+     0,
+     2,
+     2,
+     0
+    ],
+    [
+     170,
+     244,
+     161,
+     7,
+     0,
+     5,
+     1,
+     27
+    ]
+   ],
+   "empty_support": false,
+   "labels": [
+    "O",
+    "COMMA",
+    "PERIOD",
+    "QUESTION",
+    "EXCLAMATION",
+    "COLON",
+    "SEMICOLON",
+    "DASH"
+   ],
+   "macro_f1": 0.369019,
+   "macro_f1_ci": {
+    "groups": 314,
+    "high": 0.382964,
+    "level": 0.95,
+    "low": 0.353056,
+    "resamples": 1000,
+    "seed": 2026,
+    "unit": "group_id"
+   },
+   "macro_over": [
+    "COMMA",
+    "PERIOD",
+    "QUESTION",
+    "EXCLAMATION",
+    "COLON",
+    "SEMICOLON",
+    "DASH"
+   ],
+   "micro": {
+    "f1": 0.716003,
+    "precision": 0.742785,
+    "recall": 0.691084
+   },
+   "per_class": {
+    "COLON": {
+     "f1": 0.252525,
+     "precision": 0.406504,
+     "predicted": 123,
+     "recall": 0.18315,
+     "support": 273
+    },
+    "COMMA": {
+     "f1": 0.669441,
+     "precision": 0.710191,
+     "predicted": 31262,
+     "recall": 0.633113,
+     "support": 35068
+    },
+    "DASH": {
+     "f1": 0.039794,
+     "precision": 0.036388,
+     "predicted": 742,
+     "recall": 0.043902,
+     "support": 615
+    },
+    "EXCLAMATION": {
+     "f1": 0.055249,
+     "precision": 0.192308,
+     "predicted": 26,
+     "recall": 0.032258,
+     "support": 155
+    },
+    "O": {
+     "f1": 0.976958,
+     "precision": 0.971823,
+     "predicted": 424634,
+     "recall": 0.982148,
+     "support": 420170
+    },
+    "PERIOD": {
+     "f1": 0.802417,
+     "precision": 0.811937,
+     "predicted": 24529,
+     "recall": 0.793119,
+     "support": 25111
+    },
+    "QUESTION": {
+     "f1": 0.738547,
+     "precision": 0.714286,
+     "predicted": 2968,
+     "recall": 0.764515,
+     "support": 2773
+    },
+    "SEMICOLON": {
+     "f1": 0.025157,
+     "precision": 0.1,
+     "predicted": 20,
+     "recall": 0.014388,
+     "support": 139
+    }
+   },
+   "scored_positions": 484304
+  },
+  "punctuation/non_final": {
+   "accuracy": 0.942908,
+   "confusion": [
+    [
+     412669,
+     5811,
+     1245,
+     148,
+     5,
+     20,
+     4,
+     268
+    ],
+    [
+     9406,
+     22202,
+     2763,
+     271,
+     4,
+     28,
+     7,
+     387
+    ],
+    [
+     2023,
+     2671,
+     8640,
+     173,
+     10,
+     17,
+     6,
+     53
+    ],
+    [
+     222,
+     151,
+     128,
+     1052,
+     1,
+     0,
+     0,
+     3
+    ],
+    [
+     24,
+     49,
+     71,
+     2,
+     5,
+     1,
+     0,
+     3
+    ],
+    [
+     97,
+     82,
+     36,
+     6,
+     1,
+     50,
+     0,
+     1
+    ],
+    [
+     23,
+     50,
+     61,
+     1,
+     0,
+     2,
+     2,
+     0
+    ],
+    [
+     170,
+     244,
+     161,
+     7,
+     0,
+     5,
+     1,
+     27
+    ]
+   ],
+   "empty_support": false,
+   "labels": [
+    "O",
+    "COMMA",
+    "PERIOD",
+    "QUESTION",
+    "EXCLAMATION",
+    "COLON",
+    "SEMICOLON",
+    "DASH"
+   ],
+   "macro_f1": 0.334779,
+   "macro_f1_ci": {
+    "groups": 314,
+    "high": 0.348899,
+    "level": 0.95,
+    "low": 0.318557,
+    "resamples": 1000,
+    "seed": 2026,
+    "unit": "group_id"
+   },
+   "macro_over": [
+    "COMMA",
+    "PERIOD",
+    "QUESTION",
+    "EXCLAMATION",
+    "COLON",
+    "SEMICOLON",
+    "DASH"
+   ],
+   "micro": {
+    "f1": 0.650382,
+    "precision": 0.681311,
+    "recall": 0.62214
+   },
+   "per_class": {
+    "COLON": {
+     "f1": 0.252525,
+     "precision": 0.406504,
+     "predicted": 123,
+     "recall": 0.18315,
+     "support": 273
+    },
+    "COMMA": {
+     "f1": 0.669461,
+     "precision": 0.710237,
+     "predicted": 31260,
+     "recall": 0.633113,
+     "support": 35068
+    },
+    "DASH": {
+     "f1": 0.039794,
+     "precision": 0.036388,
+     "predicted": 742,
+     "recall": 0.043902,
+     "support": 615
+    },
+    "EXCLAMATION": {
+     "f1": 0.055249,
+     "precision": 0.192308,
+     "predicted": 26,
+     "recall": 0.032258,
+     "support": 155
+    },
+    "O": {
+     "f1": 0.976958,
+     "precision": 0.971823,
+     "predicted": 424634,
+     "recall": 0.982148,
+     "support": 420170
+    },
+    "PERIOD": {
+     "f1": 0.647239,
+     "precision": 0.65929,
+     "predicted": 13105,
+     "recall": 0.635621,
+     "support": 13593
+    },
+    "QUESTION": {
+     "f1": 0.654025,
+     "precision": 0.633735,
+     "predicted": 1660,
+     "recall": 0.675658,
+     "support": 1557
+    },
+    "SEMICOLON": {
+     "f1": 0.025157,
+     "precision": 0.1,
+     "predicted": 20,
+     "recall": 0.014388,
+     "support": 139
+    }
+   },
+   "scored_positions": 471570
+  }
+ },
+ "counts": {
+  "ignored_prediction_ids": 0,
+  "sequences": 12734,
+  "tokens": 484304
+ },
+ "inputs": {
+  "gold": {
+   "path": "data/processed/sponspeech-m1-v2/mode_B/test_amb.jsonl",
+   "sha256": "a25d57177ea8c0497a8ec92f9077bad3a83138da4c32a82bc7267057ff7a5c81"
+  },
+  "ids": {
+   "path": "data/splits/sponspeech-m1-v2/primary_eval/test_amb_mode_B.ids",
+   "sha256": "7e58a830903d3c271614acef04d878d094a12d390e9826cad7271b831d49253e"
+  },
+  "manifest": {
+   "path": "bert_tagger_B/test_amb.manifest.json",
+   "sha256": "9e9773ab400eb21728878e3924b8e60d9c655a1f50fac5cfee80ce08b99ce26c"
+  },
+  "masks": null,
+  "predictions": {
+   "path": "bert_tagger_B/test_amb.jsonl",
+   "sha256": "c202d61e97bc2f3c669c54da2ea5cffabfbbcadf42e1b7dde289b8d9b31aaa36"
+  }
+ },
+ "label_mode": "B",
+ "model_name": "bert_tagger",
+ "policy_version": "m1-v2",
+ "primary": {
+  "block": "punctuation/all",
+  "metric": "macro_f1",
+  "value": 0.369019
+ },
+ "schema": "recap-eval-v1"
+}

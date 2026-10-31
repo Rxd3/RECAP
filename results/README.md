@@ -6,7 +6,7 @@ prior-adjusted decoding (`threshold_prior/`), ablations, filler cue, H1, leakage
 the B→A study, the settings sensitivity check, the gold-noise check (`gold_noise/`), simulated ASR noise
 (`asr_noise/`, and `asr_noise_v2/` for the v2 edit model and seed variance in
 [ASR_NOISE_V2.md](../docs/ASR_NOISE_V2.md)), CRF convergence (`crf_convergence/`) and the comparison methods
-(`gap/`, `hidden_event_lm/`, `question2/`, `factored/`, `clusters/`). [`scores/README.md`](scores/README.md) lists every
+(`gap/`, `hidden_event_lm/`, `question2/`, `factored/`, `clusters/`) and Member 2's neural taggers (`neural/`). [`scores/README.md`](scores/README.md) lists every
 folder. The score, compare and errors files record the SHA-256 of their inputs; the τ files record the model
 hash, the split and the SHA-256 of every input; the runtime files record the model file name. So any table can
 be recomputed or checked from them. The `*.errors.json` files contain short SponSpeech excerpts, and `scores/gold_noise/label_audit_sheet.csv` the
