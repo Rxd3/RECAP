@@ -130,7 +130,7 @@ for integration. CRF implementation need not wait for HMM training.
 **Handoff:** give Member 4 the stable CRF adapter/extractor signature and basic
 preset; give Members 5 and 6 compatible artifacts, predictions and provenance.
 
-## Member 4 — Feature Engineering and Model Improvement (Mohamed Kamaleldin)
+## Member 4 — Feature Engineering and Model Improvement (Mohamed Kamaleldin Eliwa)
 
 **Branch:** `feat/m4-feature-engineering`
 

@@ -332,7 +332,7 @@ Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM
 | 1 Almutesim Alakili (Mutasim) | Dataset and preprocessing | `feat/m1-data-preprocessing` | `contributions/Mutasim_220911336_Sam-Ali23.md` |
 | 2 Raşit (lead) | HMM baseline | `feat/m2-hmm-baseline` | `contributions/Rasit_STUDENT_ID_Rxd3.md` |
 | 3 Omar Alzyod | CRF model and improved features | `feat/m3-crf-model` | `contributions/Omar_2409015412_Devinci101.md` |
-| 4 Mohamed | Feature engineering | `feat/m4-feature-engineering` | `contributions/Mohamed_STUDENT_ID_GITHUB.md` |
+| 4 Mohamed Kamaleldin Eliwa | Feature engineering | `feat/m4-feature-engineering` | `contributions/Mohamed_2309015740_Mokamaleldin.md` |
 | 5 Abdlaraouf Alkabir | Evaluation and error analysis | `feat/m5-evaluation` | `contributions/Abdlaraouf_2309015482_afel6.md` |
 | 6 Abdullah Gamal (Abdulla) | Integration and presentation | `feat/m6-integration-presentation` | `contributions/Abdulla_2309015819_abdu3061.md` |
 

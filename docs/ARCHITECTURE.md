@@ -31,7 +31,7 @@ feature configuration selects behavior; versioned contracts fix alignment.
 | `pipeline.py` (`load_model`, `ModelAdapter`, `RestorationPipeline`) and `scripts/run_demo.py` (the demo path), presentation | Member 6 | Text + saved HMM or hidden-event LM (`.json`), or CRF or gap classifier (`.joblib`, `.pkl`) → restored text |
 
 The feature code in `crf_features.py`, both presets included, was written by Member 3; Member 4's
-branch has no commits ([contributions](../contributions/Mohamed_STUDENT_ID_GITHUB.md)). The threshold
+branch has no commits ([contributions](../contributions/Mohamed_2309015740_Mokamaleldin.md)). The threshold
 decoder and the filler cue were added by Member 5 during release integration. Shared documents and
 configs need affected owners' review.
 

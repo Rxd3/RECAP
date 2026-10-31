@@ -2,7 +2,7 @@
 
 **Module:** `src/punct_restore/features/crf_features.py`
 **Test Suite:** `tests/test_crf_features.py`
-**Status:** The feature code, both presets included, was written by Member 3 (Omar) in commit `aa232be` and used for the six full-data CRF models ([CRF_EXPERIMENTS.md](../docs/CRF_EXPERIMENTS.md)). Member 4's branch `feat/m4-feature-engineering` has no commits beyond the project scaffold ([contributions](../contributions/Mohamed_STUDENT_ID_GITHUB.md)). The feature ablations were run on **validation only** by Member 5: [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md) §6. `scripts/run_ablations.py` reruns them.
+**Status:** The feature code, both presets included, was written by Member 3 (Omar) in commit `aa232be` and used for the six full-data CRF models ([CRF_EXPERIMENTS.md](../docs/CRF_EXPERIMENTS.md)). Member 4's branch `feat/m4-feature-engineering` has no commits beyond the project scaffold ([contributions](../contributions/Mohamed_2309015740_Mokamaleldin.md)). The feature ablations were run on **validation only** by Member 5: [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md) §6. `scripts/run_ablations.py` reruns them.
 
 ---
 
