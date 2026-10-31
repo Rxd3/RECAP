@@ -28,4 +28,4 @@
 - `src/punct_restore/`: `pipeline.py` (M in 397bdf3)
 - `tests/`: `test_model_contract.py` (M in 397bdf3)
 
-Generated from `git log HEAD --author="Abdullah Gamal"` at commit `f889d0f` of `release/final` on 2026-10-31. Only the member's own commits are listed; later changes by others are not shown. The member fills in the student ID.
+Generated from `git log HEAD --author="Abdullah Gamal"` at commit `4b2c616` of `release/final` on 2026-10-31. Only the member's own commits are listed; later changes by others are not shown. The member fills in the student ID.

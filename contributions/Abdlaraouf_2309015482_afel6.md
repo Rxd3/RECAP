@@ -23,6 +23,11 @@
 
 | Commit | Date | Subject |
 | --- | --- | --- |
+| `4b2c616` | 2026-10-31 | docs: map the ASR-noise report modules and refresh the section 13.1 seed-spread line |
+| `e543704` | 2026-10-31 | docs(eval): regenerate ASR_NOISE_V2.md and its summary with the fixed generator |
+| `597dd43` | 2026-10-31 | fix(reporting): compute the ASR-noise v2 findings from the data and round once |
+| `84f10d5` | 2026-10-31 | fix(data): validate ASR-noise offsets and make the train-only confusion test able to fail |
+| `a2df0db` | 2026-10-31 | docs(contributions): regenerate the contribution files at the current release/final head |
 | `f889d0f` | 2026-10-31 | docs(eval): fold the ASR noise v2 study into section 13, README and D10, and fix the regrade doc items |
 | `b2840dc` | 2026-10-30 | docs: add ASR_NOISE_V2 report and update documentation maps |
 | `efdd761` | 2026-10-30 | test: add unit and safety tests for asr_noise_table reporting script |
@@ -128,6 +133,7 @@ Merge commits:
 
 | Commit | Date | Subject |
 | --- | --- | --- |
+| `3053cbb` | 2026-10-31 | chore: merge ASR-noise v2 report fixes into release/final |
 | `1dbc843` | 2026-10-31 | chore: merge simulated-ASR v2 edit model and seed variance into release/final |
 | `6ffed31` | 2026-10-30 | chore: merge gold-noise and new-tool docs into release/final |
 | `e574e4b` | 2026-10-30 | chore: merge gold-noise finder, convergence and length/position reports into release/final |
@@ -159,11 +165,11 @@ Merge commits:
 
 ## Files added or changed
 
-- repository root: 9 files (2 added); commits 0eeffba, 1bc35eb, 1c1ebd5, 1da392b, 284c593, 345bc97, 3645bfb, 4c7619b, 4d33521, 5002994, 54a5666, 54eed84, 55eb978, 5c786a4, 6c8130c, 6d72f6d, 6e125d5, 71886ec, 72b9148, 766aeb7, 8c52025, 8c65522, 8fecfbd, 9802964, 9d26cb6, 9fe6f00, a7ab470, b2840dc, b6a3799, bbf8367, c3030b9, cfc8b20, d27de6f, d2953ce, d418fc5, d4ab315, e377552, eafde4c, f5a4721, f889d0f, f9082a7, f97855a, fbd8d45, fe9710b
+- repository root: 9 files (2 added); commits 0eeffba, 1bc35eb, 1c1ebd5, 1da392b, 284c593, 345bc97, 3645bfb, 4b2c616, 4c7619b, 4d33521, 5002994, 54a5666, 54eed84, 55eb978, 5c786a4, 6c8130c, 6d72f6d, 6e125d5, 71886ec, 72b9148, 766aeb7, 8c52025, 8c65522, 8fecfbd, 9802964, 9d26cb6, 9fe6f00, a7ab470, b2840dc, b6a3799, bbf8367, c3030b9, cfc8b20, d27de6f, d2953ce, d418fc5, d4ab315, e377552, eafde4c, f5a4721, f889d0f, f9082a7, f97855a, fbd8d45, fe9710b
 - `artifacts/`: `README.md` (M in f9082a7, 5c786a4, 766aeb7)
 - `artifacts/models/`: `.gitkeep` (D in 5c786a4)
 - `configs/`: `README.md` (M in f97855a, 766aeb7), `datasets.yaml` (M in 3645bfb), `experiment.example.yaml` (D in 766aeb7)
-- `contributions/`: `AbdRaouf_STUDENT_ID_afel6.md` (A in 54a5666; M in 73618ee, 45554af, b752c42, a7ab470, renamed to `Abdlaraouf_2309015482_afel6.md` in 345bc97), `Abdlaraouf_2309015482_afel6.md` (R in 345bc97), `Abdulla_STUDENT_ID_abdu3061.md` (A in 54a5666; M in 73618ee, 45554af), `Mohamed_STUDENT_ID_GITHUB.md` (A in 54a5666; M in 73618ee, 45554af), `Mutasim_STUDENT_ID_Sam-Ali23.md` (A in 54a5666; M in 73618ee, 45554af), `Omar_STUDENT_ID_Devinci101.md` (A in 54a5666; M in 73618ee, 45554af, b752c42), `Rasit_STUDENT_ID_Rxd3.md` (A in 54a5666; M in 73618ee, 45554af)
+- `contributions/`: `AbdRaouf_STUDENT_ID_afel6.md` (A in 54a5666; M in 73618ee, 45554af, b752c42, a7ab470, renamed to `Abdlaraouf_2309015482_afel6.md` in 345bc97), `Abdlaraouf_2309015482_afel6.md` (M in a2df0db; R in 345bc97), `Abdulla_STUDENT_ID_abdu3061.md` (A in 54a5666; M in a2df0db, 73618ee, 45554af), `Mohamed_STUDENT_ID_GITHUB.md` (A in 54a5666; M in a2df0db, 73618ee, 45554af), `Mutasim_STUDENT_ID_Sam-Ali23.md` (A in 54a5666; M in a2df0db, 73618ee, 45554af), `Omar_STUDENT_ID_Devinci101.md` (A in 54a5666; M in a2df0db, 73618ee, 45554af, b752c42), `Rasit_STUDENT_ID_Rxd3.md` (A in 54a5666; M in a2df0db, 73618ee, 45554af)
 - `data/`: `README.md` (M in 55eb978, 1c1ebd5, 3645bfb)
 - `data/processed/`: `.gitkeep` (D in 55eb978)
 - `data/raw/`: `.gitkeep` (D in 55eb978)
@@ -173,7 +179,7 @@ Merge commits:
 - `data/release_metadata/sponspeech-m1-v2/splits/leakage_controlled/`: `report.json` (A in 1c1ebd5)
 - `data/sample/`: `README.md` (A in 1c1ebd5), `case_joint_mask_validation.jsonl` (A in 1c1ebd5), `mode_A_validation.jsonl` (A in 1c1ebd5), `mode_B_validation.jsonl` (A in 1c1ebd5), `mode_C_validation.jsonl` (A in 1c1ebd5), `sample.ids` (A in 1c1ebd5)
 - `data/splits/`: `.gitkeep` (D in 55eb978)
-- `docs/`: 23 files (7 added); commits 0eeffba, 102393e, 15e5ebf, 1bc35eb, 1c1ebd5, 1da392b, 20c2a51, 255fc68, 284c593, 3645bfb, 3948341, 3f10555, 44d81a0, 45a3deb, 472abc5, 488a0dd, 4c7619b, 4d33521, 51bd400, 54a5666, 5562e32, 55eb978, 5c786a4, 6356916, 680438f, 6c64226, 6c8130c, 6d72f6d, 6e125d5, 72b9148, 766aeb7, 8c65522, 9802964, 9fe6f00, a0e9c57, a5c3ac8, a60428c, b2840dc, b6a3799, b752c42, bbf8367, c3030b9, d27de6f, d2953ce, d418fc5, e00b3d1, e377552, eacfa31, eafde4c, ec37d19, f5a4721, f889d0f, f9082a7, f97855a, fc68dbd, fe9710b
+- `docs/`: 23 files (7 added); commits 0eeffba, 102393e, 15e5ebf, 1bc35eb, 1c1ebd5, 1da392b, 20c2a51, 255fc68, 284c593, 3645bfb, 3948341, 3f10555, 44d81a0, 45a3deb, 472abc5, 488a0dd, 4b2c616, 4c7619b, 4d33521, 51bd400, 54a5666, 5562e32, 55eb978, 5c786a4, 6356916, 680438f, 6c64226, 6c8130c, 6d72f6d, 6e125d5, 72b9148, 766aeb7, 8c65522, 9802964, 9fe6f00, a0e9c57, a5c3ac8, a60428c, b2840dc, b6a3799, b752c42, bbf8367, c3030b9, d27de6f, d2953ce, d418fc5, e00b3d1, e377552, e543704, eacfa31, eafde4c, ec37d19, f5a4721, f889d0f, f9082a7, f97855a, fc68dbd, fe9710b
 - `experiments/`: `CRF_NOTES.md` (M in 4c7619b, 0eeffba, 1da392b, 5c786a4, 4d33521, f97855a, b752c42, fe9710b, a7ab470, 54a5666), `FEATURE_NOTES.md` (M in eafde4c, 1da392b, f5a4721, b752c42, fe9710b, a7ab470), `HMM_RESULTS.md` (M in 1da392b, f5a4721, 766aeb7), `HMM_RUNBOOK.md` (M in f5a4721), `README.md` (M in 4d33521, 766aeb7, b752c42, a7ab470)
 - `experiments/runs/`: `.gitkeep` (D in 55eb978)
 - `experiments/runs/recap_m3_handoff_eval/`: `README.md` (D in 766aeb7)
@@ -189,7 +195,7 @@ Merge commits:
 - `results/scores/asr_noise/wer0.05/`: 10 files (10 added); commits 6c64226
 - `results/scores/asr_noise/wer0.10/`: 10 files (10 added); commits 6c64226
 - `results/scores/asr_noise/wer0.15/`: 10 files (10 added); commits 6c64226
-- `results/scores/asr_noise_v2/`: `summary.json` (A in 3814f38)
+- `results/scores/asr_noise_v2/`: `summary.json` (A in 3814f38; M in e543704)
 - `results/scores/asr_noise_v2/v1/wer0.15/seed2027/`: 10 files (10 added); commits 3814f38
 - `results/scores/asr_noise_v2/v1/wer0.15/seed2028/`: 10 files (10 added); commits 3814f38
 - `results/scores/asr_noise_v2/v2/wer0.05/seed2026/`: 10 files (10 added); commits 3814f38
@@ -223,14 +229,14 @@ Merge commits:
 - `results/scores/threshold/`: 15 files (15 added); commits d2953ce, eafde4c
 - `results/scores/threshold_prior/`: 21 files (21 added); commits 1bc35eb, 3f10555, eafde4c
 - `results/tables/`: `.gitkeep` (D in 55eb978)
-- `scripts/`: 15 files (7 added); commits 01858ae, 0eeffba, 1da392b, 31e59f9, 3ca76d5, 3ec548b, 4304e4c, 5373a82, 54a5666, 6356916, 649bd53, 6507152, 680438f, 6d72f6d, 71886ec, 72b9148, 7889149, 8fecfbd, 910e552, 9fe6f00, a930859, b2840dc, b875ea3, b973981, bbf8367, c0453c8, c575279, ca96025, cfc8b20, d27de6f, d3284b9, e377552, e7095cf, e743928, eafde4c, eb6afa7, ec37d19, f889d0f, fbd8d45
-- `scripts/reporting/`: 9 files (9 added); commits 1da392b, 3814f38, 4998b31, 596310b, aad6c70, f4dee77, f889d0f
+- `scripts/`: 15 files (7 added); commits 01858ae, 0eeffba, 1da392b, 31e59f9, 3ca76d5, 3ec548b, 4304e4c, 4b2c616, 5373a82, 54a5666, 6356916, 649bd53, 6507152, 680438f, 6d72f6d, 71886ec, 72b9148, 7889149, 84f10d5, 8fecfbd, 910e552, 9fe6f00, a930859, b2840dc, b875ea3, b973981, bbf8367, c0453c8, c575279, ca96025, cfc8b20, d27de6f, d3284b9, e377552, e7095cf, e743928, eafde4c, eb6afa7, ec37d19, f889d0f, fbd8d45
+- `scripts/reporting/`: 12 files (12 added); commits 1da392b, 3814f38, 4998b31, 596310b, 597dd43, aad6c70, f4dee77, f889d0f
 - `src/punct_restore/`: `__init__.py` (M in 5002994), `pipeline.py` (M in c7934ef, c575279, 4304e4c), `prediction_io.py` (A in 3ca76d5; M in 649bd53, 31e59f9)
-- `src/punct_restore/data/`: `asr_noise.py` (A in 910e552; M in 7889149), `gold_noise.py` (A in 3ec548b)
+- `src/punct_restore/data/`: `asr_noise.py` (A in 910e552; M in 84f10d5, 7889149), `gold_noise.py` (A in 3ec548b)
 - `src/punct_restore/demo/`: `__init__.py` (D in 4304e4c), `inference.py` (D in 4304e4c)
 - `src/punct_restore/evaluation/`: 10 files (7 added); commits 6340b59, 6356916, 680438f, 9155a7e, eb6afa7, ec37d19
 - `src/punct_restore/features/`: `__init__.py` (M in 5002994), `crf_features.py` (M in 5373a82, 7c75d4e, e7095cf)
 - `src/punct_restore/models/`: `__init__.py` (M in 5002994), `crf.py` (M in 649bd53, fbd8d45), `factored.py` (A in 649bd53), `gap_classifier.py` (A in cfc8b20; M in eafde4c, 649bd53, 5373a82), `hidden_event_lm.py` (A in e743928), `ngram_lm.py` (A in e743928), `threshold.py` (A in a930859; M in b875ea3), `truecaser.py` (A in e743928)
-- `tests/`: 53 files (46 added); commits 01858ae, 1da392b, 31e59f9, 3ca76d5, 3ec548b, 4304e4c, 4998b31, 5002994, 5373a82, 54eed84, 596310b, 6340b59, 6356916, 649bd53, 6507152, 680438f, 6d72f6d, 766aeb7, 7c75d4e, 910e552, 9155a7e, a930859, aad6c70, b2840dc, b875ea3, b973981, c0453c8, c575279, c7934ef, ca96025, cfc8b20, d3284b9, d4ab315, dcfe950, e377552, e7095cf, e743928, eb6afa7, ec37d19, efdd761, f4dee77, f9082a7, fbd8d45
+- `tests/`: 55 files (48 added); commits 01858ae, 1da392b, 31e59f9, 3ca76d5, 3ec548b, 4304e4c, 4998b31, 4b2c616, 5002994, 5373a82, 54eed84, 596310b, 597dd43, 6340b59, 6356916, 649bd53, 6507152, 680438f, 6d72f6d, 766aeb7, 7c75d4e, 84f10d5, 910e552, 9155a7e, a930859, aad6c70, b2840dc, b875ea3, b973981, c0453c8, c575279, c7934ef, ca96025, cfc8b20, d3284b9, d4ab315, dcfe950, e377552, e7095cf, e743928, eb6afa7, ec37d19, efdd761, f4dee77, f9082a7, fbd8d45
 
-Generated from `git log HEAD --author="Raouf"` at commit `f889d0f` of `release/final` on 2026-10-31. Only the member's own commits are listed; later changes by others are not shown.
+Generated from `git log HEAD --author="Raouf"` at commit `4b2c616` of `release/final` on 2026-10-31. Only the member's own commits are listed; later changes by others are not shown.
