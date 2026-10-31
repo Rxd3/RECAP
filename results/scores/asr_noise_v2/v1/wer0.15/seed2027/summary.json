@@ -1,0 +1,27 @@
+{
+  "achieved_wer": 0.1499987737584304,
+  "budget": 61162,
+  "cost_share": {
+    "deletion": 0.2500081750106275,
+    "substitution": 0.2500081750106275,
+    "swap": 0.49998364997874495
+  },
+  "edit_cost": 61162,
+  "edits": {
+    "deletion": 15291,
+    "substitution": 15291,
+    "swap": 15290
+  },
+  "records": {
+    "A": 12321,
+    "B": 12321,
+    "C": 12276
+  },
+  "release": "sponspeech-m1-v2",
+  "samples": 12321,
+  "seed": 2027,
+  "split": "test",
+  "tokens_after": 392459,
+  "tokens_before": 407750,
+  "wer": 0.15
+}

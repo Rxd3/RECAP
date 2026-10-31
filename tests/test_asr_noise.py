@@ -158,3 +158,128 @@ def test_masks_are_remapped_through_the_edits(excluded, expected):
     edits = noise.Edits(deleted=frozenset({1}), swapped=frozenset({2}))  # output order is [0, 3, 2, 4]
     assert noise.align(5, edits) == [0, 3, 2, 4]
     assert noise.remap_positions(excluded, noise.align(5, edits)) == expected
+
+
+def test_v1_plan_matches_golden_sha256():
+    import hashlib
+    tokens = {f"s{i}": tokens_of(i) for i in range(SAMPLES)}
+    plan = noise.build_plan(tokens, 0.10, 2026)
+    serialized = {sid: {"deleted": sorted(e.deleted), "swapped": sorted(e.swapped),
+                        "replaced": dict(sorted(e.replaced.items()))}
+                  for sid, e in sorted(plan.items())}
+    digest = hashlib.sha256(json.dumps(serialized, sort_keys=True).encode()).hexdigest()
+    assert digest == "eb1df4c89d28453a6ba33e151d49c61f8a3acd54eb96d6be30475a5c9d06a255"
+    assert noise.build_plan(tokens, 0.10, 2026, edit_model="v1") == plan
+
+
+def test_insertion_sets_punct_o_case_lower_empty_next_offset_and_masks_mode_c():
+    source = {"tokens": ["hello", "world", "now"], "punct_labels": ["COMMA", "O", "PERIOD"],
+              "case_labels": ["FIRST_UPPER", "ALL_UPPER", "LOWER"],
+              "metadata": {"offsets": [[0, 5], [6, 11], [12, 15]]}}
+    edits = noise.Edits(inserted={1: "um"})
+    out = noise.apply_edits(source, edits)
+    assert out["tokens"] == ["hello", "um", "world", "now"]
+    assert out["punct_labels"] == ["COMMA", "O", "O", "PERIOD"]
+    assert out["case_labels"] == ["FIRST_UPPER", "LOWER", "ALL_UPPER", "LOWER"]
+    assert out["metadata"]["offsets"] == [[0, 5], [6, 6], [6, 11], [12, 15]]
+    order = noise.align(3, edits)
+    assert noise.remap_positions([2], order) == [1, 3]
+
+
+def test_docstring_documents_all_three_insertion_rules():
+    doc = noise.__doc__ or ""
+    assert "O" in doc and "LOWER" in doc
+    assert "mask" in doc and "0" in doc
+    assert "offsets" in doc and "empty" in doc
+
+
+def test_train_vocabulary_enforces_min_count_five():
+    corpus = [["cat", "cap", "cab", "rare"] for _ in range(4)] + [["cat", "cap"]]
+    vocab = noise.train_vocabulary(corpus)
+    assert vocab == frozenset({"cat", "cap"})
+
+
+def test_v2_confusion_substitution_uses_only_train_vocab_at_edit_distance_one_same_first_letter():
+    # "cat" -> "cap" (sub, same first letter), "cats" (insert char, same first letter), "ca" (del char, same first).
+    # Rejected: "bat" (different first letter), "chats" (edit distance 2), "cat" (same word).
+    vocab = frozenset({"cap", "cats", "ca", "bat", "chats", "cat"})
+    tokens = {f"s{i}": ["cat", "zzzz"] for i in range(10)}
+    plan = noise.build_plan(tokens, 0.25, 2026, edit_model="v2", vocab=vocab)
+    replaced = [word for edits in plan.values() for word in edits.replaced.values()]
+    assert replaced and set(replaced) <= {"cap", "cats", "ca"}
+
+
+def test_v2_keeps_homophone_substitution_as_second_source():
+    tokens = {f"s{i}": ["their", "zzzz"] for i in range(10)}
+    plan = noise.build_plan(tokens, 0.25, 2026, edit_model="v2", vocab=frozenset())
+    replaced = [word for edits in plan.values() for word in edits.replaced.values()]
+    assert replaced and set(replaced) <= {"there", "they're"}
+
+
+def test_v2_deletes_short_words_and_function_words_never_last_token():
+    tokens = {"a": ["cat", "elephant"], "b": ["would", "elephant"]}
+    plan = noise.build_plan(tokens, 0.5, 2026, edit_model="v2", vocab=frozenset())
+    assert plan["a"].deleted == frozenset({0}) and plan["b"].deleted == frozenset({0})
+    # Single-token utterances cannot be deleted even though delete has higher priority than insert
+    single = {k: ["cat"] for k in "abcd"}
+    plan_single = noise.build_plan(single, 0.5, 2026, edit_model="v2", vocab=frozenset())
+    assert all(not edits.deleted for edits in plan_single.values())
+
+
+def test_v2_caps_swaps_at_ten_percent_of_budget_even_when_other_pools_run_dry():
+    # Utterances of long identical-prefix-free words with no deletions/replacements and only 1 insertion token
+    tokens = {f"s{i}": ["elephant", "giraffe", "hippopotamus", "crocodile"] for i in range(10)}  # 40 tokens, budget 20
+    # Even if we only allow swaps by exhausting or limiting other types, swaps must never exceed 10% of budget.
+    plan = noise.build_plan(tokens, 0.5, 2026, edit_model="v2", vocab=frozenset())
+    counts = noise.edit_counts(plan, edit_model="v2")
+    assert counts["swap"] * noise.COST["swap"] <= 0.10 * noise.edit_budget(tokens, 0.5)
+
+
+def test_v2_achieves_target_mix_and_exact_budget_on_plentiful_fixture():
+    vocab = frozenset({"cap", "map", "hat", "ran", "tan", "fan", "now", "new"})
+    tokens = {f"s{i}": tokens_of(i) for i in range(SAMPLES)}  # 600 tokens
+    plan = noise.build_plan(tokens, 0.10, 2026, edit_model="v2", vocab=vocab)  # budget 60 = 3 * 20
+    counts = noise.edit_counts(plan, edit_model="v2")
+    assert counts == {"deletion": 18, "insertion": 9, "substitution": 27, "swap": 3}
+    cost = (counts["deletion"] + counts["insertion"] + counts["substitution"]
+            + counts["swap"] * noise.COST["swap"])
+    assert cost == 60
+    assert plan == noise.build_plan(tokens, 0.10, 2026, edit_model="v2", vocab=vocab)
+    assert plan != noise.build_plan(tokens, 0.10, 2027, edit_model="v2", vocab=vocab)
+
+
+def _char_edit_distance(a: str, b: str) -> int:
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        curr = [i]
+        for j, cb in enumerate(b, 1):
+            curr.append(min(prev[j] + 1, curr[-1] + 1, prev[j - 1] + (ca != cb)))
+        prev = curr
+    return prev[-1]
+
+
+def test_v2_plan_invariants_hold_for_every_candidate_kind():
+    vocab = frozenset({"cap", "map", "hat", "ran", "tan", "fan", "now", "new"})
+    tokens = {f"s{i}": tokens_of(i) for i in range(SAMPLES)}
+    plan = noise.build_plan(tokens, 0.15, 2026, edit_model="v2", vocab=vocab)
+    for sid, edits in plan.items():
+        words, n = tokens[sid], len(tokens[sid])
+        touched = [*edits.deleted, *edits.replaced, *edits.inserted,
+                   *(j for i in edits.swapped for j in (i, i + 1))]
+        assert len(touched) == len(set(touched)) and len(edits.deleted) < n
+        assert all(words[i] in noise.FUNCTION_WORDS or len(words[i]) <= 3 for i in edits.deleted)
+        assert all(w in noise.INSERT_WORDS for w in edits.inserted.values())
+        assert all(i + 1 < n - 1 and words[i] != words[i + 1] for i in edits.swapped)
+        for i, new in edits.replaced.items():
+            old = words[i]
+            assert new != old
+            in_homophones = old in noise.HOMOPHONES and new in noise.HOMOPHONES[old]
+            in_confusion = new in vocab and new[0] == old[0] and _char_edit_distance(old, new) == 1
+            assert in_homophones or in_confusion
+
+
+def test_unknown_edit_model_raises():
+    with pytest.raises(ValueError, match="unknown edit model"):
+        noise.build_plan({"s": ["the", "cat"]}, 0.1, 2026, edit_model="v3")
+
+

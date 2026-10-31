@@ -2,7 +2,7 @@
 
 Usage:
     python scripts/simulate_asr_noise.py --split {validation,test} --wer W [--seed 2026] --out DIR
-        [--data-root data] [--release sponspeech-m1-v2] [--masks FILE]
+        [--edit-model {v1,v2}] [--data-root data] [--release sponspeech-m1-v2] [--masks FILE]
 
 Reads, for each mode M in A, B, C, the records of processed/<release>/mode_M/<split>.jsonl named by
 splits/<release>/primary_eval/<split>_mode_M.ids, and the mode C casing masks (default
@@ -11,11 +11,14 @@ in file order), DIR/<split>_mode_M.ids (a byte copy), DIR/masks/<split>.jsonl (r
 DIR/summary.json. DIR must not exist; it is built in a temporary sibling folder and renamed at the end.
 
 One edit plan is drawn from the tokens of the union of listed samples (mode A's first; every mode that lists
-a sample must agree on its tokens) and applied to each mode: deletions of function words, homophone
-substitutions and swaps of adjacent tokens, taken round-robin by type up to the budget round(wer * tokens).
-The edit model and the label rules are documented in punct_restore.data.asr_noise. summary.json reports the
-edit count of each type and its share of the edit cost. Masks drop deleted positions and follow swapped
-tokens. Left unchanged, since they cannot follow the edits: metadata.original_text, metadata.normalized_text,
+a sample must agree on its tokens) and applied to each mode: under v1 (default), deletions of function words,
+homophone substitutions and swaps of adjacent tokens, taken round-robin by type up to the budget
+round(wer * tokens); under v2, insertions, confusion and homophone substitutions (from the default_train
+vocabulary with count >= 5), deletions and swaps (capped at 10% of the budget) with target cost shares
+45% / 30% / 15% / 10%. The edit model and the label rules are documented in punct_restore.data.asr_noise.
+summary.json reports the edit count of each type and its share of the edit cost (and for v2, edit_model and
+vocabulary_source). Masks drop deleted positions, follow swapped tokens and mask inserted tokens. Left
+unchanged, since they cannot follow the edits: metadata.original_text, metadata.normalized_text,
 metadata.condition and the mask "reason". The evaluator reads only sample_id, label_mode, tokens,
 punct_labels, case_labels and metadata.group_id / policy_version.
 """
@@ -38,6 +41,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from punct_restore.data.asr_noise import (
     COST,
+    EDIT_MODELS,
     NO_EDITS,
     Edits,
     align,
@@ -46,6 +50,7 @@ from punct_restore.data.asr_noise import (
     edit_budget,
     edit_counts,
     remap_positions,
+    train_vocabulary,
 )
 
 MODES = ("A", "B", "C")
@@ -167,17 +172,24 @@ def write_jsonl(path: Path, rows: Iterable[Mapping[str, Any]]) -> None:
 
 def summarize(args: argparse.Namespace, inputs: Sequence[ModeInput], tokens: Mapping[str, Sequence[str]],
               plan: Mapping[str, Edits]) -> dict[str, Any]:
-    counts, before = edit_counts(plan), sum(len(t) for t in tokens.values())
-    spent = {"deletion": counts["deletion"] * COST["delete"],
-             "substitution": counts["substitution"] * COST["replace"],
-             "swap": counts["swap"] * COST["swap"]}
+    edit_model = getattr(args, "edit_model", "v1")
+    counts, before = edit_counts(plan, edit_model=edit_model), sum(len(t) for t in tokens.values())
+    kind_to_cost = {"deletion": "delete", "insertion": "insert", "substitution": "replace", "swap": "swap"}
+    spent = {name: counts[name] * COST[kind_to_cost[name]] for name in counts}
     cost = sum(spent.values())
-    return {"release": args.release, "split": args.split, "wer": args.wer, "seed": args.seed,
-            "samples": len(tokens), "records": {item.mode: len(item.ids) for item in inputs},
-            "tokens_before": before, "tokens_after": before - counts["deletion"],
-            "budget": edit_budget(tokens, args.wer), "edits": counts, "edit_cost": cost,
-            "cost_share": {kind: part / (cost or 1) for kind, part in spent.items()},  # all 0 when no edits
-            "achieved_wer": cost / before}
+    after = before - counts["deletion"] + counts.get("insertion", 0)
+    summary: dict[str, Any] = {
+        "release": args.release, "split": args.split, "wer": args.wer, "seed": args.seed,
+        "samples": len(tokens), "records": {item.mode: len(item.ids) for item in inputs},
+        "tokens_before": before, "tokens_after": after,
+        "budget": edit_budget(tokens, args.wer), "edits": counts, "edit_cost": cost,
+        "cost_share": {kind: part / (cost or 1) for kind, part in spent.items()},  # all 0 when no edits
+        "achieved_wer": cost / before,
+    }
+    if edit_model != "v1":
+        summary["edit_model"] = edit_model
+        summary["vocabulary_source"] = "default_train"
+    return summary
 
 
 def write_outputs(folder: Path, args: argparse.Namespace, inputs: Sequence[ModeInput],
@@ -206,6 +218,8 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     parser.add_argument("--split", choices=["validation", "test"], required=True)
     parser.add_argument("--wer", type=wer_value, required=True, help="target word error rate, above 0 up to 0.5")
     parser.add_argument("--seed", type=int, default=2026)
+    parser.add_argument("--edit-model", choices=list(EDIT_MODELS), default="v1",
+                        help="word-error model (default: v1)")
     parser.add_argument("--masks", type=Path, help="mode C casing masks (default: the release's case_joint file)")
     parser.add_argument("--out", type=Path, required=True, help="new folder; it must not exist")
     return parser.parse_args(argv)
@@ -219,6 +233,20 @@ def load_inputs(args: argparse.Namespace) -> list[ModeInput]:
             for mode in MODES]
 
 
+def load_train_vocab(args: argparse.Namespace) -> frozenset[str]:
+    """Words occurring at least MIN_TRAIN_COUNT times in default_train (mode A)."""
+    train_path = args.data_root / "processed" / args.release / "mode_A" / "train.jsonl"
+    ids_path = args.data_root / "splits" / args.release / "default_train" / "mode_A.ids"
+    wanted = frozenset(read_ids(ids_path))
+
+    def token_lists() -> Iterator[list[str]]:
+        for number, record in scan(train_path, wanted):
+            check_record(record, "A", f"{_display_name(train_path)} line {number}")
+            yield record["tokens"]
+
+    return train_vocabulary(token_lists())
+
+
 def run(args: argparse.Namespace) -> str:
     """Build the noisy release next to args.out and rename it into place; returns a status line."""
     out = args.out
@@ -228,7 +256,9 @@ def run(args: argparse.Namespace) -> str:
         raise InputError(f"{out.name}: the folder to create it in does not exist")
     inputs = load_inputs(args)
     tokens = shared_tokens(inputs)
-    plan = build_plan(tokens, args.wer, args.seed)
+    edit_model = getattr(args, "edit_model", "v1")
+    vocab = load_train_vocab(args) if edit_model == "v2" else frozenset()
+    plan = build_plan(tokens, args.wer, args.seed, edit_model=edit_model, vocab=vocab)
     default_masks = args.data_root / "processed" / args.release / "masks" / "case_joint" / f"{args.split}.jsonl"
     masks_path = args.masks or default_masks
     c_ids = next(item.ids for item in inputs if item.mode == "C")
