@@ -1,4 +1,4 @@
-"""Official M5 tables for Member 3's (Omar's) CRF predictions vs basic/improved, HMM and shortcut.
+"""Write the CRF result tables for one split (basic and improved CRF vs HMM and shortcut) as Markdown.
 
 Usage: recap build-m3-tables [--scores-root R] [--split validation|test] [--tau] --out OUT_MD
 Every number comes from evaluator JSON (score / compare / errors) under the scores root R

@@ -171,3 +171,9 @@ def test_every_command_answers_help(name, capsys):
     with pytest.raises(SystemExit) as stop:
         main([name, "--help"])
     assert stop.value.code == 0 and capsys.readouterr().out.startswith(f"usage: recap {name}")
+
+
+def test_the_listing_describes_commands_not_team_roles(capsys):
+    assert main([]) == 0
+    listing = capsys.readouterr().out
+    assert not [word for word in ("Member", "Omar", "M5 ", "team extension", "owned by") if word in listing]

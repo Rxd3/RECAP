@@ -1,4 +1,4 @@
-"""Tune and apply the CRF decoding threshold tau and prior exponent gamma (team extension).
+"""Tune and apply the CRF decoding threshold tau and prior exponent gamma.
 
 Usage:
     recap tune-threshold tune --model M.joblib --gold GOLD.jsonl --ids VAL.ids \

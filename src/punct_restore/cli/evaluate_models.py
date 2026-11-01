@@ -1,4 +1,4 @@
-"""Member 5 evaluation command line.
+"""Score, compare and analyse predictions against gold labels (score, compare, errors, baseline).
 
 score    --gold mode_X/<split>.jsonl --ids <list>.ids --predictions <file>.jsonl
          [--masks masks/case_joint/<split>.jsonl] [--manifest <predictions.manifest.json>]

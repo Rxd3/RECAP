@@ -1,4 +1,4 @@
-"""Train Member 2's HMM from shared-contract JSONL, without downloading data."""
+"""Train the HMM baseline from shared-contract JSONL, without downloading data."""
 
 from __future__ import annotations
 

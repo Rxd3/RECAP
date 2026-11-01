@@ -1,4 +1,4 @@
-"""Member 2's frozen validation search, held-out evaluation and reproducible HMM handoff.
+"""Run the HMM study: frozen validation search (tune) and held-out evaluation (finalize).
 
 The evaluator is Member 5's implementation in a separate checkout pinned by config.
 Tuning never opens test records. Finalization requires every configured mode's selection.

@@ -1,4 +1,4 @@
-"""Reproducible command-line interface for CRF training, prediction, and inspection.
+"""Train a CRF model, predict with it, or inspect a saved model artifact.
 
 Owned by Member 3 (Omar Alzyod).
 Supports:

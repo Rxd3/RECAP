@@ -1,4 +1,4 @@
-"""Package an independently verified HMM study for Members 3, 5 and 6."""
+"""Package a verified HMM study into a checksummed handoff folder and ZIP."""
 
 from __future__ import annotations
 

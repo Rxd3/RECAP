@@ -101,18 +101,22 @@ def variant_list(text: str) -> list[str]:
 
 def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="recap run-ablations", description=__doc__.split("\n\n")[0])
-    parser.add_argument("--mode", choices=["A", "B", "C"], required=True)
-    parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--sample", type=positive_int, default=50000)
-    parser.add_argument("--variants", type=variant_list, default=None)
+    parser.add_argument("--mode", choices=["A", "B", "C"], required=True, help="label mode to train and score")
+    parser.add_argument("--out", type=Path, required=True,
+                        help="output folder; its mode_<M> subfolder must not exist yet")
+    parser.add_argument("--sample", type=positive_int, default=50000,
+                        help="number of default_train records in the seeded sample (default 50000)")
+    parser.add_argument("--variants", type=variant_list, default=None,
+                        help="comma-separated variants to run (default: every variant for the mode)")
     parser.add_argument(
         "--cluster-map",
         type=Path,
         default=None,
         help=f"word-cluster map file for {CLUSTERS_VARIANT}; it must have been built for the same --mode",
     )
-    parser.add_argument("--data-root", type=Path, default=ROOT / "data")
-    parser.add_argument("--release", default="sponspeech-m1-v2")
+    parser.add_argument("--data-root", type=Path, default=ROOT / "data",
+                        help="folder holding processed/ and splits/ (default: the repository data folder)")
+    parser.add_argument("--release", default="sponspeech-m1-v2", help="data release ID")
     args = parser.parse_args(argv)
     problem = variants_problem(args.mode, args.variants, args.cluster_map is not None)
     if problem:

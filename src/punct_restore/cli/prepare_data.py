@@ -1,4 +1,4 @@
-"""Recreate the SponSpeech transcripts and build a data release (owned by Member 1).
+"""Recreate the SponSpeech transcripts and build a data release.
 
 Run from the repository root. RAW is data/raw/sponspeech-gcs-generation-1716975130398953, containing the provenance
 files MANIFEST.sha256 and video_metadata_oembed.jsonl from the release's provenance package.
