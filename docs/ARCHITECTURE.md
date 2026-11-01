@@ -44,7 +44,8 @@ src/punct_restore/
                     hidden_event_lm.py with hidden_event_lm_viterbi.py, ngram_lm.py, truecaser.py; factored.py
   evaluation/       inputs, views, metrics, uncertainty, comparison, error_analysis, baseline, manifest, report
   file_io.py        file helpers: iter_jsonl, write_new_file, write_new_folder, read_json, read_json_object,
-                    require_file, refuse_existing
+                    read_object, require_object, require_file, require_folder, require_release,
+                    refuse_existing
   hashing.py        sha256_file and sha256_stream, the one streaming SHA-256
   paths.py          REPO_ROOT, the checkout root, for the commands' default paths
   pipeline.py       demo inference (load_model, RestorationPipeline)
@@ -71,7 +72,8 @@ scripts/            25 three-line stubs (scripts/<name>.py, scripts/reporting/<n
   `error: <file or folder name>: <reason>`, and exit 1, built by `prediction_io.one_line_error` (or
   `one_line_error_with_short_paths`, which also cuts the paths it is given to their names). It never shows a full
   path and prints no traceback. Examples: `error: data.jsonl: input JSONL not found`,
-  `error: m.joblib: is a folder, not a file`, `error: results.json: missing selection_sha256`. Argparse usage errors stay exit 2, and a code
+  `error: m.joblib: is a folder, not a file`, `error: results.json: missing selection_sha256`; every line users see is listed in
+  [scripts/README.md](../scripts/README.md#error-lines). Argparse usage errors stay exit 2, and a code
   bug propagates. `tests/test_malformed_inputs.py` and `tests/test_malformed_inputs_hmm.py` check this
   for every command. An unapproved B → A projection in `configs/label_sets.yaml` is a `ValueError`, so
   `recap prepare-data` reports it the same way.

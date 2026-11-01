@@ -55,6 +55,8 @@ RAW/sponspeech_text/              train/ dev/ test-amb/ test/ (text/*.txt, utt2s
    Both provenance files are required: without one, `build` stops with, for example,
    `error: MANIFEST.sha256: not found; copy it from the release's provenance package`, and without the
    extracted text with `error: sponspeech_text: folder not found in the raw root; run recap prepare-data extract first`.
+   A file that `MANIFEST.sha256` lists but the raw root lacks stops it with
+   `error: sponspeech_text/<file>: listed in MANIFEST.sha256 but missing; run recap prepare-data extract again`.
    `MANIFEST.sha256` is checked before and after the build. The title snapshot
    flags `tts_source` (9 "Wikipedia audio article" videos, 425 records: 405 train, 20 validation); those records are
    unresolved, so without the snapshot the default training and primary evaluation ID lists and all checksums differ.

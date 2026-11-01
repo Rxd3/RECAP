@@ -122,3 +122,35 @@ recap time-models --kind {hmm,crf} --model MODEL --mode {A,B,C} --out OUT.json
 with one friendly line when the model file or the text is unusable. The data, HMM and
 evaluation commands refuse to overwrite existing outputs; `recap train-crf` replaces a file only
 with `--overwrite`.
+
+## Error lines
+
+Every command reports a runtime problem as one stderr line, `error: <file or folder name>: <reason>`, and
+exits 1; a usage error from argparse exits 2. No line shows a full path or a traceback. The lines users see:
+
+- **Paths:** `<name>: <what> not found` (for example `data.jsonl: input JSONL not found`),
+  `<name>: is a folder, not a file`, `<name>: is a file, not a folder`.
+- **Data root and release** (`recap simulate-asr-noise`, `recap build-leakage-subsets`,
+  `recap build-word-clusters`, `recap find-gold-noise`, `recap run-ablations`): `<data-root>: data root not found`,
+  `<data-root>: is a file, not a folder`, and
+  `<release>: release folder not found in <data-root>; run recap prepare-data build first`.
+  `recap asr-noise-table` without its scores folder: `<name>: scores folder not found`.
+- **`recap prepare-data build`:** `MANIFEST.sha256: not found; copy it from the release's provenance package`
+  (the same for `video_metadata_oembed.jsonl`), `sponspeech_text: folder not found in the raw root; run recap
+  prepare-data extract first`, `sponspeech_text/<file>: listed in MANIFEST.sha256 but missing; run recap
+  prepare-data extract again`, and `<path>: listed in MANIFEST.sha256 but outside the raw root`.
+- **Evaluator JSON read by the reporting commands** (`recap build-m3-tables`, `recap build-m3-final-sections`,
+  `recap build-ablation-table`, `recap asr-noise-table`): `<file>: not valid JSON`, `<file>: not valid UTF-8`,
+  `<file>: missing <dotted.key>`, `<file>: <dotted.key> is not <kind>`.
+- **CRF model files** (`recap train-crf predict` and `inspect`, `recap run-demo`, `recap tune-threshold tune`,
+  `recap time-models --kind crf`): `<file>: corrupt artifact: missing <field>`,
+  `<file>: corrupt artifact: <field> is not <kind>`, `<file>: corrupt artifact: backend_state is not a CRF model`.
+  `inspect` refuses a model file with missing sections instead of printing empty ones.
+- **CRF training records** (`recap train-crf train`): `<file> line <n>: tokens must be a non-empty list.`,
+  `<file> line <n>: punct_labels must be a list of strings.`, `<file> line <n>: unknown punct_labels ['FOO'] for
+  Mode A.`, and the same for `case_labels`. The vocabulary check uses the label file given with `--config-path`.
+- **`recap train-hmm` label file:** `labels.yaml: missing punctuation.<set>`,
+  `labels.yaml: punctuation.<set>.<n> is not nonempty text`, and
+  `labels.yaml: explicit joint labels do not match the ordered 4-by-3 product`. As on `main`, the labels come
+  from `punctuation[modes[<mode>].punctuation_set]` (mode C: its product with the casing labels, punctuation
+  first), and mode A ignores `casing`.
