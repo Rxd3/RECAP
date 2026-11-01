@@ -96,7 +96,7 @@ def gold_rows(mode: str) -> list[dict[str, Any]]:
 
 
 def joint(punct: Sequence[str], case: Sequence[str]) -> list[str]:
-    return [f"{p}|{c}" for p, c in zip(punct, case)]
+    return [f"{p}|{c}" for p, c in zip(punct, case, strict=False)]
 
 
 def perfect_preds(mode: str, ids: Sequence[str] = SCORED, model: str = "m") -> list[dict[str, Any]]:

@@ -7,12 +7,28 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from eval_fixtures import (BAD_UTF8_LINE, BOM, FILE_NAMES, SCORED, Case, corrupt_line_two, gold_rows, perfect_preds,
-                           valid_case, write_case)
+from eval_fixtures import (
+    BAD_UTF8_LINE,
+    BOM,
+    FILE_NAMES,
+    SCORED,
+    Case,
+    corrupt_line_two,
+    gold_rows,
+    perfect_preds,
+    valid_case,
+    write_case,
+)
 
 from punct_restore.evaluation import evaluate
-from punct_restore.evaluation.inputs import (LABEL_SETS_PATH, Bundle, EvaluationInputError, Vocab, load_bundle,
-                                              load_vocab)
+from punct_restore.evaluation.inputs import (
+    LABEL_SETS_PATH,
+    Bundle,
+    EvaluationInputError,
+    Vocab,
+    load_bundle,
+    load_vocab,
+)
 
 
 def _folder(parent: Path, name: str) -> Path:

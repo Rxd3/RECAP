@@ -5,12 +5,12 @@ from copy import deepcopy
 
 import pytest
 import yaml
+from test_hmm_cli import ROOT, jsonl, setup_run
+from test_hmm_workflow import run
 
 from punct_restore.cli import run_hmm_experiments as workflow
 from punct_restore.cli import verify_hmm_experiments as audit
 from punct_restore.models.hmm_workflow import predict_run
-from test_hmm_cli import ROOT, jsonl, setup_run
-from test_hmm_workflow import run
 
 HMM_COMMANDS = ("train_hmm", "predict_hmm", "run_hmm_experiments", "verify_hmm_experiments")
 

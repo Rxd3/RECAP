@@ -14,9 +14,9 @@ Guarantees:
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, fields
-import json
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 from .crf_cues import (
     _cluster_features,
@@ -86,7 +86,8 @@ class FeatureConfig:
         use_word_clusters: Extract the cluster label of the current, previous and next word and of the
             current+next pair (cl0, cl-1, cl+1, cl0|cl+1). Needs word_clusters. Team extension.
         word_clusters: Word -> cluster id map read by use_word_clusters; None when the switch is off.
-            Stored as a plain-dict copy. Part of ==, left out of the hash (a dict is unhashable) and of the repr (it is huge).
+            Stored as a plain-dict copy. Part of ==, left out of the hash (a dict is unhashable) and of the repr
+            (it is huge).
             Team extension.
         version: Version identifier for reproducibility.
 

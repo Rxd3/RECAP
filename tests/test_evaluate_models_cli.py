@@ -18,11 +18,27 @@ from types import ModuleType
 from typing import Any, NoReturn
 
 import pytest
-from eval_fixtures import (SCORED, SCRIPT_PATH, Case, all_masks, gold_rows, perfect_preds, pred_row, valid_case,
-                           write_case, write_jsonl)
+from eval_fixtures import (
+    SCORED,
+    SCRIPT_PATH,
+    Case,
+    all_masks,
+    gold_rows,
+    perfect_preds,
+    pred_row,
+    valid_case,
+    write_case,
+    write_jsonl,
+)
 
-from punct_restore.evaluation import (evaluate, load_bundle, load_scored_gold, load_vocab, shortcut_predictions,
-                                      to_markdown)
+from punct_restore.evaluation import (
+    evaluate,
+    load_bundle,
+    load_scored_gold,
+    load_vocab,
+    shortcut_predictions,
+    to_markdown,
+)
 
 OUT_NAMES = {"score": "RUN.json", "baseline": "base.jsonl"}
 NON_ASCII_MODEL = "模型"

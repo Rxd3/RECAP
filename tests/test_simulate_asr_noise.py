@@ -1,4 +1,5 @@
-"""Tests for punct_restore.cli.simulate_asr_noise (the CLI) on a tiny synthetic data root; the edit model is in test_asr_noise.py."""
+"""Tests for punct_restore.cli.simulate_asr_noise (the CLI) on a tiny synthetic data root;
+the edit model is in test_asr_noise.py."""
 
 from __future__ import annotations
 
@@ -167,7 +168,9 @@ def test_listed_records_only_in_input_order_with_same_schema(sim, capsys, root, 
     produce(sim, capsys, root, out)
     before, after = listed_input(root, mode), read_rows(out / f"mode_{mode}" / "validation.jsonl")
     assert [r["sample_id"] for r in after] == [r["sample_id"] for r in before]
-    assert all(list(a) == list(b) and list(a["metadata"]) == list(b["metadata"]) for a, b in zip(after, before))
+    assert all(
+        list(a) == list(b) and list(a["metadata"]) == list(b["metadata"]) for a, b in zip(after, before, strict=False)
+    )
     assert all(a["metadata"]["original_text"] == "kept as is" for a in after)
     assert b"\r" not in (out / f"mode_{mode}" / "validation.jsonl").read_bytes()
     assert (out / f"validation_mode_{mode}.ids").read_bytes() == (root / IDS[mode]).read_bytes()
@@ -200,7 +203,7 @@ def test_achieved_cost_equals_the_rounded_budget(sim, capsys, root, tmp_path, we
     assert summary["tokens_after"] == total - edits["deletion"]
     before, after = listed_input(root, "A"), read_rows(out / "mode_A" / "validation.jsonl")
     assert sum(len(r["tokens"]) for r in after) == summary["tokens_after"]
-    assert sum(distance(b["tokens"], a["tokens"]) for a, b in zip(after, before)) <= summary["edit_cost"]
+    assert sum(distance(b["tokens"], a["tokens"]) for a, b in zip(after, before, strict=False)) <= summary["edit_cost"]
 
 
 def test_not_enough_candidates_exits_one_with_one_line(sim, capsys, tmp_path):
@@ -406,7 +409,8 @@ def test_wer_must_be_above_zero_and_at_most_half(sim, root, tmp_path, wer):
 
 
 def run_script(root: Path, out: Path, cwd: Path, **env: str) -> subprocess.CompletedProcess[str]:
-    """The stub as a user runs it: a fresh interpreter, no PYTHONPATH (the installed package is found in site-packages)."""
+    """The stub as a user runs it: a fresh interpreter, no PYTHONPATH
+    (the installed package is found in site-packages)."""
     environ = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"} | env
     return subprocess.run([sys.executable, str(SCRIPT), *argv_for(root, out)], cwd=cwd, env=environ,
                           capture_output=True, text=True, check=False)
@@ -522,7 +526,9 @@ def test_v2_outputs_validate_and_summary_records_shares_and_masks_insertions(sim
     assert summary["edit_model"] == "v2"
     assert summary["vocabulary_source"] == "default_train"
     assert summary["cost_share"] == {"deletion": 0.3, "insertion": 0.15, "substitution": 0.45, "swap": 0.1}
-    assert summary["tokens_after"] == summary["tokens_before"] - summary["edits"]["deletion"] + summary["edits"]["insertion"]
+    assert summary["tokens_after"] == (
+        summary["tokens_before"] - summary["edits"]["deletion"] + summary["edits"]["insertion"]
+    )
     for mode in MODES:
         gold = out / f"mode_{mode}" / "validation.jsonl"
         ids = out / f"validation_mode_{mode}.ids"

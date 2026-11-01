@@ -173,7 +173,9 @@ def test_a_missing_training_log_is_refused(
 ) -> None:
     joblib.dump({"model_family": "crf", "model_name": "n", "label_mode": "A", "backend_state": state},
                 tmp_path / "nolog.joblib")
-    refuse(capsys, tmp_path / "o.json", tmp_path / "nolog.joblib", needle="nolog.joblib: the model holds no training log")
+    refuse(
+        capsys, tmp_path / "o.json", tmp_path / "nolog.joblib", needle="nolog.joblib: the model holds no training log"
+    )
 
 
 @pytest.mark.parametrize("bad", [None, "1.5", True, float("nan"), float("inf")])

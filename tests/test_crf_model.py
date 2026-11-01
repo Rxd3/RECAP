@@ -14,11 +14,12 @@ from __future__ import annotations
 import copy
 import math
 from pathlib import Path
+
 import pytest
+import yaml
 
 from punct_restore.features.crf_features import FeatureConfig
 from punct_restore.models.crf import CRFModel, get_mode_vocabulary
-
 
 # -------------------------------------------------------------------------------------------------
 # Synthetic Test Fixtures (Explicitly synthetic, not real SponSpeech data)
@@ -193,7 +194,7 @@ def test_predict_schema_and_length_preservation(synth_mode_a_data):
     preds = model.predict(test_inputs)
 
     assert len(preds) == 2
-    for p, orig in zip(preds, test_inputs):
+    for p, orig in zip(preds, test_inputs, strict=False):
         assert p["sample_id"] == orig["sample_id"]
         assert p["label_mode"] == "A"
         assert p["model_name"] == "crf_basic"
@@ -229,9 +230,9 @@ def test_predict_marginals_sums_to_one_and_matches_predict(synth_mode_a_data, sy
     predicted = model.predict(records)
 
     assert len(marginals) == len(predicted) == len(records)
-    for seq, pred in zip(marginals, predicted):
+    for seq, pred in zip(marginals, predicted, strict=True):
         assert len(seq) == len(pred["predicted_labels"])
-        for token_probs, label in zip(seq, pred["predicted_labels"]):
+        for token_probs, label in zip(seq, pred["predicted_labels"], strict=True):
             assert abs(sum(token_probs.values()) - 1.0) <= 1e-6
             assert list(token_probs) == model.vocabulary
             assert max(token_probs, key=token_probs.get) == label
@@ -409,7 +410,7 @@ def test_get_mode_vocabulary_malformed_yaml_raises_error(tmp_path):
     """Malformed YAML syntax must raise error, not silently fall back."""
     bad_yaml = tmp_path / "malformed.yaml"
     bad_yaml.write_text("punctuation: [unclosed list", encoding="utf-8")
-    with pytest.raises(Exception):
+    with pytest.raises(yaml.parser.ParserError):
         get_mode_vocabulary("A", config_path=bad_yaml)
 
 

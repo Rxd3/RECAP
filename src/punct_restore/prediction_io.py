@@ -27,7 +27,7 @@ def read_frozen_ids(ids_path: Path) -> list[str]:
     ids: list[str] = []
     seen: set[str] = set()
 
-    with open(ids_path, "r", encoding="utf-8") as f:
+    with open(ids_path, encoding="utf-8") as f:
         for line_num, line in enumerate(f, 1):
             s_id = line.strip()
             if not s_id:
@@ -86,7 +86,7 @@ def read_observations(input_path: Path, ids_path: Path | None) -> list[dict[str,
 
     observations: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
-    with open(input_path, "r", encoding="utf-8") as f:
+    with open(input_path, encoding="utf-8") as f:
         for line_num, line in enumerate(f, 1):
             line_str = line.strip()
             if not line_str:

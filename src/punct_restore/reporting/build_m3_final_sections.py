@@ -7,8 +7,9 @@ crf_mode_<m>_<preset>_full_01.manifest.json in DIR (default R/crf_training_manif
 
 The figures quoted in the prose are derived from those files (the standard-decoding scores, the utterance
 count, the leakage gains, the laptop and the speed bounds), except three fixed descriptions written into the
-text: the τ grid range, the quality group being one video, and test_amb sharing 25 videos with test. Files that must agree (the utterance counts of the
-two leakage runs, the hardware of the six runtime files, the machine of the six manifests) are checked.
+text: the τ grid range, the quality group being one video, and test_amb sharing 25 videos with test.
+Files that must agree (the utterance counts of the two leakage runs, the hardware of the six runtime files, the
+machine of the six manifests) are checked.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ import sys
 from collections.abc import Callable, Iterable
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import Any
 
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.reporting._cli import check_out, run, write_new_text
@@ -34,7 +35,6 @@ from punct_restore.reporting.build_tables import (
 
 PRESETS = ("basic", "improved")
 LEAK_BLOCK = "punctuation/all"
-T = TypeVar("T")
 
 
 def sec_threshold(root: Path) -> list[str]:
@@ -160,7 +160,7 @@ def fit_text(seconds: float) -> str:
     return half_up(seconds, 1, grouping=True)
 
 
-def agreed(values: Iterable[T], files: str, what: str) -> T:
+def agreed[T](values: Iterable[T], files: str, what: str) -> T:
     """The one value all ``files`` hold for ``what``; a ValueError when they differ."""
     found = set(values)
     if len(found) != 1:

@@ -493,10 +493,13 @@ def test_mode_c_runs_improved_case_improved_and_factored_with_consistent_files(t
     assert {lbl for r in rows["case_improved/validation.jsonl"] for lbl in r["predicted_labels"]} <= CASING
     assert {lbl for r in rows["factored/punct_A.jsonl"] for lbl in r["predicted_labels"]} <= A_LABELS
     for joint, punct, case in zip(
-        rows["factored/validation.jsonl"], rows["factored/punct_A.jsonl"], rows["case_improved/validation.jsonl"]
+        rows["factored/validation.jsonl"],
+        rows["factored/punct_A.jsonl"],
+        rows["case_improved/validation.jsonl"],
+        strict=False,
     ):
         assert joint["predicted_labels"] == [
-            f"{p}|{c}" for p, c in zip(punct["predicted_labels"], case["predicted_labels"])
+            f"{p}|{c}" for p, c in zip(punct["predicted_labels"], case["predicted_labels"], strict=False)
         ]
 
 

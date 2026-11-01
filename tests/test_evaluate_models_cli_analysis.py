@@ -14,11 +14,18 @@ from types import ModuleType
 from typing import Any
 
 import pytest
-from cli_analysis_cases import (assert_nothing_written, assert_one_line, assert_usage_error, bundle_of, compare_argv,
-                                predictions_b, read_json)
+from cli_analysis_cases import (
+    assert_nothing_written,
+    assert_one_line,
+    assert_usage_error,
+    bundle_of,
+    compare_argv,
+    predictions_b,
+    read_json,
+)
 from eval_fixtures import SCRIPT_PATH, Case, assert_one_error_line, cli_argv, run_cli
 
-from punct_restore.evaluation import (BootstrapSpec, compare, comparison_markdown, error_examples, errors_markdown)
+from punct_restore.evaluation import BootstrapSpec, compare, comparison_markdown, error_examples, errors_markdown
 from punct_restore.evaluation.inputs import Vocab
 
 

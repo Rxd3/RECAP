@@ -182,7 +182,8 @@ def _read_sim_summary(path: Path, *, expected_seed: int, expected_wer: str, edit
 
 
 def _aggregate_sim_summaries(per_seed: Mapping[int, dict[str, Any]]) -> dict[str, Any]:
-    """Mean and range over seeds of the simulator summaries; an edit type a summary lacks counts as 0 (v1 inserts none)."""
+    """Mean and range over seeds of the simulator summaries; an edit type a summary lacks counts as 0
+    (v1 inserts none)."""
     first = per_seed[SEEDS[0]]
     for s in SEEDS[1:]:
         if per_seed[s]["tokens_before"] != first["tokens_before"] or per_seed[s]["budget"] != first["budget"]:

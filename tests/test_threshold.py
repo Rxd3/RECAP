@@ -90,16 +90,20 @@ def test_is_o_label() -> None:
     assert not is_o_label("COMMA") and not is_o_label("COMMA|FIRST_UPPER") and not is_o_label("OX")
 
 
-# ---------------------------------------------------------------- pick_tau and parse_grid
+# ---------------------------------------------------------------- pick_tau_gamma at one gamma and parse_grid
 
 
-def test_pick_tau_prefers_highest_f1_then_nearest_half_then_lower() -> None:
-    assert tune_threshold.pick_tau([(0.2, 0.5), (0.4, 0.7), (0.6, 0.6)]) == 0.4
-    assert tune_threshold.pick_tau([(0.1, 0.7), (0.4, 0.7), (0.9, 0.7)]) == 0.4
-    assert tune_threshold.pick_tau([(0.3, 0.7), (0.7, 0.7)]) == 0.3
-    assert tune_threshold.pick_tau([(0.7, 0.7), (0.3, 0.7)]) == 0.3  # lower tau, whatever the order
+def _pick_tau_at_gamma_zero(rows: list[tuple[float, float]]) -> tuple[float, float]:
+    return tune_threshold.pick_tau_gamma([(tau, 0.0, f1) for tau, f1 in rows])
+
+
+def test_pick_tau_gamma_at_one_gamma_prefers_highest_f1_then_nearest_half_then_lower() -> None:
+    assert _pick_tau_at_gamma_zero([(0.2, 0.5), (0.4, 0.7), (0.6, 0.6)]) == (0.4, 0.0)
+    assert _pick_tau_at_gamma_zero([(0.1, 0.7), (0.4, 0.7), (0.9, 0.7)]) == (0.4, 0.0)
+    assert _pick_tau_at_gamma_zero([(0.3, 0.7), (0.7, 0.7)]) == (0.3, 0.0)
+    assert _pick_tau_at_gamma_zero([(0.7, 0.7), (0.3, 0.7)]) == (0.3, 0.0)  # lower tau, whatever the order
     with pytest.raises(ValueError, match="empty"):
-        tune_threshold.pick_tau([])
+        _pick_tau_at_gamma_zero([])
 
 
 def test_parse_grid_default_and_inclusive_stop() -> None:

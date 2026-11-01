@@ -314,7 +314,7 @@ def test_predict_returns_contract_records_in_input_order_and_ignores_gold() -> N
     assert [row["sample_id"] for row in out] == ["z", "a"]
     assert out[0] == {"sample_id": "z", "model_name": "my_h", "label_mode": "A",
                       "predicted_labels": ["O", "O", "PERIOD"]}
-    assert all(len(row["predicted_labels"]) == n for row, n in zip(out, (3, 1)))
+    assert all(len(row["predicted_labels"]) == n for row, n in zip(out, (3, 1), strict=False))
 
 
 def test_predict_of_nothing_is_empty_and_an_unfitted_model_refuses() -> None:

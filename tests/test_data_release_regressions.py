@@ -3,9 +3,9 @@
 import json
 
 import pytest
+from test_data_contract import FIXTURE, LS, build
 
 from punct_restore.data import labeling, release, splits, validation
-from test_data_contract import FIXTURE, LS, build
 
 
 @pytest.mark.parametrize("boundary", ["...?", "?...", "...!", "! ...", ". . . ?", ",..."])

@@ -44,14 +44,14 @@ def class_counts(matrix: Sequence[Sequence[int]]) -> tuple[tuple[int, ...], ...]
     """(tp, support, predicted) per class from a square confusion matrix."""
     tp = tuple(matrix[i][i] for i in range(len(matrix)))
     support = tuple(sum(row) for row in matrix)
-    predicted = tuple(sum(column) for column in zip(*matrix))
+    predicted = tuple(sum(column) for column in zip(*matrix, strict=False))
     return tp, support, predicted
 
 
 def macro_f1_from_counts(tp: Sequence[int], support: Sequence[int],
                          predicted: Sequence[int]) -> float:
     """Mean F1 over the given classes (zero_division=0); used by the bootstrap."""
-    scores = [_class_scores(t, s, p)["f1"] for t, s, p in zip(tp, support, predicted)]
+    scores = [_class_scores(t, s, p)["f1"] for t, s, p in zip(tp, support, predicted, strict=False)]
     return _div(sum(scores), len(scores))
 
 

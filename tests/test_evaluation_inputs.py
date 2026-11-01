@@ -12,11 +12,33 @@ from typing import Any
 
 import pytest
 import yaml
-from eval_fixtures import (BOM, SCORED, Case, all_masks, gold_row, gold_rows, mask_row, perfect_preds, pred_row,
-                           valid_case, write_case, write_ids, write_jsonl)
+from eval_fixtures import (
+    BOM,
+    SCORED,
+    Case,
+    all_masks,
+    gold_row,
+    gold_rows,
+    mask_row,
+    perfect_preds,
+    pred_row,
+    valid_case,
+    write_case,
+    write_ids,
+    write_jsonl,
+)
 
-from punct_restore.evaluation.inputs import (LABEL_SETS_PATH, Bundle, EvaluationInputError, Vocab, file_identity,
-                                              load_bundle, load_scored_gold, load_vocab, sha256_file)
+from punct_restore.evaluation.inputs import (
+    LABEL_SETS_PATH,
+    Bundle,
+    EvaluationInputError,
+    Vocab,
+    file_identity,
+    load_bundle,
+    load_scored_gold,
+    load_vocab,
+    sha256_file,
+)
 
 _DEL = object()    # in a field change: remove the field
 _UNSET = object()  # _bundle default for masks: "what a valid case of this mode has"

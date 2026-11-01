@@ -59,7 +59,7 @@ def _http(url, headers=None, method="GET"):
     out = subprocess.run(args, capture_output=True, check=True).stdout
     head, _, body = out.partition(b"\r\n\r\n")
     lines = head.decode("latin-1").split("\r\n")[1:]
-    return {k.strip().lower(): v.strip() for k, _, v in (l.partition(":") for l in lines)}, body
+    return {k.strip().lower(): v.strip() for k, _, v in (line.partition(":") for line in lines)}, body
 
 
 def check_remote(url=ARCHIVE_URL):
@@ -67,7 +67,9 @@ def check_remote(url=ARCHIVE_URL):
     headers, _ = _http(url, method="HEAD")
     size, gen = headers.get("content-length"), headers.get("x-goog-generation")
     if size != str(ARCHIVE_BYTES) or gen != ARCHIVE_GENERATION:
-        raise SourceChanged(f"archive changed: size {size}, generation {gen}; expected {ARCHIVE_BYTES}, {ARCHIVE_GENERATION}")
+        raise SourceChanged(
+            f"archive changed: size {size}, generation {gen}; expected {ARCHIVE_BYTES}, {ARCHIVE_GENERATION}"
+        )
 
 
 def fetch_range(start, length, sha256, url=ARCHIVE_URL):
@@ -140,7 +142,10 @@ def extract_ranges(raw_root, url=ARCHIVE_URL, fetch=None, log=print):
     """Recreate the transcripts from pinned byte ranges. Returns the number of files written."""
     if fetch is None:                                  # real download: verify the remote object first
         check_remote(url)
-        fetch = lambda start, length, sha: fetch_range(start, length, sha, url)
+
+        def fetch(start, length, sha):
+            return fetch_range(start, length, sha, url)
+
     written = set()
     head = fetch(HEAD_RANGE["start"], HEAD_RANGE["length"], HEAD_RANGE["sha256"])
     with tarfile.open(fileobj=io.BytesIO(head), mode="r|gz") as tf:

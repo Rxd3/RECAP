@@ -26,7 +26,7 @@ LABEL_SETS_PATH = os.path.join(REPO_ROOT, "configs", "label_sets.yaml")
 
 def load_label_sets(path=LABEL_SETS_PATH):
     """Read configs/label_sets.yaml (the vocabulary source of truth) and check its 4/8/12 structure."""
-    import yaml   # PyYAML is a declared dev dependency of RECAP
+    import yaml  # PyYAML is a declared runtime dependency of RECAP
     with open(path, encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
     std, ext, case = cfg["punctuation"]["standard"], cfg["punctuation"]["extended"], cfg["casing"]
@@ -55,7 +55,9 @@ STANDARD_PRECEDENCE = ("QUESTION", "PERIOD", "COMMA")
 
 def gap_label(gap, is_last, scheme):
     """Label for one gap under scheme 'extended' (mode B) or 'native' (SponSpeech four-class view), plus flags."""
-    marks, precedence = (EXTENDED_MARKS, EXTENDED_PRECEDENCE) if scheme == "extended" else (STANDARD_MARKS, STANDARD_PRECEDENCE)
+    marks, precedence = (
+        (EXTENDED_MARKS, EXTENDED_PRECEDENCE) if scheme == "extended" else (STANDARD_MARKS, STANDARD_PRECEDENCE)
+    )
     flags = []
     if ELLIPSIS.search(gap):
         flags.append("ellipsis")
@@ -78,7 +80,9 @@ def gap_label(gap, is_last, scheme):
     if len(found) > 1 and "mark_cluster" not in flags:
         flags.append("mark_cluster")
     if scheme == "native":
-        flags += [f for mark, f in (("!", "exclam_mapped"), (";", "semicolon_mapped"), (":", "colon_mapped")) if mark in gap]
+        flags += [
+            f for mark, f in (("!", "exclam_mapped"), (";", "semicolon_mapped"), (":", "colon_mapped")) if mark in gap
+        ]
     return next((p for p in precedence if p in found), "O"), flags
 
 
@@ -111,7 +115,7 @@ def project_extended_to_standard(labels, label_sets, allow_unapproved=False):
     proj = label_sets["projection"]
     if not proj.get("approved") and not allow_unapproved:
         raise PermissionError("extended_to_standard mapping is not approved (decision D5)")
-    return [proj["mapping"][l] for l in labels]
+    return [proj["mapping"][label] for label in labels]
 
 
 # --- Casing --------------------------------------------------------------------------------------------------------
@@ -207,7 +211,7 @@ def _read_marks(text):
         trails.append(ch[last:])
     out = []
     n = len(words)
-    for i, (w, tr) in enumerate(zip(words, trails)):
+    for i, (w, tr) in enumerate(zip(words, trails, strict=False)):
         low = w.lower()
         nxt = words[i + 1] if i + 1 < n else ""
         prev = words[i - 1] if i else ""
@@ -235,5 +239,5 @@ def _signature(pairs):
 
 def cross_check_standard(tokens, labels, text):
     """True if an independent reading of the text puts the same standard marks after the same letters/digits."""
-    a = _signature((t.text.lower(), STANDARD_MARK_OF[l]) for t, l in zip(tokens, labels))
+    a = _signature((t.text.lower(), STANDARD_MARK_OF[label]) for t, label in zip(tokens, labels, strict=False))
     return a == _signature(_read_marks(text))

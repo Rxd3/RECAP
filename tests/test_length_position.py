@@ -217,7 +217,9 @@ def test_an_existing_output_is_never_replaced(case: Case, tmp_path: Path, capsys
     refuse(capsys, argv(case, out), out, "o.json already exists")
 
 
-def test_an_output_in_a_missing_folder_is_refused(case: Case, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_an_output_in_a_missing_folder_is_refused(
+    case: Case, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     out = tmp_path / "nope" / "o.json"
     refuse(capsys, argv(case, out), out, "folder nope not found")
 

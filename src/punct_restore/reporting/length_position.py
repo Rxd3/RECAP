@@ -83,7 +83,9 @@ def model_report(bundle: Bundle, spec: BlockSpec) -> dict[str, Any]:
     for record in bundle.records:
         groups[bucket_index(len(record.gold))].append(record)
     return {"model_name": bundle.model_name, "predictions": dict(bundle.inputs["predictions"]),
-            "length_buckets": [bucket_entry(group, spec, low, high) for group, (low, high) in zip(groups, BOUNDS)],
+            "length_buckets": [
+                bucket_entry(group, spec, low, high) for group, (low, high) in zip(groups, BOUNDS, strict=False)
+            ],
             "question_recall": {"final": question_recall(bundle.records, spec, final_position),
                                 "inside": question_recall(bundle.records, spec, non_final)}}
 

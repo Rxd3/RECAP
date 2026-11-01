@@ -17,9 +17,9 @@ Adheres strictly to the shared model contract (docs/MODEL_CONTRACT.md):
 from __future__ import annotations
 
 import math
-import os
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import Any, Callable, Iterable, Mapping, Sequence
+from typing import Any
 
 import sklearn_crfsuite
 

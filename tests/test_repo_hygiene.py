@@ -95,8 +95,13 @@ def test_nothing_imports_from_the_scripts_folder() -> None:
 
 
 @pytest.mark.parametrize(
-    "line", ["from scripts import run_demo", "import scripts.train_crf as train_crf", "from scripts.reporting import _cli",
-             "    from scripts import tune_threshold"],
+    "line",
+    [
+        "from scripts import run_demo",
+        "import scripts.train_crf as train_crf",
+        "from scripts.reporting import _cli",
+        "    from scripts import tune_threshold",
+    ],
 )
 def test_the_scripts_import_pattern_catches_the_old_forms(line: str) -> None:
     assert FROM_SCRIPTS.search(line)

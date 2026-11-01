@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import hashlib
 import json
-import subprocess
 import platform
+import subprocess
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
 from typing import Any
 
-from punct_restore.data.validation import check_model_input, validate_record
 from punct_restore.data.labeling import load_label_sets
+from punct_restore.data.validation import check_model_input, validate_record
 from punct_restore.paths import REPO_ROOT as ROOT
 
 

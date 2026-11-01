@@ -169,7 +169,10 @@ def build_speaker_inventory(texts, min_recur=SPEAKER_MIN_RECUR):
             caps[m.group("name")] += 1
         for m in GLUED_LABEL.finditer(clean):
             glued[m.group(1)] += 1
-    keep = lambda c: {x for x, n in c.items() if n >= min_recur and x.split()[0] not in NOT_SPEAKER_LABELS}
+
+    def keep(c):
+        return {x for x, n in c.items() if n >= min_recur and x.split()[0] not in NOT_SPEAKER_LABELS}
+
     return {"labels": keep(labels), "timecode_names": keep(tc_names), "glued_ok": keep(labels + caps + glued)}
 
 
@@ -250,13 +253,16 @@ WORD = re.compile("|".join([
     r"[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\." + TLD + r"\b(?:/[\w/-]*)?",        # bare domain, optional path
     r"[Pp]h\.[Dd](?![A-Za-z])",                                                # Ph.D
     r"[Pp]p?\.\d+(?:-\d+)?",                                                   # page reference p.300, pp.12-14
-    r"(?<![^\s\"(])\.[a-z][A-Za-z0-9_]*",                                      # .com .wav: leading dot is part of the word
+    # .com .wav: leading dot is part of the word
+    r"(?<![^\s\"(])\.[a-z][A-Za-z0-9_]*",
     r"(?:[A-Za-z]\.)+[A-Za-z](?![A-Za-z])",                                    # initialism: U.S, e.g, a.m
-    NEGATIVE + r"(?:[$£€]|PS)?\d+(?:-\d+)?(?:[.,:]\d+)+(?:-\d+(?:[.,:]\d+)*[a-z]?)?%?",   # 28.5 10,000 9:30 -2.5 PS1.14 (£)
+    # 28.5 10,000 9:30 -2.5 PS1.14 (£)
+    NEGATIVE + r"(?:[$£€]|PS)?\d+(?:-\d+)?(?:[.,:]\d+)+(?:-\d+(?:[.,:]\d+)*[a-z]?)?%?",
     r"[A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)+",                   # Rack::Attack
     r"[a-z][A-Za-z0-9_]*:[A-Za-z][A-Za-z0-9_]*",                               # re:Invent, method:save
     r"[A-Za-z_][A-Za-z0-9_]*(?:\.[a-z_][A-Za-z0-9_]*)+",                       # build.rs, object.assign, e.coli
-    r"(?:[$£€#@]|" + NEGATIVE + r")?[A-Za-z0-9]+(?:(?:['\-_&+/]|\*+|(?<=\d)\.(?=\d))[A-Za-z0-9]+)*%?",   # don't age-related -12 50%
+    # don't age-related -12 50%
+    r"(?:[$£€#@]|" + NEGATIVE + r")?[A-Za-z0-9]+(?:(?:['\-_&+/]|\*+|(?<=\d)\.(?=\d))[A-Za-z0-9]+)*%?",
 ]))
 INITIALISM = re.compile(r"(?:[a-z]\.)+[a-z]")
 

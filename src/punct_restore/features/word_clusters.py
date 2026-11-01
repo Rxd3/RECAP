@@ -52,7 +52,12 @@ class ClusterMap:
 # ---------------------------------------------------------------- induction
 
 def _require_int(name: str, value: object, minimum: int, maximum: int | None = None) -> None:
-    if isinstance(value, bool) or not isinstance(value, int) or value < minimum or (maximum is not None and value > maximum):
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, int)
+        or value < minimum
+        or (maximum is not None and value > maximum)
+    ):
         bound = f">= {minimum}" if maximum is None else f"in {minimum}..{maximum}"
         raise ValueError(f"{name} must be an integer {bound}")
 

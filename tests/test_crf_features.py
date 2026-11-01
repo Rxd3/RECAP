@@ -12,15 +12,12 @@ Verifies:
 from __future__ import annotations
 
 import copy
+
 import pytest
 
 from punct_restore.features.crf_features import (
     FeatureConfig,
     extract_sequence_features,
-    WH_WORDS,
-    AUXILIARY_VERBS,
-    CONJUNCTIONS,
-    DISCOURSE_MARKERS,
 )
 
 

@@ -17,8 +17,9 @@ import json
 import subprocess  # noqa: F401 - tests patch train_crf.subprocess.run, which git_status_porcelain calls
 import sys
 import time
+from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 from punct_restore.cli.train_crf_inspect import cmd_inspect
 from punct_restore.cli.train_crf_predict import cmd_predict
@@ -92,7 +93,9 @@ def _prepare_train_paths(args: argparse.Namespace) -> tuple[Path, Path, Path, Pa
     try:  # even with --overwrite, the manifest must never replace the model or an input
         if not output_path.name:
             raise ValueError(f"--output must name a file, got {args.output!r}")
-        manifest_path = Path(args.manifest_out) if args.manifest_out else output_path.with_suffix(".joblib.manifest.json")
+        manifest_path = (
+            Path(args.manifest_out) if args.manifest_out else output_path.with_suffix(".joblib.manifest.json")
+        )
         check_new_output_paths({"--output": output_path, "--manifest-out": manifest_path},
                                {"--input": input_path, "--ids": ids_path,
                                 "--config-path": Path(args.config_path) if args.config_path else None})
@@ -124,7 +127,9 @@ def _load_records(input_path: Path, ids_path: Path, mode: str) -> tuple[list[dic
         return None
 
     total_tokens = sum(len(r["tokens"]) for r in records)
-    print(f"[RECAP CRF] Verified {len(records):,} sequences ({total_tokens:,} tokens) strictly matching {ids_path.name}.")
+    print(
+        f"[RECAP CRF] Verified {len(records):,} sequences ({total_tokens:,} tokens) strictly matching {ids_path.name}."
+    )
     return records, total_tokens
 
 
@@ -145,7 +150,10 @@ def _configure_model(args: argparse.Namespace, mode: str) -> tuple[CRFModel, Fea
     """Configure the CRF model; return (model, feature config) or None after reporting why not."""
     feature_config = _feature_config(args)
 
-    print(f"[RECAP CRF] Configuring CRFModel (algorithm={args.algorithm}, c1={args.c1}, c2={args.c2}, max_iter={args.max_iterations})...")
+    print(
+        f"[RECAP CRF] Configuring CRFModel (algorithm={args.algorithm}, c1={args.c1}, c2={args.c2}, "
+        f"max_iter={args.max_iterations})..."
+    )
     try:
         feature_model_name = getattr(args, "model_name", None) or f"crf_{args.preset}"
         model = CRFModel(
@@ -270,6 +278,52 @@ def cmd_train(args: argparse.Namespace) -> int:
     return 0
 
 
+def _add_train_arguments(p_train: argparse.ArgumentParser) -> None:
+    """Options of the `train` subcommand."""
+    p_train.add_argument("--mode", "-m", choices=["A", "B", "C"], required=True, help="Target label mode (A, B, or C).")
+    p_train.add_argument("--input", "-i", required=True, help="Path to input JSONL dataset file.")
+    p_train.add_argument("--ids", required=True, help="Path to official frozen training ID list (.ids file).")
+    p_train.add_argument("--output", "-o", required=True, help="Path to save the trained model (.joblib).")
+    p_train.add_argument(
+        "--preset", "-p", choices=["basic", "improved"], default="basic", help="Feature preset (default: basic)."
+    )
+    p_train.add_argument("--algorithm", default="lbfgs", help="CRF optimization algorithm (default: lbfgs).")
+    p_train.add_argument("--c1", type=float, default=0.1, help="L1 regularization coefficient (default: 0.1).")
+    p_train.add_argument("--c2", type=float, default=0.1, help="L2 regularization coefficient (default: 0.1).")
+    p_train.add_argument("--max-iterations", type=int, default=100, help="Maximum training iterations (default: 100).")
+    p_train.add_argument("--window-size", type=int, default=None, help="Context window radius override.")
+    p_train.add_argument("--no-utterance-boundaries", action="store_true", help="Ablate BOS/EOS boundary features.")
+    p_train.add_argument("--run-id", default=None, help="Identifier for experiment tracking.")
+    p_train.add_argument(
+        "--model-name",
+        default=None,
+        help="Model name identifier emitted in prediction JSONL (default: crf_basic or crf_improved).",
+    )
+    p_train.add_argument(
+        "--dataset-release", default="sponspeech-m1-v2", help="Dataset release ID (default: sponspeech-m1-v2)."
+    )
+    p_train.add_argument("--policy-version", default="m1-v2", help="Annotation policy version (default: m1-v2).")
+    p_train.add_argument("--config-path", default=None, help="Path to custom configs/label_sets.yaml.")
+    p_train.add_argument("--manifest-out", default=None, help="Optional custom path for output manifest JSON.")
+    p_train.add_argument("--overwrite", action="store_true", help="Overwrite existing output artifact and manifest.")
+
+
+def _add_predict_arguments(p_pred: argparse.ArgumentParser) -> None:
+    """Options of the `predict` subcommand."""
+    p_pred.add_argument("--model", "-m", required=True, help="Path to trained model artifact (.joblib).")
+    p_pred.add_argument("--input", "-i", required=True, help="Path to input JSONL records.")
+    p_pred.add_argument("--output", "-o", required=True, help="Path to write prediction JSONL.")
+    p_pred.add_argument("--ids", default=None, help="Optional frozen evaluation ID list to filter input records.")
+    p_pred.add_argument(
+        "--manifest-out",
+        default=None,
+        help="Optional path for the prediction sidecar manifest JSON (checked by the evaluator).",
+    )
+    p_pred.add_argument(
+        "--overwrite", action="store_true", help="Overwrite existing output prediction file and manifest."
+    )
+
+
 def build_cli_parser() -> argparse.ArgumentParser:
     """Build the top-level argument parser with subcommands."""
     parser = argparse.ArgumentParser(
@@ -280,33 +334,11 @@ def build_cli_parser() -> argparse.ArgumentParser:
 
     # Subcommand: train
     p_train = subparsers.add_parser("train", help="Train a CRF model on frozen training records.")
-    p_train.add_argument("--mode", "-m", choices=["A", "B", "C"], required=True, help="Target label mode (A, B, or C).")
-    p_train.add_argument("--input", "-i", required=True, help="Path to input JSONL dataset file.")
-    p_train.add_argument("--ids", required=True, help="Path to official frozen training ID list (.ids file).")
-    p_train.add_argument("--output", "-o", required=True, help="Path to save the trained model (.joblib).")
-    p_train.add_argument("--preset", "-p", choices=["basic", "improved"], default="basic", help="Feature preset (default: basic).")
-    p_train.add_argument("--algorithm", default="lbfgs", help="CRF optimization algorithm (default: lbfgs).")
-    p_train.add_argument("--c1", type=float, default=0.1, help="L1 regularization coefficient (default: 0.1).")
-    p_train.add_argument("--c2", type=float, default=0.1, help="L2 regularization coefficient (default: 0.1).")
-    p_train.add_argument("--max-iterations", type=int, default=100, help="Maximum training iterations (default: 100).")
-    p_train.add_argument("--window-size", type=int, default=None, help="Context window radius override.")
-    p_train.add_argument("--no-utterance-boundaries", action="store_true", help="Ablate BOS/EOS boundary features.")
-    p_train.add_argument("--run-id", default=None, help="Identifier for experiment tracking.")
-    p_train.add_argument("--model-name", default=None, help="Model name identifier emitted in prediction JSONL (default: crf_basic or crf_improved).")
-    p_train.add_argument("--dataset-release", default="sponspeech-m1-v2", help="Dataset release ID (default: sponspeech-m1-v2).")
-    p_train.add_argument("--policy-version", default="m1-v2", help="Annotation policy version (default: m1-v2).")
-    p_train.add_argument("--config-path", default=None, help="Path to custom configs/label_sets.yaml.")
-    p_train.add_argument("--manifest-out", default=None, help="Optional custom path for output manifest JSON.")
-    p_train.add_argument("--overwrite", action="store_true", help="Overwrite existing output artifact and manifest.")
+    _add_train_arguments(p_train)
 
     # Subcommand: predict
     p_pred = subparsers.add_parser("predict", help="Generate predictions using a trained CRF model artifact.")
-    p_pred.add_argument("--model", "-m", required=True, help="Path to trained model artifact (.joblib).")
-    p_pred.add_argument("--input", "-i", required=True, help="Path to input JSONL records.")
-    p_pred.add_argument("--output", "-o", required=True, help="Path to write prediction JSONL.")
-    p_pred.add_argument("--ids", default=None, help="Optional frozen evaluation ID list to filter input records.")
-    p_pred.add_argument("--manifest-out", default=None, help="Optional path for the prediction sidecar manifest JSON (checked by the evaluator).")
-    p_pred.add_argument("--overwrite", action="store_true", help="Overwrite existing output prediction file and manifest.")
+    _add_predict_arguments(p_pred)
 
     # Subcommand: inspect
     p_insp = subparsers.add_parser("inspect", help="Inspect metadata of a saved model artifact.")

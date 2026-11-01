@@ -253,12 +253,6 @@ def test_pick_tau_gamma_prefers_f1_then_smallest_gamma_then_tau_rule() -> None:
         pick([])
 
 
-def test_pick_tau_gamma_with_gamma_zero_only_agrees_with_pick_tau() -> None:
-    rows = [(0.2, 0.5), (0.4, 0.7), (0.6, 0.7), (0.8, 0.1)]
-    assert tune_threshold.pick_tau_gamma([(t, 0.0, f) for t, f in rows]) == (
-        tune_threshold.pick_tau(rows), 0.0)
-
-
 def test_score_grid_decodes_every_tau_gamma_pair_with_the_priors(tmp_path: Path) -> None:
     seen: list[tuple[str, list[str]]] = []
 

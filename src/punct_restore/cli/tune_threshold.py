@@ -81,11 +81,6 @@ def parse_grid(text: str) -> tuple[float, ...]:
     return tuple(round(start + i * step, 6) for i in range(count))
 
 
-def pick_tau(grid_scores: Sequence[tuple[float, float]]) -> float:
-    """Tau with the highest macro F1; ties go to the tau nearest 0.5, then to the lower tau."""
-    return pick_tau_gamma([(tau, 0.0, score) for tau, score in grid_scores])[0]
-
-
 def pick_tau_gamma(grid_scores: Sequence[tuple[float, float, float]]) -> tuple[float, float]:
     """``(tau, gamma)`` with the highest macro F1 among ``(tau, gamma, f1)`` rows.
 

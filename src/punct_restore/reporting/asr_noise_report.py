@@ -129,7 +129,10 @@ def _sec_achieved_mix(summary: Summary) -> list[str]:
             "swaps have cost 2, all other edits cost 1):"
         ),
         "",
-        "| Edit model | Target WER | Achieved WER % | Budget | Tokens before | Tokens after (mean) | Substitution % | Deletion % | Insertion % | Swap % |",
+        (
+            "| Edit model | Target WER | Achieved WER % | Budget | Tokens before | Tokens after (mean) "
+            "| Substitution % | Deletion % | Insertion % | Swap % |"
+        ),
         "|---|---|---|---|---|---|---|---|---|---|",
         (
             f"| `v2` target | — | — | — | — | — | {pct(target['substitution'])} | {pct(target['deletion'])} | "
@@ -190,7 +193,10 @@ def _sec_v1_vs_v2(summary: Summary) -> list[str]:
             f"both edit models, with the mean difference `v2 {MINUS} v1` in percentage points:"
         ),
         "",
-        f"| Mode | Model | Clean (0%) | `v1` {label} WER | `v2` {label} WER | `v2` {MINUS} `v1` (pts) | `v1` seed range | `v2` seed range |",
+        (
+            f"| Mode | Model | Clean (0%) | `v1` {label} WER | `v2` {label} WER | `v2` {MINUS} `v1` (pts) "
+            "| `v1` seed range | `v2` seed range |"
+        ),
         "|---|---|---|---|---|---|---|---|",
     ]
     for mode in summary["modes"]:

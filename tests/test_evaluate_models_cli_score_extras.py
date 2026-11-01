@@ -12,8 +12,16 @@ from types import ModuleType
 from typing import Any
 
 import pytest
-from cli_analysis_cases import (MANIFEST_NAME, assert_nothing_written, assert_one_line, build_case, bundle_of,
-                                read_json, valid_manifest, write_manifest)
+from cli_analysis_cases import (
+    MANIFEST_NAME,
+    assert_nothing_written,
+    assert_one_line,
+    build_case,
+    bundle_of,
+    read_json,
+    valid_manifest,
+    write_manifest,
+)
 from eval_fixtures import Case, assert_one_error_line, cli_argv, run_cli
 
 from punct_restore.evaluation import BootstrapSpec, evaluate, to_markdown

@@ -6,6 +6,8 @@ import sys
 from copy import deepcopy
 
 import pytest
+from test_data_contract import build
+from test_hmm_cli import ROOT, SCRIPT, jsonl, setup_run
 
 from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_workflow import (
@@ -13,8 +15,6 @@ from punct_restore.models.hmm_workflow import (
     selected_records,
     verify_training_release,
 )
-from test_data_contract import build
-from test_hmm_cli import ROOT, SCRIPT, jsonl, setup_run
 
 
 def run(args):

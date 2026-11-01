@@ -8,12 +8,22 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from eval_fixtures import (SCORED, TOKENS, Case, gold_row, gold_rows, joint, mask_row, perfect_preds, pred_row,
-                           valid_case, write_case)
+from eval_fixtures import (
+    SCORED,
+    TOKENS,
+    Case,
+    gold_row,
+    gold_rows,
+    joint,
+    mask_row,
+    perfect_preds,
+    pred_row,
+    valid_case,
+    write_case,
+)
 
 from punct_restore.evaluation import error_examples, errors_markdown, load_bundle
-from punct_restore.evaluation.error_analysis import (DEFAULT_BLOCK, DEFAULT_PER_PAIR, MARKS, SCHEMA, WINDOW,
-                                                     render)
+from punct_restore.evaluation.error_analysis import DEFAULT_BLOCK, DEFAULT_PER_PAIR, MARKS, SCHEMA, WINDOW, render
 from punct_restore.evaluation.inputs import Aligned, Bundle, EvaluationInputError, Vocab
 
 ELLIPSIS = "…"

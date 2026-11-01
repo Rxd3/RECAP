@@ -38,7 +38,7 @@ def _cased(token: str, case: str) -> str:
 def render(tokens: Sequence[str], labels: Sequence[str]) -> str:
     """Text rebuilt from words and labels; joint labels also restore casing."""
     words = []
-    for token, label in zip(tokens, labels):
+    for token, label in zip(tokens, labels, strict=False):
         punct, case = split_joint(label) if SEPARATOR in label else (label, "LOWER")
         words.append(_cased(token, case) + MARKS[punct])
     return " ".join(words)

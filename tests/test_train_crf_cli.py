@@ -19,8 +19,8 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
 import subprocess
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -145,7 +145,7 @@ class TestCRFTrainCLI:
         assert model.model_name == "crf_basic"
 
         # Verify manifest contents
-        with open(manifest_file, "r", encoding="utf-8") as f:
+        with open(manifest_file, encoding="utf-8") as f:
             manifest = json.load(f)
 
         assert manifest["schema_version"] == 1
@@ -265,7 +265,7 @@ class TestCRFTrainCLI:
         ])
         assert ret == 0
 
-        with open(manifest_file, "r", encoding="utf-8") as f:
+        with open(manifest_file, encoding="utf-8") as f:
             manifest = json.load(f)
         assert manifest["provenance"]["selected_sequences"] == 3
 
@@ -285,7 +285,9 @@ class TestCRFTrainCLI:
         captured = capsys.readouterr()
         assert "Frozen ID list not found" in captured.err
 
-    def test_train_missing_selected_id_in_input_failure(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    def test_train_missing_selected_id_in_input_failure(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
         """Verify explicit failure if an ID from the frozen list is absent in the input file."""
         data_file = tmp_path / "data.jsonl"
         ids_file = tmp_path / "train.ids"
@@ -304,7 +306,9 @@ class TestCRFTrainCLI:
         captured = capsys.readouterr()
         assert "Missing 1 selected IDs" in captured.err
 
-    def test_train_duplicate_id_in_frozen_list_failure(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    def test_train_duplicate_id_in_frozen_list_failure(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
         """Verify failure when the frozen ID file contains duplicate entries."""
         data_file = tmp_path / "data.jsonl"
         ids_file = tmp_path / "train.ids"
@@ -416,7 +420,10 @@ class TestCRFTrainCLI:
         ids_file = tmp_path / "train.ids"
 
         with open(data_file, "w", encoding="utf-8") as f:
-            f.write('{"sample_id": "valid", "split": "train", "label_mode": "A", "tokens": ["hi"], "punct_labels": ["O"]}\n')
+            f.write(
+                '{"sample_id": "valid", "split": "train", "label_mode": "A", '
+                '"tokens": ["hi"], "punct_labels": ["O"]}\n'
+            )
             f.write('{this is NOT json\n')
 
         write_id_file(ids_file, ["valid"])
@@ -572,7 +579,7 @@ class TestCRFPredictCLI:
         assert preds_output.is_file()
 
         # Parse and inspect output JSONL
-        with open(preds_output, "r", encoding="utf-8") as f:
+        with open(preds_output, encoding="utf-8") as f:
             pred_lines = [json.loads(line) for line in f if line.strip()]
 
         assert len(pred_lines) == 2
@@ -615,7 +622,7 @@ class TestCRFPredictCLI:
         ])
         assert ret == 0
 
-        with open(preds_output, "r", encoding="utf-8") as f:
+        with open(preds_output, encoding="utf-8") as f:
             pred_lines = [json.loads(line) for line in f if line.strip()]
 
         assert len(pred_lines) == 2
@@ -660,7 +667,7 @@ class TestCRFPredictCLI:
         ])
         assert ret == 0
 
-        with open(preds_output, "r", encoding="utf-8") as f:
+        with open(preds_output, encoding="utf-8") as f:
             pred_lines = [json.loads(line) for line in f if line.strip()]
 
         # 1. Exact cardinality

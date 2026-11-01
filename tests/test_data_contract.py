@@ -16,11 +16,14 @@ def words(text):
 
 def labels(text, scheme="extended"):
     toks = preprocessing.tokenize(preprocessing.normalize(text)[0])
-    return [(t.text.lower(), l) for t, l in zip(toks, labeling.punctuation_labels(toks, scheme)[0])]
+    return [
+        (t.text.lower(), label) for t, label in zip(toks, labeling.punctuation_labels(toks, scheme)[0], strict=False)
+    ]
 
 
 def canonical(text):
-    return [(t, l) for (t, _), l in zip(labels(text), labeling.project_extended_to_standard([l for _, l in labels(text)], LS))]
+    projected = labeling.project_extended_to_standard([label for _, label in labels(text)], LS)
+    return [(t, label) for (t, _), label in zip(labels(text), projected, strict=False)]
 
 
 def record(**over):
@@ -61,13 +64,17 @@ def test_unapproved_projection_is_still_refused():
 
 @pytest.mark.parametrize("text, expected", [
     ("I don't think it's y'all's.", ["I", "don't", "think", "it's", "y'all's"]),
-    ("It was 28.5 percent, 10,000 people, at 9:30.", ["It", "was", "28.5", "percent", "10,000", "people", "at", "9:30"]),
-    ("Visit www.radioenglish.net or mail a.b@c.org now.", ["Visit", "www.radioenglish.net", "or", "mail", "a.b@c.org", "now"]),
+    ("It was 28.5 percent, 10,000 people, at 9:30.",
+     ["It", "was", "28.5", "percent", "10,000", "people", "at", "9:30"]),
+    ("Visit www.radioenglish.net or mail a.b@c.org now.",
+     ["Visit", "www.radioenglish.net", "or", "mail", "a.b@c.org", "now"]),
     ("Dr. Brown lives in the U.S. now.", ["Dr.", "Brown", "lives", "in", "the", "U.S.", "now"]),
     ("it works,but today?James", ["it", "works", "but", "today", "James"]),
     ("a whole-food plant- based diet -- yes", ["a", "whole-food", "plant", "based", "diet", "yes"]),
-    ("call object.assign at re:Invent with Rack::Attack", ["call", "object.assign", "at", "re:Invent", "with", "Rack::Attack"]),
-    ("between -12 and -3 dB, a well-known -2.5% drop", ["between", "-12", "and", "-3", "dB", "a", "well-known", "-2.5%", "drop"]),
+    ("call object.assign at re:Invent with Rack::Attack",
+     ["call", "object.assign", "at", "re:Invent", "with", "Rack::Attack"]),
+    ("between -12 and -3 dB, a well-known -2.5% drop",
+     ["between", "-12", "and", "-3", "dB", "a", "well-known", "-2.5%", "drop"]),
     ("from 20-30 to 15-20,000", ["from", "20-30", "to", "15-20,000"]),
 ])
 def test_tokenization_keeps_words_and_internal_punctuation(text, expected):
@@ -100,8 +107,8 @@ def test_model_tokens_use_str_lower():
 
 def test_extended_labels_and_canonical_projection():
     text = "Wow! Note this: one; two -- three, done."
-    assert [l for _, l in labels(text)] == ["EXCLAMATION", "O", "COLON", "SEMICOLON", "DASH", "COMMA", "PERIOD"]
-    assert [l for _, l in canonical(text)] == ["PERIOD", "O", "COMMA", "PERIOD", "COMMA", "COMMA", "PERIOD"]
+    assert [label for _, label in labels(text)] == ["EXCLAMATION", "O", "COLON", "SEMICOLON", "DASH", "COMMA", "PERIOD"]
+    assert [label for _, label in canonical(text)] == ["PERIOD", "O", "COMMA", "PERIOD", "COMMA", "COMMA", "PERIOD"]
 
 
 @pytest.mark.parametrize("text, expected", [
@@ -113,18 +120,18 @@ def test_extended_labels_and_canonical_projection():
     ("it is -12 today.", ["O", "O", "O", "PERIOD"]),   # negative sign stays in the token
 ])
 def test_dash_rules(text, expected):
-    assert [l for _, l in labels(text)] == expected
+    assert [label for _, label in labels(text)] == expected
 
 
 def test_ellipsis_inside_is_o_and_at_the_end_is_period():
-    assert [l for _, l in labels("You think... I do. And then...")] == ["O", "O", "O", "PERIOD", "O", "PERIOD"]
+    assert [label for _, label in labels("You think... I do. And then...")] == ["O", "O", "O", "PERIOD", "O", "PERIOD"]
 
 
 def test_native_view_differs_from_canonical_only_at_dash_boundaries():
     toks = preprocessing.tokenize("So: yes; no! Maybe -- well, done?")
     native, _ = labeling.punctuation_labels(toks, "native")
     canon = labeling.project_extended_to_standard(labeling.punctuation_labels(toks, "extended")[0], LS)
-    assert [(t.text, a, b) for t, a, b in zip(toks, native, canon) if a != b] == [("Maybe", "O", "COMMA")]
+    assert [(t.text, a, b) for t, a, b in zip(toks, native, canon, strict=False) if a != b] == [("Maybe", "O", "COMMA")]
 
 
 def test_mark_clusters_are_flagged_not_resolved():
@@ -202,11 +209,20 @@ def test_sample_ids_and_split_mapping():
 
 
 def test_overlap_reasons():
-    ref = splits.Reference([{"group_id": "v1", "original_text": "I'm Bryan Lynn.", "tokens": "we went to the big market and bought apples".split()}])
-    mk = lambda g, text, toks: {"group_id": g, "original_text": text, "tokens": toks.split()}
+    ref = splits.Reference([{
+        "group_id": "v1", "original_text": "I'm Bryan Lynn.",
+        "tokens": "we went to the big market and bought apples".split(),
+    }])
+
+    def mk(g, text, toks):
+        return {"group_id": g, "original_text": text, "tokens": toks.split()}
+
     assert splits.overlap_reason(mk("v1", "x", "a b"), ref) == "shared_video"
     assert splits.overlap_reason(mk("v2", "I'm Bryan Lynn.", "i'm bryan lynn"), ref) == "identical_text_other_video"
-    assert splits.overlap_reason(mk("v3", "y", "so we went to the big market and bought apples"), ref) == "near_duplicate_other_video"
+    assert (
+        splits.overlap_reason(mk("v3", "y", "so we went to the big market and bought apples"), ref)
+        == "near_duplicate_other_video"
+    )
     assert splits.overlap_reason(mk("v4", "z", "a completely different sentence about cars"), ref) is None
 
 
@@ -247,7 +263,7 @@ def build(tmp_path, name, titles=None):
 
 
 def read_jsonl(path):
-    return [json.loads(l) for l in path.read_text().splitlines()]
+    return [json.loads(line) for line in path.read_text().splitlines()]
 
 
 def test_release_views_are_aligned_valid_and_complete(tmp_path):
@@ -258,7 +274,7 @@ def test_release_views_are_aligned_valid_and_complete(tmp_path):
     views = {m: release.load_records(rel / f"mode_{m}" / "train.jsonl", LS) for m in "ABC"}
     native = release.load_records(rel / "benchmark_native" / "mode_A" / "train.jsonl", LS)
     assert [r["sample_id"] for r in views["A"]] == [r["sample_id"] for r in native]
-    assert all(r["tokens"] == t["tokens"] for r, t in zip(views["A"], views["B"]))
+    assert all(r["tokens"] == t["tokens"] for r, t in zip(views["A"], views["B"], strict=False))
     a = {r["sample_id"]: r for r in views["A"]}
     b = {r["sample_id"]: r["punct_labels"] for r in views["B"]}
     n = {r["sample_id"]: r["punct_labels"] for r in native}
@@ -279,7 +295,7 @@ def test_rejected_and_unresolved_records_are_kept_out_of_default_lists(tmp_path)
     assert len((spl / "split_map.tsv").read_text().splitlines()) == 1 + sum(len(v) for v in FIXTURE.values())
     unresolved = {r["sample_id"]: r for r in read_jsonl(rel / "audit" / "unresolved.jsonl")}
     default_a = set(release.read_ids(spl / "default_train" / "mode_A.ids"))
-    assert "mark_cluster" in unresolved["sponspeech:train:aaaaaaaaaaa-2"]["unresolved_by_mode"]["A"]   # '?!' not covered
+    assert "mark_cluster" in unresolved["sponspeech:train:aaaaaaaaaaa-2"]["unresolved_by_mode"]["A"]  # '?!' not covered
     assert "sponspeech:train:aaaaaaaaaaa-2" not in default_a
     assert "sponspeech:train:aaaaaaaaaaa-1" in default_a                         # ';' and '--' are approved rules
 
@@ -323,12 +339,16 @@ def test_manifest_records_policy_license_and_views(tmp_path):
 def test_manifest_lists_every_release_and_split_file(tmp_path):
     rel, spl = build(tmp_path, "run1")
     manifest = json.loads((rel / "release_manifest.json").read_text())
-    on_disk = {p.relative_to(rel).as_posix() for p in rel.rglob("*") if p.is_file()} - {"release_manifest.json", "SHA256SUMS"}
+    on_disk = (
+        {p.relative_to(rel).as_posix() for p in rel.rglob("*") if p.is_file()} - {"release_manifest.json", "SHA256SUMS"}
+    )
     assert set(manifest["files"]) == on_disk
     assert "masks/case_joint/train.jsonl" in manifest["files"] and "audit/unresolved.jsonl" in manifest["files"]
     for path, info in manifest["files"].items():
         assert info["sha256"] == hashlib.sha256((rel / path).read_bytes()).hexdigest()
-    assert set(manifest["split_files"]) == {p.relative_to(spl).as_posix() for p in spl.rglob("*") if p.is_file()} - {"SHA256SUMS"}
+    assert set(manifest["split_files"]) == (
+        {p.relative_to(spl).as_posix() for p in spl.rglob("*") if p.is_file()} - {"SHA256SUMS"}
+    )
 
 
 def test_metadata_snapshot_flags_tts_videos_and_changes_id_lists(tmp_path):
@@ -339,8 +359,12 @@ def test_metadata_snapshot_flags_tts_videos_and_changes_id_lists(tmp_path):
     _, spl_plain = build(tmp_path, "without_titles")
     snap = json.loads((rel / "release_manifest.json").read_text())["provenance"]["metadata_snapshot"]
     assert snap["tts_videos"] == ["aaaaaaaaaaa"] and snap["sha256"] == hashlib.sha256(titles.read_bytes()).hexdigest()
-    assert not any(i.startswith("sponspeech:train:aaaaaaaaaaa") for i in release.read_ids(spl / "default_train" / "mode_A.ids"))
-    assert (spl / "default_train" / "mode_A.ids").read_text() != (spl_plain / "default_train" / "mode_A.ids").read_text()
+    assert not any(
+        i.startswith("sponspeech:train:aaaaaaaaaaa") for i in release.read_ids(spl / "default_train" / "mode_A.ids")
+    )
+    assert (
+        (spl / "default_train" / "mode_A.ids").read_text() != (spl_plain / "default_train" / "mode_A.ids").read_text()
+    )
 
 
 # --- source extraction (synthetic archive; the real ranges are pinned in extraction.py) -----------------------------
@@ -407,7 +431,9 @@ def test_range_extraction_stops_when_the_source_changes(tmp_path, monkeypatch):
     ex = pin(monkeypatch, gz)
     with pytest.raises(ex.SourceChanged):
         ex.extract_ranges(str(tmp_path / "raw"), fetch=fake_fetch(gz[:-1] + b"x"), log=lambda _: None)
-    monkeypatch.setattr(ex, "_http", lambda url, headers=None, method="GET": ({"content-length": "1", "x-goog-generation": "2"}, b""))
+    monkeypatch.setattr(
+        ex, "_http", lambda url, headers=None, method="GET": ({"content-length": "1", "x-goog-generation": "2"}, b"")
+    )
     with pytest.raises(ex.SourceChanged):
         ex.check_remote()
 

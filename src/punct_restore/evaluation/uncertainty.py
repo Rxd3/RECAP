@@ -77,7 +77,7 @@ def resampled_macro_f1(counts: Sequence[Counts], weights: Sequence[Counter[int]]
     for drawn in weights:
         totals = [[0] * width for _ in range(3)]
         for group, times in drawn.items():
-            for total, vector in zip(totals, counts[group]):
+            for total, vector in zip(totals, counts[group], strict=False):
                 for i in range(width):
                     total[i] += times * vector[i]
         values.append(macro_f1_from_counts(*totals))
@@ -119,7 +119,7 @@ def paired_differences(records_a: Sequence[Aligned], records_b: Sequence[Aligned
     for spec in specs:
         a = resampled_macro_f1(group_counts(records_a, spec, groups), weights)
         b = resampled_macro_f1(group_counts(records_b, spec, groups), weights)
-        differences = [y - x for x, y in zip(a, b)]
+        differences = [y - x for x, y in zip(a, b, strict=False)]
         share = sum(d > 0 for d in differences) / len(differences)
         result[spec.name] = {**_ci(*interval(differences), bootstrap, len(groups)),
                              "share_b_better": share}

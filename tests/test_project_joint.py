@@ -171,7 +171,9 @@ def test_existing_output_is_never_overwritten(case: Case, capsys, tmp_path: Path
     assert [case.out.exists(), case.man.exists()].count(True) == 1
 
 
-@pytest.mark.parametrize("clash", [("out", "man"), ("out", "preds"), ("man", "preds"), ("out", "gold"), ("man", "gold")])
+@pytest.mark.parametrize(
+    "clash", [("out", "man"), ("out", "preds"), ("man", "preds"), ("out", "gold"), ("man", "gold")]
+)
 def test_output_paths_may_not_collide_with_each_other_or_with_inputs(
         case: Case, capsys, tmp_path: Path, clash: tuple[str, str]) -> None:
     first, second = clash

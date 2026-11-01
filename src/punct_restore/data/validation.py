@@ -43,7 +43,7 @@ def validate_record(rec, label_sets):
         labels = rec[field]
         if not isinstance(labels, list) or len(labels) != len(tokens):
             errors.append(f"{field} must have exactly one label per token")
-        elif any(l not in vocab for l in labels):
+        elif any(label not in vocab for label in labels):
             errors.append(f"{field} contains a label outside the {rec['label_mode']} vocabulary")
     if "metadata" in rec and not isinstance(rec["metadata"], dict):
         errors.append("metadata must be an object")
@@ -95,5 +95,5 @@ def compare_views(view_a, view_b):
     """Differences between two views of the same records (lists of dicts): IDs, order, tokens, split."""
     if [r["sample_id"] for r in view_a] != [r["sample_id"] for r in view_b]:
         return ["sample IDs or their order differ"]
-    return [f"{a['sample_id']}: tokens or split differ" for a, b in zip(view_a, view_b)
+    return [f"{a['sample_id']}: tokens or split differ" for a, b in zip(view_a, view_b, strict=False)
             if a["tokens"] != b["tokens"] or a["split"] != b["split"]]
