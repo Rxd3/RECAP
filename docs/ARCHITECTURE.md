@@ -28,7 +28,8 @@ script that `[project.scripts]` in `pyproject.toml` points at `punct_restore.cli
 ```text
 src/punct_restore/
   cli/              __init__.py (the dispatcher and COMMANDS) and one module per command (18);
-                    argument parsing and the error boundary only
+                    each parses arguments, reads and writes files and runs its command's
+                    own steps, behind the error boundary
   reporting/        7 reporting commands, plus _cli.py, build_tables.py and
                     asr_noise_{stats,report,findings}.py (the parts of the ASR noise report)
   data/             extraction, preprocessing, labeling, splits, validation, asr_noise, gold_noise;
@@ -58,7 +59,9 @@ scripts/            25 three-line stubs (scripts/<name>.py, scripts/reporting/<n
   argparse help and usage errors (exit 2) pass through.
 - **Command modules** have a module docstring (the help summary, with no team roles) and exactly
   `main(argv: list[str] | None = None) -> int` (`tests/test_main_signature.py`). They parse arguments,
-  call the library and hold the error boundary; the work is in the library modules. No cli module
+  read and write files and run their command's own steps behind the error boundary. Logic that more than
+  one command uses lives in the library modules. `cli/package_hmm_handoff.py` keeps its packaging steps
+  because it copies its own source into the handoff. No cli module
   imports another cli module (`tests/test_repo_hygiene.py`). `python -m punct_restore.cli.<module>` (or
   `punct_restore.reporting.<module>`) runs one directly.
 - **Errors.** A runtime error (a missing, unreadable or malformed file, a bad value) is one stderr line,
@@ -78,10 +81,10 @@ scripts/            25 three-line stubs (scripts/<name>.py, scripts/reporting/<n
   keep those paths.
 - **Split modules.** The size split moved helpers out of long modules (for example `models/crf.py` into
   `crf_io`, `crf_modes`, `crf_records` and `crf_training`). Library import paths from
-  `main` at `72ebfd1` still work: every name in `punct_restore.data`, `punct_restore.evaluation`,
+  `main` at `72ebfd1` still work: every public name in `punct_restore.data`, `punct_restore.evaluation`,
   `punct_restore.features`, `punct_restore.models`, `punct_restore.pipeline` and `punct_restore.prediction_io`
   stays importable from its old module, as re-exports or thin wrappers (`tests/test_library_names.py`,
-  pinned to that commit's name list). The classes stored in saved models (`CRFModel`, `FeatureConfig`,
+  pinned to that commit's name list); private `_helper` names are not covered. The classes stored in saved models (`CRFModel`, `FeatureConfig`,
   `HMMModel`, `HiddenEventLM`) stay where they were, so saved models load. Moved helpers also live in their
   new modules, for example `FILLERS` in `features/crf_lexicons.py` and `CASING_VOCABULARY` in
   `models/crf_modes.py`. The internals of the cli modules (such as `cli.run_hmm_experiments.frozen`) are
@@ -124,8 +127,10 @@ configs need affected owners' review.
   derive the target vector from `label_mode`; observable model inputs contain
   tokens and identifiers only. Evaluation retains gold in a separate path.
 - Feature functions accept tokens and declared settings, not whole gold records.
-- The demo pipeline does not use the training tokenizer. `clean_tokens` in `pipeline.py` splits the raw
-  text on whitespace (`str.split()`), lowercases each piece and strips `,.?!:;-"` from its edges. The
+- The demo pipeline does not use the training tokenizer. `RestorationPipeline.process_text` in
+  `pipeline.py` splits the raw text on whitespace (`str.split()`). `clean_tokens` then lowercases each
+  piece, strips `,.?!:;-"` from both ends, and drops pieces that end up empty; if none is left it raises
+  `ValueError("empty input")`. The
   release tokens come from `data.preprocessing.tokenize` (lowercased by `model_token`). It also keeps an
   abbreviation's final period in the word, and it keeps brackets, quotes and dashes in the gaps between
   words. Inputs such as `(hello)` or `mr.` can therefore give tokens that the release never contains. The

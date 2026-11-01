@@ -125,36 +125,11 @@ tmp/hmm-env/Scripts/recap.exe package-hmm-handoff --run-dir experiments/runs/hmm
 Output directories must be new; the completed study is never overwritten. On Linux/macOS use
 `tmp/hmm-env/bin/python` and `tmp/hmm-env/bin/recap`. The editable install without dependencies adds the `recap` command (and makes the `scripts/` stubs
 work) without the CRF packages; the HMM commands need only the standard library and PyYAML.
-**Studies tuned on older code.** `plan.json` records the SHA-256 of every hashed HMM source file. On
-2026-11-01 the list changed twice: once when the code moved into the package, and again when it became
-the study's whole import closure (30 files, `models/hmm_experiment_identity.SOURCE_FILES`). Finalize,
-verify and package all pass `verified_frozen_selection` first, so they refuse any study tuned before the
-current list ("HMM implementation changed since selection"), by design. That includes the delivered
-`hmm-sponspeech-v2-20261029`. A new study runs all four steps on this code. Finalize, verify and package a
-study with the code it was tuned on: for the delivered study, a worktree of `main` at `72ebfd1` that holds
-its own copy of the data and the study. The old scripts read the data through their own checkout and
-write the package under its `artifacts/`. From the repository root:
 
-```powershell
-git worktree add --detach tmp/recap-72ebfd1 72ebfd1
-git worktree add --detach tmp/recap-72ebfd1/tmp/member2-evaluation-3044a58 3044a58e777200bcac64e6e3364922404be359bf
-Copy-Item -Recurse data/processed tmp/recap-72ebfd1/data/processed
-Copy-Item -Recurse data/splits tmp/recap-72ebfd1/data/splits
-New-Item -ItemType Directory -Force tmp/recap-72ebfd1/experiments/runs | Out-Null
-Copy-Item -Recurse experiments/runs/hmm-sponspeech-v2-20261029 tmp/recap-72ebfd1/experiments/runs/
-Set-Location tmp/recap-72ebfd1
-../hmm-env/Scripts/python.exe scripts/run_hmm_experiments.py finalize --run-dir experiments/runs/hmm-sponspeech-v2-20261029 --evaluator-root tmp/member2-evaluation-3044a58
-../hmm-env/Scripts/python.exe scripts/verify_hmm_experiments.py --run-dir experiments/runs/hmm-sponspeech-v2-20261029 --evaluator-root tmp/member2-evaluation-3044a58 --output-dir experiments/runs/hmm-sponspeech-v2-20261029/verification
-../hmm-env/Scripts/python.exe scripts/package_hmm_handoff.py --run-dir experiments/runs/hmm-sponspeech-v2-20261029 --evaluator-root tmp/member2-evaluation-3044a58 --output-dir artifacts/hmm/hmm-sponspeech-v2-20261029
-Set-Location ../..
-```
-
-At `72ebfd1` the files in `scripts/` are the original scripts, not stubs. Each one puts its own checkout's
-`src` first on the import path, so it runs the `72ebfd1` code even though `tmp/hmm-env` has this
-checkout installed. Skip a step whose output already exists; output directories must be new. Copy the
-results back (`experiments/runs/...`, `artifacts/hmm/...`), then remove the evaluator worktree and the
-outer one: `git worktree remove --force tmp/recap-72ebfd1/tmp/member2-evaluation-3044a58`, then
-`git worktree remove --force tmp/recap-72ebfd1`. On Linux/macOS use `cp -r` and `../hmm-env/bin/python`.
+**Studies tuned on older code**, the delivered `hmm-sponspeech-v2-20261029` included, fail
+`verified_frozen_selection` on this code by design, so finalize, verify and package refuse them. Run those
+steps at `72ebfd1` as described in
+[HMM_RUNBOOK.md, Studies tuned on older code](../experiments/HMM_RUNBOOK.md#studies-tuned-on-older-code).
 
 ## 5. CRF
 

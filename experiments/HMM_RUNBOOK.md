@@ -24,7 +24,9 @@ git worktree add --detach tmp/member2-evaluation-3044a58 3044a58e777200bcac64e6e
 The editable install without dependencies adds the `recap` command (and makes the `scripts/` stubs
 work) without the CRF packages; the HMM commands need only the standard library and PyYAML.
 
-**Studies tuned on older code.** `plan.json` records the SHA-256 of every hashed HMM source file. On
+### Studies tuned on older code
+
+`plan.json` records the SHA-256 of every hashed HMM source file. On
 2026-11-01 the list changed twice: once when the code moved into the package, and again when it became
 the study's whole import closure (30 files, `models/hmm_experiment_identity.SOURCE_FILES`). Finalize,
 verify and package all pass `verified_frozen_selection` first, so they refuse any study tuned before the

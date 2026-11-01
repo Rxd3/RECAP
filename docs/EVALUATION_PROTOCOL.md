@@ -89,6 +89,7 @@ outputs are combined.
 
 **Scored set.**
 - The `.ids` list defines which records are scored: `primary_eval/<split>_mode_<M>.ids` for primary results, the full split or `leakage_controlled/*.ids` for supplementary ones.
+- The list must hold unique, non-empty IDs: the evaluator refuses a list with a duplicate ID or with no ID, with one `error:` line and exit 1.
 - Predictions must cover every scored ID.
 - A prediction ID that is not in the gold file is an error.
 - Prediction IDs that are in the gold file but outside the list are ignored and counted (`ignored_prediction_ids`), so one prediction file can be scored on several lists.

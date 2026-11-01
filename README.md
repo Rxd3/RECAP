@@ -301,9 +301,9 @@ report `test` and `test_amb` separately (they share 25 videos).
 `src/punct_restore/cli/__init__.py` (the `recap` dispatcher), `src/punct_restore/data/__init__.py`,
 `src/punct_restore/evaluation/__init__.py`, `src/punct_restore/features/__init__.py`,
 `src/punct_restore/models/__init__.py` and `src/punct_restore/reporting/__init__.py`.
-Library import paths from `main` at `72ebfd1` still work: every name in `punct_restore.data`,
+Library import paths from `main` at `72ebfd1` still work: every public name in `punct_restore.data`,
 `punct_restore.evaluation`, `punct_restore.features`, `punct_restore.models`, `punct_restore.pipeline` and
-`punct_restore.prediction_io` stays importable from its old module (`tests/test_library_names.py`), and
+`punct_restore.prediction_io` stays importable from its old module (`tests/test_library_names.py`; private `_helper` names are not covered), and
 the classes stored in saved models (`CRFModel`, `FeatureConfig`, `HMMModel`, `HiddenEventLM`) stay where
 they were. Moved helpers also live in their new modules, for example `FILLERS` in
 `src/punct_restore/features/crf_lexicons.py` and `write_lines` in `src/punct_restore/data/release_outputs.py`. The internals of the cli modules
@@ -311,7 +311,7 @@ they were. Moved helpers also live in their new modules, for example `FILLERS` i
 
 | Module | Role |
 | --- | --- |
-| `src/punct_restore/cli/` | The `recap` command. `__init__` holds the dispatcher (`COMMANDS` maps each subcommand, the module name with `_` written as `-`, to its module; `recap --help` lists them). One module per command: `build_leakage_subsets`, `build_word_clusters`, `evaluate_models`, `factor_predictions`, `find_gold_noise`, `package_hmm_handoff`, `predict_hmm`, `prepare_data`, `project_joint`, `run_ablations`, `run_demo`, `run_hmm_experiments`, `simulate_asr_noise`, `train_crf`, `train_hidden_event_lm`, `train_hmm`, `tune_threshold`, `verify_hmm_experiments`. These modules only parse arguments and hold the error boundary; no cli module imports another. |
+| `src/punct_restore/cli/` | The `recap` command. `__init__` holds the dispatcher (`COMMANDS` maps each subcommand, the module name with `_` written as `-`, to its module; `recap --help` lists them). One module per command: `build_leakage_subsets`, `build_word_clusters`, `evaluate_models`, `factor_predictions`, `find_gold_noise`, `package_hmm_handoff`, `predict_hmm`, `prepare_data`, `project_joint`, `run_ablations`, `run_demo`, `run_hmm_experiments`, `simulate_asr_noise`, `train_crf`, `train_hidden_event_lm`, `train_hmm`, `tune_threshold`, `verify_hmm_experiments`. Each one parses arguments, reads and writes files and runs its command's own steps behind the error boundary; logic that several commands share lives in the library, and no cli module imports another. The HMM packager keeps its steps here because it copies its own source into the handoff. |
 | `src/punct_restore/reporting/` | The reporting commands `asr_noise_table`, `build_ablation_table`, `build_m3_final_sections`, `build_m3_tables`, `crf_convergence`, `length_position`, `time_models`, and their helpers `_cli` (safe output files and one-line errors), `build_tables` (Markdown helpers), `asr_noise_stats`, `asr_noise_report` and `asr_noise_findings` (the parts of the ASR noise report). |
 | `src/punct_restore/paths.py` | `REPO_ROOT`, the checkout root, which the commands use for their default paths. |
 | `src/punct_restore/hashing.py` | `sha256_file` and `sha256_stream`: the one streaming SHA-256 for files and archive members. |
