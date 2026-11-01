@@ -284,9 +284,17 @@ def predict_run(
     ]
     _check_inputs_unchanged(inputs, checked)
     predictions_path = _write_predictions(output_dir, predictions)
-    manifest = _run_manifest(_RunFacts(
-        model, inputs, started_at, predictions_path, selection.counts, len(predictions),
-        load_seconds, prediction_seconds, options.command,
-    ))
+    facts = _RunFacts(
+        model=model,
+        inputs=inputs,
+        started_at=started_at,
+        predictions_path=predictions_path,
+        counts=selection.counts,
+        num_sequences=len(predictions),
+        load_seconds=load_seconds,
+        prediction_seconds=prediction_seconds,
+        command=options.command,
+    )
+    manifest = _run_manifest(facts)
     write_json(output_dir / "predictions.manifest.json", manifest)
     return manifest

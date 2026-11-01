@@ -167,7 +167,8 @@ def build(data_root: Path, release: str, mode: str, split: str, out: Path) -> di
     processed = data_root / "processed" / release / f"mode_{mode}"
     splits = data_root / "splits" / release
     groups = read_split(processed / f"{split}.jsonl")
-    kept_ids = read_ids(splits / "leakage_controlled" / f"{split}.ids")
+    # the release writes this list empty when every record of the split is excluded
+    kept_ids = read_ids(splits / "leakage_controlled" / f"{split}.ids", allow_empty=True)
     reasons = read_excluded(splits / "leakage_controlled" / f"{split}_excluded.tsv")
     kept, excluded = partition(groups, kept_ids, reasons, split)
     videos = train_videos(processed / "train.jsonl", splits / "default_train" / f"mode_{mode}.ids")

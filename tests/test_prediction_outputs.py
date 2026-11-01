@@ -577,9 +577,10 @@ _ONE = '{"sample_id": "s", "tokens": ["a"]}'
 @pytest.mark.parametrize(
     ("lines", "message"),
     [
-        (["{not json"], "Corrupt JSON at line 1"),
-        (["[1]"], "is not a JSON object"),
-        (['{"tokens": ["a"]}'], "missing or empty sample_id"),
+        (["{not json"], "^Corrupt JSON at line 1: not valid JSON$"),
+        (["[" * 100_000], "^Corrupt JSON at line 1: not valid JSON$"),  # RecursionError in json, not a JSON error
+        (["[1]"], "^Corrupt JSON at line 1: not a JSON object$"),
+        (['{"tokens": ["a"]}'], "^Corrupt JSON at line 1: sample_id must be a nonempty string$"),
         (['{"sample_id": "s", "tokens": []}'], "Invalid tokens at line 1"),
         (['{"sample_id": "s", "tokens": ["a", " "]}'], "Tokens contain invalid elements"),
         ([_ONE, _ONE], "Duplicate sample_id 's' encountered at line 2"),

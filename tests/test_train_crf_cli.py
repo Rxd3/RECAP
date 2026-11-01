@@ -267,7 +267,7 @@ class TestCRFTrainCLI:
         ])
         assert ret == 1
         captured = capsys.readouterr()
-        assert "Frozen ID list is empty" in captured.err
+        assert "ID list is empty" in captured.err
 
     def test_train_rejects_non_train_split(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
         """Verify that records with split != 'train' cannot enter training."""

@@ -36,7 +36,7 @@ def _load_artifact(model_path: Path) -> dict[str, Any]:
         raise FileNotFoundError(f"{model_path.name}: artifact not found")
     try:  # joblib is unpickling: the artifact is a local file the user chose to inspect
         bundle = joblib.load(model_path)
-    except Exception as e:
+    except Exception as e:  # broad on purpose: unpickling a corrupt or foreign file can raise any exception type
         raise ValueError(f"{model_path.name}: cannot read artifact: {one_line_error(e, model_path)}") from e
     if not isinstance(bundle, dict):
         raise ValueError(f"{model_path.name}: invalid artifact format: root is {type(bundle).__name__}")

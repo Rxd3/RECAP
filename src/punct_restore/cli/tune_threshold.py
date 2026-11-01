@@ -49,9 +49,12 @@ from punct_restore.models.threshold import (
 )
 from punct_restore.prediction_io import (
     check_new_output_paths,
+    one_line_error,
     parse_sample_record,
     read_ids,
     read_observations,
+    refuse_existing,
+    write_new_file,
     write_prediction_outputs,
     write_predictions_jsonl,
 )
@@ -59,6 +62,7 @@ from punct_restore.prediction_io import (
 DEFAULT_GRID = "0.05:0.95:0.05"
 MAX_GRID_VALUES = 1000
 GAMMAS = (0.0, 0.25, 0.5, 0.75, 1.0)  # searched only when --train gives the priors
+PATH_OPTIONS = ("model", "gold", "ids", "masks", "train", "train_ids", "out", "input", "tau_file", "manifest_out")
 
 
 def parse_grid(text: str) -> tuple[float, ...]:
@@ -118,12 +122,6 @@ def _predictions(source: Marginals, tau: float, *, gamma: float = 0.0) -> list[d
          "predicted_labels": decode_with_threshold(sequence, tau, priors=source.priors, gamma=gamma)}
         for sample_id, sequence in zip(source.sample_ids, source.marginals, strict=True)
     ]
-
-
-def _refuse_existing(*paths: Path) -> None:
-    for path in paths:
-        if path.exists():
-            raise FileExistsError(f"{path} already exists; refusing to overwrite it")
 
 
 def _score_grid(
@@ -214,7 +212,7 @@ def cmd_tune(args: argparse.Namespace) -> int:
          "--masks": Path(args.masks) if args.masks else None,
          "--train": train, "--train-ids": train_ids},
     )
-    _refuse_existing(out)
+    refuse_existing(out)
     model = CRFModel.load_model(args.model)
     require_scoring_mode(model.label_mode)
     vocab = load_vocab()
@@ -233,12 +231,12 @@ def cmd_tune(args: argparse.Namespace) -> int:
         bundle = load_bundle(args.gold, args.ids, predictions_path, args.masks, vocab)
         return evaluate(bundle, vocab)["primary"]["value"]
 
-    scores = _score_grid(Marginals(model.model_name, mode, sample_ids, marginals, priors), args.grid, score_file,
-                         out.parent, gammas=GAMMAS if priors is not None else (0.0,))
+    source = Marginals(base_name=model.model_name, mode=mode, sample_ids=sample_ids, marginals=marginals,
+                       priors=priors)
+    scores = _score_grid(source, args.grid, score_file, out.parent, gammas=GAMMAS if priors is not None else (0.0,))
     best = pick_tau_gamma(scores)
     result = _tau_result(best, scores, priors, sha256_file(args.model), _provenance(args))  # before out exists
-    with open(out, "x", encoding="utf-8") as handle:
-        json.dump(result, handle, indent=2)
+    write_new_file(out, json.dumps(result, indent=2), newline=None)  # the platform newline, as json.dump to a text file
     best_f1 = next(f1 for tau, gamma, f1 in scores if (tau, gamma) == best)
     print(f"tau={best[0]:g} gamma={best[1]:g} macro_f1={best_f1:.6f} ({len(scores)} values scored)")
     return 0
@@ -268,18 +266,18 @@ def _gamma_settings(data: Mapping[str, Any]) -> tuple[float, dict[str, float] | 
 def _read_tau_file(path: Path, model_path: Path) -> TauSettings:
     """Tau, gamma and priors from a ``tune`` result, provided it was tuned for exactly this model file."""
     if not path.is_file():
-        raise FileNotFoundError(f"tau file not found at {path}")
+        raise FileNotFoundError(f"tau file not found at {path.name}")
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
-        raise ValueError(f"tau file {path} is not valid JSON") from exc
+        raise ValueError(f"tau file {path.name} is not valid JSON") from exc
     if not isinstance(data, dict) or not isinstance(data.get("model_sha256"), str):
-        raise ValueError(f"tau file {path} must be a JSON object with a tau and a model_sha256 string")
+        raise ValueError(f"tau file {path.name} must be a JSON object with a tau and a model_sha256 string")
     try:
         check_tau(data.get("tau"))
         gamma, priors = _gamma_settings(data)
     except ValueError as exc:
-        raise ValueError(f"tau file {path}: {exc}") from exc
+        raise ValueError(f"tau file {path.name}: {exc}") from exc
     if data["model_sha256"] != sha256_file(model_path):
         raise ValueError("tau file was tuned for a different model")
     # + 0.0: a tau of -0.0 must not name the model "_tau-0"
@@ -295,15 +293,16 @@ def cmd_predict(args: argparse.Namespace) -> int:
         {"--model": model_path, "--input": input_path, "--ids": ids_path,
          "--tau-file": tau_path},
     )
-    _refuse_existing(out, manifest_out)
+    refuse_existing(out, manifest_out)
     model = CRFModel.load_model(model_path)
     require_scoring_mode(model.label_mode)
     settings = _read_tau_file(tau_path, model_path)
     observations = read_observations(input_path, ids_path)
     marginals = model.predict_marginals(observations)
     sample_ids = [observation["sample_id"] for observation in observations]
-    predictions = _predictions(Marginals(model.model_name, model.label_mode, sample_ids, marginals, settings.priors),
-                               settings.tau, gamma=settings.gamma)
+    source = Marginals(base_name=model.model_name, mode=model.label_mode, sample_ids=sample_ids,
+                       marginals=marginals, priors=settings.priors)
+    predictions = _predictions(source, settings.tau, gamma=settings.gamma)
     write_prediction_outputs(
         predictions,
         out,
@@ -366,7 +365,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return args.handler(args)
     except (ValueError, OSError) as exc:
-        print("error: " + " ".join(str(exc).splitlines()), file=sys.stderr)
+        print("error: " + one_line_error(exc, *(getattr(args, option, None) for option in PATH_OPTIONS)),
+              file=sys.stderr)
         return 1
 
 

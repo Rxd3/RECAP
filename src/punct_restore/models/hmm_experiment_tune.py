@@ -16,6 +16,7 @@ from punct_restore.models.hmm_experiment_identity import check_evaluator, implem
 from punct_restore.models.hmm_experiment_protocol import authenticate, choose, now, validate_config
 from punct_restore.models.hmm_experiment_runtime import hardware
 from punct_restore.models.hmm_workflow import code_identity, file_identity, portable_path, write_json
+from punct_restore.progress import Log, discard_log
 
 
 def _tune_plan(
@@ -49,7 +50,7 @@ def _search_candidate(study: Study, mode: str, smoothing: float, cutoff: int) ->
     candidate = f"s{smoothing:g}-c{cutoff}"
     out = study.run / f"mode_{mode}/candidates/{candidate}"
     out.parent.mkdir(parents=True, exist_ok=True)
-    args = train_command(study.config, mode, candidate, smoothing, cutoff, out)
+    args = train_command(study, mode, candidate, smoothing, cutoff, out)
     execute(args, study.run, out.parent / f"{candidate}.training.log")
     report = score(study, mode, "validation", out / "predictions.jsonl", out / "validation.json")
     return {
@@ -63,7 +64,7 @@ def _search_candidate(study: Study, mode: str, smoothing: float, cutoff: int) ->
     }
 
 
-def _tune_mode(study: Study, mode: str) -> tuple[dict[str, Any], str]:
+def _tune_mode(study: Study, mode: str, log: Log) -> tuple[dict[str, Any], str]:
     """Search one mode's grid, write its selection file and return the winner and that file's hash."""
     search = study.config["search"]
     candidates = []
@@ -71,7 +72,7 @@ def _tune_mode(study: Study, mode: str) -> tuple[dict[str, Any], str]:
         for smoothing in search["smoothing"]:
             record = _search_candidate(study, mode, smoothing, cutoff)
             candidates.append(record)
-            print(json.dumps({"mode": mode, **record}), flush=True)
+            log(json.dumps({"mode": mode, **record}))
     winner = choose(candidates)
     record = {
         "mode": mode,
@@ -104,9 +105,22 @@ def _freeze_selection(
     )
 
 
-def tune(config_path: Path, evaluator: Path, run: Path) -> None:
-    """Run the validation-only search of every configured mode in a new run folder and freeze the winners."""
-    config = validate_config(yaml.safe_load(config_path.read_text(encoding="utf-8")))
+def _load_config(config_path: Path) -> dict[str, Any]:
+    """Read and validate the experiment config; a missing key, a wrong type or bad YAML is a ValueError."""
+    try:
+        return validate_config(yaml.safe_load(config_path.read_text(encoding="utf-8")))
+    except (KeyError, TypeError, yaml.YAMLError) as exc:
+        raise ValueError(f"{config_path.name}: invalid experiment config: {exc}") from exc
+
+
+def tune(config_path: Path, evaluator: Path, run: Path, *, log: Log = discard_log) -> None:
+    """Run the validation-only search of every configured mode in a new run folder and freeze the winners.
+
+    Refuses a checkout with uncommitted changes. Progress lines go to `log`.
+    """
+    if code_identity()["dirty"]:
+        raise ValueError("commit reviewed code/config before starting an official search")
+    config = _load_config(config_path)
     evaluator_identity = check_evaluator(evaluator, config["evaluation"]["repository_commit"])
     _, verified = authenticate(config, "tune")
     if run.exists():
@@ -114,10 +128,10 @@ def tune(config_path: Path, evaluator: Path, run: Path) -> None:
     plan = _tune_plan(config, config_path, evaluator_identity, verified)
     run.mkdir(parents=True, exist_ok=False)
     write_json(run / "plan.json", plan)
-    study = Study(config, evaluator, run)
+    study = Study(config=config, evaluator=evaluator, run=run)
     winners, mode_selection_hashes = {}, {}
     for mode in config["modes"]:
-        winners[mode], mode_selection_hashes[mode] = _tune_mode(study, mode)
+        winners[mode], mode_selection_hashes[mode] = _tune_mode(study, mode, log)
     # A single immutable gate freezes all configured modes before any held-out prediction.
     _freeze_selection(run, winners, mode_selection_hashes)
-    print(f"All mode selections frozen: {portable_path(run / 'selection.json')}", flush=True)
+    log(f"All mode selections frozen: {portable_path(run / 'selection.json')}")

@@ -6,6 +6,7 @@ from copy import deepcopy
 
 import pytest
 import yaml
+from import_closure import import_closure
 from test_hmm_cli import ROOT, jsonl, setup_run
 from test_hmm_workflow import run
 
@@ -26,13 +27,15 @@ def config():
 
 
 def test_source_files_list_each_hmm_command_as_module_then_stub():
-    """The hashed code names the file that holds it, then the stub that still runs it."""
+    """The hashed code names the study's modules, the shared code they use, then each command's file and its stub."""
     models = ("hmm", "hmm_validation", "hmm_records", "hmm_workflow", "hmm_experiment_protocol",
               "hmm_experiment_commands", "hmm_experiment_runtime", "hmm_experiment_audit",
               "hmm_experiment_identity", "hmm_experiment_tune", "hmm_experiment_frozen",
               "hmm_experiment_finalize", "hmm_experiment_verify")
     expected = [f"src/punct_restore/models/{name}.py" for name in models]
-    expected += ["src/punct_restore/hashing.py", "src/punct_restore/prediction_io.py"]  # the shared code they call
+    shared = ("data/labeling", "data/preprocessing", "data/validation", "evaluation/inputs", "evaluation/metrics",
+              "hashing", "paths", "prediction_io", "progress")  # what the study's modules import, sorted
+    expected += [f"src/punct_restore/{name}.py" for name in shared]
     for command in HMM_COMMANDS:
         expected += [f"src/punct_restore/cli/{command}.py", f"scripts/{command}.py"]
     assert list(SOURCE_FILES) == expected
@@ -40,10 +43,15 @@ def test_source_files_list_each_hmm_command_as_module_then_stub():
     assert list(implementation()) == expected
 
 
-def test_every_hmm_model_module_is_hashed_into_the_implementation_record():
-    """A new hmm*.py module that is not listed would let its edits pass the frozen-selection check."""
-    on_disk = {path.relative_to(ROOT).as_posix() for path in (ROOT / "src/punct_restore/models").glob("hmm*.py")}
-    assert on_disk - set(SOURCE_FILES) == set()
+def test_source_files_are_exactly_what_the_hmm_study_imports_inside_the_package():
+    """A file the study imports (directly or not) decides its results, so a change to it must change the record."""
+    package = ROOT / "src"
+    roots = [package / "punct_restore/cli" / f"{command}.py" for command in HMM_COMMANDS]
+    roots += sorted((package / "punct_restore/models").glob("hmm*.py"))
+    imported = {path.relative_to(ROOT).as_posix() for path in import_closure(roots, package, "punct_restore")}
+    listed = {name for name in SOURCE_FILES if name.startswith("src/")}
+    assert sorted(imported - listed) == [], "imported by the study but not hashed"
+    assert sorted(listed - imported) == [], "hashed but not imported by the study"
 
 
 def test_the_module_that_computes_the_implementation_record_is_itself_hashed():

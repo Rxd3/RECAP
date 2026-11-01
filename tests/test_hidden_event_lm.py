@@ -12,6 +12,7 @@ from typing import Any, Self
 
 import pytest
 
+from punct_restore import prediction_io
 from punct_restore.models.hidden_event_lm import HiddenEventLM, UnigramTruecaser
 
 ARTIFACT_ERROR = "invalid hidden-event LM artifact"
@@ -460,6 +461,14 @@ def test_refitting_the_same_records_writes_the_same_bytes(tmp_path: Path) -> Non
     assert (tmp_path / "one.json").read_bytes() == (tmp_path / "two.json").read_bytes()
 
 
+def test_the_artifact_is_compact_json_utf8_with_one_lf_at_the_end(tmp_path: Path) -> None:
+    _fitted("B").save_model(tmp_path / "m.json")
+    raw = (tmp_path / "m.json").read_bytes()
+    text = raw.decode("utf-8")
+    assert raw.endswith(b"}\n") and raw.count(b"\n") == 1 and b"\r" not in raw
+    assert text == json.dumps(json.loads(text), ensure_ascii=False, separators=(",", ":")) + "\n"
+
+
 def test_the_artifact_names_its_family_and_version(tmp_path: Path) -> None:
     _fitted("A").save_model(tmp_path / "m.json")
     payload = json.loads((tmp_path / "m.json").read_text(encoding="utf-8"))
@@ -500,14 +509,12 @@ class _FullDiskHandle:
 def test_a_failed_save_removes_the_partial_file_so_a_retry_succeeds(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     model, path = _fitted("A"), tmp_path / "model.json"
-    real_open = Path.open
 
-    def full_disk_open(self: Path, mode: str = "r", *args: Any, **kwargs: Any) -> Any:
-        handle = real_open(self, mode, *args, **kwargs)
-        return _FullDiskHandle(handle) if mode == "x" else handle
+    def full_disk_open(file: Path, mode: str = "r", *args: Any, **kwargs: Any) -> Any:
+        return _FullDiskHandle(open(file, mode, *args, **kwargs))  # the one shared writer calls open()
 
     with monkeypatch.context() as patch:
-        patch.setattr(Path, "open", full_disk_open)
+        patch.setattr(prediction_io, "open", full_disk_open, raising=False)
         with pytest.raises(OSError, match="No space left"):
             model.save_model(path)
     assert not path.exists()

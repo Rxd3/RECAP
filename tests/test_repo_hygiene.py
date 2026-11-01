@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import importlib.util
 import re
 from pathlib import Path
 
@@ -125,17 +126,30 @@ def test_the_scripts_import_pattern_leaves_other_imports_alone(line: str) -> Non
     assert FROM_SCRIPTS.search(line) is None
 
 
+CLI_PACKAGE = "punct_restore.cli"
+
+
+def _is_cli(module: str) -> bool:
+    return module == CLI_PACKAGE or module.startswith(CLI_PACKAGE + ".")
+
+
+def _resolved_module(node: ast.ImportFrom) -> str:
+    """The absolute module of an ImportFrom written inside a `punct_restore.cli` module (relative levels resolved)."""
+    if not node.level:
+        return node.module or ""
+    return importlib.util.resolve_name("." * node.level + (node.module or ""), CLI_PACKAGE)
+
+
 def _cli_imports(source: str) -> list[str]:
-    """Modules of `punct_restore.cli` that a cli module's source imports (absolute or relative), excluding itself."""
+    """The `punct_restore.cli` modules that a cli module's source imports, in any absolute or relative form."""
     found = []
     for node in ast.walk(ast.parse(source)):
         if isinstance(node, ast.ImportFrom):
-            module = node.module or ""
-            if node.level == 1 or module == "punct_restore.cli" or module.startswith("punct_restore.cli."):
-                names = [alias.name for alias in node.names] if node.level == 1 and not module else []
-                found += [module or "."] if not names else [f".{name}" for name in names]
+            base = _resolved_module(node)
+            found += [base] if _is_cli(base) else [
+                f"{base}.{alias.name}" for alias in node.names if _is_cli(f"{base}.{alias.name}")]
         elif isinstance(node, ast.Import):
-            found += [alias.name for alias in node.names if alias.name.startswith("punct_restore.cli")]
+            found += [alias.name for alias in node.names if _is_cli(alias.name)]
     return found
 
 
@@ -152,10 +166,15 @@ def test_no_cli_module_imports_another_cli_module() -> None:
     [
         ("from punct_restore.cli.run_hmm_experiments import frozen\n", ["punct_restore.cli.run_hmm_experiments"]),
         ("from punct_restore.cli import train_crf\n", ["punct_restore.cli"]),
-        ("from . import train_crf_predict\n", [".train_crf_predict"]),
-        ("from .train_crf_inspect import cmd_inspect\n", ["train_crf_inspect"]),
+        ("from . import train_crf_predict\n", ["punct_restore.cli"]),
+        ("from .train_crf_inspect import cmd_inspect\n", ["punct_restore.cli.train_crf_inspect"]),
         ("import punct_restore.cli.train_hmm\n", ["punct_restore.cli.train_hmm"]),
+        ("from ..cli import train_crf\n", ["punct_restore.cli"]),
+        ("from ..cli.train_crf import main\n", ["punct_restore.cli.train_crf"]),
+        ("from punct_restore import cli\n", ["punct_restore.cli"]),
+        ("from .. import cli\n", ["punct_restore.cli"]),
         ("from punct_restore.models.hmm import HMMModel\nfrom punct_restore.clinic import x\n", []),
+        ("from ..data import release\nfrom .. import models\n", []),
     ],
 )
 def test_the_cli_import_check_sees_every_import_form(source: str, expected: list[str]) -> None:

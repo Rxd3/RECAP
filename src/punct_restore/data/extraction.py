@@ -22,6 +22,8 @@ import zlib
 from collections.abc import Callable, Iterator, Mapping
 from pathlib import Path
 
+from ..progress import Log, discard_log
+
 ARCHIVE_URL = "https://storage.googleapis.com/sponspeech/sponspeech.tar.gz"
 ARCHIVE_BYTES = 63547617096
 ARCHIVE_GENERATION = "1716975130398953"
@@ -41,13 +43,6 @@ TEXT_RANGES = [
 ]
 WINDOW = 32768
 OUTPUT_DIR = "sponspeech_text"
-
-
-Log = Callable[[str], None]
-
-
-def discard_log(message: str) -> None:
-    """The default `log` of the library functions: say nothing (the command line passes `print`)."""
 
 
 class SourceChanged(RuntimeError):

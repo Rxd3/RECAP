@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import os
 import sys
 from collections.abc import Container, Iterator
 from pathlib import Path
@@ -31,16 +30,11 @@ from punct_restore.prediction_io import (
     read_ids,
     read_observations,
     reconfigure_stdout,
+    refuse_existing,
     write_prediction_outputs,
 )
 
 PATH_OPTIONS = ("input", "ids", "output", "model", "manifest_out")
-
-
-def _refuse_existing(*named: tuple[str, Path | None]) -> None:
-    for flag, path in named:
-        if path is not None and os.path.lexists(path):
-            raise ValueError(f"{flag}: {path.name} already exists, refusing to overwrite it")
 
 
 def _require_files(*named: tuple[str, Path | None]) -> None:
@@ -110,7 +104,7 @@ def read_training_records(input_path: Path, ids_path: Path, mode: str) -> list[d
 def _cmd_train(args: argparse.Namespace) -> str:
     input_path, ids_path, output = Path(args.input), Path(args.ids), Path(args.output)
     check_new_output_paths({"--output": output}, {"--input": input_path, "--ids": ids_path})
-    _refuse_existing(("--output", output))
+    refuse_existing(output)
     _require_files(("--input", input_path), ("--ids", ids_path))
     model = HiddenEventLM(
         args.mode, order=args.order, discount=args.discount, min_count=args.min_count, model_name=args.model_name
@@ -126,8 +120,6 @@ def _read_named(input_path: Path, ids_path: Path | None) -> list[dict]:
     """``read_observations`` with the input file named in a JSON error, as train does."""
     try:
         return read_observations(input_path, ids_path)
-    except RecursionError as exc:
-        raise ValueError(f"{input_path.name}: not valid JSON (nested too deeply)") from exc
     except UnicodeDecodeError:
         raise  # the caller's _utf8_file names it
     except ValueError as exc:
@@ -142,8 +134,7 @@ def _cmd_predict(args: argparse.Namespace) -> str:
     manifest = Path(args.manifest_out) if args.manifest_out else None
     check_new_output_paths({"--output": output, "--manifest-out": manifest},
                            {"--model": model_path, "--input": input_path, "--ids": ids_path})
-    outputs = (("--output", output), ("--manifest-out", manifest))
-    _refuse_existing(*outputs)
+    refuse_existing(output, manifest)
     _require_files(("--model", model_path), ("--input", input_path), ("--ids", ids_path))
     model = HiddenEventLM.load_model(model_path)
     if ids_path is not None:
@@ -151,7 +142,7 @@ def _cmd_predict(args: argparse.Namespace) -> str:
     with _utf8_file(input_path):
         observations = _read_named(input_path, ids_path)
     predictions = model.predict(observations)
-    _refuse_existing(*outputs)  # decoding is long: an output may have appeared since the first check
+    refuse_existing(output, manifest)  # decoding is long: an output may have appeared since the first check
     write_prediction_outputs(predictions, output, manifest, input_path=input_path, model_name=model.model_name,
                              label_mode=model.label_mode, ordered_labels=model.vocabulary)
     return f"predicted {len(predictions)} sequences -> {output.name}"

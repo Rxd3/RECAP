@@ -15,6 +15,7 @@ from punct_restore.models.hmm_records import SelectedRecords, read_jsonl
 from punct_restore.models.hmm_workflow import file_identity, write_json
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import read_ids
+from punct_restore.progress import Log, discard_log
 
 
 def _check_candidates(run: Path, config: dict[str, Any], mode: str) -> int:
@@ -172,8 +173,11 @@ def _check_runtime(run: Path, config: dict[str, Any]) -> None:
             raise ValueError("invalid runtime repetitions")
 
 
-def verify(run: Path, evaluator: Path, output: Path) -> None:
-    """Audit a finished run into a new output folder, writing verification.json when every check passes."""
+def verify(run: Path, evaluator: Path, output: Path, *, log: Log = discard_log) -> None:
+    """Audit a finished run into a new output folder, writing verification.json when every check passes.
+
+    Progress lines go to `log`.
+    """
     plan, selection = verified_frozen_selection(run, evaluator)
     config = plan["config"]
     if output.exists():
@@ -197,12 +201,9 @@ def verify(run: Path, evaluator: Path, output: Path) -> None:
     stats = read_json(ROOT / config["processed_dir"] / "stats.json")
     for mode, winner in selection["modes"].items():
         report["modes"][mode] = _verify_mode(run, config, output, stats, mode, winner)
-        print(
-            f"Verified mode {mode}: search, counts, probabilities, full refit/predictions, scores.",
-            flush=True,
-        )
+        log(f"Verified mode {mode}: search, counts, probabilities, full refit/predictions, scores.")
     _check_runtime(run, config)
     report["runtime_checked"] = True
     report["result"] = "PASS"
     write_json(output / "verification.json", report)
-    print(f"Complete HMM verification: {output / 'verification.json'}", flush=True)
+    log(f"Complete HMM verification: {output / 'verification.json'}")

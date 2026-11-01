@@ -50,7 +50,7 @@ def read_ids(path: str | os.PathLike[str], *, strict: bool = False, allow_empty:
         seen.add(sample_id)
         ids.append(sample_id)
     if not ids and not allow_empty:
-        raise ValueError(f"Frozen ID list is empty: {path.name}")
+        raise ValueError(f"ID list is empty: {path.name}")
     return ids
 
 
@@ -91,20 +91,6 @@ def write_new_file(path: Path, text: str, *, newline: str | None = "\n") -> None
         raise
 
 
-def _parse_observation_line(line_str: str, line_num: int, input_path: Path) -> dict[str, Any]:
-    """Parse one JSONL line into a record with a valid sample_id."""
-    try:
-        rec = json.loads(line_str)
-    except ValueError as e:
-        raise ValueError(f"Corrupt JSON at line {line_num}: {e}") from e
-    if not isinstance(rec, dict):
-        raise ValueError(f"Line {line_num} in {input_path} is not a JSON object")
-    s_id = rec.get("sample_id")
-    if not isinstance(s_id, str) or not s_id.strip():
-        raise ValueError(f"Line {line_num} has missing or empty sample_id")
-    return rec
-
-
 def _gold_free_observation(rec: Mapping[str, Any], line_num: int) -> dict[str, Any]:
     """Keep only sample_id and validated observable tokens (strictly gold-free)."""
     s_id = rec["sample_id"]
@@ -137,7 +123,7 @@ def read_observations(input_path: Path, ids_path: Path | None) -> list[dict[str,
             line_str = line.strip()
             if not line_str:
                 continue
-            rec = _parse_observation_line(line_str, line_num, input_path)
+            rec = parse_sample_record(line_str, f"Corrupt JSON at line {line_num}")
             s_id = rec["sample_id"]
             if s_id in seen_ids:
                 raise ValueError(f"Duplicate sample_id {s_id!r} encountered at line {line_num}")
@@ -225,6 +211,17 @@ def write_prediction_outputs(
             for path in started:
                 with contextlib.suppress(OSError):
                     path.unlink(missing_ok=True)
+
+
+def refuse_existing(*paths: Path | None) -> None:
+    """Raise FileExistsError for the first of ``paths`` that already exists; ``None`` entries are skipped.
+
+    A dangling symlink counts as existing. Nothing is touched. The error holds the path as given, so each command
+    words it its own way (``one_line_error`` shows the file name only).
+    """
+    for path in paths:
+        if path is not None and os.path.lexists(path):
+            raise FileExistsError(errno.EEXIST, "already exists; refusing to overwrite", str(path))
 
 
 def same_path(a: str | Path, b: str | Path) -> bool:

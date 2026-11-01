@@ -269,7 +269,7 @@ def check_report(
     _check_input_hashes(report, mode, predictions, (ids_path, gold_path, mask_path))
     primary = config["search"]["selection_blocks"][mode]
     block_names = [primary] if options.primary_only else list(report["blocks"])
-    spec = _PairSpec(mode, block_names, primary, masks, options.examples)
+    spec = _PairSpec(mode=mode, block_names=block_names, primary=primary, masks=masks, examples=options.examples)
     pairs, selected_tokens, samples = _collect_pairs(gold, wanted, lookup, spec)
     _check_counts_and_blocks(report, pairs, wanted, selected_tokens, pred_ids)
     assert_close(report["primary"]["value"], report["blocks"][primary]["macro_f1"])

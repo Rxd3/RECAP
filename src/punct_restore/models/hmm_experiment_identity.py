@@ -9,8 +9,9 @@ from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm_workflow import code_identity
 from punct_restore.paths import REPO_ROOT as ROOT
 
-# Every file the HMM study's code lives in, module first and then the stub that still runs it. This module is
-# listed too: a change to the code that computes the record must change the record.
+# Every file the HMM study's code runs: its own modules, then each other punct_restore file they import (directly or
+# not: data labeling and validation decide which rows pass), then each command's module and the stub that still runs
+# it. This module is listed too: a change to the code that computes the record must change the record.
 SOURCE_FILES = (
     "src/punct_restore/models/hmm.py",
     "src/punct_restore/models/hmm_validation.py",
@@ -25,8 +26,15 @@ SOURCE_FILES = (
     "src/punct_restore/models/hmm_experiment_frozen.py",
     "src/punct_restore/models/hmm_experiment_finalize.py",
     "src/punct_restore/models/hmm_experiment_verify.py",
+    "src/punct_restore/data/labeling.py",
+    "src/punct_restore/data/preprocessing.py",
+    "src/punct_restore/data/validation.py",
+    "src/punct_restore/evaluation/inputs.py",
+    "src/punct_restore/evaluation/metrics.py",
     "src/punct_restore/hashing.py",
+    "src/punct_restore/paths.py",
     "src/punct_restore/prediction_io.py",
+    "src/punct_restore/progress.py",
     "src/punct_restore/cli/train_hmm.py",
     "scripts/train_hmm.py",
     "src/punct_restore/cli/predict_hmm.py",

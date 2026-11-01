@@ -12,18 +12,21 @@ from punct_restore.models.hmm_experiment_frozen import verified_frozen_selection
 from punct_restore.models.hmm_experiment_protocol import authenticate, now
 from punct_restore.models.hmm_experiment_runtime import runtime_benchmark
 from punct_restore.models.hmm_workflow import write_json
+from punct_restore.progress import Log, discard_log
 
 
-def _final_split(study: Study, final: Path, mode: str, winner: dict[str, Any], split: str) -> dict[str, Any]:
+def _final_split(
+    study: Study, final: Path, mode: str, winner: dict[str, Any], split: str, log: Log
+) -> dict[str, Any]:
     """Predict and score one mode and split with its shortcut baseline; return its result summary."""
-    config, run = study.config, study.run
+    run = study.run
     out = final / f"mode_{mode}/{split}"
     out.parent.mkdir(parents=True, exist_ok=True)
-    command = predict_command(config, mode, split, run, winner, out)
+    command = predict_command(study, mode, split, winner, out)
     execute(command, run, out.parent / f"{split}.prediction.log")
     measured = score(study, mode, split, out / "predictions.jsonl", out / "evaluation.json")
     baseline = out / "shortcut.jsonl"
-    execute(baseline_command(config, study.evaluator, mode, split, baseline), run, out / "shortcut.log")
+    execute(baseline_command(study, mode, split, baseline), run, out / "shortcut.log")
     reference = score(study, mode, split, baseline, out / "shortcut.evaluation.json")
     summary = {
         "primary": measured["primary"],
@@ -31,15 +34,15 @@ def _final_split(study: Study, final: Path, mode: str, winner: dict[str, Any], s
         "shortcut_primary": reference["primary"],
         "evaluation_sha256": sha256_file(out / "evaluation.json"),
     }
-    print(
-        json.dumps({"final": mode, "split": split, "primary": measured["primary"]}),
-        flush=True,
-    )
+    log(json.dumps({"final": mode, "split": split, "primary": measured["primary"]}))
     return summary
 
 
-def finalize(run: Path, evaluator: Path) -> None:
-    """Open the held-out data once, with the frozen settings, and write the final results of every mode."""
+def finalize(run: Path, evaluator: Path, *, log: Log = discard_log) -> None:
+    """Open the held-out data once, with the frozen settings, and write the final results of every mode.
+
+    Progress lines go to `log`.
+    """
     plan, selection = verified_frozen_selection(run, evaluator)
     config = plan["config"]
     _, verified = authenticate(config, "finalize")
@@ -58,12 +61,12 @@ def finalize(run: Path, evaluator: Path) -> None:
             "policy": "Frozen settings; no test-driven retuning.",
         },
     )
-    study = Study(config, evaluator, run)
+    study = Study(config=config, evaluator=evaluator, run=run)
     results = {}
     for mode, winner in selection["modes"].items():
         results[mode] = {}
         for split in ["validation", *config["evaluation"]["test_sets"]]:
-            results[mode][split] = _final_split(study, final, mode, winner, split)
+            results[mode][split] = _final_split(study, final, mode, winner, split, log)
     runtime_benchmark(config, run, selection["modes"])
     write_json(
         run / "results.json",
@@ -75,4 +78,4 @@ def finalize(run: Path, evaluator: Path) -> None:
             "note": "Mode A/B punctuation and mode C joint F1 measure different tasks.",
         },
     )
-    print("Final predictions, shared scores and runtime measurements complete.", flush=True)
+    log("Final predictions, shared scores and runtime measurements complete.")

@@ -6,29 +6,10 @@ punct_restore.models.crf_training.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
-from punct_restore.prediction_io import read_ids
-
-
-def _parse_record_line(line_str: str, line_num: int, input_path: Path) -> dict[str, Any]:
-    """Parse one non-blank JSONL line into a record that has a non-empty string sample_id."""
-    try:
-        rec = json.loads(line_str)
-    except json.JSONDecodeError as e:
-        raise ValueError(
-            f"Corrupt JSON at line {line_num} in {input_path}: {e}"
-        ) from e
-
-    if not isinstance(rec, dict):
-        raise ValueError(f"Line {line_num} in {input_path} is not a JSON object")
-
-    sample_id = rec.get("sample_id")
-    if not isinstance(sample_id, str) or not sample_id.strip():
-        raise ValueError(f"Line {line_num} in {input_path} has missing or empty sample_id")
-    return rec
+from punct_restore.prediction_io import parse_sample_record, read_ids
 
 
 def _check_selected_record(rec: dict[str, Any], sample_id: str, expected_mode: str) -> None:
@@ -84,7 +65,7 @@ def _scan_selected_records(
             if not line_str:
                 continue
 
-            rec = _parse_record_line(line_str, line_num, input_path)
+            rec = parse_sample_record(line_str, f"Corrupt JSON at line {line_num} in {input_path.name}")
             sample_id = rec.get("sample_id")
 
             # Check if this record is selected

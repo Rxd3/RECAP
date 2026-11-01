@@ -9,7 +9,8 @@ from types import ModuleType
 from typing import Any
 
 import pytest
-from test_hmm_cli import setup_run
+import yaml
+from test_hmm_cli import ROOT, setup_run
 
 from punct_restore.cli import (
     package_hmm_handoff,
@@ -18,6 +19,7 @@ from punct_restore.cli import (
     train_hmm,
     verify_hmm_experiments,
 )
+from punct_restore.models import hmm_experiment_tune
 from punct_restore.models.hmm_experiment_commands import execute
 
 RUN_ARGV = ["--run-dir", "run", "--evaluator-root", "ev", "--output-dir", "out"]
@@ -47,8 +49,6 @@ def _setup(name: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     if argv is None:
         argv = setup_run(tmp_path)[0][2:]  # drop the interpreter and the script
     monkeypatch.setattr(module, target, _raising(error))
-    if module is run_hmm_experiments:
-        monkeypatch.setattr(module, "code_identity", lambda: {"dirty": False})
     return module, argv
 
 
@@ -76,7 +76,7 @@ def test_a_failed_subprocess_is_one_error_line_naming_its_log_file_only_and_exit
         name: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     log = tmp_path / "deep" / "c1.training.log"
 
-    def step_whose_command_fails(*_args: object) -> None:
+    def step_whose_command_fails(*_args: object, **_kwargs: object) -> None:
         failing = [sys.executable, "-c", "import sys; print('secret detail', file=sys.stderr); sys.exit(3)"]
         execute(failing, tmp_path, log)
 
@@ -146,3 +146,54 @@ def test_predict_hmm_with_a_missing_model_is_one_error_line(tmp_path: Path, caps
     assert err.startswith("error: ") and "nomodel.json" in err and err.count("\n") == 1
     assert "usage:" not in err and str(tmp_path) not in err
 
+
+
+def _tune_argv(config: Path, tmp_path: Path) -> list[str]:
+    out, evaluator = tmp_path / "out", tmp_path / "ev"
+    return ["tune", "--config", str(config), "--output-dir", str(out), "--evaluator-root", str(evaluator)]
+
+
+@pytest.fixture
+def clean_checkout(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The real `tune` runs, on a checkout `git status` calls clean (the one under test has uncommitted changes)."""
+    monkeypatch.setattr(hmm_experiment_tune, "code_identity", lambda: {"commit": "c", "dirty": False})
+
+
+@pytest.mark.parametrize(
+    ("text", "reason"),
+    [
+        ("schema_version: 1\n", "'modes'"),
+        ("modes: [A\n", "while parsing a flow sequence"),
+        ("- not\n- a mapping\n", "list indices must be integers or slices, not str"),
+    ],
+    ids=["missing-key", "yaml-syntax", "not-a-mapping"],
+)
+def test_an_unusable_experiment_config_is_one_error_line_naming_the_file_and_exit_1(
+        text: str, reason: str, tmp_path: Path, clean_checkout: None, capsys: pytest.CaptureFixture[str]) -> None:
+    config = tmp_path / "experiment.yaml"
+    config.write_text(text, encoding="utf-8")
+    assert run_hmm_experiments.main(_tune_argv(config, tmp_path)) == 1
+    captured = capsys.readouterr()
+    assert captured.err.startswith("error: experiment.yaml: invalid experiment config: ")
+    assert reason in captured.err and captured.err.count("\n") == 1 and str(tmp_path) not in captured.err
+    assert captured.out == "" and not (tmp_path / "out").exists()
+
+
+def test_a_key_error_after_the_config_was_read_is_still_a_bug_and_propagates(
+        tmp_path: Path, clean_checkout: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Only reading and validating the config is relabelled; a KeyError further on is not a config problem."""
+    config = yaml.safe_load((ROOT / "configs/hmm_sponspeech_v2.yaml").read_text(encoding="utf-8"))
+    path = tmp_path / "experiment.yaml"
+    path.write_text(yaml.safe_dump(config), encoding="utf-8")
+    monkeypatch.setattr(hmm_experiment_tune, "check_evaluator", _raising(KeyError("bug")))
+    with pytest.raises(KeyError):
+        run_hmm_experiments.main(_tune_argv(path, tmp_path))
+
+
+def test_a_checkout_with_uncommitted_changes_is_refused_as_one_error_line(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.setattr(hmm_experiment_tune, "code_identity", lambda: {"commit": "c", "dirty": True})
+    assert run_hmm_experiments.main(_tune_argv(tmp_path / "experiment.yaml", tmp_path)) == 1
+    captured = capsys.readouterr()
+    assert captured.err == "error: commit reviewed code/config before starting an official search\n"
+    assert captured.out == ""

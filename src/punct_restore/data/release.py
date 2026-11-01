@@ -22,8 +22,8 @@ from typing import Any, NamedTuple
 
 from .. import prediction_io
 from ..paths import REPO_ROOT
+from ..progress import Log, discard_log
 from . import labeling, preprocessing, splits, validation
-from .extraction import Log, discard_log
 from .release_checks import ReleaseReadback, verify_release
 from .release_constants import REJECT, UNRESOLVED_COMMON, UNRESOLVED_TOKEN
 from .release_manifest import (
@@ -47,7 +47,7 @@ from .release_outputs import (
 )
 from .release_stats import StatsInputs, build_stats, pairwise_overlap
 
-__all__ = ["ReleaseSources", "build_release", "code_fingerprint", "load_records", "read_ids"]
+__all__ = ["ReleaseSources", "build_release", "load_records", "read_ids"]
 
 
 def code_fingerprint() -> str:
@@ -255,14 +255,18 @@ def build_release(sources: ReleaseSources, *, log: Log = discard_log) -> dict[st
     log("leakage-controlled subsets: " + json.dumps(kept_per_subset))
 
     overlap = pairwise_overlap(by_file, controlled)
-    stats = build_stats(StatsInputs(results, kept, by_file, default, controlled_report, overlap, label_sets))
-    verified = verify_release(ReleaseReadback(out, files, results, kept, label_sets, sources.raw_manifest))
+    stats = build_stats(StatsInputs(results=results, kept=kept, by_file=by_file, default=default,
+                                    controlled_report=controlled_report, overlap=overlap, label_sets=label_sets))
+    verified = verify_release(ReleaseReadback(out=out, files=files, results=results, kept=kept,
+                                              label_sets=label_sets, raw_manifest=sources.raw_manifest))
     stats["checks"] = verified.checks
     write_json_reports(out, split_out, stats, controlled_report, overlap)
 
     copy_license(sources.raw_dir, out)
-    manifest = build_manifest(ManifestInputs(sources.release_id, sources.label_sets_path, sources.raw_manifest,
-                                             titles is not None, code_fingerprint, len(results), len(kept)))
+    manifest = build_manifest(ManifestInputs(
+        release_id=sources.release_id, label_sets_path=sources.label_sets_path, raw_manifest=sources.raw_manifest,
+        titles_used=titles is not None, code_sha256=code_fingerprint, source_count=len(results),
+        released_count=len(kept)))
     manifest["provenance"] = build_provenance(manifest["raw_manifest_sha256"], sources.titles_path, contexts, by_file)
     write_release_notes(out, sources.release_id, stats, manifest)
     manifest = with_file_inventory(manifest, verified.files, out, split_out)

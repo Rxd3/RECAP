@@ -209,7 +209,7 @@ BROKEN = {
     "missing train file": (_drop_train, "train.jsonl"),
     "id not in train": (_add_unknown_id, "train.jsonl: 1 ID"),
     "duplicate id in ids file": (_duplicate_id, "Duplicate ID 's:0' found at line"),
-    "empty ids file": (_empty_ids, "Frozen ID list is empty: mode_A.ids"),
+    "empty ids file": (_empty_ids, "ID list is empty: mode_A.ids"),
     "ids file not utf-8": (_ids_not_utf8, "mode_A.ids: not valid UTF-8"),
     "train file not utf-8": (_train_not_utf8, "train.jsonl: not valid UTF-8"),
     "invalid json line": (lambda r: _append_train(r, "{oops\n"), "train.jsonl line 42: invalid JSON"),

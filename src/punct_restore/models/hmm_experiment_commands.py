@@ -86,9 +86,10 @@ def score(study: Study, mode: str, split: str, predictions: Path, out: Path) -> 
 
 
 def train_command(
-    config: dict[str, Any], mode: str, candidate: str, smoothing: float, cutoff: int, out: Path
+    study: Study, mode: str, candidate: str, smoothing: float, cutoff: int, out: Path
 ) -> list[str]:
     """The scripts/train_hmm.py command line for one validation-search candidate."""
+    config = study.config
     return [
         sys.executable,
         "scripts/train_hmm.py",
@@ -125,10 +126,9 @@ def train_command(
     ]
 
 
-def predict_command(
-    config: dict[str, Any], mode: str, split: str, run: Path, winner: dict[str, Any], out: Path
-) -> list[str]:
+def predict_command(study: Study, mode: str, split: str, winner: dict[str, Any], out: Path) -> list[str]:
     """The scripts/predict_hmm.py command line for one frozen winner on one split."""
+    config, run = study.config, study.run
     return [
         sys.executable,
         "scripts/predict_hmm.py",
@@ -146,10 +146,9 @@ def predict_command(
     ]
 
 
-def baseline_command(
-    config: dict[str, Any], evaluator: Path, mode: str, split: str, baseline: Path
-) -> list[str]:
+def baseline_command(study: Study, mode: str, split: str, baseline: Path) -> list[str]:
     """The shared evaluator's shortcut-baseline command line for one mode and split."""
+    config, evaluator = study.config, study.evaluator
     return [
         sys.executable,
         portable_path(evaluator / "scripts/evaluate_models.py"),

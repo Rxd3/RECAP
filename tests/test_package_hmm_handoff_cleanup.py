@@ -109,3 +109,14 @@ def test_a_folder_that_appears_after_the_check_is_not_removed(
     with pytest.raises(FileExistsError):
         _package(output, tmp_path)
     assert (output / "theirs.txt").read_text(encoding="utf-8") == "keep"
+
+
+def test_a_checksum_file_that_already_exists_is_refused_and_left_untouched(
+        paths: tuple[Path, Path], tmp_path: Path) -> None:
+    """The cleanup after a failure deletes the checksum file, so a run must never start over one it did not write."""
+    output, archive = paths
+    checksum = archive.with_suffix(".zip.sha256")
+    checksum.write_bytes(b"keep")
+    with pytest.raises(ValueError, match="already exists"):
+        _package(output, tmp_path)
+    assert checksum.read_bytes() == b"keep" and not output.exists() and not archive.exists()

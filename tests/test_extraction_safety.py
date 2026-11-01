@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import os
 import tarfile
 from pathlib import Path
 
@@ -64,3 +65,38 @@ def test_the_refusal_names_the_entry_not_a_folder(tmp_path: Path, monkeypatch: p
     with pytest.raises(ValueError) as caught:
         _extract(tmp_path, monkeypatch, {"sponspeech/../../escaped.txt": b"x"})
     assert str(tmp_path) not in str(caught.value) and "escaped.txt" in str(caught.value)
+
+
+def test_a_sibling_folder_that_starts_with_the_output_folder_name_is_refused(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """raw/sponspeech_text_evil/x starts with the string raw/sponspeech_text but is not inside that folder."""
+    with pytest.raises(ValueError, match="outside"):
+        _extract(tmp_path, monkeypatch, {"sponspeech/../sponspeech_text_evil/x": b"x"})
+    assert not (tmp_path / "raw" / "sponspeech_text_evil").exists()
+
+
+def _symlink(link: Path, target: Path, *, folder: bool) -> None:
+    try:
+        os.symlink(target, link, target_is_directory=folder)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks are not available here")  # Windows without the privilege to create them
+
+
+def test_a_symlinked_folder_inside_the_output_folder_is_not_written_through(tmp_path: Path) -> None:
+    raw_root, outside = tmp_path / "raw", tmp_path / "outside"
+    (raw_root / extraction.OUTPUT_DIR).mkdir(parents=True)
+    outside.mkdir()
+    _symlink(raw_root / extraction.OUTPUT_DIR / "link", outside, folder=True)
+    with pytest.raises(ValueError, match=r"^sponspeech/link/x\.txt: archive entry would be written outside"):
+        extraction._write(raw_root, "sponspeech/link/x.txt", b"x")
+    assert list(outside.iterdir()) == []
+
+
+def test_a_symlinked_file_inside_the_output_folder_is_not_written_through(tmp_path: Path) -> None:
+    raw_root, victim = tmp_path / "raw", tmp_path / "victim.txt"
+    (raw_root / extraction.OUTPUT_DIR).mkdir(parents=True)
+    victim.write_bytes(b"keep me")
+    _symlink(raw_root / extraction.OUTPUT_DIR / "link.txt", victim, folder=False)
+    with pytest.raises(ValueError, match="outside"):
+        extraction._write(raw_root, "sponspeech/link.txt", b"x")
+    assert victim.read_bytes() == b"keep me"

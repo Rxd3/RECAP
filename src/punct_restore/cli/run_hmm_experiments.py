@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import argparse
 import sys
+from functools import partial
 from pathlib import Path
 
 from punct_restore.models.hmm_experiment_commands import HmmCommandFailed
 from punct_restore.models.hmm_experiment_finalize import finalize
 from punct_restore.models.hmm_experiment_tune import tune
-from punct_restore.models.hmm_workflow import code_identity
 from punct_restore.prediction_io import one_line_error
 
 __all__ = ["main"]
@@ -30,13 +30,12 @@ def main(argv: list[str] | None = None) -> int:
     final_parser.add_argument("--run-dir", type=Path, required=True)
     final_parser.add_argument("--evaluator-root", type=Path, required=True)
     args = parser.parse_args(argv)
+    progress = partial(print, flush=True)
     try:
         if args.phase == "tune":
-            if code_identity()["dirty"]:
-                raise ValueError("commit reviewed code/config before starting an official search")
-            tune(args.config, args.evaluator_root, args.output_dir)
+            tune(args.config, args.evaluator_root, args.output_dir, log=progress)
         else:
-            finalize(args.run_dir, args.evaluator_root)
+            finalize(args.run_dir, args.evaluator_root, log=progress)
     except (OSError, ValueError, HmmCommandFailed) as exc:
         print(f"error: {one_line_error(exc)}", file=sys.stderr)
         return 1

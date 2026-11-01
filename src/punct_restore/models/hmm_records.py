@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Generator, Iterator
+from collections.abc import Generator, Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -47,7 +47,7 @@ def _check_record_basics(record: dict[str, Any], path: Path, seen: set[str]) -> 
 class _TrainingRules:
     """What a training row must satisfy: the label sets, its mode and, for a release, its policy and source."""
 
-    label_sets: Any
+    label_sets: Mapping[str, Any]
     mode: str
     policy_version: str | None
     source_revision: str | None
@@ -90,7 +90,12 @@ def _scan(
     wanted = None if ids is None else set(ids)
     rules = None
     if training_mode is not None:
-        rules = _TrainingRules(load_label_sets(), training_mode, policy_version, source_revision)
+        rules = _TrainingRules(
+            label_sets=load_label_sets(),
+            mode=training_mode,
+            policy_version=policy_version,
+            source_revision=source_revision,
+        )
     seen: set[str] = set()
     selected: set[str] = set()
     read = tokens_selected = 0

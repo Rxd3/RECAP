@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from functools import partial
 from pathlib import Path
 
 from punct_restore.models.hmm_experiment_verify import verify
@@ -19,7 +20,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
-        verify(args.run_dir, args.evaluator_root, args.output_dir)
+        verify(args.run_dir, args.evaluator_root, args.output_dir, log=partial(print, flush=True))
     except (OSError, ValueError) as exc:
         print(f"error: {one_line_error(exc)}", file=sys.stderr)
         return 1

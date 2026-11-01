@@ -154,6 +154,50 @@ def test_check_script_paths_reports_an_existing_output_before_a_missing_input(tm
         prediction_io.check_script_paths({"--out": out}, {"--gold": tmp_path / "absent.jsonl"})
 
 
+# --- refuse_existing -----------------------------------------------------------------------------
+
+
+def test_refuse_existing_passes_when_no_path_exists_and_skips_none(tmp_path: Path) -> None:
+    prediction_io.refuse_existing(tmp_path / "new.json", None, tmp_path / "also-new.json")
+    prediction_io.refuse_existing()
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("kind", ["file", "folder"])
+def test_refuse_existing_raises_a_file_exists_error_naming_the_path_as_given(tmp_path: Path, kind: str) -> None:
+    taken = tmp_path / "taken"
+    if kind == "file":
+        taken.write_text("keep me", encoding="utf-8")
+    else:
+        taken.mkdir()
+    with pytest.raises(FileExistsError) as caught:
+        prediction_io.refuse_existing(tmp_path / "free.json", taken)
+    assert (caught.value.errno, caught.value.filename) == (errno.EEXIST, str(taken))
+    assert prediction_io.one_line_error(caught.value) == "taken: already exists; refusing to overwrite"
+    assert not (tmp_path / "free.json").exists()
+    if kind == "file":
+        assert taken.read_text(encoding="utf-8") == "keep me"
+
+
+def test_refuse_existing_names_the_first_existing_path(tmp_path: Path) -> None:
+    first, second = tmp_path / "first.json", tmp_path / "second.json"
+    first.write_text("1", encoding="utf-8")
+    second.write_text("2", encoding="utf-8")
+    with pytest.raises(FileExistsError) as caught:
+        prediction_io.refuse_existing(second, first)
+    assert caught.value.filename == str(second)
+
+
+def test_refuse_existing_counts_a_dangling_symlink_as_existing(tmp_path: Path) -> None:
+    link = tmp_path / "link.json"
+    try:
+        link.symlink_to(tmp_path / "nowhere.json")
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks are not available here")
+    with pytest.raises(FileExistsError):
+        prediction_io.refuse_existing(link)
+
+
 # --- read_prediction_lines -----------------------------------------------------------------------
 
 

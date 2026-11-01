@@ -13,6 +13,8 @@ from crf_cli_fixtures import create_synthetic_train_jsonl, write_id_file
 import punct_restore.cli.train_crf as train_crf
 from punct_restore.models.crf import CRFModel
 
+DEEP_LINE = "[" * 100_000  # json.loads raises RecursionError for it, not a JSON error
+
 
 def _train_argv(tmp_path: Path, *extra: str) -> list[str]:
     data, ids = tmp_path / "data.jsonl", tmp_path / "train.ids"
@@ -68,6 +70,29 @@ def test_a_corrupt_input_line_is_one_line_naming_the_file_only(
     assert line.startswith("error: ") and "Corrupt JSON at line 1 in data.jsonl" in line
 
 
+def test_a_deeply_nested_training_line_is_one_error_line_not_a_traceback(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    argv = _train_argv(tmp_path)
+    (tmp_path / "data.jsonl").write_text(DEEP_LINE + "\n", encoding="utf-8")
+    assert train_crf.main(argv) == 1
+    line = _only_line(capsys.readouterr().err, tmp_path)
+    assert line == "error: Corrupt JSON at line 1 in data.jsonl: not valid JSON"
+    assert not (tmp_path / "out.joblib").exists()
+
+
+def test_a_training_line_that_is_not_an_object_or_has_no_sample_id_is_one_line_naming_the_file_only(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    argv = _train_argv(tmp_path)
+    (tmp_path / "data.jsonl").write_text("[1, 2]\n", encoding="utf-8")
+    assert train_crf.main(argv) == 1
+    line = _only_line(capsys.readouterr().err, tmp_path)
+    assert line == "error: Corrupt JSON at line 1 in data.jsonl: not a JSON object"
+    (tmp_path / "data.jsonl").write_text('{"tokens": ["a"]}\n', encoding="utf-8")
+    assert train_crf.main(argv) == 1
+    line = _only_line(capsys.readouterr().err, tmp_path)
+    assert line == "error: Corrupt JSON at line 1 in data.jsonl: sample_id must be a nonempty string"
+
+
 def test_a_bad_hyperparameter_is_a_configuration_error(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert train_crf.main(_train_argv(tmp_path, "--c1", "-1.0")) == 1
     assert _only_line(capsys.readouterr().err, tmp_path).startswith("error: ")
@@ -77,6 +102,41 @@ def test_a_backend_that_refuses_the_algorithm_is_a_training_failure(
         tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert train_crf.main(_train_argv(tmp_path, "--algorithm", "no-such-algorithm")) == 1
     assert _only_line(capsys.readouterr().err, tmp_path).startswith("error: training failed: ")
+
+
+# --- train: a save that fails midway does not leave a broken artifact ------------------------------------
+
+
+def _failing_save(partial: bytes | None) -> Any:
+    """A ``CRFModel.save_model`` that puts ``partial`` on disk (if not None) and then runs out of space."""
+    def save(_model: CRFModel, path: str | Path) -> None:
+        if partial is not None:
+            Path(path).write_bytes(partial)
+        raise OSError(errno.ENOSPC, "No space left on device", str(path))
+
+    return save
+
+
+def test_a_save_that_fails_midway_deletes_the_half_written_artifact(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    argv = _train_argv(tmp_path)
+    monkeypatch.setattr(CRFModel, "save_model", _failing_save(b"half a model"))
+    assert train_crf.main(argv) == 1
+    assert _only_line(capsys.readouterr().err, tmp_path) == "error: out.joblib: No space left on device"
+    assert sorted(path.name for path in tmp_path.iterdir()) == ["data.jsonl", "train.ids"]  # no artifact, no manifest
+
+
+@pytest.mark.parametrize("partial", [b"half a model", None], ids=["clobbered-then-failed", "failed-before-writing"])
+def test_a_save_that_fails_under_overwrite_never_deletes_the_file_that_was_already_there(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
+        partial: bytes | None) -> None:
+    argv = _train_argv(tmp_path, "--overwrite")
+    out = tmp_path / "out.joblib"
+    out.write_bytes(b"the old model")
+    monkeypatch.setattr(CRFModel, "save_model", _failing_save(partial))
+    assert train_crf.main(argv) == 1
+    assert _only_line(capsys.readouterr().err, tmp_path) == "error: out.joblib: No space left on device"
+    assert out.read_bytes() == (partial if partial is not None else b"the old model")  # the file is still there
 
 
 # --- train: a code bug is not reported as bad data ------------------------------------------------------
@@ -201,6 +261,16 @@ def test_predict_names_existing_outputs_by_file_name_only(
     assert train_crf.main([*argv, "--manifest-out", str(taken)]) == 1
     err = capsys.readouterr().err
     assert err == "error: taken.manifest.json: manifest already exists; use --overwrite to replace\n"
+
+
+def test_a_deeply_nested_predict_input_line_is_one_error_line_not_a_traceback(
+        tmp_path: Path, model_file: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    argv = _predict_argv(model_file, tmp_path)
+    (tmp_path / "eval.jsonl").write_text(DEEP_LINE + "\n", encoding="utf-8")
+    assert train_crf.main(argv) == 1
+    line = _only_line(capsys.readouterr().err, tmp_path)
+    assert line == "error: Corrupt JSON at line 1: not valid JSON"
+    assert not (tmp_path / "preds.jsonl").exists()
 
 
 def test_predict_input_problems_name_the_files_by_file_name_only(

@@ -262,7 +262,7 @@ def _predict(
     start = perf_counter()
     selection = SelectedRecords(args.predict_input, prediction_ids)
     records = model.predict(selection)
-    return _Prediction(records, selection.counts, perf_counter() - start)
+    return _Prediction(records=records, counts=selection.counts, seconds=perf_counter() - start)
 
 
 def _verify_inputs_unchanged(args: argparse.Namespace, provenance: dict[str, Any]) -> None:

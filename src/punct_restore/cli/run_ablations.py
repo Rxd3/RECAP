@@ -101,13 +101,14 @@ def variant_list(text: str) -> list[str]:
 
 def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="recap run-ablations", description=__doc__.split("\n\n")[0])
-    parser.add_argument("--mode", choices=["A", "B", "C"], required=True, help="label mode to train and score")
+    parser.add_argument("--mode", choices=["A", "B", "C"], required=True, help="label mode to train and predict")
     parser.add_argument("--out", type=Path, required=True,
                         help="output folder; its mode_<M> subfolder must not exist yet")
     parser.add_argument("--sample", type=positive_int, default=50000,
                         help="number of default_train records in the seeded sample (default 50000)")
     parser.add_argument("--variants", type=variant_list, default=None,
-                        help="comma-separated variants to run (default: every variant for the mode)")
+                        help="comma-separated variants to run (default: every variant for the mode); "
+                             f"{CLUSTERS_VARIANT} runs only with --cluster-map")
     parser.add_argument(
         "--cluster-map",
         type=Path,

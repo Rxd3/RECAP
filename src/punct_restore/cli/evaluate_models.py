@@ -43,7 +43,13 @@ from punct_restore.evaluation.uncertainty import (
     MAX_RESAMPLES,
     MIN_RESAMPLES,
 )
-from punct_restore.prediction_io import OS_REASONS, os_error_code, reconfigure_stdout
+from punct_restore.prediction_io import (
+    OS_REASONS,
+    os_error_code,
+    reconfigure_stdout,
+    refuse_existing,
+    write_new_file,
+)
 
 
 def _bounded(minimum: int, maximum: int | None = None) -> Callable[[str], int]:
@@ -107,29 +113,18 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _refuse_existing(paths: tuple[Path, ...]) -> None:
-    for path in paths:
-        if path.exists():
-            raise FileExistsError(errno.EEXIST, "already exists", str(path))
-
-
-def _write_new(path: Path, text: str) -> None:
-    with path.open("x", encoding="utf-8", newline="\n") as handle:
-        handle.write(text)
-
-
 def _report_outputs(out: Path) -> tuple[Path, Path]:
     if out.suffix.lower() != ".json":
         raise EvaluationInputError(
             f"--out must be a .json path (the .md summary goes next to it), got {out.name}")
     outputs = (out, out.with_suffix(".md"))
-    _refuse_existing(outputs)
+    refuse_existing(*outputs)
     return outputs
 
 
 def _write_report(outputs: tuple[Path, Path], report: dict, summary: str) -> None:
-    _write_new(outputs[0], json.dumps(report, indent=1, sort_keys=True) + "\n")
-    _write_new(outputs[1], summary)
+    write_new_file(outputs[0], json.dumps(report, indent=1, sort_keys=True) + "\n")
+    write_new_file(outputs[1], summary)
 
 
 def _bootstrap(args: argparse.Namespace) -> BootstrapSpec | None:
@@ -176,11 +171,11 @@ def _errors(args: argparse.Namespace) -> None:
 
 
 def _baseline(args: argparse.Namespace) -> None:
-    _refuse_existing((args.out,))
+    refuse_existing(args.out)
     mode, records = load_scored_gold(args.gold, args.ids, load_vocab())
     lines = (json.dumps(record, sort_keys=True) + "\n"
              for record in shortcut_predictions(records, mode))
-    _write_new(args.out, "".join(lines))
+    write_new_file(args.out, "".join(lines))
     print(f"wrote {len(records)} shortcut_baseline predictions (mode {mode}) -> {args.out.name}")
 
 

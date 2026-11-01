@@ -40,7 +40,7 @@ def test_read_ids_rejects_a_duplicate_naming_the_id_the_line_and_the_file_by_nam
 
 @pytest.mark.parametrize("content", [b"", b"\n", b" \r\n\t\n"])
 def test_read_ids_rejects_a_file_without_ids(tmp_path: Path, content: bytes) -> None:
-    with pytest.raises(ValueError, match=r"^Frozen ID list is empty: x\.ids$"):
+    with pytest.raises(ValueError, match=r"^ID list is empty: x\.ids$"):
         prediction_io.read_ids(_ids(tmp_path, content))
 
 
@@ -80,7 +80,7 @@ def test_read_ids_reports_a_missing_file_as_an_os_error_that_one_line_error_name
         (b"a\r\nb \r\n", r"^x\.ids line 2: IDs must be nonempty, with no whitespace or blank lines$"),
         (b"a\nb\n\n", r"^x\.ids line 3: IDs must be nonempty, with no whitespace or blank lines$"),
         (b"a\nb\na\n", r"^Duplicate ID 'a' found at line 3 in x\.ids$"),
-        (b"", r"^Frozen ID list is empty: x\.ids$"),
+        (b"", r"^ID list is empty: x\.ids$"),
     ],
 )
 def test_read_ids_strict_refuses_a_blank_line_a_padded_id_a_duplicate_and_an_empty_file(

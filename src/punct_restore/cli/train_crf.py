@@ -13,7 +13,9 @@ Adheres strictly to docs/DATA_CONTRACT.md, docs/MODEL_CONTRACT.md, and docs/DECI
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
+import os
 import sys
 import time
 from collections.abc import Mapping, Sequence
@@ -44,7 +46,7 @@ from punct_restore.models.crf_training import (
 from punct_restore.models.crf_training_data import load_and_filter_training_records
 from punct_restore.prediction_io import check_new_output_paths, one_line_error, reconfigure_stdout
 
-__all__ = ["main", "recorded_command"]
+__all__ = ["main"]
 
 
 def recorded_command(argv: Sequence[str]) -> list[str]:
@@ -181,12 +183,20 @@ def _report_optimizer(model: CRFModel) -> dict[str, Any]:
 
 
 def _save_artifact(model: CRFModel, output_path: Path) -> str | None:
-    """Save the model artifact and return its SHA-256, or None after reporting why it could not be saved."""
+    """Save the model artifact and return its SHA-256, or None after reporting why it could not be saved.
+
+    A failure deletes the half-written file only when this run created it. With ``--overwrite`` the file was already
+    there: it is left in place (the failed write may have cut it short, but it is never deleted).
+    """
+    created_here = not os.path.lexists(output_path)
     try:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         model.save_model(output_path)
         artifact_hash = sha256_file(output_path)
     except OSError as e:
+        if created_here:
+            with contextlib.suppress(OSError):  # best effort; the save error is the one reported
+                output_path.unlink(missing_ok=True)
         _error(one_line_error(e))
         return None
     print(f"[RECAP CRF] Saved artifact: {output_path} (SHA-256: {artifact_hash})")

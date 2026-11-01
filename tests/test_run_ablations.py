@@ -420,6 +420,15 @@ def test_jsonl_duplicate_sample_id_is_an_error(tmp_path, capsys, repeated, line)
     ]
 
 
+def test_help_says_what_mode_does_and_that_the_cluster_variant_needs_a_cluster_map(capsys):
+    with pytest.raises(SystemExit) as exit_info:
+        run_ablations.parse_args(["--help"])
+    assert exit_info.value.code == 0
+    text = " ".join(capsys.readouterr().out.split())
+    assert "label mode to train and predict" in text
+    assert f"{CLUSTERS_VARIANT} runs only with --cluster-map" in text
+
+
 def test_script_runs_standalone_and_has_no_personal_paths():
     stub = ROOT / "scripts" / "run_ablations.py"
     module = ROOT / "src" / "punct_restore" / "cli" / "run_ablations.py"

@@ -145,6 +145,20 @@ def test_an_empty_bucket_writes_an_empty_file(tmp_path: Path) -> None:
     assert read_ids(out, "excluded_train_video") == ["test:A-0", "test:A-1", "test:A-2"]
 
 
+def test_an_empty_leakage_controlled_list_is_a_valid_release_where_everything_is_excluded(tmp_path: Path) -> None:
+    """The release writes the kept list empty when every record of the split is excluded."""
+    root = make_root(tmp_path)
+    kept_path(root).write_bytes(b"")
+    rows = ["sample_id\treason", *(f"test:{k}\t{why}" for k, why in EXCLUDED_ROWS),
+            *(f"test:{k}\tshared_video" for k in KEPT_KEYS)]
+    tsv_path(root).write_text("".join(f"{row}\n" for row in rows), encoding="utf-8", newline="\n")
+    out = tmp_path / "out"
+    assert run(root, out) == 0
+    assert (out / "kept.ids").read_bytes() == b""
+    assert read_ids(out, "all") == [f"test:{k}" for k in KEYS]
+    assert json.loads((out / "counts.json").read_text(encoding="utf-8"))["kept"] == 0
+
+
 def test_validation_split_uses_the_validation_files(tmp_path: Path) -> None:
     root = make_root(tmp_path, "test")
     make_root(tmp_path, "validation")

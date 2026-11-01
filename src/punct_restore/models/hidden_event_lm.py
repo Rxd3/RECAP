@@ -22,7 +22,6 @@ Artifact: versioned JSON (``format_version`` 1, ``model_family`` "hidden_event_l
 
 from __future__ import annotations
 
-import contextlib
 import json
 import math
 from collections import Counter
@@ -41,6 +40,7 @@ from punct_restore.models.ngram_lm import (
     counts_to_payload,
 )
 from punct_restore.models.truecaser import UnigramTruecaser
+from punct_restore.prediction_io import write_new_file
 
 __all__ = [
     "BOS_TOKEN",
@@ -324,14 +324,7 @@ class HiddenEventLM:
         text = json.dumps(payload, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
         destination = Path(path)
         destination.parent.mkdir(parents=True, exist_ok=True)
-        handle = destination.open("x", encoding="utf-8", newline="\n")  # FileExistsError leaves the old file alone
-        try:
-            with handle:
-                handle.write(text + "\n")
-        except BaseException:
-            with contextlib.suppress(OSError):  # best effort; the write error is the one that gets raised
-                destination.unlink(missing_ok=True)
-            raise
+        write_new_file(destination, text + "\n")  # FileExistsError leaves the old file alone
 
     @classmethod
     def load_model(cls, path: str | Path) -> HiddenEventLM:

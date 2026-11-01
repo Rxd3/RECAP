@@ -109,7 +109,8 @@ def _bundle_paths(run: Path, output: Path) -> tuple[Path, Path, Path]:
     ):
         raise ValueError("handoff must be a separate directory inside artifacts/")
     archive_path = output.parent / f"{output.name}.zip"
-    if output.exists() or archive_path.exists():
+    # the cleanup after a failed run removes all three, so a run may only start when none of them exists
+    if output.exists() or archive_path.exists() or archive_path.with_suffix(".zip.sha256").exists():
         raise ValueError("handoff/archive already exists; use a new immutable handoff ID")
     return run, output, archive_path
 
