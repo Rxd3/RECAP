@@ -31,6 +31,7 @@ SOURCE_FILES = (
     "src/punct_restore/data/validation.py",
     "src/punct_restore/evaluation/inputs.py",
     "src/punct_restore/evaluation/metrics.py",
+    "src/punct_restore/file_io.py",
     "src/punct_restore/hashing.py",
     "src/punct_restore/paths.py",
     "src/punct_restore/prediction_io.py",

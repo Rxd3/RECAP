@@ -88,7 +88,7 @@ def test_compare_refuses_overwrite(cli: ModuleType, capsys: pytest.CaptureFixtur
     code, _, err = run_cli(cli, capsys, compare_argv(grouped_case, tmp_path / "cmp.json"))
 
     assert code == 1
-    assert err == f"error: {existing} already exists; refusing to overwrite\n"
+    assert err == f"error: {existing.name}: already exists; refusing to overwrite\n"
     assert existing.read_text(encoding="utf-8") == "keep"
     assert not other.exists()
 
@@ -197,7 +197,7 @@ def test_errors_refuses_overwrite(cli: ModuleType, capsys: pytest.CaptureFixture
     code, _, err = run_cli(cli, capsys, cli_argv("errors", grouped_case, out))
 
     assert code == 1
-    assert err == f"error: {existing} already exists; refusing to overwrite\n"
+    assert err == f"error: {existing.name}: already exists; refusing to overwrite\n"
     assert existing.read_text(encoding="utf-8") == "keep"
     assert not out.exists()
 

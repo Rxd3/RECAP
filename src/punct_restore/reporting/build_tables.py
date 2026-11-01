@@ -11,6 +11,8 @@ from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 from typing import Any
 
+from punct_restore.evaluation.report import pct as pct  # the one percent format; the tables import it from here
+
 MODES = ("A", "B", "C")
 PRIMARY = {"A": "punctuation/all", "B": "punctuation/all", "C": "joint/unmasked"}
 
@@ -22,11 +24,6 @@ def load(path: str | Path) -> Any:
         raise ValueError(f"{Path(path).name}: {exc}") from exc
     except RecursionError as exc:  # JSON nested deeper than the decoder can follow
         raise ValueError(f"{Path(path).name}: not valid JSON (nested too deeply)") from exc
-
-
-def pct(x: float | str) -> str:
-    # Round the stored 6-dp value half-up so 0.67985 prints 67.99, not the float artefact 67.98.
-    return str((Decimal(str(x)) * 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
 
 
 def ci(block: dict[str, Any], key: str = "macro_f1_ci") -> str:

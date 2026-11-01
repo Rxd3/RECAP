@@ -56,6 +56,15 @@ def _read_yaml(path: str | os.PathLike[str], file_name: str) -> Any:
         raise ValueError(f"{file_name}: not valid YAML") from exc
 
 
+def read_label_config(path: str | os.PathLike[str] = LABEL_SETS_PATH) -> dict[str, Any]:
+    """The raw label configuration mapping; a ValueError names the file (not UTF-8, not YAML, not a mapping)."""
+    file_name = os.path.basename(path)
+    cfg = _read_yaml(path, file_name)
+    if not isinstance(cfg, dict):
+        raise ValueError(f"{file_name}: the top level must be a mapping")
+    return cfg
+
+
 def load_label_sets(path: str | os.PathLike[str] = LABEL_SETS_PATH) -> dict[str, Any]:
     """Read configs/label_sets.yaml (the vocabulary source of truth) and check its 4/8/12 structure.
 
@@ -63,9 +72,7 @@ def load_label_sets(path: str | os.PathLike[str] = LABEL_SETS_PATH) -> dict[str,
     lacks a key or has a value of the wrong type.
     """
     file_name = os.path.basename(path)
-    cfg = _read_yaml(path, file_name)
-    if not isinstance(cfg, dict):
-        raise ValueError(f"{file_name}: the top level must be a mapping")
+    cfg = read_label_config(path)
     std = _field(cfg, "punctuation.standard", list, file_name)
     ext = _field(cfg, "punctuation.extended", list, file_name)
     case = _field(cfg, "casing", list, file_name)

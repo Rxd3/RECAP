@@ -55,6 +55,23 @@ def write_model(model: CRFModel, path: str | Path) -> None:
     joblib.dump(bundle, save_path)
 
 
+def load_artifact(path: str | Path, what: str) -> Any:
+    """The object the joblib artifact file at ``path`` holds; the caller checks its type. ``what`` names the file in
+    a not-found message.
+
+    Raises:
+        FileNotFoundError: ``<name>: <what> not found``.
+        IsADirectoryError: ``<name>: is a folder, not a file``.
+        ValueError: ``<name>: not a readable CRF artifact`` (the unpickling text is not shown).
+    """
+    load_path = Path(path)
+    require_file(load_path, what)
+    try:  # joblib is pickle: artifacts are this project's own saved models, or a local file the user chose to inspect
+        return joblib.load(load_path)
+    except Exception as e:  # broad on purpose: unpickling a corrupt or foreign file can raise any exception type
+        raise ValueError(f"{load_path.name}: not a readable CRF artifact") from e
+
+
 def read_bundle(path: str | Path) -> dict[str, Any]:
     """Load the artifact at ``path`` and check root type, schema, family, label mode and backend presence.
 
@@ -63,13 +80,7 @@ def read_bundle(path: str | Path) -> dict[str, Any]:
         IsADirectoryError: If the artifact path is a folder.
         ValueError: If the artifact is unreadable or its schema, family or metadata is incompatible.
     """
-    load_path = Path(path)
-    require_file(load_path, "model artifact")
-
-    try:
-        bundle = joblib.load(load_path)  # joblib is pickle: artifacts are this project's own saved models only
-    except Exception as e:
-        raise ValueError(f"{load_path.name}: not a readable CRF artifact") from e  # the unpickling text is not shown
+    bundle = load_artifact(path, "model artifact")
 
     if not isinstance(bundle, dict):
         raise ValueError(f"Corrupt artifact: expected dict root, got {type(bundle).__name__}")

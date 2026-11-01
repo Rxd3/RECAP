@@ -16,12 +16,12 @@ on stderr (files by name only) and exits 1; a usage error exits 2.
 from __future__ import annotations
 
 import argparse
-import contextlib
 import sys
-from collections.abc import Container, Iterator
+from collections.abc import Container
 from pathlib import Path
 from typing import Any
 
+from punct_restore.file_io import iter_jsonl
 from punct_restore.models.hidden_event_lm import HiddenEventLM
 from punct_restore.prediction_io import (
     check_new_output_paths,
@@ -41,15 +41,6 @@ def _require_files(*named: tuple[str, Path | None]) -> None:
     for flag, path in named:
         if path is not None and not path.is_file():
             raise ValueError(f"{flag}: {path.name} is not an existing file")
-
-
-@contextlib.contextmanager
-def _utf8_file(path: Path) -> Iterator[None]:
-    """Turn a UnicodeDecodeError raised while reading ``path`` into a one-line ValueError naming the file."""
-    try:
-        yield
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"{path.name}: not valid UTF-8") from exc
 
 
 def _interned(value: Any) -> Any:
@@ -88,13 +79,13 @@ def read_training_records(input_path: Path, ids_path: Path, mode: str) -> list[d
     ids = read_ids(ids_path)
     wanted = set(ids)
     kept: dict[str, dict[str, Any]] = {}
-    with _utf8_file(input_path), open(input_path, encoding="utf-8") as handle:
-        for number, line in enumerate(handle, 1):
-            if not line.strip():
-                continue
-            record = _keep_line(line, f"{input_path.name} line {number}", wanted, kept, mode)
-            if record is not None:
-                kept[record["sample_id"]] = record
+
+    def keep_line(line: str, where: str) -> dict[str, Any] | None:
+        return _keep_line(line, where, wanted, kept, mode)  # reads `kept` as it grows: iter_jsonl is lazy
+
+    for _, record in iter_jsonl(input_path, keep_line):
+        if record is not None:
+            kept[record["sample_id"]] = record
     missing = [sample_id for sample_id in ids if sample_id not in kept]
     if missing:
         raise ValueError(f"{len(missing)} listed ID(s) are missing from {input_path.name}, first {missing[0]!r}")

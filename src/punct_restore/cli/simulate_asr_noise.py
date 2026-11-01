@@ -30,8 +30,7 @@ import json
 import os
 import shutil
 import sys
-import tempfile
-from collections.abc import Iterable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -49,8 +48,15 @@ from punct_restore.data.asr_noise import (
     remap_positions,
     train_vocabulary,
 )
+from punct_restore.file_io import write_new_folder
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import one_line_error, parse_json_object, read_ids, reconfigure_stdout
+from punct_restore.prediction_io import (
+    one_line_error,
+    os_reason,
+    parse_json_object,
+    read_ids,
+    reconfigure_stdout,
+)
 
 MODES = ("A", "B", "C")
 
@@ -73,9 +79,8 @@ def _lines(path: Path) -> Iterator[tuple[int, str]]:
                     yield number, line
     except UnicodeDecodeError:
         raise InputError(f"{_display_name(path)}: not UTF-8 text") from None
-    except OSError as exc:  # Windows reports EACCES for a folder, POSIX EISDIR
-        reason = "is a folder, not a file" if path.is_dir() else (exc.strerror or "cannot be read")
-        raise InputError(f"{_display_name(path)}: {reason}") from None
+    except OSError as exc:  # os_reason words a folder alike on Windows (EACCES) and POSIX (EISDIR)
+        raise InputError(f"{_display_name(path)}: {os_reason(exc) or 'cannot be read'}") from None
 
 
 def scan(path: Path, wanted: frozenset[str]) -> Iterator[tuple[int, dict[str, Any]]]:
@@ -189,16 +194,31 @@ def summarize(args: argparse.Namespace, inputs: Sequence[ModeInput], tokens: Map
     return summary
 
 
-def write_outputs(folder: Path, args: argparse.Namespace, inputs: Sequence[ModeInput],
-                  masks: Sequence[Mapping[str, Any]], plan: Mapping[str, Edits],
-                  summary: Mapping[str, Any]) -> None:
+def _jsonl_writer(rows: Iterable[Mapping[str, Any]]) -> Callable[[Path], None]:
+    """A writer for ``write_new_folder`` that streams ``rows`` to the path it is given."""
+    def write(path: Path) -> None:
+        write_jsonl(path, rows)
+    return write
+
+
+def _copier(source: Path) -> Callable[[Path], None]:
+    """A writer for ``write_new_folder`` that copies ``source`` byte for byte to the path it is given."""
+    def copy(path: Path) -> None:
+        shutil.copyfile(source, path)
+    return copy
+
+
+def output_files(args: argparse.Namespace, inputs: Sequence[ModeInput], masks: Sequence[Mapping[str, Any]],
+                 plan: Mapping[str, Edits], summary: Mapping[str, Any]) -> dict[str, str | Callable[[Path], None]]:
+    """The files of the noisy release by path inside it, in the order they are written; nothing is read yet."""
+    files: dict[str, str | Callable[[Path], None]] = {}
     for item in inputs:
         rows = (apply_edits(r, plan.get(r["sample_id"], NO_EDITS)) for r in item.records())
-        write_jsonl(folder / f"mode_{item.mode}" / f"{args.split}.jsonl", rows)
-        shutil.copyfile(item.ids_path, folder / f"{args.split}_mode_{item.mode}.ids")
-    write_jsonl(folder / "masks" / f"{args.split}.jsonl", masks)
-    text = json.dumps(summary, indent=2, sort_keys=True) + "\n"
-    (folder / "summary.json").write_text(text, encoding="utf-8", newline="\n")
+        files[f"mode_{item.mode}/{args.split}.jsonl"] = _jsonl_writer(rows)
+        files[f"{args.split}_mode_{item.mode}.ids"] = _copier(item.ids_path)
+    files[f"masks/{args.split}.jsonl"] = _jsonl_writer(masks)
+    files["summary.json"] = json.dumps(summary, indent=2, sort_keys=True) + "\n"
+    return files
 
 
 def wer_value(text: str) -> float:
@@ -262,13 +282,7 @@ def run(args: argparse.Namespace) -> str:
     c_ids = next(item.ids for item in inputs if item.mode == "C")
     masks = remapped_masks(masks_path, c_ids, tokens, plan)
     summary = summarize(args, inputs, tokens, plan)
-    folder = Path(tempfile.mkdtemp(prefix=f".{out.name}.tmp-", dir=out.parent))
-    try:
-        write_outputs(folder, args, inputs, masks, plan, summary)
-        folder.rename(out)
-    except BaseException:
-        shutil.rmtree(folder, ignore_errors=True)
-        raise
+    write_new_folder(out, output_files(args, inputs, masks, plan, summary))
     return (f"wrote {out.name}: edit cost {summary['edit_cost']} of budget {summary['budget']} "
             f"(WER {summary['achieved_wer']:.4f}), tokens {summary['tokens_before']} -> {summary['tokens_after']}")
 

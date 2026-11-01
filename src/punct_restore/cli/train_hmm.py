@@ -11,6 +11,7 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any, NamedTuple
 
+from punct_restore.data.labeling import load_label_sets, read_label_config
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_records import SelectedRecords
@@ -20,39 +21,28 @@ from punct_restore.models.hmm_workflow import (
     file_identity,
     portable_path,
     verify_training_release,
+    write_predictions_file,
 )
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import one_line_error, read_ids
 
 
 def load_labels(path: Path, mode: str) -> list[str]:
-    try:
-        import yaml
-    except ModuleNotFoundError as exc:
-        raise ValueError(
-            'YAML configuration needs PyYAML; install with pip install -e ".[dev]"'
-        ) from exc
-    try:
-        config = yaml.safe_load(path.read_text(encoding="utf-8"))
-        if type(config["schema_version"]) is not int or config["schema_version"] != 1:
-            raise ValueError("unsupported label configuration version")
-        mode_config = config["modes"][mode]
-        punctuation = config["punctuation"][mode_config["punctuation_set"]]
-        if mode == "C":
-            if mode_config["separator"] != "|":
-                raise ValueError("joint labels must use the | separator")
-            labels = [f"{p}|{c}" for p in punctuation for c in config["casing"]]
-            if labels != mode_config["labels"]:
-                raise ValueError("explicit joint labels do not match the ordered 4-by-3 product")
-        else:
-            labels = punctuation
-        if mode_config["num_classes"] != len(labels):
-            raise ValueError("num_classes does not match label vocabulary")
-        return labels
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"{path.name}: not valid UTF-8") from exc
-    except (KeyError, TypeError, yaml.YAMLError, RecursionError) as exc:  # RecursionError: nested too deeply
-        raise ValueError(f"{path.name}: invalid label configuration: {exc}") from exc
+    """The ordered labels of ``mode``: the shared loader plus the HMM's own checks (schema version 1, the `|` joint
+    separator, num_classes); a ValueError names the file."""
+    labels = load_label_sets(path)[mode]
+    config = read_label_config(path)
+    modes = config.get("modes")
+    mode_config = modes.get(mode) if isinstance(modes, dict) else None
+    if type(config.get("schema_version")) is not int or config["schema_version"] != 1:
+        raise ValueError(f"{path.name}: unsupported label configuration version")
+    if not isinstance(mode_config, dict):
+        raise ValueError(f"{path.name}: missing modes.{mode}")
+    if mode == "C" and mode_config.get("separator") != "|":
+        raise ValueError(f"{path.name}: joint labels must use the | separator")
+    if mode_config.get("num_classes") != len(labels):
+        raise ValueError(f"{path.name}: num_classes does not match label vocabulary")
+    return labels
 
 
 def nonempty(value: str) -> str:
@@ -303,9 +293,7 @@ def _write_predictions(
 ) -> None:
     """Write predictions.jsonl and its manifest into the run directory."""
     prediction_path = args.output_dir / "predictions.jsonl"
-    with prediction_path.open("x", encoding="utf-8", newline="\n") as handle:
-        for record in prediction.records:
-            handle.write(json.dumps(record, ensure_ascii=False, allow_nan=False) + "\n")
+    write_predictions_file(prediction_path, prediction.records)
     prediction_manifest = {
         "schema_version": 1,
         "run_id": provenance["run_id"],

@@ -34,6 +34,7 @@ from punct_restore.evaluation.inputs import (
     EvaluationInputError,
     Vocab,
     file_identity,
+    file_identity_with,
     load_bundle,
     load_scored_gold,
     load_vocab,
@@ -418,6 +419,18 @@ def test_bundle_inputs_identity(tmp_path: Path, vocab: Vocab) -> None:
     assert bundle.inputs == {**expected, "masks": None}
     assert sha256_file(case.gold) == expected["gold"]["sha256"]
     assert file_identity(LABEL_SETS_PATH) == {"path": "configs/label_sets.yaml", "sha256": sha256_file(LABEL_SETS_PATH)}
+
+
+def test_file_identity_with_shows_a_path_relative_to_its_root_or_the_last_parts_outside_it(tmp_path: Path) -> None:
+    path = tmp_path / "folder" / "f.txt"
+    path.parent.mkdir()
+    path.write_text("x", encoding="utf-8")
+    digest = sha256_file(path)
+    elsewhere = tmp_path / "elsewhere"
+    assert file_identity_with(path, tmp_path, 1) == {"path": "folder/f.txt", "sha256": digest}  # inside the root
+    assert file_identity_with(path, elsewhere, 2) == {"path": "folder/f.txt", "sha256": digest}  # outside: 2 parts
+    assert file_identity_with(path, elsewhere, 1) == {"path": "f.txt", "sha256": digest}  # outside: the name only
+    assert file_identity(path) == file_identity_with(path, elsewhere, 2)  # the default root is the repository
 
 
 def test_bundle_inputs_identity_includes_masks_in_mode_c(tmp_path: Path, vocab: Vocab) -> None:

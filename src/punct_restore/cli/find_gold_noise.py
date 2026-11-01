@@ -23,10 +23,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import shutil
 import sys
-import tempfile
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import Any, NamedTuple
@@ -38,6 +35,7 @@ from punct_restore.data.gold_noise import (
     speaker_label_colons,
     validate_record,
 )
+from punct_restore.file_io import iter_jsonl, write_new_folder
 from punct_restore.hashing import sha256_file
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import one_line_error, parse_json_object, read_ids
@@ -66,14 +64,8 @@ def _checked_record(line: str, where: str) -> dict[str, Any]:
 
 def _records(path: Path) -> Iterator[tuple[str, dict[str, Any]]]:
     """Stream ``(sample_id, record)`` per JSONL line; errors name the file and line."""
-    try:
-        with path.open(encoding="utf-8") as handle:
-            for number, line in enumerate(handle, 1):
-                if line.strip():
-                    record = _checked_record(line, f"{path.name} line {number}")
-                    yield record["sample_id"], record
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"{path.name}: not valid UTF-8") from exc
+    for _, record in iter_jsonl(path, _checked_record):
+        yield record["sample_id"], record
 
 
 def _unique_records(path: Path) -> Iterator[dict[str, Any]]:
@@ -142,18 +134,6 @@ def process_split(root: Path, release: str, mode: str, split: str) -> dict[str, 
     return files
 
 
-def write_outputs(out: Path, files: dict[str, str]) -> None:
-    """Write every file into a sibling temp folder, then rename it to ``out``: never a partial ``out``."""
-    temp = Path(tempfile.mkdtemp(dir=out.parent, prefix=f".{out.name}."))
-    try:
-        for name, text in files.items():
-            (temp / name).write_text(text, encoding="utf-8", newline="\n")
-        os.replace(temp, out)
-    except BaseException:
-        shutil.rmtree(temp, ignore_errors=True)
-        raise
-
-
 def check_folders(data_root: Path, out: Path) -> None:
     """Refuse a data root that is not a folder, or an ``out`` whose parent is not an existing folder."""
     if not data_root.is_dir():
@@ -176,7 +156,7 @@ def build(data_root: Path, release: str, mode: str, out: Path) -> list[str]:
         lines.append(f"{split} records={counts['records']} flagged={counts['records_flagged']} "
                      f"speaker_label_colons={counts['speaker_label_colons']}/{counts['gold_colon_labels']} "
                      f"share={counts['speaker_label_colon_share']}")
-    write_outputs(out, files)
+    write_new_folder(out, files)
     return lines
 
 

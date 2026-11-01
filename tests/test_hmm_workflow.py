@@ -9,9 +9,17 @@ import pytest
 from test_data_contract import build
 from test_hmm_cli import ROOT, SCRIPT, jsonl, setup_run
 
+from punct_restore.evaluation.inputs import file_identity as shared_file_identity
+from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_records import SelectedRecords
-from punct_restore.models.hmm_workflow import ReleaseInputs, verify_training_release, write_json
+from punct_restore.models.hmm_workflow import (
+    ReleaseInputs,
+    file_identity,
+    verify_training_release,
+    write_json,
+    write_predictions_file,
+)
 from punct_restore.prediction_io import read_ids
 
 
@@ -244,3 +252,30 @@ def test_a_split_checksum_line_of_another_shape_is_a_value_error_naming_the_file
 
     message = _refused_split_manifest(tmp_path, append)
     assert message == f"SHA256SUMS line {len(lines) + 1}: expected '<sha256>  <path>'"
+
+
+def test_the_hmm_file_identity_keeps_its_wording_while_sharing_the_evaluators_code(tmp_path):
+    outside = tmp_path / "folder" / "f.txt"
+    outside.parent.mkdir()
+    outside.write_text("x")
+    assert file_identity(outside) == {"path": "f.txt", "sha256": sha256_file(outside)}  # name only, as before
+    inside = ROOT / "configs" / "label_sets.yaml"
+    assert file_identity(inside) == shared_file_identity(inside) == {
+        "path": "configs/label_sets.yaml", "sha256": sha256_file(inside)}
+
+
+def test_the_predictions_file_is_utf8_with_lf_one_object_per_line_and_is_never_overwritten(tmp_path):
+    path = tmp_path / "predictions.jsonl"
+    write_predictions_file(path, [{"id": "é", "x": 1}, {"id": "b"}])
+    expected = '{"id": "é", "x": 1}\n{"id": "b"}\n'.encode()  # UTF-8 text, LF line ends
+    assert path.read_bytes() == expected
+    with pytest.raises(FileExistsError):
+        write_predictions_file(path, [{"id": "other"}])
+    assert path.read_bytes() == expected
+
+
+def test_a_prediction_that_is_not_a_number_is_refused_before_the_file_is_created(tmp_path):
+    path = tmp_path / "predictions.jsonl"
+    with pytest.raises(ValueError, match="Out of range float"):
+        write_predictions_file(path, [{"id": "a"}, {"id": "b", "score": float("nan")}])
+    assert not path.exists()

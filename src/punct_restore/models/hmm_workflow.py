@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import platform
 import subprocess
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -13,17 +13,19 @@ from time import perf_counter
 from typing import Any
 
 from punct_restore.data.preprocessing import parse_manifest_line
+from punct_restore.evaluation.inputs import file_identity_with
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_records import SelectedRecords
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import parse_json_object, read_ids, write_new_file
+from punct_restore.prediction_io import read_ids, write_new_file
 
 # isort: split
 # old import path kept (restructure spec §2)
 from punct_restore.data.labeling import load_label_sets as load_label_sets
 from punct_restore.data.validation import check_model_input as check_model_input
 from punct_restore.data.validation import validate_record as validate_record
+from punct_restore.file_io import read_json_object as read_json_object
 from punct_restore.models.hmm_records import read_jsonl as read_jsonl
 
 
@@ -35,7 +37,8 @@ def portable_path(path: Path) -> str:
 
 
 def file_identity(path: Path) -> dict[str, str]:
-    return {"path": portable_path(path), "sha256": sha256_file(path)}
+    """The evaluator's file identity, with the file name alone for a file outside the repository."""
+    return file_identity_with(path, ROOT, 1)
 
 
 def code_identity(root: Path = ROOT) -> dict[str, Any]:
@@ -87,21 +90,6 @@ def selected_records(
     yield from selection
     if counts is not None:
         counts.update(selection.counts)
-
-
-def read_json_object(path: Path) -> dict[str, Any]:
-    """The JSON object a UTF-8 file holds.
-
-    Raises:
-        OSError: If the file cannot be read.
-        ValueError: One line that starts with the file name only: not valid UTF-8, not valid JSON (also when it
-            is nested too deeply) or not a JSON object.
-    """
-    try:
-        text = path.read_text(encoding="utf-8")
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"{path.name}: not valid UTF-8") from exc
-    return parse_json_object(text, path.name)
 
 
 def checked_release_file(
@@ -277,13 +265,21 @@ def _check_inputs_unchanged(inputs: dict[str, Any], paths: list[tuple[str, Path 
             raise ValueError(f"{path.name}: input changed during inference")
 
 
+def write_predictions_file(path: Path, predictions: Iterable[Mapping[str, Any]]) -> None:
+    """Create ``path`` holding one JSON object per prediction: UTF-8, LF line ends, no NaN, never overwriting.
+
+    Raises:
+        FileExistsError: If ``path`` exists (it is left alone).
+        ValueError: If a prediction holds a NaN or infinite number; no file is made then.
+    """
+    write_new_file(path, "".join(json.dumps(row, ensure_ascii=False, allow_nan=False) + "\n" for row in predictions))
+
+
 def _write_predictions(output_dir: Path, predictions: list[dict[str, Any]]) -> Path:
     """Create output_dir and write predictions.jsonl; return its path."""
     output_dir.mkdir(parents=True, exist_ok=False)
     predictions_path = output_dir / "predictions.jsonl"
-    with predictions_path.open("x", encoding="utf-8", newline="\n") as handle:
-        for row in predictions:
-            handle.write(json.dumps(row, ensure_ascii=False, allow_nan=False) + "\n")
+    write_predictions_file(predictions_path, predictions)
     return predictions_path
 
 

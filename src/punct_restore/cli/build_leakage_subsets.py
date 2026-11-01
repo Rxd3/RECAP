@@ -16,14 +16,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import shutil
 import sys
-import tempfile
 from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import Any
 
+from punct_restore.file_io import iter_jsonl, write_new_folder
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import one_line_error, parse_sample_record, read_ids
 
@@ -33,14 +31,8 @@ BUCKETS = ("excluded_train_video", "excluded_other_leak", "excluded_quality")
 
 def _records(path: Path) -> Iterator[tuple[str, dict[str, Any]]]:
     """Stream ``(sample_id, record)`` per JSONL line; errors name the file and line."""
-    try:
-        with path.open(encoding="utf-8") as handle:
-            for number, line in enumerate(handle, 1):
-                if line.strip():
-                    record = parse_sample_record(line, f"{path.name} line {number}")
-                    yield record["sample_id"], record
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"{path.name}: not valid UTF-8") from exc
+    for _, record in iter_jsonl(path, parse_sample_record):
+        yield record["sample_id"], record
 
 
 def _group(record: dict[str, Any]) -> str | None:
@@ -140,17 +132,8 @@ def bucket_excluded(
 
 def write_outputs(out: Path, id_lists: dict[str, list[str]], counts: dict[str, Any]) -> None:
     """Write every file into a sibling temp folder, then rename it to ``out``: never a partial ``out``."""
-    out.parent.mkdir(parents=True, exist_ok=True)
-    temp = Path(tempfile.mkdtemp(dir=out.parent, prefix=f".{out.name}."))
-    try:
-        for name, ids in id_lists.items():
-            text = "".join(f"{sample_id}\n" for sample_id in ids)
-            (temp / f"{name}.ids").write_text(text, encoding="utf-8", newline="\n")
-        (temp / "counts.json").write_text(json.dumps(counts, indent=2) + "\n", encoding="utf-8", newline="\n")
-        os.replace(temp, out)
-    except BaseException:
-        shutil.rmtree(temp, ignore_errors=True)
-        raise
+    files = {f"{name}.ids": "".join(f"{sample_id}\n" for sample_id in ids) for name, ids in id_lists.items()}
+    write_new_folder(out, {**files, "counts.json": json.dumps(counts, indent=2) + "\n"})
 
 
 def build(data_root: Path, release: str, mode: str, split: str, out: Path) -> dict[str, Any]:

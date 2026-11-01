@@ -10,7 +10,7 @@ import pytest
 
 from punct_restore.features.crf_features import FeatureConfig
 from punct_restore.models.crf import CRFModel
-from punct_restore.models.crf_io import MODEL_SCHEMA_VERSION, _build_bundle
+from punct_restore.models.crf_io import MODEL_SCHEMA_VERSION, _build_bundle, load_artifact
 
 RECORDS = [
     {"sample_id": "b1", "tokens": ["hello", "everyone"], "punct_labels": ["O", "PERIOD"]},
@@ -133,3 +133,30 @@ def test_load_model_says_a_folder_is_a_folder(tmp_path: Path) -> None:
     with pytest.raises(IsADirectoryError) as caught:
         CRFModel.load_model(tmp_path / "m.joblib")
     assert str(caught.value) == "m.joblib: is a folder, not a file"
+
+
+# --- the one loader of a joblib artifact ----------------------------------------------------------------------
+
+
+def test_load_artifact_names_a_missing_file_by_what_it_is_and_a_folder_as_a_folder(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError) as missing:
+        load_artifact(tmp_path / "deep" / "ghost.joblib", "thing")
+    assert str(missing.value) == "ghost.joblib: thing not found"
+    (tmp_path / "m.joblib").mkdir()
+    with pytest.raises(IsADirectoryError) as folder:
+        load_artifact(tmp_path / "m.joblib", "thing")
+    assert str(folder.value) == "m.joblib: is a folder, not a file"
+
+
+def test_load_artifact_gives_back_whatever_the_file_holds(tmp_path: Path) -> None:
+    path = tmp_path / "list.joblib"
+    joblib.dump([1, 2], path)
+    assert load_artifact(path, "thing") == [1, 2]  # the caller checks the type
+
+
+def test_load_artifact_does_not_show_the_unpickling_error_of_a_file_that_is_no_artifact(tmp_path: Path) -> None:
+    path = tmp_path / "junk.joblib"
+    path.write_bytes(b"not a pickle at all")
+    with pytest.raises(ValueError) as caught:
+        load_artifact(path, "thing")
+    assert str(caught.value) == "junk.joblib: not a readable CRF artifact"

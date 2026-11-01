@@ -245,6 +245,26 @@ def test_train_hmm_with_a_malformed_config_or_manifest_is_one_error_line(
     assert not output.exists()
 
 
+REAL_LABEL_CONFIG = (ROOT / "configs/label_sets.yaml").read_text(encoding="utf-8")
+LABEL_CONFIG_PROBLEMS = [  # (id, the label config file's text, the one reason train-hmm gives for it)
+    ("invalid-yaml", "a: [unclosed\n", "not valid YAML"),
+    ("missing-section", "schema_version: 1\n", "missing punctuation"),
+    ("wrong-structure", REAL_LABEL_CONFIG.replace("casing: [LOWER, FIRST_UPPER, ALL_UPPER]", "casing: [LOWER]"),
+     "does not have the agreed 4/8/12 structure"),
+]
+
+
+@pytest.mark.parametrize(("text", "reason"), [(text, reason) for _, text, reason in LABEL_CONFIG_PROBLEMS],
+                         ids=[name for name, _, _ in LABEL_CONFIG_PROBLEMS])
+def test_train_hmm_names_what_is_wrong_with_its_label_config_in_one_line(
+        text: str, reason: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    argv, _, _, output = setup_run(tmp_path)
+    (tmp_path / "broken.input").write_text(text, encoding="utf-8")
+    assert train_hmm.main([*argv[2:], "--label-config", str(tmp_path / "broken.input")]) == 1
+    assert assert_one_error_line(capsys, tmp_path, "broken.input") == f"error: broken.input: {reason}\n"
+    assert not output.exists()
+
+
 @pytest.mark.parametrize("flag", ["--release-manifest", "--selection-record"])
 @pytest.mark.parametrize("kind", ["nested", "not-utf8", "array"])
 def test_predict_hmm_with_a_malformed_manifest_or_selection_record_is_one_error_line(

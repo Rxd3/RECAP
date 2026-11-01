@@ -14,7 +14,6 @@ Existing outputs are never overwritten and folders are never created.
 from __future__ import annotations
 
 import argparse
-import errno
 import json
 import sys
 from collections.abc import Callable
@@ -44,8 +43,7 @@ from punct_restore.evaluation.uncertainty import (
     MIN_RESAMPLES,
 )
 from punct_restore.prediction_io import (
-    OS_REASONS,
-    os_error_code,
+    one_line_error,
     reconfigure_stdout,
     refuse_existing,
     write_new_file,
@@ -182,16 +180,6 @@ def _baseline(args: argparse.Namespace) -> None:
 COMMANDS = {"score": _score, "compare": _compare, "errors": _errors, "baseline": _baseline}
 
 
-def _os_message(exc: OSError) -> str:
-    """The OS error with its path as given (this command's output wording is pinned by its tests)."""
-    path = exc.filename if exc.filename is not None else "(unknown path)"
-    code = os_error_code(exc)
-    reason = OS_REASONS.get(code)
-    if reason is None:
-        return f"cannot access {path}: {exc.strerror or type(exc).__name__}"
-    return f"{path} {reason}" if code == errno.EEXIST else f"{reason}: {path}"
-
-
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     reconfigure_stdout()  # cp1252 consoles cannot print every model or file name
@@ -201,7 +189,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 1
     except OSError as exc:
-        print(f"error: {_os_message(exc)}", file=sys.stderr)
+        print(f"error: {one_line_error(exc)}", file=sys.stderr)
         return 1
     return 0
 

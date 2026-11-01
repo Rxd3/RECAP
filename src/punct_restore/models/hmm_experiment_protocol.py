@@ -3,7 +3,6 @@ winner selection."""
 
 from __future__ import annotations
 
-import json
 import math
 from collections.abc import Mapping
 from datetime import UTC, datetime
@@ -13,6 +12,10 @@ from typing import Any
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm_workflow import checked_release_file, file_identity, read_release_manifest
 from punct_restore.paths import REPO_ROOT as ROOT
+
+# isort: split
+# old import path kept: the one JSON reader is in file_io
+from punct_restore.file_io import read_json as read_json
 
 # What an experiment config must hold for the steps after validate_config to index it without a KeyError.
 _CONFIG_SCHEMA = {
@@ -31,22 +34,6 @@ _KIND_NAMES = {str: "nonempty text", list: "a JSON list", float: "a number"}
 def now() -> str:
     """The current UTC time as an ISO string."""
     return datetime.now(UTC).isoformat()
-
-
-def read_json(path: Path) -> Any:
-    """Parse a UTF-8 JSON file.
-
-    Raises:
-        OSError: If the file cannot be read.
-        ValueError: One line, ``<file name>: not valid UTF-8`` or ``<file name>: not valid JSON`` (also for a
-            document nested too deeply).
-    """
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"{path.name}: not valid UTF-8") from exc
-    except (json.JSONDecodeError, RecursionError) as exc:  # RecursionError: nested too deeply for the parser
-        raise ValueError(f"{path.name}: not valid JSON") from exc
 
 
 def _has_kind(value: Any, kind: type) -> bool:

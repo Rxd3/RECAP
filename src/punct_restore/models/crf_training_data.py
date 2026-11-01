@@ -6,11 +6,11 @@ punct_restore.models.crf_training.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-from punct_restore.prediction_io import parse_sample_record, read_ids, require_file
+from punct_restore.file_io import iter_jsonl, require_file
+from punct_restore.prediction_io import parse_sample_record, read_ids
 
 
 def _check_selected_record(rec: dict[str, Any], sample_id: str, expected_mode: str) -> None:
@@ -51,17 +51,6 @@ def _check_selected_record(rec: dict[str, Any], sample_id: str, expected_mode: s
             )
 
 
-def _sample_records(input_path: Path) -> Iterator[dict[str, Any]]:
-    """Every record of the JSONL file in order; ValueError names the file (and line) of a bad line or bad bytes."""
-    try:
-        with open(input_path, encoding="utf-8") as f:
-            for line_num, line in enumerate(f, 1):
-                if line.strip():
-                    yield parse_sample_record(line.strip(), f"{input_path.name} line {line_num}")
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"{input_path.name}: not valid UTF-8") from exc
-
-
 def _scan_selected_records(
     input_path: Path,
     target_id_set: set[str],
@@ -71,7 +60,7 @@ def _scan_selected_records(
     selected_records: list[dict[str, Any]] = []
     found_ids: set[str] = set()
 
-    for rec in _sample_records(input_path):
+    for _, rec in iter_jsonl(input_path, parse_sample_record):
         sample_id = rec["sample_id"]
         if sample_id in target_id_set:  # selected
             if sample_id in found_ids:

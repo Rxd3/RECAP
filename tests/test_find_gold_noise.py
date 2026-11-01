@@ -288,7 +288,7 @@ def test_a_failed_final_rename_leaves_no_out_and_no_temporary_folder(
     def deny(src: object, dst: object) -> None:
         raise PermissionError(13, "Permission denied", str(out))
 
-    monkeypatch.setattr(mod.os, "replace", deny)
+    monkeypatch.setattr(os, "replace", deny)
     err = refused(mod, capsys, argv_for(root, out), tmp_path)
     assert err == "error: out: Permission denied\n"
     assert sorted(p.name for p in tmp_path.iterdir()) == ["data"]
@@ -359,7 +359,7 @@ def test_a_denied_rename_of_the_temporary_folder_still_says_permission_denied(
     def deny(src: object, dst: object) -> None:
         raise PermissionError(13, "Permission denied", str(src), None, str(dst))
 
-    monkeypatch.setattr(mod.os, "replace", deny)
+    monkeypatch.setattr(os, "replace", deny)
     err = refused(mod, capsys, argv_for(root, tmp_path / "out"), tmp_path)
     assert err.endswith(": Permission denied\n") and "folder" not in err
     assert nothing_else_in(tmp_path)

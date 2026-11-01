@@ -43,6 +43,7 @@ from typing import Any
 
 from punct_restore.features.crf_features import FeatureConfig
 from punct_restore.features.word_clusters import load_cluster_map
+from punct_restore.file_io import iter_jsonl
 from punct_restore.hashing import sha256_file
 from punct_restore.models.crf import CRFModel
 from punct_restore.models.factored import combine
@@ -155,20 +156,13 @@ def read_records(path: Path, ids: set[str]) -> dict[str, dict[str, Any]]:
     """Stream a JSONL file and keep only the rows whose sample_id is in ids."""
     keep: dict[str, dict[str, Any]] = {}
     seen: set[str] = set()
-    try:
-        with open(path, encoding="utf-8") as handle:
-            for number, line in enumerate(handle, start=1):
-                if not line.strip():
-                    continue
-                row = parse_sample_record(line, f"{path.name} line {number}")
-                sid = row["sample_id"]
-                if sid in seen:
-                    raise ValueError(f"{path.name} line {number}: duplicate sample_id {sid!r}")
-                seen.add(sid)
-                if sid in ids:
-                    keep[sid] = row
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"{path.name}: not valid UTF-8") from exc
+    for number, row in iter_jsonl(path, parse_sample_record):
+        sid = row["sample_id"]
+        if sid in seen:
+            raise ValueError(f"{path.name} line {number}: duplicate sample_id {sid!r}")
+        seen.add(sid)
+        if sid in ids:
+            keep[sid] = row
     missing = ids - keep.keys()
     if missing:
         raise ValueError(f"{len(missing)} IDs missing from {path.name}")

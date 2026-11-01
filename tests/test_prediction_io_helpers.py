@@ -96,6 +96,26 @@ def test_one_line_error_falls_back_to_the_text_of_an_os_error_without_a_reason()
     assert prediction_io.one_line_error(OSError("plain\ntext")) == "plain text"
 
 
+# --- os_reason ------------------------------------------------------------------------------------
+
+
+def test_os_reason_is_the_system_text_of_the_error() -> None:
+    assert prediction_io.os_reason(OSError(errno.ENOSPC, "No space left on device", "out.jsonl")) == (
+        "No space left on device")
+
+
+def test_os_reason_says_folder_for_a_folder_opened_as_a_file_even_when_windows_says_permission_denied(
+        tmp_path: Path) -> None:
+    folder = tmp_path / "adir"
+    folder.mkdir()
+    assert prediction_io.os_reason(PermissionError(errno.EACCES, "Permission denied", str(folder))) == (
+        "is a folder, not a file")
+
+
+def test_os_reason_is_none_when_the_error_has_no_system_text() -> None:
+    assert prediction_io.os_reason(OSError("plain")) is None
+
+
 # --- check_script_paths --------------------------------------------------------------------------
 
 

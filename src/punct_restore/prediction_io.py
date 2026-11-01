@@ -1,6 +1,6 @@
 """Input/output shared by the commands: gold-free prediction files and manifests (train_crf, tune_threshold,
-project_joint, factor_predictions), the one ``.ids`` reader, the JSON-line parsers, the create-new-file writer,
-output path checks and one-line errors."""
+project_joint, factor_predictions), the one ``.ids`` reader, the JSON-line parsers, output path checks and one-line
+errors. The file-level helpers (create-new writers, JSONL and JSON readers) are in punct_restore.file_io."""
 
 from __future__ import annotations
 
@@ -14,7 +14,13 @@ from pathlib import Path
 from typing import Any
 
 from .evaluation.inputs import file_identity
+from .file_io import iter_jsonl, require_file
 from .hashing import sha256_file
+
+# isort: split
+# old import path kept: these helpers moved to file_io (restructure spec section 2)
+from .file_io import refuse_existing as refuse_existing
+from .file_io import write_new_file as write_new_file
 
 
 def read_ids(path: str | os.PathLike[str], *, strict: bool = False, allow_empty: bool = False) -> list[str]:
@@ -68,21 +74,6 @@ def read_frozen_ids(ids_path: Path) -> list[str]:
     return read_ids(ids_path)
 
 
-def require_file(path: str | os.PathLike[str], what: str) -> None:
-    """Raise unless ``path`` is a file, in one line that names it by name only (the folder is never shown).
-
-    Raises:
-        IsADirectoryError: ``<name>: is a folder, not a file`` for a folder.
-        FileNotFoundError: ``<name>: <what> not found`` for anything else that is not a file.
-    """
-    path = Path(path)
-    name = Path(os.path.abspath(path)).name or str(path)
-    if path.is_dir():
-        raise IsADirectoryError(f"{name}: is a folder, not a file")
-    if not path.is_file():
-        raise FileNotFoundError(f"{name}: {what} not found")
-
-
 def parse_json_object(line: str, where: str) -> dict[str, Any]:
     """The JSON object on ``line``; ``where`` (file name and line number) starts the one-line ValueError."""
     try:
@@ -103,23 +94,6 @@ def parse_sample_record(line: str, where: str) -> dict[str, Any]:
     return record
 
 
-def write_new_file(path: Path, text: str, *, newline: str | None = "\n") -> None:
-    """Create ``path`` holding ``text`` as UTF-8, with LF line ends unless ``newline`` says otherwise.
-
-    A file that already exists is never replaced and never deleted (FileExistsError). If writing fails, the
-    half-written file this call created is deleted (a delete that itself fails is ignored) and the write
-    error is re-raised.
-    """
-    handle = open(path, "x", encoding="utf-8", newline=newline)  # FileExistsError here: not our file
-    try:
-        with handle:
-            handle.write(text)
-    except BaseException:
-        with contextlib.suppress(OSError):
-            path.unlink(missing_ok=True)
-        raise
-
-
 def _gold_free_observation(rec: Mapping[str, Any], line_num: int) -> dict[str, Any]:
     """Keep only sample_id and validated observable tokens (strictly gold-free)."""
     s_id = rec["sample_id"]
@@ -129,17 +103,6 @@ def _gold_free_observation(rec: Mapping[str, Any], line_num: int) -> dict[str, A
     if any(not isinstance(t, str) or not t.strip() for t in tokens):
         raise ValueError(f"Tokens contain invalid elements at line {line_num} for ID {s_id!r}")
     return {"sample_id": s_id, "tokens": list(tokens)}
-
-
-def _sample_records(path: Path) -> Iterator[tuple[int, dict[str, Any]]]:
-    """``(line number, record)`` of every nonblank line of a JSONL file; ValueError names the file (and line)."""
-    try:
-        with open(path, encoding="utf-8") as f:
-            for number, line in enumerate(f, 1):
-                if line.strip():
-                    yield number, parse_sample_record(line.strip(), f"{path.name} line {number}")
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"{path.name}: not valid UTF-8") from exc
 
 
 def read_observations(input_path: Path, ids_path: Path | None) -> list[dict[str, Any]]:
@@ -159,7 +122,7 @@ def read_observations(input_path: Path, ids_path: Path | None) -> list[dict[str,
 
     observations: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
-    for line_num, rec in _sample_records(input_path):
+    for line_num, rec in iter_jsonl(input_path, parse_sample_record):
         s_id = rec["sample_id"]
         if s_id in seen_ids:
             raise ValueError(f"Duplicate sample_id {s_id!r} encountered at line {line_num}")
@@ -247,17 +210,6 @@ def write_prediction_outputs(
             for path in started:
                 with contextlib.suppress(OSError):
                     path.unlink(missing_ok=True)
-
-
-def refuse_existing(*paths: Path | None) -> None:
-    """Raise FileExistsError for the first of ``paths`` that already exists; ``None`` entries are skipped.
-
-    A dangling symlink counts as existing. Nothing is touched. The error holds the path as given, so each command
-    words it its own way (``one_line_error`` shows the file name only).
-    """
-    for path in paths:
-        if path is not None and os.path.lexists(path):
-            raise FileExistsError(errno.EEXIST, "already exists; refusing to overwrite", str(path))
 
 
 def same_path(a: str | Path, b: str | Path) -> bool:
@@ -370,6 +322,12 @@ def os_error_code(exc: OSError) -> int | None:
     return exc.errno
 
 
+def os_reason(exc: OSError) -> str | None:
+    """Why an OS error is shown: the folder wording for a folder opened as a file (Windows says "permission
+    denied" for it), else the system text; None when the error has none."""
+    return OS_REASONS[errno.EISDIR] if os_error_code(exc) == errno.EISDIR else exc.strerror
+
+
 def one_line_error(exc: BaseException, *paths: str | os.PathLike[str] | None) -> str:
     """The message on one line, without the ``error: `` prefix.
 
@@ -378,8 +336,7 @@ def one_line_error(exc: BaseException, *paths: str | os.PathLike[str] | None) ->
     """
     text = str(exc)
     if isinstance(exc, OSError):
-        # the system text says "permission denied" for a folder on Windows: that one reason is rewritten
-        reason = OS_REASONS[errno.EISDIR] if os_error_code(exc) == errno.EISDIR else exc.strerror
+        reason = os_reason(exc)
         if reason:
             name = Path(os.fsdecode(exc.filename)).name if exc.filename else ""
             text = f"{name}: {reason}" if name else reason

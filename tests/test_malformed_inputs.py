@@ -332,8 +332,6 @@ TITLES_CASES: dict[str, Builder] = {"prepare-data-build-titles": _prepare_data_t
 YAML_CASES: dict[str, Builder] = {"train-crf-train-config-path": _crf_config}
 MANIFEST_CASES: dict[str, Builder] = {"prepare-data-build-manifest": _prepare_data_manifest}
 ALL_CASES: dict[str, Builder] = {**NESTED_CASES, **NOT_UTF8_CASES, **NOT_A_MODEL_CASES, **YAML_CASES, **MANIFEST_CASES}
-# evaluate-models still shows the full path of a missing file or a folder (cli/evaluate_models.py, _os_message)
-KNOWN_PATH_LEAK = pytest.mark.xfail(strict=True, reason="evaluate-models shows the full path of the input")
 PARAMS = [pytest.param(build, payload, id=f"{kind}-{name}")
           for kind, payload, cases in (("nested", NESTED, NESTED_CASES), ("not-utf8", NOT_UTF8, NOT_UTF8_CASES),
                                        ("not-a-model", NOT_A_MODEL, NOT_A_MODEL_CASES),
@@ -344,8 +342,7 @@ PARAMS = [pytest.param(build, payload, id=f"{kind}-{name}")
                                        ("not-utf8", NOT_UTF8, MANIFEST_CASES),
                                        ("title-not-text", TITLE_NOT_TEXT, TITLES_CASES))
           for name, build in cases.items()]
-PARAMS += [pytest.param(build, kind, id=f"{kind}-{name}",
-                        marks=[KNOWN_PATH_LEAK] if name.startswith("evaluate-") else [])
+PARAMS += [pytest.param(build, kind, id=f"{kind}-{name}")
            for kind in ("missing", "folder") for name, build in ALL_CASES.items()]
 
 

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 from typing import Any
 
 from punct_restore.data.asr_noise import V2_WEIGHTS
@@ -107,8 +107,7 @@ def cell_mean(cell: Mapping[str, Any]) -> Decimal:
 
 def signed_pts(value: Decimal | float) -> str:
     """``value`` (a fraction) as percentage points: rounded once, half-up, with a sign and U+2212 for minus."""
-    exact = value if isinstance(value, Decimal) else dec(value)
-    points = (exact * 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    points = Decimal(pct(value))
     return f"{MINUS if points < 0 else '+'}{abs(points)}"  # a rounded -0.00 is not negative: it prints +0.00
 
 

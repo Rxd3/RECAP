@@ -95,14 +95,22 @@ def load_vocab(path: str | Path = LABEL_SETS_PATH) -> Vocab:
     return Vocab(A=standard, B=extended, C=joint, casing=casing)
 
 
-def file_identity(path: str | Path) -> dict[str, str]:
-    """Repo-relative POSIX path (folder/name outside the repo) and SHA-256; no absolute paths."""
+def file_identity_with(path: str | Path, root: Path, outside_parts: int) -> dict[str, str]:
+    """POSIX path relative to the repository ``root``, and SHA-256; no absolute paths.
+
+    A file outside ``root`` shows its last ``outside_parts`` path parts (2: folder and file name; 1: file name).
+    """
     resolved = Path(path).resolve()
     try:
-        shown = resolved.relative_to(ROOT).as_posix()
+        shown = resolved.relative_to(root).as_posix()
     except ValueError:
-        shown = "/".join(resolved.parts[-2:])
+        shown = "/".join(resolved.parts[-outside_parts:])
     return {"path": shown, "sha256": sha256_file(resolved)}
+
+
+def file_identity(path: str | Path) -> dict[str, str]:
+    """Repo-relative POSIX path (folder/name outside the repo) and SHA-256; no absolute paths."""
+    return file_identity_with(path, ROOT, 2)
 
 
 def _text_lines(path: Path) -> Iterator[tuple[int, str]]:

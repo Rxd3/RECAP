@@ -12,7 +12,7 @@ from typing import Any, Self
 
 import pytest
 
-from punct_restore import prediction_io
+from punct_restore import file_io
 from punct_restore.models.hidden_event_lm import HiddenEventLM, UnigramTruecaser
 
 ARTIFACT_ERROR = "invalid hidden-event LM artifact"
@@ -514,7 +514,7 @@ def test_a_failed_save_removes_the_partial_file_so_a_retry_succeeds(
         return _FullDiskHandle(open(file, mode, *args, **kwargs))  # the one shared writer calls open()
 
     with monkeypatch.context() as patch:
-        patch.setattr(prediction_io, "open", full_disk_open, raising=False)
+        patch.setattr(file_io, "open", full_disk_open, raising=False)
         with pytest.raises(OSError, match="No space left"):
             model.save_model(path)
     assert not path.exists()

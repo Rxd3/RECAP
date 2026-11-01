@@ -34,7 +34,7 @@ def test_source_files_list_each_hmm_command_as_module_then_stub():
               "hmm_experiment_finalize", "hmm_experiment_verify")
     expected = [f"src/punct_restore/models/{name}.py" for name in models]
     shared = ("data/labeling", "data/preprocessing", "data/validation", "evaluation/inputs", "evaluation/metrics",
-              "hashing", "paths", "prediction_io", "progress")  # what the study's modules import, sorted
+              "file_io", "hashing", "paths", "prediction_io", "progress")  # what the study's modules import, sorted
     expected += [f"src/punct_restore/{name}.py" for name in shared]
     for command in HMM_COMMANDS:
         expected += [f"src/punct_restore/cli/{command}.py", f"scripts/{command}.py"]
