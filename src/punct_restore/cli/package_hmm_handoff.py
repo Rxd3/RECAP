@@ -8,6 +8,7 @@ import shutil
 import sys
 import zipfile
 from pathlib import Path
+from typing import Any
 
 from punct_restore.cli.run_hmm_experiments import frozen, now, read_json
 from punct_restore.models.hmm_workflow import (
@@ -18,18 +19,79 @@ from punct_restore.models.hmm_workflow import (
 )
 from punct_restore.paths import REPO_ROOT as ROOT
 
+__all__ = [
+    "ROOT",
+    "code_identity",
+    "file_identity",
+    "frozen",
+    "main",
+    "now",
+    "package",
+    "read_json",
+    "sha256",
+    "write_json",
+]
 
-def package(run, evaluator, output):
-    plan, selection = frozen(run, evaluator)
-    verified = read_json(run / "verification/verification.json")
+_HANDOFF_INSTRUCTIONS = (
+    "# Member 2 HMM handoff\n\n"
+    "This bundle contains the complete verified SponSpeech v2 HMM study: all 27 "
+    "validation candidates, three frozen winners, full validation/test/test_amb "
+    "predictions and sidecars, shared reports/confusions, baselines, error examples, "
+    "runtime measurements, raw commands and independent refit evidence.\n\n"
+    "MODEL_INDEX.json identifies each selected model. Paths are relative to this "
+    "handoff. Every file except SHA256SUMS is checksummed in SHA256SUMS; the ZIP "
+    "has a separate checksum next to it. Data records are distributed separately "
+    "as sponspeech-m1-v2. Keep the supplied CC BY-NC 4.0 attribution with copies.\n\n"
+    "Member 3: compare within a label mode on the same primary IDs.\n"
+    "Member 5: raw prediction JSONL, masks/IDs and scorer input hashes are included.\n"
+    "Member 6: HMMModel.load_model(model_path) returns the fitted model; predict "
+    "accepts dictionaries containing schema_version, sample_id and tokens. "
+    "Do not use an unimplemented generic adapter or substitute O predictions.\n\n"
+    "For reproduction, check out the training implementation commit in plan.json "
+    "(or matching implementation hashes), install config/requirements-hmm.txt, "
+    "place the v2 data at the documented repository paths, and prepare the pinned "
+    "Member 5 worktree from HMM_RUNBOOK.md. Run scripts/verify_hmm_experiments.py "
+    "with --run-dir pointing to this handoff's experiment directory and a fresh "
+    "--output-dir. The verifier independently refits models and checks every prediction. "
+    "All metric values in HMM_RESULTS.md come from measured runs, not templates. "
+    "A/B punctuation and C joint metrics are different tasks.\n"
+)
+
+
+def _check_verification(run: Path, verified: dict[str, Any]) -> None:
+    """Require a passing independent verification bound to this plan and selection."""
     if (
         verified["result"] != "PASS"
         or verified["plan"]["sha256"] != sha256(run / "plan.json")
         or verified["selection"]["sha256"] != sha256(run / "selection.json")
     ):
         raise ValueError("a matching complete independent verification is required")
-    config = plan["config"]
-    results = read_json(run / "results.json")
+
+
+def _check_split_summaries(run: Path, results: dict[str, Any], mode: str) -> None:
+    """Require the results summary of every split to match the actual scored reports."""
+    for split in ["validation", "test", "test_amb"]:
+        folder = run / f"final/mode_{mode}/{split}"
+        metric = read_json(folder / "evaluation.json")
+        baseline = read_json(folder / "shortcut.evaluation.json")
+        summary = results["results"][mode][split]
+        if (
+            summary["primary"] != metric["primary"]
+            or summary["counts"] != metric["counts"]
+            or summary["shortcut_primary"] != baseline["primary"]
+            or summary["evaluation_sha256"] != sha256(folder / "evaluation.json")
+        ):
+            raise ValueError("summary does not match the actual scored reports")
+
+
+def _selected_models(
+    run: Path,
+    config: dict[str, Any],
+    selection: dict[str, Any],
+    verified: dict[str, Any],
+    results: dict[str, Any],
+) -> dict[str, Any]:
+    """Check every frozen winner against the verification and results; describe it for the index."""
     selected = {}
     for mode, winner in selection["modes"].items():
         if verified["modes"][mode]["candidates_independently_checked"] != len(
@@ -38,18 +100,7 @@ def package(run, evaluator, output):
             raise ValueError("not every search candidate was independently checked")
         if sha256(run / winner["model"]) != winner["model_sha256"]:
             raise ValueError("selected model checksum mismatch")
-        for split in ["validation", "test", "test_amb"]:
-            folder = run / f"final/mode_{mode}/{split}"
-            metric = read_json(folder / "evaluation.json")
-            baseline = read_json(folder / "shortcut.evaluation.json")
-            summary = results["results"][mode][split]
-            if (
-                summary["primary"] != metric["primary"]
-                or summary["counts"] != metric["counts"]
-                or summary["shortcut_primary"] != baseline["primary"]
-                or summary["evaluation_sha256"] != sha256(folder / "evaluation.json")
-            ):
-                raise ValueError("summary does not match the actual scored reports")
+        _check_split_summaries(run, results, mode)
         selected[mode] = {
             **winner,
             "path": "experiment/" + winner["model"],
@@ -57,6 +108,11 @@ def package(run, evaluator, output):
                 "training_summary"
             ],
         }
+    return selected
+
+
+def _bundle_paths(run: Path, output: Path) -> tuple[Path, Path, Path]:
+    """Resolve the run and handoff folders; require a new separate folder inside artifacts/."""
     output = output.resolve()
     run = run.resolve()
     if (
@@ -68,6 +124,11 @@ def package(run, evaluator, output):
     archive_path = output.parent / f"{output.name}.zip"
     if output.exists() or archive_path.exists():
         raise ValueError("handoff/archive already exists; use a new immutable handoff ID")
+    return run, output, archive_path
+
+
+def _copy_bundle_files(run: Path, output: Path, config: dict[str, Any]) -> None:
+    """Copy the experiment, data, configuration, results notes and this packager into the handoff."""
     output.mkdir(parents=True, exist_ok=False)
     shutil.copytree(run, output / "experiment")
     processed = ROOT / config["processed_dir"]
@@ -92,32 +153,13 @@ def package(run, evaluator, output):
     shutil.copyfile(ROOT / "experiments/HMM_RUNBOOK.md", output / "HMM_RUNBOOK.md")
     (output / "tools").mkdir()
     shutil.copyfile(Path(__file__), output / "tools/package_hmm_handoff.py")
-    instructions = (
-        "# Member 2 HMM handoff\n\n"
-        "This bundle contains the complete verified SponSpeech v2 HMM study: all 27 "
-        "validation candidates, three frozen winners, full validation/test/test_amb "
-        "predictions and sidecars, shared reports/confusions, baselines, error examples, "
-        "runtime measurements, raw commands and independent refit evidence.\n\n"
-        "MODEL_INDEX.json identifies each selected model. Paths are relative to this "
-        "handoff. Every file except SHA256SUMS is checksummed in SHA256SUMS; the ZIP "
-        "has a separate checksum next to it. Data records are distributed separately "
-        "as sponspeech-m1-v2. Keep the supplied CC BY-NC 4.0 attribution with copies.\n\n"
-        "Member 3: compare within a label mode on the same primary IDs.\n"
-        "Member 5: raw prediction JSONL, masks/IDs and scorer input hashes are included.\n"
-        "Member 6: HMMModel.load_model(model_path) returns the fitted model; predict "
-        "accepts dictionaries containing schema_version, sample_id and tokens. "
-        "Do not use an unimplemented generic adapter or substitute O predictions.\n\n"
-        "For reproduction, check out the training implementation commit in plan.json "
-        "(or matching implementation hashes), install config/requirements-hmm.txt, "
-        "place the v2 data at the documented repository paths, and prepare the pinned "
-        "Member 5 worktree from HMM_RUNBOOK.md. Run scripts/verify_hmm_experiments.py "
-        "with --run-dir pointing to this handoff's experiment directory and a fresh "
-        "--output-dir. The verifier independently refits models and checks every prediction. "
-        "All metric values in HMM_RESULTS.md come from measured runs, not templates. "
-        "A/B punctuation and C joint metrics are different tasks.\n"
-    )
-    (output / "HANDOFF.md").write_text(instructions, encoding="utf-8", newline="\n")
-    index = {
+
+
+def _model_index(
+    output: Path, config: dict[str, Any], plan: dict[str, Any], selected: dict[str, Any]
+) -> dict[str, Any]:
+    """The MODEL_INDEX.json content: selected models and the provenance of every part."""
+    return {
         "schema": "recap-hmm-handoff-v1",
         "created_at_utc": now(),
         "experiment_id": config["experiment_id"],
@@ -135,7 +177,10 @@ def package(run, evaluator, output):
         },
         "license": "CC BY-NC 4.0; see data/SPONSPEECH_LICENSE_AND_ATTRIBUTION.txt",
     }
-    write_json(output / "MODEL_INDEX.json", index)
+
+
+def _bundle_files(output: Path) -> list[Path]:
+    """Every file of the handoff, after rejecting any that names the personal workspace path."""
     files = sorted(path for path in output.rglob("*") if path.is_file())
     forbidden = [str(ROOT), ROOT.as_posix(), str(ROOT).replace("\\", "\\\\")]
     for path in files:
@@ -143,16 +188,21 @@ def package(run, evaluator, output):
             content = path.read_text(encoding="utf-8")
             if any(root in content for root in forbidden):
                 raise ValueError(f"personal absolute workspace path in {path.name}")
-    hashes = {p.relative_to(output).as_posix(): sha256(p) for p in files}
-    sums = "".join(f"{digest}  {name}\n" for name, digest in hashes.items())
-    (output / "SHA256SUMS").write_text(sums, encoding="utf-8", newline="\n")
+    return files
+
+
+def _write_archive(output: Path, archive_path: Path) -> None:
+    """Write the handoff folder into a new deflated ZIP."""
     with zipfile.ZipFile(
         archive_path, "x", compression=zipfile.ZIP_DEFLATED, compresslevel=6
     ) as archive:
         for path in sorted(output.rglob("*")):
             if path.is_file():
                 archive.write(path, output.name + "/" + path.relative_to(output).as_posix())
-    # Round-trip every archived byte through SHA-256, not just the ZIP directory/CRC.
+
+
+def _verify_archive(archive_path: Path, hashes: dict[str, str], sums: str) -> None:
+    """Round-trip every archived byte through SHA-256, not just the ZIP directory/CRC."""
     import hashlib
 
     with zipfile.ZipFile(archive_path) as archive:
@@ -168,6 +218,25 @@ def package(run, evaluator, output):
                 raise ValueError(f"archive member hash mismatch: {relative}")
         if archive.read(members["SHA256SUMS"]).decode("utf-8") != sums:
             raise ValueError("archive checksum index mismatch")
+
+
+def package(run, evaluator, output):
+    plan, selection = frozen(run, evaluator)
+    verified = read_json(run / "verification/verification.json")
+    _check_verification(run, verified)
+    config = plan["config"]
+    results = read_json(run / "results.json")
+    selected = _selected_models(run, config, selection, verified, results)
+    run, output, archive_path = _bundle_paths(run, output)
+    _copy_bundle_files(run, output, config)
+    (output / "HANDOFF.md").write_text(_HANDOFF_INSTRUCTIONS, encoding="utf-8", newline="\n")
+    write_json(output / "MODEL_INDEX.json", _model_index(output, config, plan, selected))
+    files = _bundle_files(output)
+    hashes = {p.relative_to(output).as_posix(): sha256(p) for p in files}
+    sums = "".join(f"{digest}  {name}\n" for name, digest in hashes.items())
+    (output / "SHA256SUMS").write_text(sums, encoding="utf-8", newline="\n")
+    _write_archive(output, archive_path)
+    _verify_archive(archive_path, hashes, sums)
     digest = sha256(archive_path)
     checksum = archive_path.with_suffix(".zip.sha256")
     checksum.write_text(f"{digest}  {archive_path.name}\n", encoding="utf-8", newline="\n")

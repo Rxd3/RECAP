@@ -9,6 +9,7 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
+from typing import Any, NamedTuple
 
 from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_workflow import (
@@ -100,196 +101,267 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+class _Prediction(NamedTuple):
+    """The predictions of a run, with the selection counts and the seconds it took to read the input and predict."""
+
+    records: list[dict[str, Any]]
+    counts: dict[str, int]
+    seconds: float
+
+
+def _verify_release(args: argparse.Namespace) -> dict[str, Any] | None:
+    """Verify the inputs against the data release manifest, when one is given."""
+    if args.release_manifest is None:
+        return None
+    if not (
+        args.preprocessing_version == args.tokenizer_version == args.label_policy_version
+    ):
+        raise ValueError(
+            "this release uses one policy version for preprocessing/tokens/labels"
+        )
+    return verify_training_release(
+        args.release_manifest,
+        train=args.train,
+        train_ids=args.train_ids,
+        split_manifest=args.split_manifest,
+        label_config=args.label_config,
+        mode=args.label_mode,
+        release_id=args.dataset_release_id,
+        policy_version=args.label_policy_version,
+        prediction=args.predict_input,
+        prediction_ids=args.predict_ids,
+    )
+
+
+def _read_selections(
+    args: argparse.Namespace,
+) -> tuple[tuple[str, ...], tuple[str, ...] | None, list[str], dict[str, Any] | None]:
+    """Check the run arguments; read the ID selections, the labels and the optional release record."""
+    if args.output_dir.exists():
+        raise ValueError("output-dir already exists; choose a new run directory")
+    if args.predict_ids is not None and args.predict_input is None:
+        raise ValueError("predict-ids requires predict-input")
+    train_ids = read_id_selection(args.train_ids)
+    prediction_ids = None if args.predict_ids is None else read_id_selection(args.predict_ids)
+    labels = load_labels(args.label_config, args.label_mode)
+    release = _verify_release(args)
+    return train_ids, prediction_ids, labels, release
+
+
+def _build_provenance(args: argparse.Namespace, train_ids: tuple[str, ...], labels: list[str]) -> dict[str, Any]:
+    """Describe the run: versions, identities of every input file, code, environment and hyperparameters."""
+    return {
+        "schema_version": 1,
+        "run_id": args.run_id or args.output_dir.name,
+        "dataset_release_id": args.dataset_release_id,
+        "preprocessing_version": args.preprocessing_version,
+        "tokenizer_version": args.tokenizer_version,
+        "label_policy_version": args.label_policy_version,
+        "training_input": file_identity(args.train),
+        "training_ids": file_identity(args.train_ids),
+        "selected_training_sequences": len(train_ids),
+        "release_manifest": (
+            file_identity(args.release_manifest) if args.release_manifest else None
+        ),
+        "prediction_input": file_identity(args.predict_input) if args.predict_input else None,
+        "prediction_ids": file_identity(args.predict_ids) if args.predict_ids else None,
+        "split_manifest": file_identity(args.split_manifest),
+        "label_configuration": file_identity(args.label_config),
+        "code": code_identity(),
+        "environment": {
+            "python": platform.python_version(),
+            "platform": platform.platform(),
+            "machine": platform.machine(),
+            "implementation": "stdlib_supervised_hmm_v1",
+        },
+        "random_seed": None,
+        "deterministic": True,
+        "label_mode": args.label_mode,
+        "ordered_labels": labels,
+        "smoothing": args.smoothing,
+        "min_token_count": args.min_token_count,
+    }
+
+
+def _training_command(args: argparse.Namespace, run_id: str) -> list[str]:
+    """The portable command line that reproduces this run."""
+    command = [
+        "python",
+        "scripts/train_hmm.py",
+        "--train",
+        portable_path(args.train),
+        "--output-dir",
+        portable_path(args.output_dir),
+        "--train-ids",
+        portable_path(args.train_ids),
+        "--label-mode",
+        args.label_mode,
+        "--run-id",
+        run_id,
+        "--label-config",
+        portable_path(args.label_config),
+        "--smoothing",
+        str(args.smoothing),
+        "--min-token-count",
+        str(args.min_token_count),
+        "--dataset-release-id",
+        args.dataset_release_id,
+        "--preprocessing-version",
+        args.preprocessing_version,
+        "--tokenizer-version",
+        args.tokenizer_version,
+        "--label-policy-version",
+        args.label_policy_version,
+        "--split-manifest",
+        portable_path(args.split_manifest),
+    ]
+    if args.predict_input is not None:
+        command.extend(["--predict-input", portable_path(args.predict_input)])
+    if args.predict_ids is not None:
+        command.extend(["--predict-ids", portable_path(args.predict_ids)])
+    if args.release_manifest is not None:
+        command.extend(["--release-manifest", portable_path(args.release_manifest)])
+    return command
+
+
+def _fit_model(
+    args: argparse.Namespace,
+    labels: list[str],
+    train_ids: tuple[str, ...],
+    release: dict[str, Any] | None,
+    provenance: dict[str, Any],
+) -> tuple[HMMModel, dict[str, int], float]:
+    """Train the HMM on the selected records; return the model, the selection counts and the training seconds."""
+    model = HMMModel(
+        label_mode=args.label_mode,
+        labels=labels,
+        smoothing=args.smoothing,
+        min_token_count=args.min_token_count,
+    )
+    start = perf_counter()
+    training_counts: dict[str, int] = {}
+    model.fit(
+        selected_records(
+            args.train,
+            train_ids,
+            training_mode=args.label_mode,
+            policy_version=release["policy_version"] if release else None,
+            source_revision=release["source"]["revision"] if release else None,
+            counts=training_counts,
+        ),
+        metadata=provenance,
+    )
+    training_seconds = perf_counter() - start
+    return model, training_counts, training_seconds
+
+
+def _predict(
+    args: argparse.Namespace, model: HMMModel, prediction_ids: tuple[str, ...] | None
+) -> _Prediction | None:
+    """Predict the optional prediction input (no gold labels are read); None when there is none."""
+    if args.predict_input is None:
+        return None
+    counts: dict[str, int] = {}
+    start = perf_counter()
+    records = model.predict(selected_records(args.predict_input, prediction_ids, counts=counts))
+    return _Prediction(records, counts, perf_counter() - start)
+
+
+def _verify_inputs_unchanged(args: argparse.Namespace, provenance: dict[str, Any]) -> None:
+    """Raise ValueError when an input file changed since its identity was recorded."""
+    identities = [
+        (args.train, provenance["training_input"]),
+        (args.train_ids, provenance["training_ids"]),
+        (args.split_manifest, provenance["split_manifest"]),
+        (args.label_config, provenance["label_configuration"]),
+    ]
+    if args.release_manifest is not None:
+        identities.append((args.release_manifest, provenance["release_manifest"]))
+    if args.predict_input is not None:
+        identities.append((args.predict_input, provenance["prediction_input"]))
+    if args.predict_ids is not None:
+        identities.append((args.predict_ids, provenance["prediction_ids"]))
+    for path, identity in identities:
+        if sha256(path) != identity["sha256"]:
+            raise ValueError(f"{path.name}: input changed during the run")
+
+
+def _save_model(output_dir: Path, model: HMMModel) -> str:
+    """Create the run directory, save the model in it and return the model's SHA-256."""
+    output_dir.mkdir(parents=True, exist_ok=False)
+    model_path = output_dir / "model.json"
+    model.save_model(model_path)
+    return sha256(model_path)
+
+
+def _write_predictions(
+    args: argparse.Namespace,
+    labels: list[str],
+    provenance: dict[str, Any],
+    model_hash: str,
+    prediction: _Prediction,
+) -> None:
+    """Write predictions.jsonl and its manifest into the run directory."""
+    prediction_path = args.output_dir / "predictions.jsonl"
+    with prediction_path.open("x", encoding="utf-8", newline="\n") as handle:
+        for record in prediction.records:
+            handle.write(json.dumps(record, ensure_ascii=False, allow_nan=False) + "\n")
+    prediction_manifest = {
+        "schema_version": 1,
+        "run_id": provenance["run_id"],
+        "model_name": "hmm",
+        "label_mode": args.label_mode,
+        "ordered_labels": labels,
+        "model_sha256": model_hash,
+        "input": provenance["prediction_input"],
+        "ids": file_identity(args.predict_ids) if args.predict_ids else None,
+        "predictions_sha256": sha256(prediction_path),
+        "num_sequences": len(prediction.records),
+        "num_tokens": prediction.counts["selected_tokens"],
+        "prediction_seconds_including_input": prediction.seconds,
+        "selection_counts": prediction.counts,
+        "provenance": provenance,
+    }
+    (args.output_dir / "predictions.manifest.json").write_text(
+        json.dumps(prediction_manifest, ensure_ascii=False, indent=2, allow_nan=False)
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def _run(args: argparse.Namespace) -> None:
+    """Validate the inputs, train, optionally predict, then write every run output."""
+    train_ids, prediction_ids, labels, release = _read_selections(args)
+    provenance = _build_provenance(args, train_ids, labels)
+    provenance["command"] = _training_command(args, provenance["run_id"])
+    started_at = datetime.now(UTC).isoformat()
+    model, training_counts, training_seconds = _fit_model(args, labels, train_ids, release, provenance)
+    prediction = _predict(args, model, prediction_ids)
+    _verify_inputs_unchanged(args, provenance)
+    # All input validation finishes before creating any run outputs.
+    model_hash = _save_model(args.output_dir, model)
+    if prediction is not None:
+        _write_predictions(args, labels, provenance, model_hash, prediction)
+    run = {
+        "model_name": "hmm",
+        "started_at_utc": started_at,
+        "training_seconds": training_seconds,
+        "training_summary": model.training_summary,
+        "selection_counts": training_counts,
+        "model_file": "model.json",
+        "model_sha256": model_hash,
+        "provenance": provenance,
+    }
+    (args.output_dir / "run.json").write_text(
+        json.dumps(run, ensure_ascii=False, indent=2, allow_nan=False) + "\n", encoding="utf-8"
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
-        if args.output_dir.exists():
-            raise ValueError("output-dir already exists; choose a new run directory")
-        if args.predict_ids is not None and args.predict_input is None:
-            raise ValueError("predict-ids requires predict-input")
-        train_ids = read_id_selection(args.train_ids)
-        prediction_ids = None if args.predict_ids is None else read_id_selection(args.predict_ids)
-        labels = load_labels(args.label_config, args.label_mode)
-        release = None
-        if args.release_manifest is not None:
-            if not (
-                args.preprocessing_version == args.tokenizer_version == args.label_policy_version
-            ):
-                raise ValueError(
-                    "this release uses one policy version for preprocessing/tokens/labels"
-                )
-            release = verify_training_release(
-                args.release_manifest,
-                train=args.train,
-                train_ids=args.train_ids,
-                split_manifest=args.split_manifest,
-                label_config=args.label_config,
-                mode=args.label_mode,
-                release_id=args.dataset_release_id,
-                policy_version=args.label_policy_version,
-                prediction=args.predict_input,
-                prediction_ids=args.predict_ids,
-            )
-        provenance = {
-            "schema_version": 1,
-            "run_id": args.run_id or args.output_dir.name,
-            "dataset_release_id": args.dataset_release_id,
-            "preprocessing_version": args.preprocessing_version,
-            "tokenizer_version": args.tokenizer_version,
-            "label_policy_version": args.label_policy_version,
-            "training_input": file_identity(args.train),
-            "training_ids": file_identity(args.train_ids),
-            "selected_training_sequences": len(train_ids),
-            "release_manifest": (
-                file_identity(args.release_manifest) if args.release_manifest else None
-            ),
-            "prediction_input": file_identity(args.predict_input) if args.predict_input else None,
-            "prediction_ids": file_identity(args.predict_ids) if args.predict_ids else None,
-            "split_manifest": file_identity(args.split_manifest),
-            "label_configuration": file_identity(args.label_config),
-            "code": code_identity(),
-            "environment": {
-                "python": platform.python_version(),
-                "platform": platform.platform(),
-                "machine": platform.machine(),
-                "implementation": "stdlib_supervised_hmm_v1",
-            },
-            "random_seed": None,
-            "deterministic": True,
-            "label_mode": args.label_mode,
-            "ordered_labels": labels,
-            "smoothing": args.smoothing,
-            "min_token_count": args.min_token_count,
-        }
-        command = [
-            "python",
-            "scripts/train_hmm.py",
-            "--train",
-            portable_path(args.train),
-            "--output-dir",
-            portable_path(args.output_dir),
-            "--train-ids",
-            portable_path(args.train_ids),
-            "--label-mode",
-            args.label_mode,
-            "--run-id",
-            provenance["run_id"],
-            "--label-config",
-            portable_path(args.label_config),
-            "--smoothing",
-            str(args.smoothing),
-            "--min-token-count",
-            str(args.min_token_count),
-            "--dataset-release-id",
-            args.dataset_release_id,
-            "--preprocessing-version",
-            args.preprocessing_version,
-            "--tokenizer-version",
-            args.tokenizer_version,
-            "--label-policy-version",
-            args.label_policy_version,
-            "--split-manifest",
-            portable_path(args.split_manifest),
-        ]
-        if args.predict_input is not None:
-            command.extend(["--predict-input", portable_path(args.predict_input)])
-        if args.predict_ids is not None:
-            command.extend(["--predict-ids", portable_path(args.predict_ids)])
-        if args.release_manifest is not None:
-            command.extend(["--release-manifest", portable_path(args.release_manifest)])
-        provenance["command"] = command
-        started_at = datetime.now(UTC).isoformat()
-        model = HMMModel(
-            label_mode=args.label_mode,
-            labels=labels,
-            smoothing=args.smoothing,
-            min_token_count=args.min_token_count,
-        )
-        start = perf_counter()
-        training_counts = {}
-        model.fit(
-            selected_records(
-                args.train,
-                train_ids,
-                training_mode=args.label_mode,
-                policy_version=release["policy_version"] if release else None,
-                source_revision=release["source"]["revision"] if release else None,
-                counts=training_counts,
-            ),
-            metadata=provenance,
-        )
-        training_seconds = perf_counter() - start
-        predictions = None
-        prediction_input = None
-        prediction_seconds = None
-        prediction_counts = {}
-        if args.predict_input is not None:
-            prediction_input = provenance["prediction_input"]
-            start = perf_counter()
-            predictions = model.predict(
-                selected_records(args.predict_input, prediction_ids, counts=prediction_counts)
-            )
-            prediction_seconds = perf_counter() - start
-        identities = [
-            (args.train, provenance["training_input"]),
-            (args.train_ids, provenance["training_ids"]),
-            (args.split_manifest, provenance["split_manifest"]),
-            (args.label_config, provenance["label_configuration"]),
-        ]
-        if args.release_manifest is not None:
-            identities.append((args.release_manifest, provenance["release_manifest"]))
-        if args.predict_input is not None:
-            identities.append((args.predict_input, prediction_input))
-        if args.predict_ids is not None:
-            identities.append((args.predict_ids, provenance["prediction_ids"]))
-        for path, identity in identities:
-            if sha256(path) != identity["sha256"]:
-                raise ValueError(f"{path.name}: input changed during the run")
-        # All input validation finishes before creating any run outputs.
-        args.output_dir.mkdir(parents=True, exist_ok=False)
-        model_path = args.output_dir / "model.json"
-        model.save_model(model_path)
-        model_hash = sha256(model_path)
-        if predictions is not None:
-            prediction_path = args.output_dir / "predictions.jsonl"
-            with prediction_path.open("x", encoding="utf-8", newline="\n") as handle:
-                for record in predictions:
-                    handle.write(json.dumps(record, ensure_ascii=False, allow_nan=False) + "\n")
-            prediction_manifest = {
-                "schema_version": 1,
-                "run_id": provenance["run_id"],
-                "model_name": "hmm",
-                "label_mode": args.label_mode,
-                "ordered_labels": labels,
-                "model_sha256": model_hash,
-                "input": prediction_input,
-                "ids": file_identity(args.predict_ids) if args.predict_ids else None,
-                "predictions_sha256": sha256(prediction_path),
-                "num_sequences": len(predictions),
-                "num_tokens": prediction_counts["selected_tokens"],
-                "prediction_seconds_including_input": prediction_seconds,
-                "selection_counts": prediction_counts,
-                "provenance": provenance,
-            }
-            (args.output_dir / "predictions.manifest.json").write_text(
-                json.dumps(prediction_manifest, ensure_ascii=False, indent=2, allow_nan=False)
-                + "\n",
-                encoding="utf-8",
-            )
-        run = {
-            "model_name": "hmm",
-            "started_at_utc": started_at,
-            "training_seconds": training_seconds,
-            "training_summary": model.training_summary,
-            "selection_counts": training_counts,
-            "model_file": "model.json",
-            "model_sha256": model_hash,
-            "provenance": provenance,
-        }
-        (args.output_dir / "run.json").write_text(
-            json.dumps(run, ensure_ascii=False, indent=2, allow_nan=False) + "\n", encoding="utf-8"
-        )
+        _run(args)
     except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
         parser.error(str(exc))
     print(f"Saved HMM to {args.output_dir / 'model.json'}")

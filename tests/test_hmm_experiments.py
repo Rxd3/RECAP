@@ -21,7 +21,9 @@ def config():
 
 def test_source_files_list_each_hmm_command_as_module_then_stub():
     """The hashed code names the file that holds it, then the stub that still runs it."""
-    expected = ["src/punct_restore/models/hmm.py", "src/punct_restore/models/hmm_workflow.py"]
+    models = ("hmm", "hmm_validation", "hmm_workflow", "hmm_experiment_protocol", "hmm_experiment_commands",
+              "hmm_experiment_runtime", "hmm_experiment_audit")
+    expected = [f"src/punct_restore/models/{name}.py" for name in models]
     for command in HMM_COMMANDS:
         expected += [f"src/punct_restore/cli/{command}.py", f"scripts/{command}.py"]
     assert list(workflow.SOURCE_FILES) == expected
