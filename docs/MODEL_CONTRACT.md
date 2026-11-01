@@ -113,16 +113,15 @@ manifests are separate sidecars, not prediction manifests.
 
   A `model_family` field wins over `model_name`. A family from the other suffix's table (for example
   `"crf"` in a `.json` file) is refused. `.joblib` and `.pkl` files are pickles: load trusted files only.
-- **Order of the checks:** suffix, then folder, then missing file, then reading the file, then the
-  family marker. So a folder without a model suffix gets the suffix error
-  (`unsupported model file: <name> (expected .json, .joblib or .pkl)`), not the folder error.
-- **Loading errors** (one line, file name only):
-  - another suffix: `ValueError` `unsupported model file: <name> (expected .json, .joblib or .pkl)`;
-  - a folder: `IsADirectoryError` `model path is a folder, not a file: <name>`;
-  - a missing file: `FileNotFoundError` `model file not found: <name>`;
-  - a file that cannot be read: `OSError` `cannot read model file <name>: <reason>`;
-  - invalid JSON or a file that does not unpickle: `ValueError` `unsupported model file: <name> (unreadable)`;
-  - no dict, or a missing or unknown family: `ValueError` `unsupported model file: <name> (unknown model family)`.
+- **Order of the checks:** folder, then missing file, then suffix, then reading the file, then the
+  family marker. So a folder gets the folder error whatever its name.
+- **Loading errors** (one line, file name only; the demo prints each as `error: <line>`):
+  - a folder: `IsADirectoryError` `<name>: is a folder, not a file`;
+  - a missing file: `FileNotFoundError` `<name>: model file not found`;
+  - another suffix: `ValueError` `<name>: unsupported model file (expected .json, .joblib or .pkl)`;
+  - a file that cannot be read: `OSError` `<name>: cannot read model file (<reason>)`;
+  - invalid JSON or a file that does not unpickle: `ValueError` `<name>: unsupported model file (unreadable)`;
+  - no dict, or a missing or unknown family: `ValueError` `<name>: unsupported model file (unknown model family)`.
 
   After dispatch, the class loader's own errors pass through unchanged.
 - **Label mode:** `ModelAdapter` accepts models in modes A, B and C only. Any other mode, such as a
