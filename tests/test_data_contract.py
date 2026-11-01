@@ -56,7 +56,7 @@ def test_approved_projection_is_exactly_the_d5_mapping():
 
 def test_unapproved_projection_is_still_refused():
     unapproved = {**LS, "projection": {**LS["projection"], "approved": False}}
-    with pytest.raises(PermissionError):
+    with pytest.raises(ValueError, match="not approved"):
         labeling.project_extended_to_standard(["DASH"], unapproved)
 
 

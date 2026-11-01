@@ -156,7 +156,7 @@ def extract_ranges(raw_root, url=ARCHIVE_URL, fetch=None, log=print):
                     written.add(m.name)
                     break
         except (tarfile.ReadError, EOFError, zlib.error):
-            pass
+            pass  # the head range stops inside a gzip block; verify_extraction reports utt2spk if it was not reached
     for r in TEXT_RANGES:
         buf = fetch(r["start"], r["length"], r["sha256"])
         n = 0
@@ -173,7 +173,7 @@ def extract_archive(archive_path, raw_root, log=print):
     """Fallback: stream a fully downloaded sponspeech.tar.gz and keep only the non-audio members."""
     size = os.path.getsize(archive_path)
     if size != ARCHIVE_BYTES:
-        raise SourceChanged(f"{archive_path} has {size} bytes; expected {ARCHIVE_BYTES}")
+        raise SourceChanged(f"{Path(archive_path).name}: has {size} bytes; expected {ARCHIVE_BYTES}")
     n = 0
     with tarfile.open(archive_path, mode="r|gz") as tf:
         for m in tf:

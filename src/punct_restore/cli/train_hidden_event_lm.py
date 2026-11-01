@@ -27,8 +27,10 @@ from typing import Any
 from punct_restore.models.hidden_event_lm import HiddenEventLM
 from punct_restore.prediction_io import (
     check_new_output_paths,
+    one_line_error,
     read_frozen_ids,
     read_observations,
+    reconfigure_stdout,
     write_prediction_outputs,
 )
 
@@ -162,16 +164,7 @@ def _cmd_predict(args: argparse.Namespace) -> str:
 
 def _one_line(exc: ValueError | OSError | RecursionError, args: argparse.Namespace) -> str:
     """The message on one line, with files named by name only (an OSError reports just its file's name)."""
-    text = str(exc)
-    if isinstance(exc, OSError) and exc.strerror:
-        text = exc.strerror
-        if exc.filename is not None:
-            text = f"{Path(os.fsdecode(exc.filename)).name}: {text}"
-    for option in PATH_OPTIONS:
-        value = getattr(args, option, None)
-        if value:
-            text = text.replace(str(Path(value)), Path(value).name)
-    return " ".join(text.splitlines())
+    return one_line_error(exc, *(getattr(args, option, None) for option in PATH_OPTIONS))
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -205,9 +198,7 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point: 0 on success, 1 with one ``error:`` line on stderr, 2 on usage errors."""
     # A path the console code page cannot encode must not crash the run after files are written.
-    reconfigure = getattr(sys.stdout, "reconfigure", None)
-    if reconfigure is not None:
-        reconfigure(errors="backslashreplace")
+    reconfigure_stdout()
     args = _build_parser().parse_args(argv)
     try:
         summary = args.handler(args)

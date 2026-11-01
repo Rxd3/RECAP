@@ -35,6 +35,19 @@ def _print_artifact_summary(bundle: dict[str, Any], model_path: Path) -> None:
         print(f"  {k:24}: {v}")
 
 
+def _read_companion_manifest(path: Path) -> dict[str, Any] | None:
+    """The manifest object at ``path``, or None after a one-line note that the file is unreadable."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):  # unreadable, not UTF-8 (ValueError) or not JSON (JSONDecodeError is a ValueError)
+        data = None
+    if not isinstance(data, dict) or not isinstance(data.get("provenance", {}), dict):
+        sys.stderr.write(f"Note: companion manifest unreadable: {path.name}\n")
+        return None
+    return data
+
+
 def _print_companion_manifest(model_path: Path) -> None:
     """Display the first readable companion manifest that sits next to the artifact, if any."""
     manifest_candidates = [
@@ -42,22 +55,19 @@ def _print_companion_manifest(model_path: Path) -> None:
         model_path.with_suffix(".joblib.manifest.json"),
         model_path.with_suffix(".manifest.json"),
     ]
-    for mc in manifest_candidates:
-        if mc.is_file():
-            try:
-                with open(mc, encoding="utf-8") as f:
-                    m_data = json.load(f)
-                print("\nCompanion Manifest:")
-                print(f"  Run ID:                 {m_data.get('run_id')}")
-                print(f"  Dataset Release:        {m_data.get('provenance', {}).get('dataset_release')}")
-                print(f"  Policy Version:         {m_data.get('provenance', {}).get('policy_version')}")
-                print(f"  Code Fingerprint:       {m_data.get('code_fingerprint')}")
-                print(f"  Fingerprinted Files:    {len(m_data.get('fingerprinted_files', []))} files")
-                print(f"  Training Duration:      {m_data.get('training_duration_seconds')}s")
-                print(f"  Reproducibility Note:   {m_data.get('reproducibility_warning')}")
-                break
-            except Exception:
-                pass
+    for mc in dict.fromkeys(manifest_candidates):  # for a .joblib artifact the first two are the same file
+        m_data = _read_companion_manifest(mc) if mc.is_file() else None
+        if m_data is None:
+            continue
+        print("\nCompanion Manifest:")
+        print(f"  Run ID:                 {m_data.get('run_id')}")
+        print(f"  Dataset Release:        {m_data.get('provenance', {}).get('dataset_release')}")
+        print(f"  Policy Version:         {m_data.get('provenance', {}).get('policy_version')}")
+        print(f"  Code Fingerprint:       {m_data.get('code_fingerprint')}")
+        print(f"  Fingerprinted Files:    {len(m_data.get('fingerprinted_files', []))} files")
+        print(f"  Training Duration:      {m_data.get('training_duration_seconds')}s")
+        print(f"  Reproducibility Note:   {m_data.get('reproducibility_warning')}")
+        break
 
 
 def cmd_inspect(args: argparse.Namespace) -> int:

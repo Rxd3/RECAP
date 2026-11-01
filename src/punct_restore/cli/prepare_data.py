@@ -19,6 +19,7 @@ import sys
 from punct_restore.data import extraction
 from punct_restore.data.release import build_release
 from punct_restore.paths import REPO_ROOT as ROOT
+from punct_restore.prediction_io import one_line_error
 
 
 def run_extract(a):
@@ -38,7 +39,7 @@ def run_build(a):
     titles = os.path.join(a.raw_root, "video_metadata_oembed.jsonl")
     for path in (manifest, titles):
         if not os.path.exists(path):   # without them the build is not the published release
-            sys.exit(f"missing {path}: copy it from the release's provenance package")
+            sys.exit(f"missing {os.path.basename(path)}: copy it from the release's provenance package")
     result = build_release(os.path.join(a.raw_root, extraction.OUTPUT_DIR), a.processed_dir, a.splits_dir, a.release_id,
                            raw_manifest=manifest, titles_path=titles)
     print(json.dumps(result["records"]))
@@ -56,7 +57,14 @@ def main(argv: list[str] | None = None) -> int:
     bd.add_argument("--processed-dir", default=os.path.join(ROOT, "data", "processed"))
     bd.add_argument("--splits-dir", default=os.path.join(ROOT, "data", "splits"))
     a = ap.parse_args(argv)
-    run_extract(a) if a.command == "extract" else run_build(a)
+    try:
+        if a.command == "extract":
+            run_extract(a)
+        else:
+            run_build(a)
+    except (OSError, ValueError, extraction.SourceChanged) as exc:
+        print(f"error: {one_line_error(exc)}", file=sys.stderr)
+        return 1
     return 0
 
 

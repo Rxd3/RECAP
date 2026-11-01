@@ -16,10 +16,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from punct_restore.pipeline import ModelAdapter, RestorationPipeline
-
-
-def _error_line(exc: Exception) -> str:
-    return "error: " + " ".join(str(exc).splitlines())
+from punct_restore.prediction_io import one_line_error, reconfigure_stdout
 
 
 def _interactive(pipeline: RestorationPipeline) -> None:
@@ -36,14 +33,11 @@ def _interactive(pipeline: RestorationPipeline) -> None:
         try:
             print(f"Restored: {pipeline.process_text(line)['restored_text']}\n")
         except ValueError as exc:
-            print(_error_line(exc), file=sys.stderr)
+            print(f"error: {one_line_error(exc)}", file=sys.stderr)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    reconfigure = getattr(sys.stdout, "reconfigure", None)
-    if reconfigure is not None:
-        # a cp1252 console must not crash on characters outside the console code page
-        reconfigure(errors="backslashreplace")
+    reconfigure_stdout()  # a cp1252 console must not crash on characters outside its code page
     parser = argparse.ArgumentParser(prog="recap run-demo", description="RECAP punctuation and casing restoration demo")
     parser.add_argument("--model-path", type=Path, required=True, help="trained model (.json, .joblib or .pkl)")
     parser.add_argument("--text", type=str, default=None, help="text to restore (omit for interactive mode)")
@@ -56,7 +50,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         result = pipeline.process_text(args.text)
     except (ValueError, OSError) as exc:  # OSError covers FileNotFoundError and directories
-        print(_error_line(exc), file=sys.stderr)
+        print(f"error: {one_line_error(exc)}", file=sys.stderr)
         return 1
     print(f"Input:    {result['input_text']}")
     print(f"Restored: {result['restored_text']}")

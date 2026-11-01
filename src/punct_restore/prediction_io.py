@@ -4,6 +4,7 @@ factor_predictions)."""
 from __future__ import annotations
 
 import contextlib
+import errno
 import json
 import os
 import sys
@@ -273,13 +274,37 @@ def read_prediction_lines(path: Path) -> Iterator[tuple[int, dict[str, Any]]]:
         raise ValueError(f"{path.name}: no predictions found")
 
 
-def one_line_error(exc: ValueError | OSError) -> str:
-    """The message on one line; an OSError names its file by name only (its text carries the full path)."""
+# The friendly reason for the OS errors a user causes (evaluate-models words every one of them this way).
+OS_REASONS: Mapping[int | None, str] = {errno.EEXIST: "already exists; refusing to overwrite",
+                                         errno.ENOENT: "file or folder not found",
+                                         errno.EISDIR: "is a folder, not a file",
+                                         errno.EACCES: "permission denied",
+                                         errno.EPERM: "permission denied"}
+
+
+def os_error_code(exc: OSError) -> int | None:
+    """The errno of ``exc``; EISDIR when Windows reports opening a single folder as permission denied."""
+    single_file = bool(exc.filename) and exc.filename2 is None  # a two-path call (a rename) keeps its own reason
+    if exc.errno in (errno.EACCES, errno.EPERM) and single_file and Path(os.fsdecode(exc.filename)).is_dir():
+        return errno.EISDIR
+    return exc.errno
+
+
+def one_line_error(exc: BaseException, *paths: str | os.PathLike[str] | None) -> str:
+    """The message on one line, without the ``error: `` prefix.
+
+    An OSError reads ``<file name>: <reason>`` (its own text carries the full path, which is never shown);
+    anything else keeps its text. Each of ``paths`` that the text quotes is cut to its file name.
+    """
     text = str(exc)
-    if isinstance(exc, OSError) and exc.strerror:
-        text = exc.strerror
-        if exc.filename is not None:
-            text = f"{Path(os.fsdecode(exc.filename)).name}: {text}"
+    if isinstance(exc, OSError):
+        # the system text says "permission denied" for a folder on Windows: that one reason is rewritten
+        reason = OS_REASONS[errno.EISDIR] if os_error_code(exc) == errno.EISDIR else exc.strerror
+        if reason:
+            name = Path(os.fsdecode(exc.filename)).name if exc.filename else ""
+            text = f"{name}: {reason}" if name else reason
+    for path in filter(None, paths):
+        text = text.replace(str(Path(path)), Path(path).name)
     return " ".join(text.splitlines())
 
 

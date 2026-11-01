@@ -27,6 +27,7 @@ from punct_restore.features.word_clusters import (
     map_to_json,
 )
 from punct_restore.paths import REPO_ROOT as ROOT
+from punct_restore.prediction_io import one_line_error, reconfigure_stdout
 
 
 def read_ids(path: Path) -> tuple[set[str], str]:
@@ -133,19 +134,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> int:
     """CLI entry point: 0 on success, 1 with one ``error:`` line on stderr, 2 on usage errors."""
-    reconfigure = getattr(sys.stdout, "reconfigure", None)
-    if reconfigure is not None:
-        reconfigure(errors="backslashreplace")
+    reconfigure_stdout()
     args = build_parser().parse_args(argv)
     started = time.perf_counter()
     try:
         cluster_map = build(args)
-    except OSError as exc:
-        name = Path(exc.filename).name if exc.filename else "file"
-        print(f"error: {name}: {exc.strerror or 'cannot be read or written'}", file=sys.stderr)
-        return 1
-    except ValueError as exc:
-        print("error: " + " ".join(str(exc).splitlines()), file=sys.stderr)
+    except (OSError, ValueError) as exc:
+        print(f"error: {one_line_error(exc)}", file=sys.stderr)
         return 1
     seconds = time.perf_counter() - started
     print(f"vocabulary_size={cluster_map.vocabulary_size} k={cluster_map.k} seconds={seconds:.1f}")

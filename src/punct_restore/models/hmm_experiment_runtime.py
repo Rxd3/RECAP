@@ -45,7 +45,7 @@ def hardware() -> dict[str, Any]:
         try:
             details["memory_bytes"] = os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
         except (OSError, ValueError):
-            pass
+            pass  # the memory size is optional detail: a platform that cannot report it just leaves the field out
     return details
 
 

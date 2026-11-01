@@ -22,6 +22,7 @@ from punct_restore.models.hmm_workflow import (
     verify_training_release,
 )
 from punct_restore.paths import REPO_ROOT as ROOT
+from punct_restore.prediction_io import one_line_error
 
 
 def load_labels(path: Path, mode: str) -> list[str]:
@@ -139,8 +140,6 @@ def _read_selections(
     """Check the run arguments; read the ID selections, the labels and the optional release record."""
     if args.output_dir.exists():
         raise ValueError("output-dir already exists; choose a new run directory")
-    if args.predict_ids is not None and args.predict_input is None:
-        raise ValueError("predict-ids requires predict-input")
     train_ids = read_id_selection(args.train_ids)
     prediction_ids = None if args.predict_ids is None else read_id_selection(args.predict_ids)
     labels = load_labels(args.label_config, args.label_mode)
@@ -360,10 +359,13 @@ def _run(args: argparse.Namespace) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.predict_ids is not None and args.predict_input is None:
+        parser.error("--predict-ids requires --predict-input")
     try:
         _run(args)
-    except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
-        parser.error(str(exc))
+    except (OSError, ValueError) as exc:
+        print(f"error: {one_line_error(exc)}", file=sys.stderr)
+        return 1
     print(f"Saved HMM to {args.output_dir / 'model.json'}")
     print("No evaluation metrics calculated; score the predictions with: "
           "python scripts/evaluate_models.py score --gold ... --ids ... --predictions ... --out ...")

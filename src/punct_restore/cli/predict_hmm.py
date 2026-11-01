@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from punct_restore.models.hmm_workflow import portable_path, predict_run
+from punct_restore.prediction_io import one_line_error
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -49,8 +50,9 @@ def main(argv: list[str] | None = None) -> int:
             selection_record=args.selection_record,
             command=command,
         )
-    except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
-        parser.error(str(exc))
+    except (OSError, ValueError) as exc:
+        print(f"error: {one_line_error(exc)}", file=sys.stderr)
+        return 1
     print(f"Exported {report['num_sequences']} HMM predictions; no training performed.")
     return 0
 

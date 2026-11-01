@@ -114,7 +114,7 @@ def project_extended_to_standard(labels, label_sets, allow_unapproved=False):
     """Map B labels to canonical A with the configs/label_sets.yaml mapping (refused if it is not approved)."""
     proj = label_sets["projection"]
     if not proj.get("approved") and not allow_unapproved:
-        raise PermissionError("extended_to_standard mapping is not approved (decision D5)")
+        raise ValueError("extended_to_standard mapping is not approved (decision D5)")
     return [proj["mapping"][label] for label in labels]
 
 

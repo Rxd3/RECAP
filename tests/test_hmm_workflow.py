@@ -44,7 +44,7 @@ def test_training_selection_changes_counts_and_excludes_unselected_vocabulary(tm
 def test_invalid_id_lists_fail_before_any_model_output(tmp_path, text):
     args, _, _, out = setup_run(tmp_path)
     (tmp_path / "train.ids").write_text(text)
-    assert run(args).returncode == 2
+    assert run(args).returncode == 1
     assert not out.exists()
 
 
@@ -52,7 +52,7 @@ def test_missing_id_is_rejected_after_stream_exhaustion(tmp_path):
     args, _, _, out = setup_run(tmp_path)
     (tmp_path / "train.ids").write_text("unit-train\nnot-in-data\n")
     result = run(args)
-    assert result.returncode == 2 and "missing" in result.stderr
+    assert result.returncode == 1 and result.stderr.startswith("error: train.jsonl: ") and "missing" in result.stderr
     assert not out.exists()
 
 
@@ -69,7 +69,7 @@ def test_invalid_unselected_record_cannot_hide_behind_a_selection(tmp_path, bad)
             "test" if bad == "held-out" else ["INVALID"]
         )
         jsonl(train, [keep, other])
-    assert run(args).returncode == 2
+    assert run(args).returncode == 1
     assert not out.exists()
 
 

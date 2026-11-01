@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from punct_restore.paths import REPO_ROOT as ROOT
+from punct_restore.prediction_io import one_line_error
 
 QUALITY_REASON = "low_comma_or_tts_source"
 BUCKETS = ("excluded_train_video", "excluded_other_leak", "excluded_quality")
@@ -198,12 +199,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         counts = build(args.data_root, args.release, args.mode, args.split, args.out)
-    except OSError as exc:
-        name = Path(exc.filename).name if exc.filename else "file"
-        print(f"error: {name}: {exc.strerror or 'cannot be read or written'}", file=sys.stderr)
-        return 1
-    except ValueError as exc:
-        print("error: " + " ".join(str(exc).splitlines()), file=sys.stderr)
+    except (OSError, ValueError) as exc:
+        print(f"error: {one_line_error(exc)}", file=sys.stderr)
         return 1
     print(" ".join(f"{key}={value}" for key, value in counts.items()))
     return 0

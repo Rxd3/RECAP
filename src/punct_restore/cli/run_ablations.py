@@ -48,6 +48,7 @@ from punct_restore.models.crf import CRFModel
 from punct_restore.models.factored import combine
 from punct_restore.models.gap_classifier import GapClassifier
 from punct_restore.paths import REPO_ROOT as ROOT
+from punct_restore.prediction_io import one_line_error
 
 SEED = 2026
 # group name -> FeatureConfig.improved() override that removes it
@@ -262,13 +263,6 @@ def run_variant(
     gc.collect()
 
 
-def describe(exc: Exception) -> str:
-    """One-line message that names a file by its name only, never its full path."""
-    if isinstance(exc, OSError) and exc.filename:
-        return f"{exc.strerror}: {Path(str(exc.filename)).name}"
-    return str(exc)
-
-
 def load_clusters(path: Path | None, mode: str, release: str, data_root: Path) -> Mapping[str, int] | None:
     """The word -> cluster id map from --cluster-map (None when not given).
 
@@ -315,7 +309,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         run(args)
     except (ValueError, OSError) as exc:
-        print(f"error: {describe(exc)}", file=sys.stderr)
+        print(f"error: {one_line_error(exc)}", file=sys.stderr)
         return 1
     return 0
 

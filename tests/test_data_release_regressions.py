@@ -1,6 +1,7 @@
 """Regression checks for the Windows and data-policy release audit findings."""
 
 import json
+from pathlib import Path
 
 import pytest
 from test_data_contract import FIXTURE, LS, build
@@ -112,6 +113,16 @@ def test_release_id_is_immutable(tmp_path):
     with pytest.raises(FileExistsError, match="immutable release ID"):
         build(tmp_path, "immutable")
     assert (processed / "SHA256SUMS").read_bytes() == checksum_before
+
+
+def test_an_unapproved_projection_stops_the_build_with_a_value_error_before_any_output(tmp_path):
+    unapproved = tmp_path / "label_sets.yaml"
+    text = Path(labeling.LABEL_SETS_PATH).read_text(encoding="utf-8")
+    unapproved.write_text(text.replace("approved: true", "approved: false"), encoding="utf-8")
+    with pytest.raises(ValueError, match="not approved"):
+        release.build_release(str(tmp_path / "raw"), str(tmp_path / "processed"), str(tmp_path / "splits"), "fixture",
+                              label_sets_path=str(unapproved), log=lambda _: None)
+    assert not (tmp_path / "processed").exists() and not (tmp_path / "splits").exists()
 
 
 def test_raw_mismatch_stops_build_before_outputs(tmp_path):

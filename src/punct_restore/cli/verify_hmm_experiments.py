@@ -26,6 +26,7 @@ from punct_restore.models.hmm_workflow import (
     write_json,
 )
 from punct_restore.paths import REPO_ROOT as ROOT
+from punct_restore.prediction_io import one_line_error
 
 __all__ = [
     "HMMModel",
@@ -249,8 +250,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         verify(args.run_dir, args.evaluator_root, args.output_dir)
-    except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
-        parser.error(str(exc))
+    except (OSError, ValueError) as exc:
+        print(f"error: {one_line_error(exc)}", file=sys.stderr)
+        return 1
     return 0
 
 

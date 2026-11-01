@@ -6,6 +6,7 @@ Used by punct_restore.cli.train_crf, which keeps the command-line handling (argu
 from __future__ import annotations
 
 import hashlib
+import importlib.metadata
 import json
 import os
 import platform
@@ -34,9 +35,8 @@ def sha256_file(path: str | Path) -> str:
 def get_package_version(pkg_name: str) -> str:
     """Safely obtain installed package version or return 'unknown'."""
     try:
-        import importlib.metadata
         return importlib.metadata.version(pkg_name)
-    except Exception:
+    except importlib.metadata.PackageNotFoundError:
         return "unknown"
 
 
@@ -80,7 +80,9 @@ def get_process_memory_stats() -> dict[str, float]:
                     "peak_private_commit_mb": round(pmc.PeakPagefileUsage / (1024 * 1024), 2),
                     "current_private_commit_mb": round(pmc.PrivateUsage / (1024 * 1024), 2),
                 }
-        except Exception:
+        except (OSError, AttributeError):
+            # Memory figures are optional diagnostics: a Windows without psapi (OSError) or a ctypes build without
+            # windll (AttributeError) just reports none; any other error is a bug and propagates.
             pass
     return {}
 

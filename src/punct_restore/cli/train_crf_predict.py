@@ -15,6 +15,7 @@ from punct_restore.models.crf import (
 )
 from punct_restore.prediction_io import (
     check_new_output_paths,
+    one_line_error,
     read_observations,
     write_prediction_outputs,
 )
@@ -25,18 +26,18 @@ def _predict_path_error(args: argparse.Namespace, manifest_path: Path | None) ->
     model_path, input_path, output_path = Path(args.model), Path(args.input), Path(args.output)
     try:
         if not model_path.is_file():
-            return f"Error: Model artifact not found at {model_path}"
+            return f"Error: Model artifact not found at {model_path.name}"
         if not input_path.is_file():
-            return f"Error: Input JSONL not found at {input_path}"
+            return f"Error: Input JSONL not found at {input_path.name}"
         check_new_output_paths(
             {"--output": output_path, "--manifest-out": manifest_path},
             {"--input": input_path, "--model": model_path,
              "--ids": Path(args.ids) if args.ids else None},
         )
         if output_path.exists() and not args.overwrite:
-            return f"Error: Output file already exists at {output_path}. Use --overwrite to replace."
+            return f"Error: Output file already exists at {output_path.name}. Use --overwrite to replace."
         if manifest_path is not None and manifest_path.exists() and not args.overwrite:
-            return f"Error: Manifest already exists at {manifest_path}. Use --overwrite to replace."
+            return f"Error: Manifest already exists at {manifest_path.name}. Use --overwrite to replace."
     except ValueError as e:
         return f"Error: {e}"
     except OSError as e:  # e.g. a folder on the way cannot be read
@@ -80,8 +81,8 @@ def cmd_predict(args: argparse.Namespace) -> int:
     print(f"[RECAP CRF] Loading model from {model_path}...")
     try:
         model = CRFModel.load_model(model_path)
-    except Exception as e:
-        sys.stderr.write(f"Failed to load model: {e}\n")
+    except (OSError, ValueError) as e:  # an unreadable, corrupt or incompatible artifact
+        sys.stderr.write(f"Failed to load model: {one_line_error(e, model_path)}\n")
         return 1
     try:
         require_scoring_mode(model.label_mode)  # a CASE helper artifact loads fine but must not be scored here
@@ -93,7 +94,7 @@ def cmd_predict(args: argparse.Namespace) -> int:
     try:
         records_to_predict = read_observations(input_path, ids_path)
     except (OSError, ValueError) as e:
-        sys.stderr.write(f"Error: {e}\n")
+        sys.stderr.write(f"Error: {one_line_error(e, input_path, ids_path)}\n")
         return 1
     if ids_path is not None:
         print(f"[RECAP CRF] Restricting inference to {len(records_to_predict):,} IDs from {ids_path.name}...")
@@ -102,8 +103,8 @@ def cmd_predict(args: argparse.Namespace) -> int:
     start_time = time.perf_counter()
     try:
         predictions = model.predict(records_to_predict)
-    except Exception as e:
-        sys.stderr.write(f"Prediction failed: {e}\n")
+    except ValueError as e:  # the model predicted a label sequence the contract rejects
+        sys.stderr.write(f"Prediction failed: {one_line_error(e)}\n")
         return 1
     duration = time.perf_counter() - start_time
     total_tokens = sum(len(p["predicted_labels"]) for p in predictions)

@@ -40,6 +40,7 @@ from punct_restore.data.gold_noise import (
     validate_record,
 )
 from punct_restore.paths import REPO_ROOT as ROOT
+from punct_restore.prediction_io import one_line_error
 
 SPLITS = ("validation", "test", "test_amb", "default_train")
 
@@ -201,25 +202,13 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def os_error_text(exc: OSError) -> str:
-    """One friendly line for an OSError. A single path that is a folder (Windows says 'Permission denied' when a
-    folder is opened as a file) is named as such; a two-path call such as the final rename keeps the system text."""
-    name = Path(exc.filename).name if exc.filename else "file"
-    if exc.filename and exc.filename2 is None and Path(exc.filename).is_dir():
-        return f"{name}: is a folder, not a file"
-    return f"{name}: {exc.strerror or 'cannot be read or written'}"
-
-
 def main(argv: Sequence[str] | None = None) -> int:
     """CLI entry point: 0 on success, 1 with one ``error:`` line on stderr, 2 on usage errors."""
     args = build_parser().parse_args(argv)
     try:
         lines = build(args.data_root, args.release, args.mode, args.out)
-    except OSError as exc:
-        print(f"error: {os_error_text(exc)}", file=sys.stderr)
-        return 1
-    except ValueError as exc:
-        print("error: " + " ".join(str(exc).splitlines()), file=sys.stderr)
+    except (OSError, ValueError) as exc:
+        print(f"error: {one_line_error(exc)}", file=sys.stderr)
         return 1
     print("\n".join(lines))
     return 0

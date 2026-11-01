@@ -756,7 +756,7 @@ def test_cluster_map_load_failure_is_one_friendly_line(tmp_path, capsys, monkeyp
 
     err = capsys.readouterr().err
     assert code == 1
-    assert err.splitlines() == ["error: No such file or directory: missing_map.json"]
+    assert err.splitlines() == ["error: missing_map.json: No such file or directory"]
     assert str(tmp_path) not in err
 
 

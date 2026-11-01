@@ -169,7 +169,7 @@ def _preflight(release_id: str, processed_dir: str, splits_dir: str, label_sets_
     titles = read_titles(titles_path) if titles_path else None
     label_sets = labeling.load_label_sets(label_sets_path)
     if not label_sets["projection"].get("approved"):
-        raise PermissionError("the B -> A projection in configs/label_sets.yaml is not approved")
+        raise ValueError("the B -> A projection in configs/label_sets.yaml is not approved")
     out = os.path.join(processed_dir, release_id)
     split_out = os.path.join(splits_dir, release_id)
     if os.path.exists(out) or os.path.exists(split_out):

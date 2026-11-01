@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import io
 import sys
 from pathlib import Path
@@ -24,6 +25,52 @@ def test_one_line_error_names_an_os_error_file_by_name_only() -> None:
 
 def test_one_line_error_accepts_a_bytes_file_name() -> None:
     assert prediction_io.one_line_error(OSError(2, "No such file", b"dir/x.json")) == "x.json: No such file"
+
+
+def test_one_line_error_says_so_when_the_file_is_a_folder() -> None:
+    exc = IsADirectoryError(errno.EISDIR, "Is a directory", str(Path("some") / "deep" / "x.json"))
+    assert prediction_io.one_line_error(exc) == "x.json: is a folder, not a file"
+
+
+def test_one_line_error_calls_a_folder_opened_as_a_file_a_folder_even_when_windows_says_permission_denied(
+        tmp_path: Path) -> None:
+    folder = tmp_path / "adir"
+    folder.mkdir()
+    exc = PermissionError(errno.EACCES, "Permission denied", str(folder))
+    assert prediction_io.one_line_error(exc) == "adir: is a folder, not a file"
+
+
+def test_one_line_error_keeps_the_system_reason_for_a_two_path_call_such_as_a_rename(tmp_path: Path) -> None:
+    folder = tmp_path / "adir"
+    folder.mkdir()
+    exc = PermissionError(errno.EACCES, "Permission denied", str(folder), None, str(tmp_path / "out"))
+    assert prediction_io.one_line_error(exc) == "adir: Permission denied"
+
+
+def test_one_line_error_keeps_the_system_reason_for_a_file_that_is_not_a_folder(tmp_path: Path) -> None:
+    exc = PermissionError(errno.EACCES, "Permission denied", str(tmp_path / "secret.jsonl"))
+    assert prediction_io.one_line_error(exc) == "secret.jsonl: Permission denied"
+
+
+def test_one_line_error_never_shows_a_folder_of_a_missing_file(tmp_path: Path) -> None:
+    exc = FileNotFoundError(errno.ENOENT, "No such file or directory", str(tmp_path / "gone" / "x.json"))
+    assert prediction_io.one_line_error(exc) == "x.json: No such file or directory"
+
+
+def test_one_line_error_cuts_the_paths_it_is_given_to_their_file_names(tmp_path: Path) -> None:
+    data, ids = tmp_path / "deep" / "data.jsonl", tmp_path / "train.ids"
+    exc = ValueError(f"Corrupt JSON at line 3 in {data}:\n{ids} is empty")
+    line = prediction_io.one_line_error(exc, data, ids, None)
+    assert line == "Corrupt JSON at line 3 in data.jsonl: train.ids is empty"
+
+
+def test_one_line_error_leaves_a_path_it_is_not_given_alone(tmp_path: Path) -> None:
+    other = tmp_path / "other.txt"
+    assert prediction_io.one_line_error(ValueError(f"bad {other}"), tmp_path / "data.jsonl") == f"bad {other}"
+
+
+def test_one_line_error_takes_the_text_of_any_other_exception() -> None:
+    assert prediction_io.one_line_error(RecursionError("too\ndeep")) == "too deep"
 
 
 def test_one_line_error_uses_the_reason_alone_when_the_os_error_has_no_file() -> None:

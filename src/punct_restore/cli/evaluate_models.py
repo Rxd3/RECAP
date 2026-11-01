@@ -43,12 +43,7 @@ from punct_restore.evaluation.uncertainty import (
     MAX_RESAMPLES,
     MIN_RESAMPLES,
 )
-
-OS_MESSAGES = {errno.EEXIST: "{} already exists; refusing to overwrite",
-               errno.ENOENT: "file or folder not found: {}",
-               errno.EISDIR: "is a folder, not a file: {}",
-               errno.EACCES: "permission denied: {}",
-               errno.EPERM: "permission denied: {}"}
+from punct_restore.prediction_io import OS_REASONS, os_error_code, reconfigure_stdout
 
 
 def _bounded(minimum: int, maximum: int | None = None) -> Callable[[str], int]:
@@ -193,19 +188,18 @@ COMMANDS = {"score": _score, "compare": _compare, "errors": _errors, "baseline":
 
 
 def _os_message(exc: OSError) -> str:
+    """The OS error with its path as given (this command's output wording is pinned by its tests)."""
     path = exc.filename if exc.filename is not None else "(unknown path)"
-    code = exc.errno
-    if code in (errno.EACCES, errno.EPERM) and Path(str(path)).is_dir():
-        code = errno.EISDIR  # Windows reports opening a folder as permission denied
-    fallback = "cannot access {}: " + (exc.strerror or type(exc).__name__)
-    return OS_MESSAGES.get(code, fallback).format(path)
+    code = os_error_code(exc)
+    reason = OS_REASONS.get(code)
+    if reason is None:
+        return f"cannot access {path}: {exc.strerror or type(exc).__name__}"
+    return f"{path} {reason}" if code == errno.EEXIST else f"{reason}: {path}"
 
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
-    if hasattr(sys.stdout, "reconfigure"):
-        # cp1252 consoles cannot print every model or file name
-        sys.stdout.reconfigure(errors="backslashreplace")
+    reconfigure_stdout()  # cp1252 consoles cannot print every model or file name
     try:
         COMMANDS[args.command](args)
     except EvaluationInputError as exc:

@@ -18,6 +18,7 @@ from punct_restore.models.hmm_workflow import (
     write_json,
 )
 from punct_restore.paths import REPO_ROOT as ROOT
+from punct_restore.prediction_io import one_line_error
 
 __all__ = [
     "ROOT",
@@ -128,8 +129,7 @@ def _bundle_paths(run: Path, output: Path) -> tuple[Path, Path, Path]:
 
 
 def _copy_bundle_files(run: Path, output: Path, config: dict[str, Any]) -> None:
-    """Copy the experiment, data, configuration, results notes and this packager into the handoff."""
-    output.mkdir(parents=True, exist_ok=False)
+    """Copy the experiment, data, configuration, results notes and this packager into the new handoff folder."""
     shutil.copytree(run, output / "experiment")
     processed = ROOT / config["processed_dir"]
     shutil.copytree(ROOT / config["splits_dir"], output / "data/splits")
@@ -228,6 +228,22 @@ def package(run, evaluator, output):
     results = read_json(run / "results.json")
     selected = _selected_models(run, config, selection, verified, results)
     run, output, archive_path = _bundle_paths(run, output)
+    output.mkdir(parents=True)  # FileExistsError if it appeared since the check: then it is not ours to remove
+    try:
+        return _build_handoff(run, output, archive_path, plan, selected)
+    except BaseException:
+        # best effort: leave neither the half-built folder nor its zip, so the handoff ID can be used again
+        shutil.rmtree(output, ignore_errors=True)
+        archive_path.unlink(missing_ok=True)
+        archive_path.with_suffix(".zip.sha256").unlink(missing_ok=True)
+        raise
+
+
+def _build_handoff(
+    run: Path, output: Path, archive_path: Path, plan: dict[str, Any], selected: dict[str, Any]
+) -> dict[str, Any]:
+    """Fill the new handoff folder, zip it, verify the zip and write its checksum; describe the archive."""
+    config = plan["config"]
     _copy_bundle_files(run, output, config)
     (output / "HANDOFF.md").write_text(_HANDOFF_INSTRUCTIONS, encoding="utf-8", newline="\n")
     write_json(output / "MODEL_INDEX.json", _model_index(output, config, plan, selected))
@@ -256,8 +272,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         result = package(args.run_dir, args.evaluator_root, args.output_dir)
-    except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
-        parser.error(str(exc))
+    except (OSError, ValueError) as exc:
+        print(f"error: {one_line_error(exc)}", file=sys.stderr)
+        return 1
     print(json.dumps(result, indent=2))
     return 0
 

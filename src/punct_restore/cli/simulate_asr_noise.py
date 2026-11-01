@@ -50,6 +50,7 @@ from punct_restore.data.asr_noise import (
     train_vocabulary,
 )
 from punct_restore.paths import REPO_ROOT as ROOT
+from punct_restore.prediction_io import one_line_error, reconfigure_stdout
 
 MODES = ("A", "B", "C")
 
@@ -286,19 +287,12 @@ def run(args: argparse.Namespace) -> str:
 
 def main(argv: Sequence[str] | None = None) -> int:
     """0 on success, 1 with one ``error:`` line on stderr, 2 on usage errors."""
-    for stream in (sys.stdout, sys.stderr):
-        reconfigure = getattr(stream, "reconfigure", None)
-        if reconfigure is not None:
-            reconfigure(errors="backslashreplace")
+    reconfigure_stdout()
     args = parse_args(argv)
     try:
         print(run(args))
-    except OSError as exc:
-        name = Path(exc.filename).name if exc.filename else "output"
-        print(f"error: {name}: {exc.strerror or 'file system error'}", file=sys.stderr)
-        return 1
-    except ValueError as exc:
-        print("error: " + " ".join(str(exc).splitlines()), file=sys.stderr)
+    except (OSError, ValueError) as exc:
+        print(f"error: {one_line_error(exc)}", file=sys.stderr)
         return 1
     return 0
 

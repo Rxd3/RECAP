@@ -43,8 +43,10 @@ from punct_restore.models.crf_training import (
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import (
     check_new_output_paths,
+    one_line_error,
     read_frozen_ids,
     read_observations,
+    reconfigure_stdout,
     write_prediction_outputs,
     write_predictions_jsonl,  # noqa: F401 - re-exported: tests call train_crf.write_predictions_jsonl
 )
@@ -106,12 +108,12 @@ def _prepare_train_paths(args: argparse.Namespace) -> tuple[Path, Path, Path, Pa
     # Safety: do not silently overwrite existing files
     if output_path.exists() and not args.overwrite:
         sys.stderr.write(
-            f"Error: Output artifact already exists at {output_path}. Use --overwrite to replace.\n"
+            f"Error: Output artifact already exists at {output_path.name}. Use --overwrite to replace.\n"
         )
         return None
     if manifest_path.exists() and not args.overwrite:
         sys.stderr.write(
-            f"Error: Manifest already exists at {manifest_path}. Use --overwrite to replace.\n"
+            f"Error: Manifest already exists at {manifest_path.name}. Use --overwrite to replace.\n"
         )
         return None
     return input_path, ids_path, output_path, manifest_path
@@ -122,8 +124,8 @@ def _load_records(input_path: Path, ids_path: Path, mode: str) -> tuple[list[dic
     print(f"[RECAP CRF] Loading and verifying training records for Mode {mode}...")
     try:
         records, frozen_ids = load_and_filter_training_records(input_path, ids_path, mode)
-    except Exception as e:
-        sys.stderr.write(f"Error loading training data: {e}\n")
+    except (OSError, ValueError) as e:  # a missing or unreadable file, or a record that breaks the frozen-data rules
+        sys.stderr.write(f"Error loading training data: {one_line_error(e, input_path, ids_path)}\n")
         return None
 
     total_tokens = sum(len(r["tokens"]) for r in records)
@@ -167,8 +169,8 @@ def _configure_model(args: argparse.Namespace, mode: str) -> tuple[CRFModel, Fea
             model_name=feature_model_name,
             config_path=args.config_path,
         )
-    except Exception as e:
-        sys.stderr.write(f"Configuration error: {e}\n")
+    except (OSError, ValueError) as e:  # a bad hyperparameter, or a --config-path file that cannot be read
+        sys.stderr.write(f"Configuration error: {one_line_error(e, args.config_path)}\n")
         return None
     return model, feature_config
 
@@ -179,8 +181,8 @@ def _fit_model(model: CRFModel, records: list[dict[str, Any]], provenance: dict[
     print("[RECAP CRF] Training model...")
     try:
         model.fit(records, config={"provenance": provenance})
-    except Exception as e:
-        sys.stderr.write(f"Training failed: {e}\n")
+    except (OSError, ValueError) as e:  # the backend refuses its settings or the records, or has no disk for its files
+        sys.stderr.write(f"Training failed: {one_line_error(e)}\n")
         return None
     duration = time.perf_counter() - start_time
     print(f"[RECAP CRF] Training completed in {duration:.2f} seconds.")
@@ -209,21 +211,30 @@ def _report_optimizer(model: CRFModel) -> dict[str, Any]:
     return training_diagnostics
 
 
-def _save_artifact(model: CRFModel, output_path: Path) -> str:
-    """Save the model artifact and return its SHA-256."""
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    model.save_model(output_path)
-    artifact_hash = sha256_file(output_path)
+def _save_artifact(model: CRFModel, output_path: Path) -> str | None:
+    """Save the model artifact and return its SHA-256, or None after reporting why it could not be saved."""
+    try:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        model.save_model(output_path)
+        artifact_hash = sha256_file(output_path)
+    except OSError as e:
+        sys.stderr.write(f"Error: could not save the model artifact: {one_line_error(e)}\n")
+        return None
     print(f"[RECAP CRF] Saved artifact: {output_path} (SHA-256: {artifact_hash})")
     return artifact_hash
 
 
-def _write_manifest(sidecar_manifest: Mapping[str, Any], manifest_path: Path) -> None:
-    """Write the sidecar manifest JSON (sorted keys) and report where."""
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(manifest_path, "w", encoding="utf-8") as f:
-        json.dump(sidecar_manifest, f, indent=2, sort_keys=True)
+def _write_manifest(sidecar_manifest: Mapping[str, Any], manifest_path: Path) -> bool:
+    """Write the sidecar manifest JSON (sorted keys) and report where; False after reporting why it failed."""
+    try:
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(manifest_path, "w", encoding="utf-8") as f:
+            json.dump(sidecar_manifest, f, indent=2, sort_keys=True)
+    except OSError as e:
+        sys.stderr.write(f"Error: could not write the manifest: {one_line_error(e)}\n")
+        return False
     print(f"[RECAP CRF] Saved manifest: {manifest_path}")
+    return True
 
 
 def _hyperparameters(args: argparse.Namespace) -> dict[str, Any]:
@@ -265,6 +276,8 @@ def cmd_train(args: argparse.Namespace) -> int:
     mem_stats = _report_memory()
     training_diagnostics = _report_optimizer(model)
     artifact_hash = _save_artifact(model, output_path)
+    if artifact_hash is None:
+        return 1
 
     # Generate comprehensive sidecar manifest
     sidecar_manifest = build_sidecar_manifest(
@@ -274,8 +287,7 @@ def cmd_train(args: argparse.Namespace) -> int:
         training_command=recorded_command(sys.argv), duration=duration, output_path=output_path,
         artifact_hash=artifact_hash,
     )
-    _write_manifest(sidecar_manifest, manifest_path)
-    return 0
+    return 0 if _write_manifest(sidecar_manifest, manifest_path) else 1
 
 
 def _add_train_arguments(p_train: argparse.ArgumentParser) -> None:
@@ -350,9 +362,7 @@ def build_cli_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     """Main CLI entry point."""
     # A path the console code page cannot encode must not crash the run after files are written.
-    reconfigure = getattr(sys.stdout, "reconfigure", None)
-    if reconfigure is not None:
-        reconfigure(errors="backslashreplace")
+    reconfigure_stdout()
     parser = build_cli_parser()
     args = parser.parse_args(argv)
 
