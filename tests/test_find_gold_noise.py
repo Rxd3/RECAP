@@ -227,7 +227,17 @@ def test_invalid_json_names_file_and_line(mod: ModuleType, root: Path, tmp_path:
     path = root / "processed" / RELEASE / "mode_B" / "test.jsonl"
     path.write_text(path.read_text(encoding="utf-8") + "{broken\n", encoding="utf-8", newline="\n")
     err = refused(mod, capsys, argv_for(root, tmp_path / "out"), tmp_path)
-    assert "test.jsonl line 4" in err and "invalid JSON" in err       # record, blank, record, then the bad line
+    assert "test.jsonl line 4: not valid JSON" in err                  # record, blank, record, then the bad line
+
+
+@pytest.mark.parametrize(("bad_line", "reason"), [("[" * 50_000, "not valid JSON"), ("[1, 2]", "not a JSON object")])
+def test_a_line_that_is_nested_too_deeply_or_not_an_object_names_file_and_line(
+        mod: ModuleType, root: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str], bad_line: str,
+        reason: str) -> None:
+    path = root / "processed" / RELEASE / "mode_B" / "test.jsonl"
+    path.write_text(path.read_text(encoding="utf-8") + bad_line + "\n", encoding="utf-8", newline="\n")
+    err = refused(mod, capsys, argv_for(root, tmp_path / "out"), tmp_path)
+    assert f"test.jsonl line 4: {reason}" in err
 
 
 def test_record_without_normalized_text_names_file_and_line(mod: ModuleType, root: Path, tmp_path: Path,

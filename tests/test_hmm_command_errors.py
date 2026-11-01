@@ -197,3 +197,24 @@ def test_a_checkout_with_uncommitted_changes_is_refused_as_one_error_line(
     captured = capsys.readouterr()
     assert captured.err == "error: commit reviewed code/config before starting an official search\n"
     assert captured.out == ""
+
+
+def test_an_experiment_config_that_is_not_utf8_is_one_error_line_naming_the_file_and_exit_1(
+        tmp_path: Path, clean_checkout: None, capsys: pytest.CaptureFixture[str]) -> None:
+    config = tmp_path / "experiment.yaml"
+    config.write_bytes(b"modes: [A]\n# \xff\xfe\n")
+    assert run_hmm_experiments.main(_tune_argv(config, tmp_path)) == 1
+    captured = capsys.readouterr()
+    assert captured.err == "error: experiment.yaml: not valid UTF-8\n" and captured.out == ""
+    assert not (tmp_path / "out").exists()
+
+
+def test_an_experiment_config_nested_too_deeply_is_one_error_line_naming_the_file_and_exit_1(
+        tmp_path: Path, clean_checkout: None, capsys: pytest.CaptureFixture[str]) -> None:
+    config = tmp_path / "experiment.yaml"
+    config.write_text("[" * 100_000, encoding="utf-8")
+    assert run_hmm_experiments.main(_tune_argv(config, tmp_path)) == 1
+    captured = capsys.readouterr()
+    assert captured.err.startswith("error: experiment.yaml: invalid experiment config: ")
+    assert captured.err.count("\n") == 1 and captured.out == ""
+    assert not (tmp_path / "out").exists()

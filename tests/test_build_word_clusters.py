@@ -209,11 +209,15 @@ BROKEN = {
     "missing train file": (_drop_train, "train.jsonl"),
     "id not in train": (_add_unknown_id, "train.jsonl: 1 ID"),
     "duplicate id in ids file": (_duplicate_id, "Duplicate ID 's:0' found at line"),
-    "empty ids file": (_empty_ids, "ID list is empty: mode_A.ids"),
+    "empty ids file": (_empty_ids, "mode_A.ids: ID list is empty"),
     "ids file not utf-8": (_ids_not_utf8, "mode_A.ids: not valid UTF-8"),
     "train file not utf-8": (_train_not_utf8, "train.jsonl: not valid UTF-8"),
-    "invalid json line": (lambda r: _append_train(r, "{oops\n"), "train.jsonl line 42: invalid JSON"),
-    "record without sample_id": (lambda r: _append_train(r, '{"tokens": ["a"]}\n'), "train.jsonl line 42"),
+    "invalid json line": (lambda r: _append_train(r, "{oops\n"), "train.jsonl line 42: not valid JSON"),
+    "record without sample_id": (lambda r: _append_train(r, '{"tokens": ["a"]}\n'),
+                                 "train.jsonl line 42: sample_id must be a nonempty string"),
+    "record that is not an object": (lambda r: _append_train(r, "[1, 2]\n"), "train.jsonl line 42: not a JSON object"),
+    "record nested too deeply": (lambda r: _append_train(r, "[" * 50_000 + "\n"),
+                                 "train.jsonl line 42: not valid JSON"),
     "duplicate listed record": (
         lambda r: _append_train(r, _jsonl([_record("s:0", ["a"])])), "train.jsonl line 42: duplicate"),
 }

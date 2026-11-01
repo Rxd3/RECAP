@@ -15,7 +15,7 @@ from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_records import SelectedRecords
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import read_ids, write_new_file
+from punct_restore.prediction_io import parse_json_object, read_ids, write_new_file
 
 
 def portable_path(path: Path) -> str:
@@ -39,6 +39,21 @@ def code_identity(root: Path = ROOT) -> dict[str, Any]:
         return {"commit": git("rev-parse", "HEAD"), "dirty": bool(git("status", "--porcelain"))}
     except (OSError, subprocess.CalledProcessError):
         return {"commit": None, "dirty": None}
+
+
+def read_json_object(path: Path) -> dict[str, Any]:
+    """The JSON object a UTF-8 file holds.
+
+    Raises:
+        OSError: If the file cannot be read.
+        ValueError: One line that starts with the file name only: not valid UTF-8, not valid JSON (also when it
+            is nested too deeply) or not a JSON object.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"{path.name}: not valid UTF-8") from exc
+    return parse_json_object(text, path.name)
 
 
 def checked_release_file(
@@ -109,9 +124,32 @@ class ReleaseInputs:
     prediction_ids: Path | None = None
 
 
+_MANIFEST_TEXT_FIELDS = ("release_id", "policy_version", "label_sets_sha256")
+_MANIFEST_FILE_TABLES = ("files", "split_files")
+
+
+def read_release_manifest(path: Path) -> dict[str, Any]:
+    """A release manifest with the fields the HMM commands read; a wrong shape is a ValueError naming the file."""
+    manifest = read_json_object(path)
+    for field in _MANIFEST_TEXT_FIELDS:
+        if not isinstance(manifest.get(field), str):
+            raise ValueError(f"{path.name}: release manifest has no text field {field}")
+    for table in _MANIFEST_FILE_TABLES:
+        entries = manifest.get(table)
+        if not isinstance(entries, dict) or not all(
+            isinstance(entry, dict) and isinstance(entry.get("sha256"), str) and isinstance(entry.get("bytes"), int)
+            for entry in entries.values()
+        ):
+            raise ValueError(f"{path.name}: release manifest {table} must map names to sha256 and bytes")
+    source = manifest.get("source")
+    if not isinstance(source, dict) or not isinstance(source.get("revision"), str):
+        raise ValueError(f"{path.name}: release manifest has no source revision")
+    return manifest
+
+
 def verify_training_release(manifest_path: Path, inputs: ReleaseInputs) -> dict[str, Any]:
     """Check the command's inputs against the release manifest; return the manifest."""
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest = read_release_manifest(manifest_path)
     if (
         manifest.get("schema_version") != 1
         or manifest.get("release_id") != inputs.release_id
@@ -137,20 +175,23 @@ def write_json(path: Path, value: Any) -> None:
 
 def _check_frozen_selection(selection_record: Path, model: Any, inputs: dict[str, Any]) -> None:
     """Require a valid frozen selection that names this artifact."""
-    selection = json.loads(selection_record.read_text(encoding="utf-8"))
+    selection = read_json_object(selection_record)
+    modes = selection.get("modes")
+    winner = modes.get(model.label_mode) if isinstance(modes, dict) else None
     if (
         selection.get("used_test_labels") is not False
         or selection.get("training_includes_validation") is not False
-        or selection["modes"][model.label_mode]["model_sha256"] != inputs["model"]["sha256"]
+        or not isinstance(winner, dict)
+        or winner.get("model_sha256") != inputs["model"]["sha256"]
     ):
-        raise ValueError("artifact does not match a valid frozen selection")
+        raise ValueError(f"{selection_record.name}: artifact does not match a valid frozen selection")
 
 
 def _check_release_compatibility(
     release_manifest: Path, input_path: Path, ids_path: Path | None, model: Any, inputs: dict[str, Any]
 ) -> None:
     """Require the artifact, input file and ID selection to belong to the release."""
-    release = json.loads(release_manifest.read_text(encoding="utf-8"))
+    release = read_release_manifest(release_manifest)
     meta = model.metadata
     if (
         release["release_id"] != meta.get("dataset_release_id")

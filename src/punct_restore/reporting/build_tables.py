@@ -20,6 +20,8 @@ def load(path: str | Path) -> Any:
         return json.loads(Path(path).read_text(encoding="utf-8"))
     except ValueError as exc:  # malformed JSON or bytes that are not UTF-8: say which file
         raise ValueError(f"{Path(path).name}: {exc}") from exc
+    except RecursionError as exc:  # JSON nested deeper than the decoder can follow
+        raise ValueError(f"{Path(path).name}: not valid JSON (nested too deeply)") from exc
 
 
 def pct(x: float | str) -> str:

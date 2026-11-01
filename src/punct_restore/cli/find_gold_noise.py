@@ -40,7 +40,7 @@ from punct_restore.data.gold_noise import (
 )
 from punct_restore.hashing import sha256_file
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import one_line_error, read_ids
+from punct_restore.prediction_io import one_line_error, parse_json_object, read_ids
 
 SPLITS = ("validation", "test", "test_amb", "default_train")
 
@@ -54,21 +54,24 @@ class Scored(NamedTuple):
     speaker_colons: int
 
 
+def _checked_record(line: str, where: str) -> dict[str, Any]:
+    """The JSON object on ``line``, checked by ``validate_record``; the ValueError starts with ``where``."""
+    record = parse_json_object(line, where)
+    try:
+        validate_record(record)
+    except ValueError as exc:
+        raise ValueError(f"{where}: {exc}") from exc
+    return record
+
+
 def _records(path: Path) -> Iterator[tuple[str, dict[str, Any]]]:
     """Stream ``(sample_id, record)`` per JSONL line; errors name the file and line."""
     try:
         with path.open(encoding="utf-8") as handle:
             for number, line in enumerate(handle, 1):
-                if not line.strip():
-                    continue
-                try:
-                    record = json.loads(line)
-                    validate_record(record)
-                except json.JSONDecodeError as exc:
-                    raise ValueError(f"{path.name} line {number}: invalid JSON ({exc.msg})") from exc
-                except ValueError as exc:
-                    raise ValueError(f"{path.name} line {number}: {exc}") from exc
-                yield record["sample_id"], record
+                if line.strip():
+                    record = _checked_record(line, f"{path.name} line {number}")
+                    yield record["sample_id"], record
     except UnicodeDecodeError as exc:
         raise ValueError(f"{path.name}: not valid UTF-8") from exc
 

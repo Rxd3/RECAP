@@ -13,7 +13,6 @@ Exit codes: 0 done, 1 one ``error:`` line on stderr, 2 usage error.
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 import time
 from collections.abc import Iterator
@@ -27,18 +26,18 @@ from punct_restore.features.word_clusters import (
 )
 from punct_restore.hashing import sha256_file
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import one_line_error, read_ids, reconfigure_stdout, write_new_file
+from punct_restore.prediction_io import (
+    one_line_error,
+    parse_sample_record,
+    read_ids,
+    reconfigure_stdout,
+    write_new_file,
+)
 
 
 def _parse(line: str, name: str, number: int) -> tuple[str, dict[str, Any]]:
-    try:
-        record = json.loads(line)
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"{name} line {number}: invalid JSON ({exc.msg})") from exc
-    sample_id = record.get("sample_id") if isinstance(record, dict) else None
-    if not isinstance(sample_id, str) or not sample_id:
-        raise ValueError(f"{name} line {number}: record without a string sample_id")
-    return sample_id, record
+    record = parse_sample_record(line, f"{name} line {number}")
+    return record["sample_id"], record
 
 
 def _tokens(record: dict[str, Any], name: str, number: int) -> list[str]:

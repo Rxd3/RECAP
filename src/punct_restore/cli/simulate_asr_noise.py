@@ -50,7 +50,7 @@ from punct_restore.data.asr_noise import (
     train_vocabulary,
 )
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import one_line_error, read_ids, reconfigure_stdout
+from punct_restore.prediction_io import one_line_error, parse_json_object, read_ids, reconfigure_stdout
 
 MODES = ("A", "B", "C")
 
@@ -82,12 +82,7 @@ def scan(path: Path, wanted: frozenset[str]) -> Iterator[tuple[int, dict[str, An
     """(line number, record) of the wanted sample_ids in file order; each must occur exactly once."""
     label, seen = _display_name(path), set()
     for number, line in _lines(path):
-        try:
-            record = json.loads(line)
-        except ValueError:
-            raise InputError(f"{label} line {number}: invalid JSON") from None
-        if not isinstance(record, dict):
-            raise InputError(f"{label} line {number}: record must be a JSON object")
+        record = parse_json_object(line, f"{label} line {number}")
         sid = record.get("sample_id")
         if not isinstance(sid, str) or sid not in wanted:
             continue

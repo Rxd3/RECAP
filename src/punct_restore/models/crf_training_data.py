@@ -6,6 +6,7 @@ punct_restore.models.crf_training.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -50,6 +51,17 @@ def _check_selected_record(rec: dict[str, Any], sample_id: str, expected_mode: s
             )
 
 
+def _sample_records(input_path: Path) -> Iterator[dict[str, Any]]:
+    """Every record of the JSONL file in order; ValueError names the file (and line) of a bad line or bad bytes."""
+    try:
+        with open(input_path, encoding="utf-8") as f:
+            for line_num, line in enumerate(f, 1):
+                if line.strip():
+                    yield parse_sample_record(line.strip(), f"Corrupt JSON at line {line_num} in {input_path.name}")
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"{input_path.name}: not valid UTF-8") from exc
+
+
 def _scan_selected_records(
     input_path: Path,
     target_id_set: set[str],
@@ -59,24 +71,14 @@ def _scan_selected_records(
     selected_records: list[dict[str, Any]] = []
     found_ids: set[str] = set()
 
-    with open(input_path, encoding="utf-8") as f:
-        for line_num, line in enumerate(f, 1):
-            line_str = line.strip()
-            if not line_str:
-                continue
-
-            rec = parse_sample_record(line_str, f"Corrupt JSON at line {line_num} in {input_path.name}")
-            sample_id = rec.get("sample_id")
-
-            # Check if this record is selected
-            if sample_id in target_id_set:
-                if sample_id in found_ids:
-                    raise ValueError(
-                        f"Duplicate sample_id {sample_id!r} encountered in source file {input_path}"
-                    )
-                found_ids.add(sample_id)
-                _check_selected_record(rec, sample_id, expected_mode)
-                selected_records.append(rec)
+    for rec in _sample_records(input_path):
+        sample_id = rec["sample_id"]
+        if sample_id in target_id_set:  # selected
+            if sample_id in found_ids:
+                raise ValueError(f"Duplicate sample_id {sample_id!r} encountered in source file {input_path}")
+            found_ids.add(sample_id)
+            _check_selected_record(rec, sample_id, expected_mode)
+            selected_records.append(rec)
 
     return selected_records, found_ids
 

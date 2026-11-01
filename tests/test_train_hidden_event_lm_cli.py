@@ -304,6 +304,18 @@ def test_a_corrupt_model_reports_the_artifact_error(trained: Case, capsys, tmp_p
     assert "invalid hidden-event LM artifact" in _refused(capsys, tmp_path, trained.predict_argv())
 
 
+@pytest.mark.parametrize("command", ["train", "predict"])
+def test_a_recursion_error_from_our_own_code_is_not_reported_as_bad_input(
+        trained: Case, monkeypatch: pytest.MonkeyPatch, command: str) -> None:
+    def bug(self: HiddenEventLM, records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        raise RecursionError("a bug in the model")
+
+    monkeypatch.setattr(HiddenEventLM, "fit" if command == "train" else "predict", bug)
+    argv = trained.train_argv(output=trained.folder / "again.json") if command == "train" else trained.predict_argv()
+    with pytest.raises(RecursionError, match="a bug in the model"):
+        cli.main(argv)
+
+
 def test_a_deeply_nested_predict_input_line_is_a_one_line_error(trained: Case, capsys, tmp_path: Path) -> None:
     lines = trained.valid.read_text(encoding="utf-8").splitlines()
     trained.valid.write_text("\n".join([*lines, DEEP_LINE]) + "\n", encoding="utf-8")
@@ -312,11 +324,11 @@ def test_a_deeply_nested_predict_input_line_is_a_one_line_error(trained: Case, c
     assert not trained.preds.exists() and not trained.man.exists()
 
 
-def test_a_corrupt_predict_input_line_is_prefixed_with_the_file_name(trained: Case, capsys, tmp_path: Path) -> None:
+def test_a_corrupt_predict_input_line_names_the_file_and_line_once(trained: Case, capsys, tmp_path: Path) -> None:
     lines = trained.valid.read_text(encoding="utf-8").splitlines()
     trained.valid.write_text("".join(f"{line}\n" for line in [*lines, "{not json"]), encoding="utf-8")
     line = _refused(capsys, tmp_path, trained.predict_argv())
-    assert line.startswith(f"error: {trained.valid.name}: ")
+    assert line == f"error: {trained.valid.name} line {len(lines) + 1}: not valid JSON\n"
 
 
 def test_a_model_with_an_oversized_count_is_a_one_line_error(trained: Case, capsys, tmp_path: Path) -> None:

@@ -106,10 +106,16 @@ def _freeze_selection(
 
 
 def _load_config(config_path: Path) -> dict[str, Any]:
-    """Read and validate the experiment config; a missing key, a wrong type or bad YAML is a ValueError."""
+    """Read and validate the experiment config.
+
+    Text that is not UTF-8, bad or too deeply nested YAML, a missing key or a wrong type is a ValueError that
+    starts with the file name.
+    """
     try:
         return validate_config(yaml.safe_load(config_path.read_text(encoding="utf-8")))
-    except (KeyError, TypeError, yaml.YAMLError) as exc:
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"{config_path.name}: not valid UTF-8") from exc
+    except (KeyError, TypeError, yaml.YAMLError, RecursionError) as exc:  # RecursionError: nested too deeply
         raise ValueError(f"{config_path.name}: invalid experiment config: {exc}") from exc
 
 

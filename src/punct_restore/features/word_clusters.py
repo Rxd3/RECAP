@@ -230,8 +230,8 @@ def load_cluster_map(path: str | Path) -> ClusterMap:
         raise ValueError(f"{path.name}: not valid UTF-8") from exc
     try:
         payload = json.loads(text)
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"{path.name}: invalid JSON ({exc.msg})") from exc
+    except (json.JSONDecodeError, RecursionError) as exc:  # RecursionError: nested too deeply
+        raise ValueError(f"{path.name}: invalid JSON ({getattr(exc, 'msg', 'nested too deeply')})") from exc
     try:
         payload = _check_fields(payload)
         clusters = _check_clusters(payload["clusters"], payload["k"], payload["vocabulary_size"])

@@ -1,0 +1,346 @@
+"""Regression net: a malformed input file gives ONE stderr line ``error: <file name>: <reason>`` and exit 1.
+
+Every case runs a command's ``main(argv)`` in-process on a tiny valid fixture (the fixtures of the command's own
+tests) with exactly one input replaced by a malformed file: JSON nested 100,000 levels deep, bytes that are not UTF-8,
+or a model file that is not a model. The line must name the file and must not show the folder or echo the file's text.
+A real bug in our own code is not covered here: it must still propagate as a traceback.
+"""
+
+from __future__ import annotations
+
+import json
+from collections.abc import Callable
+from pathlib import Path
+from typing import NamedTuple
+
+import pytest
+from crf_cli_fixtures import create_synthetic_train_jsonl, write_id_file
+from eval_fixtures import CASE, PUNCT, SCORED, cli_argv, pred_row, valid_case, write_jsonl
+from test_build_leakage_subsets import REL as LEAK_REL
+from test_build_leakage_subsets import make_root as leakage_root
+from test_build_word_clusters import args_for as cluster_args
+from test_build_word_clusters import make_root as cluster_root
+from test_find_gold_noise import RELEASE as NOISE_RELEASE
+from test_find_gold_noise import argv_for as noise_argv
+from test_find_gold_noise import build_root as noise_root
+from test_run_ablations import RELEASE as ABLATION_RELEASE
+from test_run_ablations import _argv as ablation_argv
+from test_run_ablations import build_root as ablation_root
+from test_simulate_asr_noise import DATA as SIM_DATA
+from test_simulate_asr_noise import LISTED_C, MASKS, SAMPLES, make_sample, write_root
+from test_simulate_asr_noise import argv_for as sim_argv
+from test_threshold import Fixture, _build_fixture, _predict_argv, _sha256
+from test_train_hidden_event_lm_cli import _build as hidden_event_case
+
+from punct_restore.cli import (
+    build_leakage_subsets,
+    build_word_clusters,
+    evaluate_models,
+    factor_predictions,
+    find_gold_noise,
+    prepare_data,
+    project_joint,
+    run_ablations,
+    simulate_asr_noise,
+    train_crf,
+    train_hidden_event_lm,
+    tune_threshold,
+)
+
+FOLDER = "secretfolder"  # the folder every fixture lives in; it must never be shown
+NESTED = b"[" * 100_000 + b"\n"  # the standard json parser gives up on it with a RecursionError
+NOT_UTF8 = b"\xe9\xff not utf-8\n"  # 0xE9 starts a 3-byte sequence that 0xFF breaks
+NOT_A_MODEL = b"123"
+
+
+class Env(NamedTuple):
+    folder: Path  # a fresh folder named FOLDER for this case
+    payload: bytes  # the malformed bytes
+    crf: Fixture  # a fitted tiny mode A CRF with its gold file and ID list
+
+
+class Run(NamedTuple):
+    main: Callable[[list[str]], int]
+    argv: list[str]
+    damaged: Path  # the file the error must name
+
+
+Builder = Callable[[Env], Run]
+
+
+def _damage(path: Path, env: Env) -> Path:
+    path.write_bytes(env.payload)
+    return path
+
+
+# ---------------------------------------------------------------------------------------------------- evaluate-models
+
+
+def _evaluate(command: str, damaged: str, mode: str = "A") -> Builder:
+    def build(env: Env) -> Run:
+        case = valid_case(env.folder, mode)
+        path = _damage(getattr(case, damaged), env)
+        argv = cli_argv(command, case, env.folder / "out.json", predictions=command != "baseline")
+        return Run(evaluate_models.main, argv, path)
+    return build
+
+
+def _evaluate_manifest(env: Env) -> Run:
+    case = valid_case(env.folder, "A")
+    manifest = _damage(env.folder / "preds.manifest.json", env)
+    argv = cli_argv("score", case, env.folder / "out.json", "--manifest", str(manifest))
+    return Run(evaluate_models.main, argv, manifest)
+
+
+# ------------------------------------------------------------------------------------------------------ CRF commands
+
+
+def _tune(damaged: str) -> Builder:
+    def build(env: Env) -> Run:
+        gold = _damage(env.folder / "gold.jsonl", env) if damaged == "gold" else env.crf.gold
+        ids = _damage(env.folder / "val.ids", env) if damaged == "ids" else env.crf.ids
+        argv = ["tune", "--model", str(env.crf.model), "--gold", str(gold), "--ids", str(ids),
+                "--grid", "0.1:0.9:0.4", "--out", str(env.folder / "tau.json")]
+        return Run(tune_threshold.main, argv, gold if damaged == "gold" else ids)
+    return build
+
+
+def _tune_predict(damaged: str) -> Builder:
+    def build(env: Env) -> Run:
+        tau = env.folder / "tau.json"
+        tau.write_text(json.dumps({"tau": 0.3, "model_sha256": _sha256(env.crf.model)}), encoding="utf-8")
+        argv = _predict_argv(env.crf, tau, env.folder / "p.jsonl", env.folder / "p.manifest.json")
+        path = _damage(env.folder / f"{damaged}.dat", env)
+        argv[argv.index("--input" if damaged == "input" else "--tau-file") + 1] = str(path)
+        return Run(tune_threshold.main, argv, path)
+    return build
+
+
+def _crf_train(damaged: str) -> Builder:
+    def build(env: Env) -> Run:
+        data, ids = env.folder / "data.jsonl", env.folder / "train.ids"
+        write_id_file(ids, create_synthetic_train_jsonl(data, "A", 4))
+        path = _damage(data if damaged == "input" else ids, env)
+        argv = ["train", "--mode", "A", "--input", str(data), "--ids", str(ids),
+                "--output", str(env.folder / "m.joblib")]
+        return Run(train_crf.main, argv, path)
+    return build
+
+
+def _crf_predict(damaged: str) -> Builder:
+    def build(env: Env) -> Run:
+        model = env.crf.model
+        if damaged == "model":
+            model = _damage(env.folder / "notamodel.joblib", env)
+        data = _damage(env.folder / "in.jsonl", env) if damaged == "input" else env.crf.gold
+        argv = ["predict", "--model", str(model), "--input", str(data), "--output", str(env.folder / "p.jsonl")]
+        return Run(train_crf.main, argv, model if damaged == "model" else data)
+    return build
+
+
+def _crf_inspect(env: Env) -> Run:
+    model = _damage(env.folder / "notamodel.joblib", env)
+    return Run(train_crf.main, ["inspect", "--model", str(model)], model)
+
+
+# --------------------------------------------------------------------------------------- hidden-event language model
+
+
+def _hidden_event(command: str) -> Builder:
+    def build(env: Env) -> Run:
+        case = hidden_event_case(env.folder)
+        if command == "train":
+            return Run(train_hidden_event_lm.main, case.train_argv(input=_damage(case.train, env)), case.train)
+        assert train_hidden_event_lm.main(case.train_argv()) == 0
+        return Run(train_hidden_event_lm.main, case.predict_argv(input=_damage(case.valid, env)), case.valid)
+    return build
+
+
+# ----------------------------------------------------------------------------------------------- data-root commands
+
+
+def _leakage(name: str) -> Builder:
+    def build(env: Env) -> Run:
+        root = leakage_root(env.folder)
+        path = _damage(root / "processed" / LEAK_REL / "mode_A" / name, env)
+        argv = ["--data-root", str(root), "--release", LEAK_REL, "--out", str(env.folder / "out")]
+        return Run(build_leakage_subsets.main, argv, path)
+    return build
+
+
+def _noise(env: Env) -> Run:
+    root = noise_root(env.folder)
+    path = _damage(root / "processed" / NOISE_RELEASE / "mode_B" / "validation.jsonl", env)
+    return Run(find_gold_noise.main, noise_argv(root, env.folder / "out"), path)
+
+
+def _clusters(env: Env) -> Run:
+    root = cluster_root(env.folder)
+    path = _damage(root / "processed" / "rel" / "mode_A" / "train.jsonl", env)
+    return Run(build_word_clusters.main, cluster_args(root, env.folder / "map.json"), path)
+
+
+def _ablations(name: str) -> Builder:
+    def build(env: Env) -> Run:
+        root = ablation_root(env.folder)
+        argv = ablation_argv(root, env.folder / "out", "--sample", "3")
+        if name == "cluster-map":
+            path = _damage(env.folder / "clusters.json", env)
+            return Run(run_ablations.main, [*argv, "--cluster-map", str(path)], path)
+        path = _damage(root / "processed" / ABLATION_RELEASE / "mode_A" / name, env)
+        return Run(run_ablations.main, argv, path)
+    return build
+
+
+def _simulate(target: str) -> Builder:
+    def build(env: Env) -> Run:
+        root = write_root(env.folder / "data", [make_sample(i) for i in range(SAMPLES)], LISTED_C)
+        path = _damage(root / (MASKS if target == "masks" else SIM_DATA[target]), env)
+        return Run(simulate_asr_noise.main, sim_argv(root, env.folder / "out"), path)
+    return build
+
+
+# ------------------------------------------------------------------------------- prediction files and prepare-data
+
+
+def _factor(damaged: str) -> Builder:
+    def build(env: Env) -> Run:
+        gold = valid_case(env.folder, "C").gold
+        files = {
+            "punct": write_jsonl(env.folder / "punct.jsonl", [pred_row(s, "A", PUNCT["A"][s]) for s in SCORED]),
+            "case": write_jsonl(env.folder / "case.jsonl", [pred_row(s, "CASE", CASE[s]) for s in SCORED]),
+        }
+        files[damaged] = _damage(files[damaged], env)
+        argv = ["--punct", str(files["punct"]), "--case", str(files["case"]), "--gold", str(gold),
+                "--out", str(env.folder / "c.jsonl"), "--manifest-out", str(env.folder / "c.manifest.json")]
+        return Run(factor_predictions.main, argv, files[damaged])
+    return build
+
+
+def _project(env: Env) -> Run:
+    gold = valid_case(env.folder, "A").gold
+    preds = _damage(env.folder / "c_pred.jsonl", env)
+    argv = ["--predictions", str(preds), "--gold", str(gold),
+            "--out", str(env.folder / "a.jsonl"), "--manifest-out", str(env.folder / "a.manifest.json")]
+    return Run(project_joint.main, argv, preds)
+
+
+def _prepare_data_without_manifest(env: Env) -> Run:
+    argv = ["build", "--raw-root", str(env.folder / "raw"), "--release-id", "r",
+            "--processed-dir", str(env.folder / "p"), "--splits-dir", str(env.folder / "s")]
+    return Run(prepare_data.main, argv, Path("MANIFEST.sha256"))
+
+
+# ---------------------------------------------------------------------------------------------------------- the cases
+
+NESTED_CASES: dict[str, Builder] = {
+    "evaluate-score-gold": _evaluate("score", "gold"),
+    "evaluate-score-predictions": _evaluate("score", "predictions"),
+    "evaluate-score-masks": _evaluate("score", "masks", "C"),
+    "evaluate-score-manifest": _evaluate_manifest,
+    "evaluate-baseline-gold": _evaluate("baseline", "gold"),
+    "tune-threshold-tune-gold": _tune("gold"),
+    "tune-threshold-predict-input": _tune_predict("input"),
+    "tune-threshold-predict-tau-file": _tune_predict("tau"),
+    "train-crf-train-input": _crf_train("input"),
+    "train-crf-predict-input": _crf_predict("input"),
+    "train-hidden-event-lm-train-input": _hidden_event("train"),
+    "train-hidden-event-lm-predict-input": _hidden_event("predict"),
+    "build-leakage-subsets-split": _leakage("test.jsonl"),
+    "build-leakage-subsets-train": _leakage("train.jsonl"),
+    "find-gold-noise": _noise,
+    "build-word-clusters": _clusters,
+    "run-ablations-train": _ablations("train.jsonl"),
+    "run-ablations-validation": _ablations("validation.jsonl"),
+    "run-ablations-cluster-map": _ablations("cluster-map"),
+    "simulate-asr-noise-data": _simulate("B"),
+    "simulate-asr-noise-masks": _simulate("masks"),
+    "factor-predictions-punct": _factor("punct"),
+    "factor-predictions-case": _factor("case"),
+    "project-joint-predictions": _project,
+}
+NOT_UTF8_CASES: dict[str, Builder] = {  # one input per reader family
+    "evaluate-score-gold": _evaluate("score", "gold"),
+    "evaluate-score-ids": _evaluate("score", "ids"),
+    "tune-threshold-tune-ids": _tune("ids"),
+    "tune-threshold-predict-input": _tune_predict("input"),
+    "tune-threshold-predict-tau-file": _tune_predict("tau"),
+    "train-crf-train-input": _crf_train("input"),
+    "train-crf-train-ids": _crf_train("ids"),
+    "train-crf-predict-input": _crf_predict("input"),
+    "train-hidden-event-lm-train-input": _hidden_event("train"),
+    "train-hidden-event-lm-predict-input": _hidden_event("predict"),
+    "build-leakage-subsets-split": _leakage("test.jsonl"),
+    "find-gold-noise": _noise,
+    "build-word-clusters": _clusters,
+    "run-ablations-train": _ablations("train.jsonl"),
+    "run-ablations-cluster-map": _ablations("cluster-map"),
+    "simulate-asr-noise-data": _simulate("B"),
+    "factor-predictions-punct": _factor("punct"),
+    "project-joint-predictions": _project,
+}
+NOT_A_MODEL_CASES: dict[str, Builder] = {
+    "train-crf-inspect-model": _crf_inspect,
+    "train-crf-predict-model": _crf_predict("model"),
+}
+PARAMS = [pytest.param(build, payload, id=f"{kind}-{name}")
+          for kind, payload, cases in (("nested", NESTED, NESTED_CASES), ("not-utf8", NOT_UTF8, NOT_UTF8_CASES),
+                                       ("not-a-model", NOT_A_MODEL, NOT_A_MODEL_CASES))
+          for name, build in cases.items()]
+
+
+@pytest.fixture(scope="module")
+def crf(tmp_path_factory: pytest.TempPathFactory) -> Fixture:
+    return _build_fixture(tmp_path_factory.mktemp("crf"), "A")
+
+
+def _error_line(capsys: pytest.CaptureFixture[str]) -> str:
+    err = capsys.readouterr().err
+    assert len(err.splitlines()) == 1 and err.startswith("error: ") and err.endswith("\n"), err[:300]
+    return err
+
+
+@pytest.mark.parametrize(("build", "payload"), PARAMS)
+def test_a_malformed_input_is_one_error_line_naming_the_file(
+    build: Builder, payload: bytes, crf: Fixture, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    folder = tmp_path / FOLDER
+    folder.mkdir()
+    run = build(Env(folder, payload, crf))
+    assert run.main(run.argv) == 1
+    line = _error_line(capsys)
+    assert run.damaged.name in line, line
+    assert FOLDER not in line and str(tmp_path) not in line, line
+    assert len(line) < 400, "the message must not echo the file's text"
+
+
+@pytest.mark.parametrize("build", [_crf_inspect, _crf_predict("model")], ids=["inspect", "predict"])
+def test_a_file_that_is_not_a_model_is_named_and_its_text_is_not_echoed(
+    build: Builder, crf: Fixture, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    folder = tmp_path / FOLDER
+    folder.mkdir()
+    run = build(Env(folder, NOT_A_MODEL, crf))
+    assert run.main(run.argv) == 1
+    assert _error_line(capsys) == "error: notamodel.joblib: not a readable CRF artifact\n"
+
+
+def test_prepare_data_build_without_the_manifest_is_one_error_line(
+    crf: Fixture, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    run = _prepare_data_without_manifest(Env(tmp_path / FOLDER, b"", crf))
+    assert run.main(run.argv) == 1
+    line = _error_line(capsys)
+    assert line.startswith("error: missing MANIFEST.sha256") and FOLDER not in line
+
+
+def test_an_unreadable_companion_manifest_is_a_note_not_a_traceback(
+    crf: Fixture, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    model = tmp_path / "m.joblib"
+    model.write_bytes(crf.model.read_bytes())
+    (tmp_path / "m.joblib.manifest.json").write_bytes(NESTED)
+    assert train_crf.main(["inspect", "--model", str(model)]) == 0
+    captured = capsys.readouterr()
+    assert captured.err == "Note: companion manifest unreadable: m.joblib.manifest.json\n"
+    assert "Companion Manifest:" not in captured.out

@@ -49,8 +49,10 @@ def load_labels(path: Path, mode: str) -> list[str]:
         if mode_config["num_classes"] != len(labels):
             raise ValueError("num_classes does not match label vocabulary")
         return labels
-    except (KeyError, TypeError, yaml.YAMLError) as exc:
-        raise ValueError(f"invalid label configuration: {exc}") from exc
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"{path.name}: not valid UTF-8") from exc
+    except (KeyError, TypeError, yaml.YAMLError, RecursionError) as exc:  # RecursionError: nested too deeply
+        raise ValueError(f"{path.name}: invalid label configuration: {exc}") from exc
 
 
 def nonempty(value: str) -> str:

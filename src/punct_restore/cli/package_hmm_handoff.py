@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import shutil
 import sys
@@ -215,10 +216,12 @@ def package(run: Path, evaluator: Path, output: Path) -> dict[str, Any]:
     try:
         return _build_handoff(run, output, archive_path, plan, selected)
     except BaseException:
-        # best effort: leave neither the half-built folder nor its zip, so the handoff ID can be used again
+        # best effort: leave neither the half-built folder nor its zip, so the handoff ID can be used again;
+        # a cleanup that fails must not replace the error that is being raised
         shutil.rmtree(output, ignore_errors=True)
-        archive_path.unlink(missing_ok=True)
-        archive_path.with_suffix(".zip.sha256").unlink(missing_ok=True)
+        for leftover in (archive_path, archive_path.with_suffix(".zip.sha256")):
+            with contextlib.suppress(OSError):
+                leftover.unlink(missing_ok=True)
         raise
 
 

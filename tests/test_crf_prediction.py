@@ -128,7 +128,7 @@ def test_a_corrupt_artifact_is_one_line_naming_the_file_only(tmp_path: Path) -> 
         load_scoring_model(bad)
 
     message = str(caught.value)
-    assert message.startswith("Corrupt or unreadable model artifact at bad.joblib: ")
+    assert message == "bad.joblib: not a readable CRF artifact"
     assert "\n" not in message and str(tmp_path) not in message
 
 

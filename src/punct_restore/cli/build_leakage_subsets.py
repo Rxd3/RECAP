@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import one_line_error, read_ids
+from punct_restore.prediction_io import one_line_error, parse_sample_record, read_ids
 
 QUALITY_REASON = "low_comma_or_tts_source"
 BUCKETS = ("excluded_train_video", "excluded_other_leak", "excluded_quality")
@@ -36,16 +36,9 @@ def _records(path: Path) -> Iterator[tuple[str, dict[str, Any]]]:
     try:
         with path.open(encoding="utf-8") as handle:
             for number, line in enumerate(handle, 1):
-                if not line.strip():
-                    continue
-                try:
-                    record = json.loads(line)
-                except json.JSONDecodeError as exc:
-                    raise ValueError(f"{path.name} line {number}: invalid JSON ({exc.msg})") from exc
-                sample_id = record.get("sample_id") if isinstance(record, dict) else None
-                if not isinstance(sample_id, str) or not sample_id:
-                    raise ValueError(f"{path.name} line {number}: record without a string sample_id")
-                yield sample_id, record
+                if line.strip():
+                    record = parse_sample_record(line, f"{path.name} line {number}")
+                    yield record["sample_id"], record
     except UnicodeDecodeError as exc:
         raise ValueError(f"{path.name}: not valid UTF-8") from exc
 

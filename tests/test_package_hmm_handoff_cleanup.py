@@ -120,3 +120,30 @@ def test_a_checksum_file_that_already_exists_is_refused_and_left_untouched(
     with pytest.raises(ValueError, match="already exists"):
         _package(output, tmp_path)
     assert checksum.read_bytes() == b"keep" and not output.exists() and not archive.exists()
+
+
+def test_a_cleanup_that_fails_does_not_replace_the_original_error_and_still_tries_every_file(
+        paths: tuple[Path, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    output, archive = paths
+    checksum = archive.with_suffix(".zip.sha256")
+
+    def copy_then_leave_both_files(run: Path, out: Path, config: dict[str, Any]) -> None:
+        out.mkdir(exist_ok=True)
+        archive.write_bytes(b"half")
+        checksum.write_bytes(b"half")
+        raise ValueError("the real problem")
+
+    real_unlink = Path.unlink
+    tried: list[str] = []
+
+    def locked_zip(self: Path, missing_ok: bool = False) -> None:
+        tried.append(self.name)
+        if self == archive:
+            raise PermissionError(errno.EACCES, "Permission denied", str(self))
+        real_unlink(self, missing_ok=missing_ok)
+
+    monkeypatch.setattr(package_hmm_handoff, "_copy_bundle_files", copy_then_leave_both_files)
+    monkeypatch.setattr(Path, "unlink", locked_zip)
+    with pytest.raises(ValueError, match="the real problem"):
+        _package(output, tmp_path)
+    assert tried == ["handoff.zip", "handoff.zip.sha256"] and not checksum.exists() and not output.exists()

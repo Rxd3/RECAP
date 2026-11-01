@@ -124,6 +124,9 @@ def _read_jsonl(path: Path) -> Iterator[tuple[int, dict[str, Any]]]:
             continue
         try:
             record = json.loads(line)
+        except RecursionError as exc:  # nested too deeply (prediction_io imports this module: no parse_json_object)
+            raise EvaluationInputError(
+                f"{path.name} line {number}: invalid JSON (nested too deeply)") from exc
         except ValueError as exc:  # JSONDecodeError, or an integer beyond Python's digit limit
             raise EvaluationInputError(
                 f"{path.name} line {number}: invalid JSON ({getattr(exc, 'msg', exc)})") from exc

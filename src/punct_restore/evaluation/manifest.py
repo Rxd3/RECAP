@@ -31,7 +31,7 @@ def _load(path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
     """The manifest and its checked input identity."""
     try:
         manifest = json.loads(path.read_text(encoding="utf-8-sig"))
-    except (UnicodeDecodeError, ValueError) as exc:
+    except (UnicodeDecodeError, ValueError, RecursionError) as exc:  # RecursionError: nested too deeply
         raise EvaluationInputError(f"{path.name}: not a JSON manifest") from exc
     if not isinstance(manifest, dict):
         raise EvaluationInputError(f"{path.name}: manifest must be a JSON object")

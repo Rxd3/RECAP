@@ -9,6 +9,30 @@ from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm_experiment_identity import check_evaluator, implementation
 from punct_restore.models.hmm_experiment_protocol import choose, read_json, validate_config
 
+# What the gate reads from the two files it binds together; the ones in _OBJECTS must be JSON objects themselves.
+_PLAN_KEYS = ("config", "implementation", "evaluator")
+_SELECTION_KEYS = ("plan_sha256", "modes", "used_test_labels", "training_includes_validation", "mode_selection_sha256")
+_OBJECTS = ("config", "modes", "mode_selection_sha256")
+
+
+def _require_shape(name: str, value: Any, keys: tuple[str, ...]) -> None:
+    """Require ``value``, the content of the file ``name``, to be a JSON object that holds every one of ``keys``."""
+    if not isinstance(value, dict):
+        raise ValueError(f"{name}: not a JSON object")
+    for key in keys:
+        if key not in value:
+            raise ValueError(f"{name}: missing {key}")
+        if key in _OBJECTS and not isinstance(value[key], dict):
+            raise ValueError(f"{name}: {key} is not a JSON object")
+
+
+def _checked_config(plan: dict[str, Any]) -> dict[str, Any]:
+    """The plan's config, validated; a missing key or a wrong type inside it is a ValueError naming plan.json."""
+    try:
+        return validate_config(plan["config"])
+    except (KeyError, TypeError) as exc:
+        raise ValueError(f"plan.json: invalid experiment config: {exc}") from exc
+
 
 def _check_gate(run: Path, selection: dict[str, Any], config: dict[str, Any]) -> None:
     """Require the selection to be bound to this plan and to cover every mode without test access."""
@@ -64,11 +88,15 @@ def verified_frozen_selection(run: Path, evaluator: Path) -> tuple[dict[str, Any
     """Check a run's frozen plan and selection against the code, evaluator and files on disk.
 
     Returns (plan, selection) once every part is as it was when the selection was frozen; raises ValueError for
-    the first part that is not.
+    the first part that is not. A plan or selection of the wrong shape (the plan's config included) is a ValueError
+    that starts with its file name; only these reads are relabelled, so a missing key further on is a bug and
+    propagates.
     """
     plan = read_json(run / "plan.json")
     selection = read_json(run / "selection.json")
-    config = validate_config(plan["config"])
+    _require_shape("plan.json", plan, _PLAN_KEYS)
+    _require_shape("selection.json", selection, _SELECTION_KEYS)
+    config = _checked_config(plan)
     _check_gate(run, selection, config)
     if implementation() != plan["implementation"]:
         raise ValueError("HMM implementation changed since selection")

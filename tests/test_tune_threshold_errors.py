@@ -61,7 +61,7 @@ def test_predict_with_a_corrupt_model_names_the_file_only(
     argv = _predict_argv(mode_a, tau_file, tmp_path / "p.jsonl", tmp_path / "p.man.json")
     argv[argv.index("--model") + 1] = str(bad)
     assert tune_threshold.main(argv) == 1
-    assert _one_line(capsys).startswith("error: Corrupt or unreadable model artifact at bad.joblib: ")
+    assert _one_line(capsys) == "error: bad.joblib: not a readable CRF artifact\n"
 
 
 def test_predict_with_a_missing_tau_file_names_the_file_only(
@@ -75,9 +75,10 @@ def test_predict_with_a_missing_tau_file_names_the_file_only(
 @pytest.mark.parametrize(
     ("content", "message"),
     [("{not json", "tau file bad.json is not valid JSON"),
+     ("[" * 100_000, "tau file bad.json is not valid JSON"),
      ("[1, 2]", "tau file bad.json must be a JSON object"),
      (json.dumps({"tau": 5, "model_sha256": "x"}), "tau file bad.json: tau must be")],
-    ids=["not-json", "not-an-object", "bad-tau"],
+    ids=["not-json", "nested-too-deeply", "not-an-object", "bad-tau"],
 )
 def test_predict_with_a_bad_tau_file_names_the_file_only(
     mode_a: Fixture, tmp_path: Path, capsys: pytest.CaptureFixture[str], content: str, message: str
@@ -86,6 +87,25 @@ def test_predict_with_a_bad_tau_file_names_the_file_only(
     tau_file.write_text(content, encoding="utf-8")
     assert tune_threshold.main(_predict_argv(mode_a, tau_file, tmp_path / "p.jsonl", tmp_path / "p.man.json")) == 1
     assert message in _one_line(capsys)
+
+
+def test_tune_with_a_train_file_that_is_not_utf8_names_the_file_only(
+    mode_a: Fixture, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    train = _in_folder(tmp_path, "train.jsonl")
+    train.write_bytes(b"\xe9\xff\n")
+    argv = [*_tune_argv(mode_a, tmp_path / "tau.json"), "--train", str(train), "--train-ids", str(mode_a.ids)]
+    assert tune_threshold.main(argv) == 1
+    assert _one_line(capsys) == "error: train.jsonl: not valid UTF-8\n"
+
+
+def test_predict_with_a_tau_file_that_is_not_utf8_names_the_file_only(
+    mode_a: Fixture, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    tau_file = _in_folder(tmp_path, "bad.json")
+    tau_file.write_bytes(b'{"tau": \xe9\xff}')
+    assert tune_threshold.main(_predict_argv(mode_a, tau_file, tmp_path / "p.jsonl", tmp_path / "p.man.json")) == 1
+    assert _one_line(capsys) == "error: tau file bad.json is not valid UTF-8\n"
 
 
 def test_predict_with_a_tau_file_for_another_model_shows_no_folder(
@@ -141,5 +161,5 @@ def test_predict_with_a_deeply_nested_input_line_is_one_error_line_not_a_traceba
     argv = _predict_argv(Fixture(mode_a.model, deep, mode_a.ids, None), tau_file, tmp_path / "p.jsonl",
                          tmp_path / "p.man.json")
     assert tune_threshold.main(argv) == 1
-    assert _one_line(capsys) == "error: Corrupt JSON at line 1: not valid JSON\n"
+    assert _one_line(capsys) == "error: deep.jsonl line 1: not valid JSON\n"
     assert not (tmp_path / "p.jsonl").exists() and not (tmp_path / "p.man.json").exists()

@@ -48,7 +48,7 @@ from punct_restore.models.crf import CRFModel
 from punct_restore.models.factored import combine
 from punct_restore.models.gap_classifier import GapClassifier
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import one_line_error, read_ids
+from punct_restore.prediction_io import one_line_error, parse_sample_record, read_ids
 
 SEED = 2026
 # group name -> FeatureConfig.improved() override that removes it
@@ -155,24 +155,20 @@ def read_records(path: Path, ids: set[str]) -> dict[str, dict[str, Any]]:
     """Stream a JSONL file and keep only the rows whose sample_id is in ids."""
     keep: dict[str, dict[str, Any]] = {}
     seen: set[str] = set()
-    with open(path, encoding="utf-8") as handle:
-        for number, line in enumerate(handle, start=1):
-            if not line.strip():
-                continue
-            try:
-                row = json.loads(line)
-            except json.JSONDecodeError:
-                raise ValueError(f"{path.name} line {number}: invalid JSON") from None
-            if not isinstance(row, dict) or "sample_id" not in row:
-                raise ValueError(f"{path.name} line {number}: record without sample_id")
-            sid = row["sample_id"]
-            if not isinstance(sid, str) or not sid:
-                raise ValueError(f"{path.name} line {number}: sample_id must be a non-empty string")
-            if sid in seen:
-                raise ValueError(f"{path.name} line {number}: duplicate sample_id {sid!r}")
-            seen.add(sid)
-            if sid in ids:
-                keep[sid] = row
+    try:
+        with open(path, encoding="utf-8") as handle:
+            for number, line in enumerate(handle, start=1):
+                if not line.strip():
+                    continue
+                row = parse_sample_record(line, f"{path.name} line {number}")
+                sid = row["sample_id"]
+                if sid in seen:
+                    raise ValueError(f"{path.name} line {number}: duplicate sample_id {sid!r}")
+                seen.add(sid)
+                if sid in ids:
+                    keep[sid] = row
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"{path.name}: not valid UTF-8") from exc
     missing = ids - keep.keys()
     if missing:
         raise ValueError(f"{len(missing)} IDs missing from {path.name}")

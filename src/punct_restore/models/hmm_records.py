@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Generator, Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,21 +9,22 @@ from typing import Any
 
 from punct_restore.data.labeling import load_label_sets
 from punct_restore.data.validation import check_model_input, validate_record
+from punct_restore.prediction_io import parse_json_object
 
 
 def read_jsonl(path: Path) -> Iterator[dict[str, Any]]:
-    """Yield each line of a JSONL file as an object, rejecting blank lines, bad JSON and non-objects."""
-    with path.open(encoding="utf-8") as handle:
-        for number, line in enumerate(handle, 1):
-            if not line.strip():
-                raise ValueError(f"{path.name}:{number}: blank JSONL record")
-            try:
-                record = json.loads(line)
-            except (ValueError, UnicodeError) as exc:
-                raise ValueError(f"{path.name}:{number}: invalid JSON: {exc}") from exc
-            if not isinstance(record, dict):
-                raise ValueError(f"{path.name}:{number}: record must be a JSON object")
-            yield record
+    """Yield each line of a JSONL file as an object, rejecting blank lines, bad JSON, non-objects and non-UTF-8 text.
+
+    Every rejection is a ValueError of one line that names the file by name only.
+    """
+    try:
+        with path.open(encoding="utf-8") as handle:
+            for number, line in enumerate(handle, 1):
+                if not line.strip():
+                    raise ValueError(f"{path.name}:{number}: blank JSONL record")
+                yield parse_json_object(line, f"{path.name}:{number}")
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"{path.name}: not valid UTF-8") from exc
 
 
 def _check_record_basics(record: dict[str, Any], path: Path, seen: set[str]) -> tuple[str, list[Any]]:

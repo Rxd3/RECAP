@@ -172,8 +172,8 @@ def _train_priors(train: Path, train_ids: Path, model: CRFModel) -> dict[str, fl
     try:
         ids = read_ids(train_ids)
         return label_priors(_stream_train_labels(train, ids, model.label_mode), model.vocabulary)
-    except UnicodeDecodeError:
-        raise ValueError("--train and --train-ids must be UTF-8 text files") from None
+    except UnicodeDecodeError:  # read_ids names a bad ID list itself, so this is the training file
+        raise ValueError(f"{train.name}: not valid UTF-8") from None
 
 
 def _identity_or_none(path: str | None) -> dict[str, str] | None:
@@ -269,7 +269,9 @@ def _read_tau_file(path: Path, model_path: Path) -> TauSettings:
         raise FileNotFoundError(f"tau file not found at {path.name}")
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"tau file {path.name} is not valid UTF-8") from exc
+    except (json.JSONDecodeError, RecursionError) as exc:  # RecursionError: nested too deeply
         raise ValueError(f"tau file {path.name} is not valid JSON") from exc
     if not isinstance(data, dict) or not isinstance(data.get("model_sha256"), str):
         raise ValueError(f"tau file {path.name} must be a JSON object with a tau and a model_sha256 string")

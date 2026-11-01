@@ -383,6 +383,28 @@ def test_malformed_jsonl_is_one_friendly_line(tmp_path, capsys):
     assert str(tmp_path) not in err
 
 
+@pytest.mark.parametrize(("bad_line", "reason"), [
+    ('{"sample_id": "v1"', "not valid JSON"),
+    ("[" * 50_000, "not valid JSON"),  # json gives up with a RecursionError
+    ("[1, 2]", "not a JSON object"),
+])
+def test_a_bad_jsonl_line_names_the_file_and_line(tmp_path, capsys, bad_line, reason):
+    root = build_root(tmp_path)
+    path = root / "processed" / RELEASE / "mode_A" / "validation.jsonl"
+    path.write_text(path.read_text(encoding="utf-8") + bad_line + "\n", encoding="utf-8", newline="\n")
+    code = run_ablations.main(_argv(root, tmp_path / "out", "--sample", "3"))
+    assert code == 1
+    assert capsys.readouterr().err.splitlines() == [f"error: validation.jsonl line 4: {reason}"]
+
+
+def test_a_jsonl_file_that_is_not_utf8_names_the_file(tmp_path, capsys):
+    root = build_root(tmp_path)
+    (root / "processed" / RELEASE / "mode_A" / "train.jsonl").write_bytes(b"\xe9\xff\n")
+    code = run_ablations.main(_argv(root, tmp_path / "out", "--sample", "3"))
+    assert code == 1
+    assert capsys.readouterr().err.splitlines() == ["error: train.jsonl: not valid UTF-8"]
+
+
 def test_jsonl_row_without_sample_id_is_an_error(tmp_path, capsys):
     root = build_root(tmp_path)
     proc = root / "processed" / RELEASE / "mode_A"
@@ -401,7 +423,7 @@ def test_jsonl_sample_id_must_be_a_non_empty_string(tmp_path, capsys, bad_id):
     code = run_ablations.main(_argv(root, tmp_path / "out", "--sample", "3"))
     assert code == 1
     assert capsys.readouterr().err.splitlines() == [
-        "error: train.jsonl line 1: sample_id must be a non-empty string"
+        "error: train.jsonl line 1: sample_id must be a nonempty string"
     ]
 
 

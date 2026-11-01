@@ -294,9 +294,10 @@ def test_a_listed_train_record_without_a_group_id_fails(tmp_path: Path, capsys: 
 
 
 @pytest.mark.parametrize("bad_line, needle", [
-    ("{not json", "line 3"),
-    ('{"tokens": ["x"]}', "sample_id"),
-    ("[1, 2]", "sample_id"),
+    ("{not json", "line 3: not valid JSON"),
+    ("[" * 50_000, "line 3: not valid JSON"),  # json gives up with a RecursionError
+    ('{"tokens": ["x"]}', "line 3: sample_id must be a nonempty string"),
+    ("[1, 2]", "line 3: not a JSON object"),
     ('{"sample_id": "test:A-0", "tokens": []}', "duplicate"),
 ])
 def test_a_bad_jsonl_line_fails_with_file_name(tmp_path: Path, capsys: pytest.CaptureFixture[str],

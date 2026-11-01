@@ -126,6 +126,7 @@ def _with_input(value: Any) -> Render:
 
 @pytest.mark.parametrize(("render", "message"), [
     pytest.param(_fixed(b"{oops"), NOT_JSON, id="invalid_json"),
+    pytest.param(_fixed(b"[" * 100_000), NOT_JSON, id="nested_too_deeply"),
     pytest.param(_fixed(b'{"model_name": "\xe9\xff"}'), NOT_JSON, id="invalid_utf8"),
     pytest.param(_fixed(b"[]"), NOT_OBJECT, id="list"),
     pytest.param(_fixed(b'"x"'), NOT_OBJECT, id="string"),

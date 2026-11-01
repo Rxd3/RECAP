@@ -68,7 +68,7 @@ def read_bundle(path: str | Path) -> dict[str, Any]:
     try:
         bundle = joblib.load(load_path)  # joblib is pickle: artifacts are this project's own saved models only
     except Exception as e:
-        raise ValueError(f"Corrupt or unreadable model artifact at {load_path}: {e}") from e
+        raise ValueError(f"{load_path.name}: not a readable CRF artifact") from e  # the unpickling text is not shown
 
     if not isinstance(bundle, dict):
         raise ValueError(f"Corrupt artifact: expected dict root, got {type(bundle).__name__}")

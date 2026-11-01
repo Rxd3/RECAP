@@ -155,3 +155,62 @@ def _rewrite_winner_to_the_worse_candidate(run: Path) -> dict[str, Any]:
     _rewrite(run / "selection.json", lambda frozen: {
         **frozen, "modes": {"A": worse}, "mode_selection_sha256": {"A": sha256_file(path)}})
     return worse
+
+
+@pytest.mark.parametrize(
+    ("content", "message"),
+    [
+        (b'{"a": 1}', r"^plan\.json: missing config$"),
+        (b"[1]", r"^plan\.json: not a JSON object$"),
+        (b"null", r"^plan\.json: not a JSON object$"),
+        (b'{"config": [], "implementation": {}, "evaluator": {}}', r"^plan\.json: config is not a JSON object$"),
+        (b'{"config": {}, "evaluator": {}}', r"^plan\.json: missing implementation$"),
+        (b'{"config": {}, "implementation": {}}', r"^plan\.json: missing evaluator$"),
+        (b"[" * 100_000, r"^plan\.json: not valid JSON$"),
+        (b"\xff\xfe", r"^plan\.json: not valid UTF-8$"),
+        (b'{"config": {}, "implementation": {}, "evaluator": {}}', r"^plan\.json: invalid experiment config: .*schema"),
+    ],
+    ids=["no-keys", "array", "null", "config-array", "no-implementation", "no-evaluator", "nested", "not-utf8",
+         "config-lacks-a-key"],
+)
+def test_a_plan_of_the_wrong_shape_is_one_value_error_that_starts_with_its_file_name(
+        content: bytes, message: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    run = _study(tmp_path, monkeypatch)
+    (run / "plan.json").write_bytes(content)
+    with pytest.raises(ValueError, match=message):
+        verified_frozen_selection(run, tmp_path / "evaluator")
+
+
+@pytest.mark.parametrize(
+    ("content", "message"),
+    [
+        (b'{"a": 1}', r"^selection\.json: missing plan_sha256$"),
+        (b"[1]", r"^selection\.json: not a JSON object$"),
+        (b'{"plan_sha256": "x", "modes": [], "used_test_labels": false, "training_includes_validation": false, '
+         b'"mode_selection_sha256": {}}', r"^selection\.json: modes is not a JSON object$"),
+        (b'{"plan_sha256": "x", "modes": {}, "used_test_labels": false, "training_includes_validation": false}',
+         r"^selection\.json: missing mode_selection_sha256$"),
+        (b"[" * 100_000, r"^selection\.json: not valid JSON$"),
+        (b"\xff\xfe", r"^selection\.json: not valid UTF-8$"),
+    ],
+    ids=["no-keys", "array", "modes-array", "no-mode-hashes", "nested", "not-utf8"],
+)
+def test_a_selection_of_the_wrong_shape_is_one_value_error_that_starts_with_its_file_name(
+        content: bytes, message: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    run = _study(tmp_path, monkeypatch)
+    (run / "selection.json").write_bytes(content)
+    with pytest.raises(ValueError, match=message):
+        verified_frozen_selection(run, tmp_path / "evaluator")
+
+
+def test_a_key_error_after_the_files_were_read_is_still_a_bug_and_propagates(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Only the shape of plan.json and selection.json is relabelled; a KeyError further on is not a file problem."""
+    run = _study(tmp_path, monkeypatch)
+
+    def broken(root: Path, commit: str) -> dict[str, Any]:
+        raise KeyError("bug")
+
+    monkeypatch.setattr(hmm_experiment_frozen, "check_evaluator", broken)
+    with pytest.raises(KeyError):
+        verified_frozen_selection(run, tmp_path / "evaluator")

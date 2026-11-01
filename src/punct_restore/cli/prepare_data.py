@@ -29,8 +29,8 @@ def run_extract(args: argparse.Namespace) -> None:
         extraction.extract_ranges(args.raw_root, log=print)
     problems, extra = extraction.verify_extraction(args.raw_root, os.path.join(args.raw_root, "MANIFEST.sha256"))
     if problems or extra:
-        sys.exit(f"extraction does not match MANIFEST.sha256: {len(problems)} missing/different, {len(extra)} extra "
-                 f"(first: {(problems or extra)[:3]})")
+        raise ValueError(f"extraction does not match MANIFEST.sha256: {len(problems)} missing/different, "
+                         f"{len(extra)} extra (first: {(problems or extra)[:3]})")
     print("extraction matches MANIFEST.sha256")
 
 
@@ -39,7 +39,7 @@ def run_build(args: argparse.Namespace) -> None:
     titles = os.path.join(args.raw_root, "video_metadata_oembed.jsonl")
     for path in (manifest, titles):
         if not os.path.exists(path):   # without them the build is not the published release
-            sys.exit(f"missing {os.path.basename(path)}: copy it from the release's provenance package")
+            raise ValueError(f"missing {os.path.basename(path)}: copy it from the release's provenance package")
     sources = ReleaseSources(raw_dir=os.path.join(args.raw_root, extraction.OUTPUT_DIR),
                              processed_dir=args.processed_dir, splits_dir=args.splits_dir,
                              release_id=args.release_id, raw_manifest=manifest, titles_path=titles)

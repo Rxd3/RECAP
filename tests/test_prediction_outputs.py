@@ -577,10 +577,10 @@ _ONE = '{"sample_id": "s", "tokens": ["a"]}'
 @pytest.mark.parametrize(
     ("lines", "message"),
     [
-        (["{not json"], "^Corrupt JSON at line 1: not valid JSON$"),
-        (["[" * 100_000], "^Corrupt JSON at line 1: not valid JSON$"),  # RecursionError in json, not a JSON error
-        (["[1]"], "^Corrupt JSON at line 1: not a JSON object$"),
-        (['{"tokens": ["a"]}'], "^Corrupt JSON at line 1: sample_id must be a nonempty string$"),
+        (["{not json"], r"^in\.jsonl line 1: not valid JSON$"),
+        (["[" * 100_000], r"^in\.jsonl line 1: not valid JSON$"),  # RecursionError in json, not a JSON error
+        (["[1]"], r"^in\.jsonl line 1: not a JSON object$"),
+        (['{"tokens": ["a"]}'], r"^in\.jsonl line 1: sample_id must be a nonempty string$"),
         (['{"sample_id": "s", "tokens": []}'], "Invalid tokens at line 1"),
         (['{"sample_id": "s", "tokens": ["a", " "]}'], "Tokens contain invalid elements"),
         ([_ONE, _ONE], "Duplicate sample_id 's' encountered at line 2"),
@@ -592,6 +592,13 @@ def test_read_observations_rejects_bad_records(
     path = tmp_path / "in.jsonl"
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     with pytest.raises(ValueError, match=message):
+        prediction_io.read_observations(path, None)
+
+
+def test_read_observations_names_an_input_that_is_not_utf8(tmp_path: Path) -> None:
+    path = tmp_path / "in.jsonl"
+    path.write_bytes(_ONE.encode() + b"\n\xe9\xff\n")  # a good line first: the failure comes mid-file
+    with pytest.raises(ValueError, match=r"^in\.jsonl: not valid UTF-8$"):
         prediction_io.read_observations(path, None)
 
 

@@ -50,7 +50,7 @@ def read_ids(path: str | os.PathLike[str], *, strict: bool = False, allow_empty:
         seen.add(sample_id)
         ids.append(sample_id)
     if not ids and not allow_empty:
-        raise ValueError(f"ID list is empty: {path.name}")
+        raise ValueError(f"{path.name}: ID list is empty")
     return ids
 
 
@@ -102,6 +102,17 @@ def _gold_free_observation(rec: Mapping[str, Any], line_num: int) -> dict[str, A
     return {"sample_id": s_id, "tokens": list(tokens)}
 
 
+def _sample_records(path: Path) -> Iterator[tuple[int, dict[str, Any]]]:
+    """``(line number, record)`` of every nonblank line of a JSONL file; ValueError names the file (and line)."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            for number, line in enumerate(f, 1):
+                if line.strip():
+                    yield number, parse_sample_record(line.strip(), f"{path.name} line {number}")
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"{path.name}: not valid UTF-8") from exc
+
+
 def read_observations(input_path: Path, ids_path: Path | None) -> list[dict[str, Any]]:
     """Read gold-free ``{"sample_id", "tokens"}`` records in INPUT FILE order.
 
@@ -109,7 +120,8 @@ def read_observations(input_path: Path, ids_path: Path | None) -> list[dict[str,
 
     Raises:
         FileNotFoundError: If the input JSONL or the ID list does not exist.
-        ValueError: On corrupt, duplicate or invalid records, or IDs missing from the input.
+        ValueError: On corrupt, duplicate or invalid records (a bad line reads ``<file> line N: <reason>``, a file
+            that is not UTF-8 ``<file>: not valid UTF-8``), or IDs missing from the input.
     """
     if not input_path.is_file():
         raise FileNotFoundError(f"Input JSONL not found at {input_path}")
@@ -118,18 +130,13 @@ def read_observations(input_path: Path, ids_path: Path | None) -> list[dict[str,
 
     observations: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
-    with open(input_path, encoding="utf-8") as f:
-        for line_num, line in enumerate(f, 1):
-            line_str = line.strip()
-            if not line_str:
-                continue
-            rec = parse_sample_record(line_str, f"Corrupt JSON at line {line_num}")
-            s_id = rec["sample_id"]
-            if s_id in seen_ids:
-                raise ValueError(f"Duplicate sample_id {s_id!r} encountered at line {line_num}")
-            seen_ids.add(s_id)
-            if target_set is None or s_id in target_set:
-                observations.append(_gold_free_observation(rec, line_num))
+    for line_num, rec in _sample_records(input_path):
+        s_id = rec["sample_id"]
+        if s_id in seen_ids:
+            raise ValueError(f"Duplicate sample_id {s_id!r} encountered at line {line_num}")
+        seen_ids.add(s_id)
+        if target_set is None or s_id in target_set:
+            observations.append(_gold_free_observation(rec, line_num))
 
     if target_ids is not None:
         missing_ids = set(target_ids) - {o["sample_id"] for o in observations}

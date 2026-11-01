@@ -70,6 +70,16 @@ def test_a_corrupt_input_line_is_one_line_naming_the_file_only(
     assert line.startswith("error: ") and "Corrupt JSON at line 1 in data.jsonl" in line
 
 
+def test_a_training_file_that_is_not_utf8_is_one_line_naming_the_file_only(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    argv = _train_argv(tmp_path)
+    good = (tmp_path / "data.jsonl").read_text(encoding="utf-8")
+    (tmp_path / "data.jsonl").write_bytes(good.encode("utf-8") + b"\xe9\xff\n")  # bad bytes after good lines
+    assert train_crf.main(argv) == 1
+    assert _only_line(capsys.readouterr().err, tmp_path) == "error: data.jsonl: not valid UTF-8"
+    assert not (tmp_path / "out.joblib").exists()
+
+
 def test_a_deeply_nested_training_line_is_one_error_line_not_a_traceback(
         tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     argv = _train_argv(tmp_path)
@@ -213,7 +223,7 @@ def test_a_corrupt_model_is_one_line_naming_the_file_only(tmp_path: Path, capsys
     bad.write_bytes(b"this is not a joblib file")
     assert train_crf.main(_predict_argv(bad, tmp_path)) == 1
     line = _only_line(capsys.readouterr().err, tmp_path)
-    assert line.startswith("error: Corrupt or unreadable model artifact at bad.joblib: ")
+    assert line == "error: bad.joblib: not a readable CRF artifact"
 
 
 def test_a_bug_while_loading_the_model_propagates(
@@ -269,7 +279,7 @@ def test_a_deeply_nested_predict_input_line_is_one_error_line_not_a_traceback(
     (tmp_path / "eval.jsonl").write_text(DEEP_LINE + "\n", encoding="utf-8")
     assert train_crf.main(argv) == 1
     line = _only_line(capsys.readouterr().err, tmp_path)
-    assert line == "error: Corrupt JSON at line 1: not valid JSON"
+    assert line == "error: eval.jsonl line 1: not valid JSON"
     assert not (tmp_path / "preds.jsonl").exists()
 
 

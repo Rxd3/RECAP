@@ -36,7 +36,7 @@ def records(path: str | Path, ids_path: str | Path) -> list[dict[str, Any]]:
     try:
         with open(path, encoding="utf-8") as fh:
             rows = [json.loads(line) for line in fh if line.strip()]
-    except ValueError as exc:
+    except (ValueError, RecursionError) as exc:  # RecursionError: a line nested too deeply
         raise ValueError(f"{Path(path).name}: {exc}") from exc
     if any(not isinstance(r, dict) or not isinstance(r.get("sample_id"), str) for r in rows):
         raise ValueError(f"{Path(path).name}: every record must be an object with a sample_id")
@@ -62,7 +62,10 @@ def load_model(model_cls: Any, path: str) -> Any:
     try:
         return model_cls.load_model(path)
     except (OSError, ValueError) as exc:  # the loaders quote the whole path: keep the file name only
-        raise ValueError(f"{model_path.name}: {name_only(str(exc), model_path)}") from exc
+        text = name_only(str(exc), model_path)
+        if not text.startswith(f"{model_path.name}:"):  # the HMM loader already starts with it
+            text = f"{model_path.name}: {text}"
+        raise ValueError(text) from exc
 
 
 def time_predictions(model: Any, recs: list[dict[str, Any]]) -> list[float]:

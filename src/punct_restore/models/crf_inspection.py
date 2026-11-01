@@ -11,8 +11,6 @@ from typing import Any, NamedTuple
 
 import joblib
 
-from punct_restore.prediction_io import one_line_error
-
 RULE = "=" * 70
 _SECTIONS = (
     ("hyperparameters", "Hyperparameters:"),
@@ -37,7 +35,7 @@ def _load_artifact(model_path: Path) -> dict[str, Any]:
     try:  # joblib is unpickling: the artifact is a local file the user chose to inspect
         bundle = joblib.load(model_path)
     except Exception as e:  # broad on purpose: unpickling a corrupt or foreign file can raise any exception type
-        raise ValueError(f"{model_path.name}: cannot read artifact: {one_line_error(e, model_path)}") from e
+        raise ValueError(f"{model_path.name}: not a readable CRF artifact") from e  # the unpickling text is not shown
     if not isinstance(bundle, dict):
         raise ValueError(f"{model_path.name}: invalid artifact format: root is {type(bundle).__name__}")
     return bundle
@@ -66,7 +64,7 @@ def _read_companion_manifest(path: Path) -> dict[str, Any] | None:
     try:
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
-    except (OSError, ValueError):  # unreadable, not UTF-8 (ValueError) or not JSON (JSONDecodeError is a ValueError)
+    except (OSError, ValueError, RecursionError):  # unreadable, not UTF-8, not JSON or nested too deeply
         return None
     if not isinstance(data, dict) or not isinstance(data.get("provenance", {}), dict):
         return None

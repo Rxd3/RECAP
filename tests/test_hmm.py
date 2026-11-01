@@ -333,3 +333,47 @@ def test_corrupt_artifacts_fail_validation(kind, fitted, tmp_path):
     path.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(ValueError, match="invalid HMM artifact"):
         HMMModel.load_model(path)
+
+
+def _saved(tmp_path, content):
+    path = tmp_path / "deep" / "model.json"
+    path.parent.mkdir()
+    path.write_bytes(content)
+    return path
+
+
+@pytest.mark.parametrize(
+    ("content", "reason"),
+    [
+        (b"[" * 100_000, "recursion"),  # nested far deeper than the JSON reader allows
+        (b"[1]", "indices"),
+        (b'{"format_version": 1}', "model_name"),
+        (b"{oops", "expecting"),
+        (b"\xff\xfe", "utf-8"),
+    ],
+    ids=["nested", "array", "missing-key", "bad-json", "not-utf8"],
+)
+def test_an_unusable_artifact_is_one_value_error_that_starts_with_the_file_name(tmp_path, content, reason):
+    path = _saved(tmp_path, content)
+    with pytest.raises(ValueError) as raised:
+        HMMModel.load_model(path)
+    text = str(raised.value)
+    assert text.startswith("model.json: invalid HMM artifact: ") and reason in text.lower()
+    assert "\n" not in text and str(tmp_path) not in text
+
+
+def test_a_save_that_fails_while_writing_leaves_no_half_written_file(training, tmp_path):
+    """A lone surrogate passes the metadata check but cannot be written as UTF-8: the file it started is removed."""
+    model = HMMModel(label_mode="A", labels=labels()).fit(training, metadata={"note": "\ud800"})
+    path = tmp_path / "model.json"
+    with pytest.raises(UnicodeEncodeError):
+        model.save_model(path)
+    assert not path.exists()
+
+
+def test_the_saved_bytes_are_sorted_json_with_one_final_line_feed(fitted, tmp_path):
+    path = tmp_path / "model.json"
+    fitted.save_model(path)
+    raw = path.read_bytes()
+    expected = json.dumps(json.loads(raw), ensure_ascii=False, allow_nan=False, sort_keys=True) + "\n"
+    assert raw == expected.encode("utf-8") and b"\r" not in raw

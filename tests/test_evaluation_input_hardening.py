@@ -65,6 +65,13 @@ def test_non_utf8_input_names_file_and_line(tmp_path: Path, vocab: Vocab, target
     assert _load_error(case, vocab) == f"{FILE_NAMES[target]} line 2: not UTF-8 text"
 
 
+@pytest.mark.parametrize("target", ["gold", "predictions", "masks"])
+def test_json_nested_too_deeply_names_file_and_line(tmp_path: Path, vocab: Vocab, target: str) -> None:
+    case = valid_case(tmp_path, "C")
+    getattr(case, target).write_bytes(b"[" * 100_000 + b"\n")  # the json module gives up with a RecursionError
+    assert _load_error(case, vocab) == f"{FILE_NAMES[target]} line 1: invalid JSON (nested too deeply)"
+
+
 def test_non_utf8_first_line_is_line_1(tmp_path: Path, vocab: Vocab) -> None:
     case = valid_case(tmp_path, "C")
     case.gold.write_bytes(BAD_UTF8_LINE + case.gold.read_bytes())

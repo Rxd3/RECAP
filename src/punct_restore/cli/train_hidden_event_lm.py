@@ -120,10 +120,8 @@ def _read_named(input_path: Path, ids_path: Path | None) -> list[dict]:
     """``read_observations`` with the input file named in a JSON error, as train does."""
     try:
         return read_observations(input_path, ids_path)
-    except UnicodeDecodeError:
-        raise  # the caller's _utf8_file names it
     except ValueError as exc:
-        if str(input_path) in str(exc):  # read_observations names files by full path; _one_line shortens it
+        if input_path.name in str(exc):  # read_observations already names the file (a full path is shortened later)
             raise
         raise ValueError(f"{input_path.name}: {exc}") from exc
 
@@ -139,8 +137,7 @@ def _cmd_predict(args: argparse.Namespace) -> str:
     model = HiddenEventLM.load_model(model_path)
     if ids_path is not None:
         read_ids(ids_path)  # read_observations reads the list again; here its errors do not get the input's name
-    with _utf8_file(input_path):
-        observations = _read_named(input_path, ids_path)
+    observations = _read_named(input_path, ids_path)
     predictions = model.predict(observations)
     refuse_existing(output, manifest)  # decoding is long: an output may have appeared since the first check
     write_prediction_outputs(predictions, output, manifest, input_path=input_path, model_name=model.model_name,
@@ -148,7 +145,7 @@ def _cmd_predict(args: argparse.Namespace) -> str:
     return f"predicted {len(predictions)} sequences -> {output.name}"
 
 
-def _one_line(exc: ValueError | OSError | RecursionError, args: argparse.Namespace) -> str:
+def _one_line(exc: ValueError | OSError, args: argparse.Namespace) -> str:
     """The message on one line, with files named by name only (an OSError reports just its file's name)."""
     return one_line_error(exc, *(getattr(args, option, None) for option in PATH_OPTIONS))
 
@@ -188,7 +185,7 @@ def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     try:
         summary = args.handler(args)
-    except (ValueError, OSError, RecursionError) as exc:
+    except (ValueError, OSError) as exc:
         print(f"error: {_one_line(exc, args)}", file=sys.stderr)
         return 1
     print(summary)

@@ -32,11 +32,12 @@ def test_extract_passes_argv_through_and_returns_zero(
     assert capsys.readouterr().out == "extraction matches MANIFEST.sha256\n"
 
 
-def test_a_mismatched_extraction_still_exits_with_its_message(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_mismatched_extraction_is_one_error_line_and_exit_1(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     _fake_extraction(monkeypatch, (["a.txt"], []))
-    with pytest.raises(SystemExit) as stop:
-        prepare_data.main(["extract", "--raw-root", str(tmp_path)])
-    assert str(stop.value.code).startswith("extraction does not match MANIFEST.sha256: 1 missing/different, 0 extra")
+    assert prepare_data.main(["extract", "--raw-root", str(tmp_path)]) == 1
+    line = _one_error_line(capsys.readouterr().err)
+    assert line.startswith("error: extraction does not match MANIFEST.sha256: 1 missing/different, 0 extra")
 
 
 def _one_error_line(err: str) -> str:
@@ -90,7 +91,7 @@ def test_build_without_the_manifest_exits_1_with_one_line_naming_the_file_only(t
         capture_output=True, text=True, check=False)
     assert done.returncode == 1
     assert done.stdout == "" and len(done.stderr.splitlines()) == 1
-    assert done.stderr.startswith("missing MANIFEST.sha256") and str(tmp_path) not in done.stderr
+    assert done.stderr.startswith("error: missing MANIFEST.sha256") and str(tmp_path) not in done.stderr
     assert "Traceback" not in done.stderr
 
 

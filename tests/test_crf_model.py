@@ -333,7 +333,7 @@ def test_load_nonexistent_file_raises_error():
 def test_load_corrupt_file_raises_error(tmp_path):
     corrupt_file = tmp_path / "corrupt.joblib"
     corrupt_file.write_text("not a valid joblib file", encoding="utf-8")
-    with pytest.raises(ValueError, match="Corrupt or unreadable"):
+    with pytest.raises(ValueError, match="not a readable CRF artifact"):
         CRFModel.load_model(corrupt_file)
 
 

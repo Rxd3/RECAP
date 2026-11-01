@@ -108,8 +108,8 @@ def test_an_unreadable_manifest_is_noted_by_name_and_the_next_candidate_is_used(
     assert report.manifest[1:3] == ["Companion Manifest:", "  Run ID:                 run-7"]
 
 
-@pytest.mark.parametrize("content", [b"[1, 2]", b'{"provenance": 5}', b"\xff\xfe"], ids=[
-    "not-an-object", "provenance-not-an-object", "not-utf8"])
+@pytest.mark.parametrize("content", [b"[1, 2]", b'{"provenance": 5}', b"\xff\xfe", b"[" * 100_000], ids=[
+    "not-an-object", "provenance-not-an-object", "not-utf8", "nested-too-deeply"])
 def test_every_kind_of_unreadable_manifest_is_noted(artifact: Path, content: bytes) -> None:
     (artifact.parent / "m.joblib.manifest.json").write_bytes(content)
 
@@ -132,7 +132,7 @@ def test_a_missing_artifact_is_a_file_not_found_error_naming_the_file_only(tmp_p
 def test_a_file_that_is_not_an_artifact_is_a_value_error(tmp_path: Path) -> None:
     junk = tmp_path / "junk.joblib"
     junk.write_bytes(b"this is not a joblib file")
-    with pytest.raises(ValueError, match="^junk.joblib: cannot read artifact: "):
+    with pytest.raises(ValueError, match=r"^junk\.joblib: not a readable CRF artifact$"):
         inspect_artifact(junk)
 
     listing = tmp_path / "list.joblib"

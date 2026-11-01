@@ -347,3 +347,17 @@ def test_cli_reports_a_folder_given_as_an_input_file_as_a_folder(
 
     assert _cli.run(task) == 1
     assert_one_error_line(capsys.readouterr().err, "fitdir: is a folder, not a file")
+
+
+# ---------------------------------------------------------------- malformed evaluator files
+@pytest.mark.parametrize("content", [b"[" * 100_000, b"\xff\xfe not text", b"{not json"],
+                         ids=["nested", "not-utf8", "bad"])
+@pytest.mark.parametrize(("module", "target"), BUILDERS, ids=BUILDER_IDS)
+def test_a_malformed_input_file_is_one_error_line_naming_it(
+        module: ModuleType, target: str, content: bytes, scores: Path, tmp_path: Path,
+        capsys: pytest.CaptureFixture[str]) -> None:
+    (scores / target).write_bytes(content)
+    code, stdout, err = run_main(module, capsys, *builder_argv(module, scores, tmp_path, tmp_path / "out.md"))
+    assert (code, stdout) == (1, "")
+    assert_one_error_line(err, Path(target).name)
+    assert str(scores) not in err

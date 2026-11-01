@@ -15,6 +15,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from punct_restore.prediction_io import write_new_file
+
 from .hmm_validation import positive_integer as _positive_integer
 from .hmm_validation import validate_counts
 from .hmm_validation import validated_tokens as _tokens
@@ -336,7 +338,7 @@ class HMMModel:
         return predictions
 
     def save_model(self, path: str | Path) -> None:
-        """Write versioned JSON; refuse to overwrite an existing file."""
+        """Write versioned JSON; refuse to overwrite an existing file, and remove a file whose write failed."""
         counts = self._require_fitted()
         payload = {
             "format_version": _FORMAT_VERSION,
@@ -353,12 +355,17 @@ class HMMModel:
         serialized = json.dumps(payload, ensure_ascii=False, allow_nan=False, sort_keys=True)
         destination = Path(path)
         destination.parent.mkdir(parents=True, exist_ok=True)
-        with destination.open("x", encoding="utf-8", newline="\n") as handle:
-            handle.write(serialized + "\n")
+        write_new_file(destination, serialized + "\n")
 
     @classmethod
     def load_model(cls, path: str | Path) -> HMMModel:
-        """Validate saved counts and rebuild probabilities without pickle."""
+        """Validate saved counts and rebuild probabilities without pickle.
+
+        Raises:
+            OSError: If the file cannot be read.
+            ValueError: One line that starts with the file name: not valid UTF-8 or JSON (also one nested too
+                deeply), the wrong shape, or counts that do not add up.
+        """
         try:
             payload = json.loads(Path(path).read_text(encoding="utf-8"))
             if (
@@ -372,8 +379,8 @@ class HMMModel:
             model._validate_counts(counts)
             model._install(counts, _json_metadata(payload["metadata"]))
             return model
-        except (KeyError, TypeError, ValueError, OverflowError) as exc:
-            raise ValueError(f"invalid HMM artifact: {exc}") from exc
+        except (KeyError, TypeError, ValueError, OverflowError, RecursionError) as exc:  # RecursionError: nested JSON
+            raise ValueError(f"{Path(path).name}: invalid HMM artifact: {exc}") from exc
 
     def _validate_counts(self, counts: _Counts) -> None:
         validate_counts(counts, len(self.labels), self._min_token_count)
