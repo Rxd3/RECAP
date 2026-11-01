@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from punct_restore.paths import REPO_ROOT as ROOT
+from punct_restore.prediction_io import write_new_file
 from punct_restore.reporting._cli import check_out, run
 from punct_restore.reporting.asr_noise_report import render_markdown
 from punct_restore.reporting.asr_noise_stats import (
@@ -89,23 +90,11 @@ def check_outputs(json_out: Path, out_md: Path) -> None:
     check_out(out_md, {"--json-out": json_out})
 
 
-def _write_new_lf(path: Path, text: str) -> None:
-    """Create ``path`` holding ``text`` as UTF-8 with LF line endings (the repo stores LF); never replace a file."""
-    try:
-        with open(path, "x", encoding="utf-8", newline="\n") as handle:
-            handle.write(text)
-    except FileExistsError:
-        raise  # not our file: leave it alone
-    except Exception:
-        path.unlink(missing_ok=True)  # our own half-written file
-        raise
-
-
 def write_outputs(json_out: Path, json_text: str, out_md: Path, md_text: str) -> None:
     """Write both files or neither: if the second cannot be written, the first is removed again."""
-    _write_new_lf(json_out, json_text)
+    write_new_file(json_out, json_text)
     try:
-        _write_new_lf(out_md, md_text)
+        write_new_file(out_md, md_text)
     except Exception:
         json_out.unlink(missing_ok=True)
         raise

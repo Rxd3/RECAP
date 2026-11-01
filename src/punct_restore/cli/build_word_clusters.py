@@ -13,7 +13,6 @@ Exit codes: 0 done, 1 one ``error:`` line on stderr, 2 usage error.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import sys
 import time
@@ -26,23 +25,9 @@ from punct_restore.features.word_clusters import (
     induce_clusters,
     map_to_json,
 )
+from punct_restore.hashing import sha256_file
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import one_line_error, reconfigure_stdout
-
-
-def read_ids(path: Path) -> tuple[set[str], str]:
-    """The listed sample IDs and the SHA-256 (hex) of the file's bytes; empty or repeated IDs are errors."""
-    data = path.read_bytes()
-    try:
-        lines = data.decode("utf-8").splitlines()
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"{path.name}: not valid UTF-8") from exc
-    ids = [line for line in lines if line]
-    if not ids:
-        raise ValueError(f"{path.name}: no IDs")
-    if len(set(ids)) != len(ids):
-        raise ValueError(f"{path.name}: duplicate ID")
-    return set(ids), hashlib.sha256(data).hexdigest()
+from punct_restore.prediction_io import one_line_error, read_ids, reconfigure_stdout, write_new_file
 
 
 def _parse(line: str, name: str, number: int) -> tuple[str, dict[str, Any]]:
@@ -84,25 +69,13 @@ def train_tokens(path: Path, wanted: set[str]) -> Iterator[list[str]]:
         raise ValueError(f"{path.name}: {len(wanted) - len(seen)} ID(s) of the ids file not found")
 
 
-def write_new(out: Path, text: str) -> None:
-    """Create ``out`` (and its folder) and write ``text`` with LF newlines; never touches an existing file."""
-    out.parent.mkdir(parents=True, exist_ok=True)
-    handle = out.open("x", encoding="utf-8", newline="\n")
-    try:
-        with handle:
-            handle.write(text)
-    except BaseException:
-        out.unlink(missing_ok=True)  # a half-written map must not block the next run
-        raise
-
-
 def build(args: argparse.Namespace) -> ClusterMap:
     """Read the train data of ``args.mode``, induce the clusters and write the map file."""
     if args.out.exists():
         raise ValueError(f"{args.out.name} already exists; refusing to overwrite")
     ids_path = args.data_root / "splits" / args.release / "default_train" / f"mode_{args.mode}.ids"
     train_path = args.data_root / "processed" / args.release / f"mode_{args.mode}" / "train.jsonl"
-    ids, ids_sha256 = read_ids(ids_path)
+    ids, ids_sha256 = set(read_ids(ids_path)), sha256_file(ids_path)
     clusters = induce_clusters(
         train_tokens(train_path, ids), k=args.k, seed=args.seed,
         min_count=args.min_count, dims=args.dims, window=args.window,
@@ -113,7 +86,8 @@ def build(args: argparse.Namespace) -> ClusterMap:
         window=args.window, vocabulary_size=len(clusters), train_ids_sha256=ids_sha256, release=args.release,
         mode=args.mode, clusters=clusters,
     )
-    write_new(args.out, map_to_json(cluster_map))
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    write_new_file(args.out, map_to_json(cluster_map))
     return cluster_map
 
 

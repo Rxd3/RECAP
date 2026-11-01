@@ -24,6 +24,7 @@ from typing import Any
 from punct_restore.cli.train_crf_inspect import cmd_inspect
 from punct_restore.cli.train_crf_predict import cmd_predict
 from punct_restore.features.crf_features import FeatureConfig
+from punct_restore.hashing import sha256_file
 from punct_restore.models.crf import (
     CRFModel,
     require_scoring_mode,
@@ -38,13 +39,11 @@ from punct_restore.models.crf_training import (
     get_process_memory_stats,
     git_status_porcelain,
     load_and_filter_training_records,
-    sha256_file,
 )
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import (
     check_new_output_paths,
     one_line_error,
-    read_frozen_ids,
     read_observations,
     reconfigure_stdout,
     write_prediction_outputs,
@@ -69,7 +68,6 @@ __all__ = [
     "git_status_porcelain",
     "load_and_filter_training_records",
     "main",
-    "read_frozen_ids",
     "read_observations",
     "recorded_command",
     "require_scoring_mode",

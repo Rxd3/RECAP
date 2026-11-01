@@ -1,5 +1,6 @@
-"""Gold-free prediction input/output shared by the prediction scripts (train_crf, tune_threshold, project_joint,
-factor_predictions)."""
+"""Input/output shared by the commands: gold-free prediction files and manifests (train_crf, tune_threshold,
+project_joint, factor_predictions), the one ``.ids`` reader, the JSON-line parsers, the create-new-file writer,
+output path checks and one-line errors."""
 
 from __future__ import annotations
 
@@ -12,38 +13,82 @@ from collections.abc import Iterator, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from .evaluation.inputs import file_identity, sha256_file
+from .evaluation.inputs import file_identity
+from .hashing import sha256_file
 
 
-def read_frozen_ids(ids_path: Path) -> list[str]:
-    """Read and validate a frozen ID manifest file.
+def read_ids(path: str | os.PathLike[str], *, strict: bool = False, allow_empty: bool = False) -> list[str]:
+    """The sample IDs of an ``.ids`` list, in file order.
+
+    One ID per line; a leading byte order mark is dropped. By default each ID is stripped and blank lines are
+    skipped. With ``strict`` a blank line or an ID with surrounding whitespace is refused instead. A list
+    without any ID is an error unless ``allow_empty`` (then ``[]``).
 
     Raises:
-        FileNotFoundError: If the ID file does not exist.
-        ValueError: If the ID list is empty or contains duplicate IDs.
+        OSError: If the file cannot be read (a missing file is a FileNotFoundError).
+        ValueError: One line naming the file by name only: not valid UTF-8, a refused line (``strict``), a
+            duplicate ID or no ID at all.
     """
-    if not ids_path.is_file():
-        raise FileNotFoundError(f"Frozen ID list not found: {ids_path}")
-
+    path = Path(path)
+    try:
+        text = path.read_text(encoding="utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"{path.name}: not valid UTF-8") from exc
+    lines = text.split("\n")
+    if lines[-1] == "":  # the newline that ends the last line
+        lines.pop()
     ids: list[str] = []
     seen: set[str] = set()
-
-    with open(ids_path, encoding="utf-8") as f:
-        for line_num, line in enumerate(f, 1):
-            s_id = line.strip()
-            if not s_id:
-                continue
-            if s_id in seen:
-                raise ValueError(
-                    f"Duplicate ID {s_id!r} found at line {line_num} in {ids_path}"
-                )
-            seen.add(s_id)
-            ids.append(s_id)
-
-    if not ids:
-        raise ValueError(f"Frozen ID list is empty: {ids_path}")
-
+    for number, line in enumerate(lines, 1):
+        sample_id = line.strip()
+        if strict and (not sample_id or sample_id != line):
+            raise ValueError(f"{path.name} line {number}: IDs must be nonempty, with no whitespace or blank lines")
+        if not sample_id:
+            continue
+        if sample_id in seen:
+            raise ValueError(f"Duplicate ID {sample_id!r} found at line {number} in {path.name}")
+        seen.add(sample_id)
+        ids.append(sample_id)
+    if not ids and not allow_empty:
+        raise ValueError(f"Frozen ID list is empty: {path.name}")
     return ids
+
+
+def parse_json_object(line: str, where: str) -> dict[str, Any]:
+    """The JSON object on ``line``; ``where`` (file name and line number) starts the one-line ValueError."""
+    try:
+        record = json.loads(line)
+    except (ValueError, RecursionError) as exc:  # RecursionError: a line nested too deeply
+        raise ValueError(f"{where}: not valid JSON") from exc
+    if not isinstance(record, dict):
+        raise ValueError(f"{where}: not a JSON object")  # ValueError, not TypeError: the scripts report only that
+    return record
+
+
+def parse_sample_record(line: str, where: str) -> dict[str, Any]:
+    """``parse_json_object`` for a record that also needs a nonempty string ``sample_id``."""
+    record = parse_json_object(line, where)
+    sample_id = record.get("sample_id")
+    if not isinstance(sample_id, str) or not sample_id.strip():
+        raise ValueError(f"{where}: sample_id must be a nonempty string")
+    return record
+
+
+def write_new_file(path: Path, text: str, *, newline: str | None = "\n") -> None:
+    """Create ``path`` holding ``text`` as UTF-8, with LF line ends unless ``newline`` says otherwise.
+
+    A file that already exists is never replaced and never deleted (FileExistsError). If writing fails, the
+    half-written file this call created is deleted (a delete that itself fails is ignored) and the write
+    error is re-raised.
+    """
+    handle = open(path, "x", encoding="utf-8", newline=newline)  # FileExistsError here: not our file
+    try:
+        with handle:
+            handle.write(text)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            path.unlink(missing_ok=True)
+        raise
 
 
 def _parse_observation_line(line_str: str, line_num: int, input_path: Path) -> dict[str, Any]:
@@ -82,7 +127,7 @@ def read_observations(input_path: Path, ids_path: Path | None) -> list[dict[str,
     """
     if not input_path.is_file():
         raise FileNotFoundError(f"Input JSONL not found at {input_path}")
-    target_ids = read_frozen_ids(ids_path) if ids_path is not None else None
+    target_ids = read_ids(ids_path) if ids_path is not None else None
     target_set = set(target_ids) if target_ids is not None else None
 
     observations: list[dict[str, Any]] = []
@@ -261,13 +306,7 @@ def read_prediction_lines(path: Path) -> Iterator[tuple[int, dict[str, Any]]]:
     for number, line in enumerate(text.split("\n"), 1):
         if not line.strip():
             continue
-        where = f"{path.name} line {number}"
-        try:
-            record = json.loads(line)
-        except (ValueError, RecursionError) as exc:  # RecursionError: a line nested too deeply
-            raise ValueError(f"{where}: not valid JSON") from exc
-        if not isinstance(record, dict):
-            raise ValueError(f"{where}: not a JSON object")  # noqa: TRY004 - scripts report ValueError only
+        record = parse_json_object(line, f"{path.name} line {number}")
         found = True
         yield number, record
     if not found:

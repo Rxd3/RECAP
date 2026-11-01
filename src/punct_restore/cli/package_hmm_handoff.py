@@ -11,10 +11,10 @@ from pathlib import Path
 from typing import Any
 
 from punct_restore.cli.run_hmm_experiments import frozen, now, read_json
+from punct_restore.hashing import sha256_file, sha256_stream
 from punct_restore.models.hmm_workflow import (
     code_identity,
     file_identity,
-    sha256,
     write_json,
 )
 from punct_restore.paths import REPO_ROOT as ROOT
@@ -29,7 +29,7 @@ __all__ = [
     "now",
     "package",
     "read_json",
-    "sha256",
+    "sha256_file",
     "write_json",
 ]
 
@@ -63,8 +63,8 @@ def _check_verification(run: Path, verified: dict[str, Any]) -> None:
     """Require a passing independent verification bound to this plan and selection."""
     if (
         verified["result"] != "PASS"
-        or verified["plan"]["sha256"] != sha256(run / "plan.json")
-        or verified["selection"]["sha256"] != sha256(run / "selection.json")
+        or verified["plan"]["sha256"] != sha256_file(run / "plan.json")
+        or verified["selection"]["sha256"] != sha256_file(run / "selection.json")
     ):
         raise ValueError("a matching complete independent verification is required")
 
@@ -80,7 +80,7 @@ def _check_split_summaries(run: Path, results: dict[str, Any], mode: str) -> Non
             summary["primary"] != metric["primary"]
             or summary["counts"] != metric["counts"]
             or summary["shortcut_primary"] != baseline["primary"]
-            or summary["evaluation_sha256"] != sha256(folder / "evaluation.json")
+            or summary["evaluation_sha256"] != sha256_file(folder / "evaluation.json")
         ):
             raise ValueError("summary does not match the actual scored reports")
 
@@ -99,7 +99,7 @@ def _selected_models(
             config["search"]["smoothing"]
         ) * len(config["search"]["min_token_count"]):
             raise ValueError("not every search candidate was independently checked")
-        if sha256(run / winner["model"]) != winner["model_sha256"]:
+        if sha256_file(run / winner["model"]) != winner["model_sha256"]:
             raise ValueError("selected model checksum mismatch")
         _check_split_summaries(run, results, mode)
         selected[mode] = {
@@ -173,7 +173,7 @@ def _model_index(
         "packager": file_identity(Path(__file__)),
         "verification": {
             "path": "experiment/verification/verification.json",
-            "sha256": sha256(output / "experiment/verification/verification.json"),
+            "sha256": sha256_file(output / "experiment/verification/verification.json"),
         },
         "license": "CC BY-NC 4.0; see data/SPONSPEECH_LICENSE_AND_ATTRIBUTION.txt",
     }
@@ -203,18 +203,14 @@ def _write_archive(output: Path, archive_path: Path) -> None:
 
 def _verify_archive(archive_path: Path, hashes: dict[str, str], sums: str) -> None:
     """Round-trip every archived byte through SHA-256, not just the ZIP directory/CRC."""
-    import hashlib
-
     with zipfile.ZipFile(archive_path) as archive:
         members = {entry.filename.split("/", 1)[1]: entry for entry in archive.infolist()}
         if set(members) != set(hashes) | {"SHA256SUMS"}:
             raise ValueError("archive has missing or extra members")
         for relative, expected in hashes.items():
-            digest = hashlib.sha256()
             with archive.open(members[relative]) as handle:
-                for chunk in iter(lambda: handle.read(1 << 20), b""):
-                    digest.update(chunk)
-            if digest.hexdigest() != expected:
+                actual = sha256_stream(handle)
+            if actual != expected:
                 raise ValueError(f"archive member hash mismatch: {relative}")
         if archive.read(members["SHA256SUMS"]).decode("utf-8") != sums:
             raise ValueError("archive checksum index mismatch")
@@ -248,12 +244,12 @@ def _build_handoff(
     (output / "HANDOFF.md").write_text(_HANDOFF_INSTRUCTIONS, encoding="utf-8", newline="\n")
     write_json(output / "MODEL_INDEX.json", _model_index(output, config, plan, selected))
     files = _bundle_files(output)
-    hashes = {p.relative_to(output).as_posix(): sha256(p) for p in files}
+    hashes = {p.relative_to(output).as_posix(): sha256_file(p) for p in files}
     sums = "".join(f"{digest}  {name}\n" for name, digest in hashes.items())
     (output / "SHA256SUMS").write_text(sums, encoding="utf-8", newline="\n")
     _write_archive(output, archive_path)
     _verify_archive(archive_path, hashes, sums)
-    digest = sha256(archive_path)
+    digest = sha256_file(archive_path)
     checksum = archive_path.with_suffix(".zip.sha256")
     checksum.write_text(f"{digest}  {archive_path.name}\n", encoding="utf-8", newline="\n")
     return {

@@ -50,7 +50,7 @@ from punct_restore.data.asr_noise import (
     train_vocabulary,
 )
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import one_line_error, reconfigure_stdout
+from punct_restore.prediction_io import one_line_error, read_ids, reconfigure_stdout
 
 MODES = ("A", "B", "C")
 
@@ -76,13 +76,6 @@ def _lines(path: Path) -> Iterator[tuple[int, str]]:
     except OSError as exc:  # Windows reports EACCES for a folder, POSIX EISDIR
         reason = "is a folder, not a file" if path.is_dir() else (exc.strerror or "cannot be read")
         raise InputError(f"{_display_name(path)}: {reason}") from None
-
-
-def read_ids(path: Path) -> list[str]:
-    ids = [line.strip() for _, line in _lines(path)]
-    if not ids or len(set(ids)) != len(ids):
-        raise InputError(f"{_display_name(path)}: ID list is empty or has duplicates")
-    return ids
 
 
 def scan(path: Path, wanted: frozenset[str]) -> Iterator[tuple[int, dict[str, Any]]]:

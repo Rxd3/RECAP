@@ -16,6 +16,7 @@ from typing import Any
 
 import yaml
 
+from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_experiment_commands import (
     baseline_command,
@@ -37,9 +38,7 @@ from punct_restore.models.hmm_workflow import (
     code_identity,
     file_identity,
     portable_path,
-    read_id_selection,
     selected_records,
-    sha256,
     write_json,
 )
 from punct_restore.paths import REPO_ROOT as ROOT
@@ -64,12 +63,11 @@ __all__ = [
     "now",
     "percentile",
     "portable_path",
-    "read_id_selection",
     "read_json",
     "runtime_benchmark",
     "score",
     "selected_records",
-    "sha256",
+    "sha256_file",
     "tune",
     "validate_config",
     "write_json",
@@ -83,6 +81,8 @@ SOURCE_FILES = (
     "src/punct_restore/models/hmm_experiment_commands.py",
     "src/punct_restore/models/hmm_experiment_runtime.py",
     "src/punct_restore/models/hmm_experiment_audit.py",
+    "src/punct_restore/hashing.py",
+    "src/punct_restore/prediction_io.py",
     "src/punct_restore/cli/train_hmm.py",
     "scripts/train_hmm.py",
     "src/punct_restore/cli/predict_hmm.py",
@@ -95,7 +95,7 @@ SOURCE_FILES = (
 
 
 def implementation():
-    return {name: sha256(ROOT / name) for name in SOURCE_FILES}
+    return {name: sha256_file(ROOT / name) for name in SOURCE_FILES}
 
 
 def check_evaluator(root, expected_commit):
@@ -106,7 +106,7 @@ def check_evaluator(root, expected_commit):
         p.relative_to(root).as_posix() for p in (root / "src/punct_restore/evaluation").glob("*.py")
     )
     names += ["scripts/evaluate_models.py", "configs/label_sets.yaml"]
-    return {"commit": expected_commit, "files": {name: sha256(root / name) for name in names}}
+    return {"commit": expected_commit, "files": {name: sha256_file(root / name) for name in names}}
 
 
 def _tune_plan(
@@ -159,8 +159,8 @@ def _search_candidate(
         "min_token_count": cutoff,
         "validation_primary": report["primary"]["value"],
         "model": (out / "model.json").relative_to(run).as_posix(),
-        "model_sha256": sha256(out / "model.json"),
-        "validation_report_sha256": sha256(out / "validation.json"),
+        "model_sha256": sha256_file(out / "model.json"),
+        "validation_report_sha256": sha256_file(out / "validation.json"),
     }
 
 
@@ -185,7 +185,7 @@ def _tune_mode(
         "used_test_labels": False,
     }
     write_json(run / f"mode_{mode}/selection.json", record)
-    return winner, sha256(run / f"mode_{mode}/selection.json")
+    return winner, sha256_file(run / f"mode_{mode}/selection.json")
 
 
 def _freeze_selection(
@@ -197,7 +197,7 @@ def _freeze_selection(
         {
             "schema": "recap-hmm-selection-v1",
             "frozen_at_utc": now(),
-            "plan_sha256": sha256(run / "plan.json"),
+            "plan_sha256": sha256_file(run / "plan.json"),
             "modes": winners,
             "mode_selection_sha256": mode_selection_hashes,
             "used_test_labels": False,
@@ -227,7 +227,7 @@ def frozen(run, evaluator):
     plan = read_json(run / "plan.json")
     selection = read_json(run / "selection.json")
     config = validate_config(plan["config"])
-    if selection["plan_sha256"] != sha256(run / "plan.json"):
+    if selection["plan_sha256"] != sha256_file(run / "plan.json"):
         raise ValueError("selection does not match its frozen plan")
     if (
         set(selection["modes"]) != set(config["modes"])
@@ -240,7 +240,7 @@ def frozen(run, evaluator):
     if check_evaluator(evaluator, config["evaluation"]["repository_commit"]) != plan["evaluator"]:
         raise ValueError("shared evaluator changed since selection")
     for mode, winner in selection["modes"].items():
-        if sha256(run / f"mode_{mode}/selection.json") != selection["mode_selection_sha256"][mode]:
+        if sha256_file(run / f"mode_{mode}/selection.json") != selection["mode_selection_sha256"][mode]:
             raise ValueError("mode selection changed after freezing")
         mode_selection = read_json(run / f"mode_{mode}/selection.json")
         expected = {
@@ -255,15 +255,15 @@ def frozen(run, evaluator):
             model_path = run / candidate["model"]
             report_path = model_path.parent / "validation.json"
             if (
-                sha256(model_path) != candidate["model_sha256"]
-                or sha256(report_path) != candidate["validation_report_sha256"]
+                sha256_file(model_path) != candidate["model_sha256"]
+                or sha256_file(report_path) != candidate["validation_report_sha256"]
                 or read_json(report_path)["primary"]["value"] != candidate["validation_primary"]
             ):
                 raise ValueError("candidate model/report differs from frozen validation evidence")
         if choose(mode_selection["candidates"]) != winner or mode_selection["selected"] != winner:
             raise ValueError("winner is inconsistent with the validation search")
         model = run / winner["model"]
-        if sha256(model) != winner["model_sha256"]:
+        if sha256_file(model) != winner["model_sha256"]:
             raise ValueError("selected artifact checksum mismatch")
     return plan, selection
 
@@ -300,7 +300,7 @@ def _final_split(
         "primary": measured["primary"],
         "counts": measured["counts"],
         "shortcut_primary": reference["primary"],
-        "evaluation_sha256": sha256(out / "evaluation.json"),
+        "evaluation_sha256": sha256_file(out / "evaluation.json"),
     }
     print(
         json.dumps({"final": mode, "split": split, "primary": measured["primary"]}),
@@ -323,7 +323,7 @@ def finalize(run, evaluator):
         final / "test_access.json",
         {
             "at_utc": now(),
-            "selection_sha256": sha256(run / "selection.json"),
+            "selection_sha256": sha256_file(run / "selection.json"),
             "inputs": verified,
             "policy": "Frozen settings; no test-driven retuning.",
         },
@@ -339,7 +339,7 @@ def finalize(run, evaluator):
         {
             "schema": "recap-hmm-results-v1",
             "finished_at_utc": now(),
-            "selection_sha256": sha256(run / "selection.json"),
+            "selection_sha256": sha256_file(run / "selection.json"),
             "results": results,
             "note": "Mode A/B punctuation and mode C joint F1 measure different tasks.",
         },

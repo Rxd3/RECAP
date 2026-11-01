@@ -609,20 +609,20 @@ def test_read_observations_reports_ids_missing_from_the_input(tmp_path: Path) ->
         prediction_io.read_observations(path, ids)
 
 
-def test_read_frozen_ids_skips_blanks_and_rejects_missing_empty_and_duplicate_lists(
+def test_read_ids_skips_blanks_and_rejects_missing_empty_and_duplicate_lists(
     tmp_path: Path,
 ) -> None:
     ids = tmp_path / "x.ids"
     ids.write_text("a\n\nb\n", encoding="utf-8")
-    assert prediction_io.read_frozen_ids(ids) == ["a", "b"]
+    assert prediction_io.read_ids(ids) == ["a", "b"]
     ids.write_text("a\na\n", encoding="utf-8")
     with pytest.raises(ValueError, match="Duplicate ID 'a' found at line 2"):
-        prediction_io.read_frozen_ids(ids)
+        prediction_io.read_ids(ids)
     ids.write_text("\n", encoding="utf-8")
     with pytest.raises(ValueError, match="empty"):
-        prediction_io.read_frozen_ids(ids)
-    with pytest.raises(FileNotFoundError, match="Frozen ID list not found"):
-        prediction_io.read_frozen_ids(tmp_path / "ghost.ids")
+        prediction_io.read_ids(ids)
+    with pytest.raises(FileNotFoundError):
+        prediction_io.read_ids(tmp_path / "ghost.ids")
 
 
 # ---------------------------------------------------------------- path errors stay one line

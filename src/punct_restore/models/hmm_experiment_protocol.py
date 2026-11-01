@@ -8,7 +8,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from punct_restore.models.hmm_workflow import checked_release_file, file_identity, sha256
+from punct_restore.hashing import sha256_file
+from punct_restore.models.hmm_workflow import checked_release_file, file_identity
 from punct_restore.paths import REPO_ROOT as ROOT
 
 
@@ -68,7 +69,7 @@ def authenticate(config: dict[str, Any], phase: str) -> tuple[dict[str, Any], di
         or manifest["policy_version"] != config["policy_version"]
     ):
         raise ValueError("experiment and release versions differ")
-    if sha256(ROOT / config["label_config"]) != manifest["label_sets_sha256"]:
+    if sha256_file(ROOT / config["label_config"]) != manifest["label_sets_sha256"]:
         raise ValueError("label configuration mismatch")
     names = ["train", "validation"] if phase == "tune" else ["validation", "test", "test_amb"]
     verified = {"release_manifest": file_identity(manifest_path)}

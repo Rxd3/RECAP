@@ -18,18 +18,10 @@ from pathlib import Path
 from typing import Any
 
 from punct_restore.features.crf_features import FeatureConfig
+from punct_restore.hashing import sha256_file
 from punct_restore.models.crf import CRFModel
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import read_frozen_ids
-
-
-def sha256_file(path: str | Path) -> str:
-    """Compute the SHA-256 hex digest of a local file."""
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for block in iter(lambda: f.read(1 << 20), b""):
-            h.update(block)
-    return h.hexdigest()
+from punct_restore.prediction_io import read_ids
 
 
 def get_package_version(pkg_name: str) -> str:
@@ -260,7 +252,7 @@ def load_and_filter_training_records(
     if not input_path.is_file():
         raise FileNotFoundError(f"Input JSONL file not found: {input_path}")
 
-    frozen_ids = read_frozen_ids(ids_path)
+    frozen_ids = read_ids(ids_path)
     target_id_set = set(frozen_ids)
 
     selected_records, found_ids = _scan_selected_records(input_path, target_id_set, expected_mode)

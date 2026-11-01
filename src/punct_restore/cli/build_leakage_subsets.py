@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import one_line_error
+from punct_restore.prediction_io import one_line_error, read_ids
 
 QUALITY_REASON = "low_comma_or_tts_source"
 BUCKETS = ("excluded_train_video", "excluded_other_leak", "excluded_quality")
@@ -71,10 +71,6 @@ def _read_text(path: Path) -> str:
         return path.read_text(encoding="utf-8")
     except UnicodeDecodeError as exc:
         raise ValueError(f"{path.name}: not valid UTF-8") from exc
-
-
-def read_ids(path: Path) -> list[str]:
-    return [line for line in _read_text(path).splitlines() if line]
 
 
 def read_excluded(path: Path) -> dict[str, str]:

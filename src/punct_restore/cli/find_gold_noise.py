@@ -22,7 +22,6 @@ scoring. DIR is built in a temporary sibling folder and renamed at the end.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 import shutil
@@ -39,8 +38,9 @@ from punct_restore.data.gold_noise import (
     speaker_label_colons,
     validate_record,
 )
+from punct_restore.hashing import sha256_file
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import one_line_error
+from punct_restore.prediction_io import one_line_error, read_ids
 
 SPLITS = ("validation", "test", "test_amb", "default_train")
 
@@ -80,16 +80,6 @@ def _unique_records(path: Path) -> Iterator[dict[str, Any]]:
             raise ValueError(f"{path.name}: ID {sample_id} is listed twice")
         seen.add(sample_id)
         yield record
-
-
-def read_ids(path: Path) -> list[str]:
-    try:
-        ids = [line for line in path.read_text(encoding="utf-8").splitlines() if line]
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"{path.name}: not valid UTF-8") from exc
-    if len(set(ids)) != len(ids):
-        raise ValueError(f"{path.name}: contains duplicate IDs")
-    return ids
 
 
 def score_records(jsonl: Path, ids_path: Path) -> Iterator[Scored]:
@@ -135,11 +125,6 @@ def input_paths(root: Path, release: str, mode: str, split: str) -> tuple[Path, 
     return processed / f"{split}.jsonl", root / "splits" / release / "primary_eval" / f"{split}_mode_{mode}.ids"
 
 
-def _sha256(path: Path) -> str:
-    with path.open("rb") as handle:
-        return hashlib.file_digest(handle, "sha256").hexdigest()
-
-
 def process_split(root: Path, release: str, mode: str, split: str) -> dict[str, str]:
     """The output files of one split as ``{file name: text}``; nothing is written yet."""
     jsonl, ids_path = input_paths(root, release, mode, split)
@@ -147,7 +132,7 @@ def process_split(root: Path, release: str, mode: str, split: str) -> dict[str, 
     rows = list(scored) if split != "default_train" else None
     counts = summarize(rows if rows is not None else scored)
     summary = {"release": release, "mode": mode, "split": split, **counts,
-               "input_sha256": {p.relative_to(root).as_posix(): _sha256(p) for p in (jsonl, ids_path)}}
+               "input_sha256": {p.relative_to(root).as_posix(): sha256_file(p) for p in (jsonl, ids_path)}}
     files = {f"{split}_B_summary.json": json.dumps(summary, indent=2) + "\n"}
     if rows is not None:
         files[f"{split}_B_noisy.tsv"] = "".join(f"{row.sample_id}\t{rule}\n" for row in rows for rule in row.rules)

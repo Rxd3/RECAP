@@ -8,9 +8,11 @@ from pathlib import Path
 from typing import Any
 
 from punct_restore.data.labeling import load_label_sets
+from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm_experiment_protocol import read_json
-from punct_restore.models.hmm_workflow import read_id_selection, read_jsonl, sha256
+from punct_restore.models.hmm_workflow import read_jsonl
 from punct_restore.paths import REPO_ROOT as ROOT
+from punct_restore.prediction_io import read_ids
 
 
 def assert_close(value: float, expected: float) -> None:
@@ -103,7 +105,7 @@ def _read_gold_and_predictions(
     ids_path: Path, gold_path: Path, predictions: Path, baseline: bool
 ) -> tuple[set[str], list[dict[str, Any]], list[dict[str, Any]], list[str]]:
     """Read the gold split and predictions; require the exact IDs, order and coverage."""
-    wanted = set(read_id_selection(ids_path))
+    wanted = set(read_ids(ids_path, strict=True))
     gold = list(read_jsonl(gold_path))
     gold_ids = [row["sample_id"] for row in gold]
     if len(gold_ids) != len(set(gold_ids)) or not wanted <= set(gold_ids):
@@ -141,9 +143,9 @@ def _check_input_hashes(
     """Require the shared report to cite the exact gold, ID, prediction and mask files."""
     ids_path, gold_path, mask_path = paths
     for key, path in [("gold", gold_path), ("ids", ids_path), ("predictions", predictions)]:
-        if report["inputs"][key]["sha256"] != sha256(path):
+        if report["inputs"][key]["sha256"] != sha256_file(path):
             raise ValueError("shared report input hash mismatch")
-    if mode == "C" and report["inputs"]["masks"]["sha256"] != sha256(mask_path):
+    if mode == "C" and report["inputs"]["masks"]["sha256"] != sha256_file(mask_path):
         raise ValueError("shared report mask hash mismatch")
 
 

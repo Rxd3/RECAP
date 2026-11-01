@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from punct_restore.paths import REPO_ROOT as ROOT
+from punct_restore.prediction_io import read_ids
 from punct_restore.reporting._cli import check_out, name_only, run, write_new_text
 
 REPS, WARMUP = 3, 200
@@ -31,7 +32,7 @@ def usable_tokens(tokens: Any) -> bool:
 
 
 def records(path: str | Path, ids_path: str | Path) -> list[dict[str, Any]]:
-    keep = set(Path(ids_path).read_text(encoding="utf-8").split())
+    keep = set(read_ids(Path(ids_path)))
     try:
         with open(path, encoding="utf-8") as fh:
             rows = [json.loads(line) for line in fh if line.strip()]

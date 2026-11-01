@@ -349,6 +349,18 @@ def test_train_id_missing_from_jsonl_is_an_error(tmp_path, capsys):
     assert len(err.splitlines()) == 1 and "train.jsonl" in err
 
 
+def test_a_repeated_id_in_an_id_list_is_one_friendly_line(tmp_path, capsys):
+    root = build_root(tmp_path)
+    ids = root / "splits" / RELEASE / "default_train" / "mode_A.ids"
+    ids.write_bytes(ids.read_bytes() + ids.read_bytes().splitlines()[0] + b"\r\n")
+    code = run_ablations.main(_argv(root, tmp_path / "out", "--sample", "3"))
+    err = capsys.readouterr().err
+    assert code == 1
+    assert len(err.splitlines()) == 1 and err.startswith("error: Duplicate ID ") and "in mode_A.ids" in err
+    assert str(tmp_path) not in err
+    assert not (tmp_path / "out").exists()
+
+
 def test_missing_input_file_is_one_friendly_line(tmp_path, capsys):
     root = build_root(tmp_path)
     (root / "splits" / RELEASE / "default_train" / "mode_A.ids").unlink()

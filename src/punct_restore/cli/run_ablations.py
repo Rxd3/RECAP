@@ -33,7 +33,6 @@ from __future__ import annotations
 
 import argparse
 import gc
-import hashlib
 import json
 import random
 import sys
@@ -44,11 +43,12 @@ from typing import Any
 
 from punct_restore.features.crf_features import FeatureConfig
 from punct_restore.features.word_clusters import load_cluster_map
+from punct_restore.hashing import sha256_file
 from punct_restore.models.crf import CRFModel
 from punct_restore.models.factored import combine
 from punct_restore.models.gap_classifier import GapClassifier
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import one_line_error
+from punct_restore.prediction_io import one_line_error, read_ids
 
 SEED = 2026
 # group name -> FeatureConfig.improved() override that removes it
@@ -146,10 +146,6 @@ def variants_problem(mode: str, variants: list[str] | None, has_cluster_map: boo
     return None
 
 
-def read_ids(path: Path) -> set[str]:
-    return set(path.read_text(encoding="utf-8").split())
-
-
 def read_records(path: Path, ids: set[str]) -> dict[str, dict[str, Any]]:
     """Stream a JSONL file and keep only the rows whose sample_id is in ids."""
     keep: dict[str, dict[str, Any]] = {}
@@ -190,7 +186,7 @@ def load_inputs(
     processed = root / "processed" / release / f"mode_{mode}"
     train = read_records(processed / "train.jsonl", set(sample))
     val_ids = read_ids(root / "splits" / release / "primary_eval" / f"validation_mode_{mode}.ids")
-    val = read_records(processed / "validation.jsonl", val_ids)
+    val = read_records(processed / "validation.jsonl", set(val_ids))
     gold_free = [{"sample_id": k, "tokens": v.get("tokens")} for k, v in sorted(val.items())]
     return sample, [train[i] for i in sample], gold_free
 
@@ -277,7 +273,7 @@ def load_clusters(path: Path | None, mode: str, release: str, data_root: Path) -
     if cluster_map.release != release:
         raise ValueError(f"--cluster-map was built for release {cluster_map.release!r}, not --release {release!r}")
     ids_file = data_root / "splits" / release / "default_train" / f"mode_{mode}.ids"
-    if cluster_map.train_ids_sha256 != hashlib.sha256(ids_file.read_bytes()).hexdigest():
+    if cluster_map.train_ids_sha256 != sha256_file(ids_file):
         raise ValueError(f"--cluster-map does not match the default_train IDs of --release {release!r} mode {mode}")
     return cluster_map.clusters
 

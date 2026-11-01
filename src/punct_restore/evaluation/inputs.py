@@ -8,7 +8,6 @@ line or sample_id.
 
 from __future__ import annotations
 
-import hashlib
 import json
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
@@ -16,6 +15,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any
 
+from ..hashing import sha256_file
 from ..paths import REPO_ROOT as ROOT
 from .metrics import join_joint
 
@@ -93,14 +93,6 @@ def load_vocab(path: str | Path = LABEL_SETS_PATH) -> Vocab:
             or joint != expected):
         raise EvaluationInputError(f"{name}: label sets must be 4/8/3 with C = standard x casing")
     return Vocab(A=standard, B=extended, C=joint, casing=casing)
-
-
-def sha256_file(path: str | Path) -> str:
-    digest = hashlib.sha256()
-    with open(path, "rb") as handle:
-        for block in iter(lambda: handle.read(1 << 20), b""):
-            digest.update(block)
-    return digest.hexdigest()
 
 
 def file_identity(path: str | Path) -> dict[str, str]:

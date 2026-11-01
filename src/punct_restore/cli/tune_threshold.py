@@ -49,7 +49,8 @@ from punct_restore.models.threshold import (
 )
 from punct_restore.prediction_io import (
     check_new_output_paths,
-    read_frozen_ids,
+    parse_sample_record,
+    read_ids,
     read_observations,
     write_prediction_outputs,
     write_predictions_jsonl,
@@ -151,18 +152,6 @@ def _score_grid(
     return scores
 
 
-def _parse_train_line(line: str, where: str) -> dict[str, Any]:
-    try:
-        record = json.loads(line)
-    except (ValueError, RecursionError) as exc:  # a deeply nested line raises RecursionError
-        raise ValueError(f"{where}: not valid JSON") from exc
-    if not isinstance(record, dict):
-        raise ValueError(f"{where}: not a JSON object")  # noqa: TRY004 - main() reports ValueError only
-    if not isinstance(record.get("sample_id"), str) or not record["sample_id"].strip():
-        raise ValueError(f"{where}: sample_id must be a nonempty string")
-    return record
-
-
 def _stream_train_labels(train_path: Path, ids: Sequence[str], mode: str) -> Iterator[dict[str, Any]]:
     """Yield the gold label lists of the listed records, one line at a time; all IDs must be found."""
     wanted, found = set(ids), set()
@@ -171,7 +160,7 @@ def _stream_train_labels(train_path: Path, ids: Sequence[str], mode: str) -> Ite
             if not line.strip():
                 continue
             where = f"{train_path.name} line {number}"
-            record = _parse_train_line(line, where)
+            record = parse_sample_record(line, where)
             if record["sample_id"] not in wanted:
                 continue
             if record["sample_id"] in found:
@@ -189,7 +178,7 @@ def _train_priors(train: Path, train_ids: Path, model: CRFModel) -> dict[str, fl
     if not train.is_file():
         raise FileNotFoundError(f"training file not found at {train.name}")
     try:
-        ids = read_frozen_ids(train_ids)
+        ids = read_ids(train_ids)
         return label_priors(_stream_train_labels(train, ids, model.label_mode), model.vocabulary)
     except UnicodeDecodeError:
         raise ValueError("--train and --train-ids must be UTF-8 text files") from None

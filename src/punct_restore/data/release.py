@@ -18,6 +18,8 @@ import json
 import os
 from collections.abc import Callable
 
+from .. import prediction_io
+from ..hashing import sha256_file
 from ..paths import REPO_ROOT
 from . import labeling, preprocessing, splits, validation
 from .release_checks import verify_release
@@ -35,7 +37,6 @@ from .release_manifest import (
     build_provenance,
     copy_license,
     describe_files,
-    sha256_file,
     with_file_inventory,
     write_checksums,
     write_manifest,
@@ -140,10 +141,13 @@ def load_records(path, label_sets=None):
         return [json.loads(line) for line in f]
 
 
-def read_ids(path):
-    """Sample IDs from an .ids list (e.g. default_train/mode_A.ids or primary_eval/test_mode_A.ids)."""
-    with open(path, encoding="utf-8") as f:
-        return [line.strip() for line in f if line.strip()]
+def read_ids(path: str | os.PathLike[str]) -> list[str]:
+    """Sample IDs from an .ids list (e.g. default_train/mode_A.ids or primary_eval/test_mode_A.ids), in file order.
+
+    This is prediction_io.read_ids (blank lines skipped, a BOM dropped, ValueError for a repeated ID or bytes that
+    are not UTF-8), except that a list without IDs reads as [].
+    """
+    return prediction_io.read_ids(path, allow_empty=True)
 
 
 def write_lines(path, lines):

@@ -24,6 +24,7 @@ def test_source_files_list_each_hmm_command_as_module_then_stub():
     models = ("hmm", "hmm_validation", "hmm_workflow", "hmm_experiment_protocol", "hmm_experiment_commands",
               "hmm_experiment_runtime", "hmm_experiment_audit")
     expected = [f"src/punct_restore/models/{name}.py" for name in models]
+    expected += ["src/punct_restore/hashing.py", "src/punct_restore/prediction_io.py"]  # the shared code they call
     for command in HMM_COMMANDS:
         expected += [f"src/punct_restore/cli/{command}.py", f"scripts/{command}.py"]
     assert list(workflow.SOURCE_FILES) == expected
@@ -48,7 +49,7 @@ def test_check_evaluator_still_hashes_scripts_evaluate_models_in_the_pinned_chec
     files = workflow.check_evaluator(tmp_path, "pinned")["files"]
     assert sorted(files) == sorted(names)
     scorer = tmp_path / "scripts/evaluate_models.py"
-    assert files["scripts/evaluate_models.py"] == workflow.sha256(scorer)
+    assert files["scripts/evaluate_models.py"] == workflow.sha256_file(scorer)
 
 
 def test_selection_uses_only_validation_score_and_predeclared_tie_break():

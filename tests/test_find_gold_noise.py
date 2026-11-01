@@ -260,7 +260,7 @@ def test_duplicate_ids_in_a_list_are_refused(mod: ModuleType, root: Path, tmp_pa
                                              capsys: pytest.CaptureFixture[str]) -> None:
     write_ids(root / "splits" / RELEASE / "primary_eval" / "test_mode_B.ids", ["tst-0", "tst-0"])
     err = refused(mod, capsys, argv_for(root, tmp_path / "out"), tmp_path)
-    assert "test_mode_B.ids" in err and "duplicate" in err
+    assert "test_mode_B.ids" in err and "Duplicate ID 'tst-0'" in err
 
 
 def test_non_utf8_id_list_is_refused(mod: ModuleType, root: Path, tmp_path: Path,

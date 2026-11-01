@@ -9,6 +9,7 @@ from typing import Any
 
 from punct_restore.cli.run_hmm_experiments import authenticate, frozen, now, read_json
 from punct_restore.data.labeling import load_label_sets
+from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_experiment_audit import (
     assert_block,
@@ -19,14 +20,12 @@ from punct_restore.models.hmm_experiment_audit import (
 )
 from punct_restore.models.hmm_workflow import (
     file_identity,
-    read_id_selection,
     read_jsonl,
     selected_records,
-    sha256,
     write_json,
 )
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import one_line_error
+from punct_restore.prediction_io import one_line_error, read_ids
 
 __all__ = [
     "HMMModel",
@@ -42,11 +41,10 @@ __all__ = [
     "main",
     "now",
     "probability_checks",
-    "read_id_selection",
     "read_json",
     "read_jsonl",
     "selected_records",
-    "sha256",
+    "sha256_file",
     "verify",
     "write_json",
 ]
@@ -86,7 +84,7 @@ def _refit_winner(
     expected_support = stats["labels_default_and_primary"]["train"][mode]["counts"]
     if dict(zip(model.labels, saved["counts"]["state"], strict=True)) != expected_support:
         raise ValueError("learned state counts do not match the approved training subset")
-    ids = read_id_selection(ROOT / config["splits_dir"] / f"default_train/mode_{mode}.ids")
+    ids = tuple(read_ids(ROOT / config["splits_dir"] / f"default_train/mode_{mode}.ids", strict=True))
     if model.training_summary["num_sequences"] != len(ids):
         raise ValueError("model trained on the wrong sequence count")
     fresh = HMMModel(**saved["config"]).fit(
@@ -103,11 +101,11 @@ def _refit_winner(
     )
     reproduced = output / f"mode_{mode}.reproduced.json"
     fresh.save_model(reproduced)
-    if sha256(reproduced) != sha256(model_path):
+    if sha256_file(reproduced) != sha256_file(model_path):
         raise ValueError("independent refit does not reproduce the frozen artifact bytes")
     refit = {
         "result": "PASS",
-        "model_sha256": sha256(reproduced),
+        "model_sha256": sha256_file(reproduced),
         "metadata_policy": "original frozen provenance retained for byte comparison",
     }
     return model_path, fresh, refit
@@ -117,9 +115,9 @@ def _check_sidecar(run: Path, folder: Path, model_path: Path) -> None:
     """Require the prediction sidecar to cite the exact model, predictions and selection record."""
     manifest = read_json(folder / "predictions.manifest.json")
     if (
-        manifest["model_sha256"] != sha256(model_path)
-        or manifest["predictions_sha256"] != sha256(folder / "predictions.jsonl")
-        or manifest["inputs"]["selection_record"]["sha256"] != sha256(run / "selection.json")
+        manifest["model_sha256"] != sha256_file(model_path)
+        or manifest["predictions_sha256"] != sha256_file(folder / "predictions.jsonl")
+        or manifest["inputs"]["selection_record"]["sha256"] != sha256_file(run / "selection.json")
     ):
         raise ValueError("prediction sidecar provenance/hash mismatch")
 
@@ -217,7 +215,7 @@ def verify(run, evaluator, output):
     authenticate(config, "tune")
     authenticate(config, "finalize")
     results = read_json(run / "results.json")
-    if results["selection_sha256"] != sha256(run / "selection.json"):
+    if results["selection_sha256"] != sha256_file(run / "selection.json"):
         raise ValueError("final results are not bound to frozen selection")
     output.mkdir(parents=True, exist_ok=False)
     report = {

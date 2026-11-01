@@ -11,10 +11,11 @@ from test_hmm_cli import ROOT, SCRIPT, jsonl, setup_run
 
 from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_workflow import (
-    read_id_selection,
     selected_records,
     verify_training_release,
+    write_json,
 )
+from punct_restore.prediction_io import read_ids
 
 
 def run(args):
@@ -158,7 +159,7 @@ def test_real_release_contract_cli_training_and_reload_on_tiny_sources(tmp_path,
     args, _, splits, out, _ = release_args(tmp_path, mode)
     result = run(args)
     assert result.returncode == 0, result.stderr
-    ids = read_id_selection(splits / f"default_train/mode_{mode}.ids")
+    ids = read_ids(splits / f"default_train/mode_{mode}.ids")
     loaded = HMMModel.load_model(out / "model.json")
     assert loaded.training_summary["num_sequences"] == len(ids)
     assert loaded.metadata["release_manifest"]["sha256"]
@@ -203,4 +204,20 @@ def test_old_cli_without_training_selection_fails_instead_of_training_everything
     del args[index : index + 2]
     result = run(args)
     assert result.returncode == 2 and "--train-ids" in result.stderr
+    assert not out.exists()
+
+
+def test_write_json_writes_sorted_keys_utf8_and_lf_and_never_replaces_a_file(tmp_path):
+    out = tmp_path / "o.json"
+    write_json(out, {"b": 1, "a": "é"})
+    assert out.read_bytes() == b'{\n  "a": "\xc3\xa9",\n  "b": 1\n}\n'
+    with pytest.raises(FileExistsError):
+        write_json(out, {})
+    assert out.read_bytes().startswith(b'{\n  "a"')
+
+
+def test_write_json_leaves_no_half_written_file_when_the_value_is_not_valid_json(tmp_path):
+    out = tmp_path / "o.json"
+    with pytest.raises(ValueError, match="Out of range float"):
+        write_json(out, {"a": 1, "x": float("nan")})
     assert not out.exists()

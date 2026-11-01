@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import platform
 import subprocess
@@ -14,7 +13,9 @@ from typing import Any
 
 from punct_restore.data.labeling import load_label_sets
 from punct_restore.data.validation import check_model_input, validate_record
+from punct_restore.hashing import sha256_file
 from punct_restore.paths import REPO_ROOT as ROOT
+from punct_restore.prediction_io import read_ids, write_new_file
 
 
 def read_jsonl(path: Path) -> Iterator[dict[str, Any]]:
@@ -31,14 +32,6 @@ def read_jsonl(path: Path) -> Iterator[dict[str, Any]]:
             yield record
 
 
-def sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for block in iter(lambda: handle.read(1 << 20), b""):
-            digest.update(block)
-    return digest.hexdigest()
-
-
 def portable_path(path: Path) -> str:
     try:
         return path.resolve().relative_to(ROOT).as_posix()
@@ -47,7 +40,7 @@ def portable_path(path: Path) -> str:
 
 
 def file_identity(path: Path) -> dict[str, str]:
-    return {"path": portable_path(path), "sha256": sha256(path)}
+    return {"path": portable_path(path), "sha256": sha256_file(path)}
 
 
 def code_identity(root: Path = ROOT) -> dict[str, Any]:
@@ -60,15 +53,6 @@ def code_identity(root: Path = ROOT) -> dict[str, Any]:
         return {"commit": git("rev-parse", "HEAD"), "dirty": bool(git("status", "--porcelain"))}
     except (OSError, subprocess.CalledProcessError):
         return {"commit": None, "dirty": None}
-
-
-def read_id_selection(path: Path) -> tuple[str, ...]:
-    ids = path.read_text(encoding="utf-8").splitlines()
-    if not ids or any(not sid or sid != sid.strip() for sid in ids):
-        raise ValueError(f"{path.name}: IDs must be nonempty, with no whitespace or blank lines")
-    if len(set(ids)) != len(ids):
-        raise ValueError(f"{path.name}: duplicate selection ID")
-    return tuple(ids)
 
 
 def _check_record_basics(record: dict[str, Any], path: Path, seen: set[str]) -> tuple[str, list[Any]]:
@@ -176,7 +160,7 @@ def checked_release_file(
     if relative not in entries or (expected is not None and relative != expected):
         raise ValueError(f"{relative}: not the expected release file {expected or ''}")
     entry = entries[relative]
-    if path.stat().st_size != entry["bytes"] or sha256(path) != entry["sha256"]:
+    if path.stat().st_size != entry["bytes"] or sha256_file(path) != entry["sha256"]:
         raise ValueError(f"{relative}: release checksum mismatch")
     return relative
 
@@ -237,7 +221,7 @@ def verify_training_release(
         or manifest.get("policy_version") != policy_version
     ):
         raise ValueError("release identity/schema/policy does not match command")
-    if sha256(label_config) != manifest["label_sets_sha256"]:
+    if sha256_file(label_config) != manifest["label_sets_sha256"]:
         raise ValueError("label configuration does not match the data release")
     processed, splits = manifest_path.parent, split_manifest.parent
     checked_release_file(train, processed, manifest["files"], expected=f"mode_{mode}/train.jsonl")
@@ -251,9 +235,7 @@ def verify_training_release(
 
 
 def write_json(path: Path, value: Any) -> None:
-    with path.open("x", encoding="utf-8", newline="\n") as handle:
-        json.dump(value, handle, indent=2, sort_keys=True, ensure_ascii=False, allow_nan=False)
-        handle.write("\n")
+    write_new_file(path, json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False, allow_nan=False) + "\n")
 
 
 def _check_frozen_selection(selection_record: Path, model: Any, inputs: dict[str, Any]) -> None:
@@ -297,7 +279,7 @@ def _check_release_compatibility(
 def _check_inputs_unchanged(inputs: dict[str, Any], paths: list[tuple[str, Path | None]]) -> None:
     """Reject the run if any input file changed while inference ran."""
     for key, path in paths:
-        if path is not None and sha256(path) != inputs[key]["sha256"]:
+        if path is not None and sha256_file(path) != inputs[key]["sha256"]:
             raise ValueError(f"{path.name}: input changed during inference")
 
 
@@ -331,7 +313,7 @@ def _run_manifest(
         "started_at_utc": started_at,
         "inputs": inputs,
         "model_sha256": inputs["model"]["sha256"],
-        "predictions_sha256": sha256(predictions_path),
+        "predictions_sha256": sha256_file(predictions_path),
         "selection_counts": counts,
         "num_sequences": num_sequences,
         "num_tokens": counts["selected_tokens"],
@@ -375,7 +357,7 @@ def predict_run(
         _check_frozen_selection(selection_record, model, inputs)
     if release_manifest:
         _check_release_compatibility(release_manifest, input_path, ids_path, model, inputs)
-    ids = read_id_selection(ids_path) if ids_path else None
+    ids = tuple(read_ids(ids_path, strict=True)) if ids_path else None
     counts: dict[str, int] = {}
     start = perf_counter()
     predictions = model.predict(selected_records(input_path, ids, counts=counts))

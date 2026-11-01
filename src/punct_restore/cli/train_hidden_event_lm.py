@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import json
 import os
 import sys
 from collections.abc import Iterator
@@ -28,7 +27,8 @@ from punct_restore.models.hidden_event_lm import HiddenEventLM
 from punct_restore.prediction_io import (
     check_new_output_paths,
     one_line_error,
-    read_frozen_ids,
+    parse_sample_record,
+    read_ids,
     read_observations,
     reconfigure_stdout,
     write_prediction_outputs,
@@ -72,15 +72,8 @@ def _slim(record: dict[str, Any], mode: str) -> dict[str, Any]:
 
 
 def _keep_line(line: str, where: str, wanted: set[str], kept: dict[str, dict[str, Any]], mode: str) -> None:
-    try:
-        record = json.loads(line)
-    except (ValueError, RecursionError) as exc:  # a deeply nested line raises RecursionError
-        raise ValueError(f"{where}: not valid JSON") from exc
-    if not isinstance(record, dict):
-        raise ValueError(f"{where}: not a JSON object")  # noqa: TRY004 - main() reports ValueError only
-    sample_id = record.get("sample_id")
-    if not isinstance(sample_id, str) or not sample_id.strip():
-        raise ValueError(f"{where}: sample_id must be a nonempty string")
+    record = parse_sample_record(line, where)
+    sample_id = record["sample_id"]
     if sample_id not in wanted:
         return
     if sample_id in kept:
@@ -97,8 +90,7 @@ def read_training_records(input_path: Path, ids_path: Path, mode: str) -> list[d
 
     ValueError if a listed ID is absent, is not split "train" or has another label mode.
     """
-    with _utf8_file(ids_path):
-        ids = read_frozen_ids(ids_path)
+    ids = read_ids(ids_path)
     wanted = set(ids)
     kept: dict[str, dict[str, Any]] = {}
     with _utf8_file(input_path), open(input_path, encoding="utf-8") as handle:
@@ -151,8 +143,7 @@ def _cmd_predict(args: argparse.Namespace) -> str:
     _require_files(("--model", model_path), ("--input", input_path), ("--ids", ids_path))
     model = HiddenEventLM.load_model(model_path)
     if ids_path is not None:
-        with _utf8_file(ids_path):  # read_observations reads the list again; this names a bad ID file correctly
-            read_frozen_ids(ids_path)
+        read_ids(ids_path)  # read_observations reads the list again; here its errors do not get the input's name
     with _utf8_file(input_path):
         observations = _read_named(input_path, ids_path)
     predictions = model.predict(observations)

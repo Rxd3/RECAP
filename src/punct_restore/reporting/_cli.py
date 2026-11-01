@@ -10,7 +10,12 @@ import sys
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
-from punct_restore.prediction_io import check_new_output_paths, one_line_error, reconfigure_stdout
+from punct_restore.prediction_io import (
+    check_new_output_paths,
+    one_line_error,
+    reconfigure_stdout,
+    write_new_file,
+)
 
 
 def check_out(out: Path, inputs: Mapping[str, Path | None] | None = None) -> None:
@@ -26,8 +31,7 @@ def check_out(out: Path, inputs: Mapping[str, Path | None] | None = None) -> Non
 
 def write_new_text(out: Path, text: str) -> None:
     """Create ``out`` holding ``text`` as UTF-8 with the platform newline; an existing file is never replaced."""
-    with open(out, "x", encoding="utf-8") as handle:
-        handle.write(text)
+    write_new_file(out, text, newline=None)
 
 
 def name_only(text: str, path: Path) -> str:

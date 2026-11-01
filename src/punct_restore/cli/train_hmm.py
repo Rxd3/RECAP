@@ -11,18 +11,17 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any, NamedTuple
 
+from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_workflow import (
     code_identity,
     file_identity,
     portable_path,
-    read_id_selection,
     selected_records,
-    sha256,
     verify_training_release,
 )
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import one_line_error
+from punct_restore.prediction_io import one_line_error, read_ids
 
 
 def load_labels(path: Path, mode: str) -> list[str]:
@@ -140,8 +139,9 @@ def _read_selections(
     """Check the run arguments; read the ID selections, the labels and the optional release record."""
     if args.output_dir.exists():
         raise ValueError("output-dir already exists; choose a new run directory")
-    train_ids = read_id_selection(args.train_ids)
-    prediction_ids = None if args.predict_ids is None else read_id_selection(args.predict_ids)
+    train_ids = tuple(read_ids(args.train_ids, strict=True))
+    predict = args.predict_ids
+    prediction_ids = None if predict is None else tuple(read_ids(predict, strict=True))
     labels = load_labels(args.label_config, args.label_mode)
     release = _verify_release(args)
     return train_ids, prediction_ids, labels, release
@@ -281,7 +281,7 @@ def _verify_inputs_unchanged(args: argparse.Namespace, provenance: dict[str, Any
     if args.predict_ids is not None:
         identities.append((args.predict_ids, provenance["prediction_ids"]))
     for path, identity in identities:
-        if sha256(path) != identity["sha256"]:
+        if sha256_file(path) != identity["sha256"]:
             raise ValueError(f"{path.name}: input changed during the run")
 
 
@@ -290,7 +290,7 @@ def _save_model(output_dir: Path, model: HMMModel) -> str:
     output_dir.mkdir(parents=True, exist_ok=False)
     model_path = output_dir / "model.json"
     model.save_model(model_path)
-    return sha256(model_path)
+    return sha256_file(model_path)
 
 
 def _write_predictions(
@@ -314,7 +314,7 @@ def _write_predictions(
         "model_sha256": model_hash,
         "input": provenance["prediction_input"],
         "ids": file_identity(args.predict_ids) if args.predict_ids else None,
-        "predictions_sha256": sha256(prediction_path),
+        "predictions_sha256": sha256_file(prediction_path),
         "num_sequences": len(prediction.records),
         "num_tokens": prediction.counts["selected_tokens"],
         "prediction_seconds_including_input": prediction.seconds,

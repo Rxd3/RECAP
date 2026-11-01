@@ -1,9 +1,8 @@
 """Manifest, provenance and checksums of a data release (owned by Member 1).
 
-release.py re-exports `sha256_file` and `describe_files`. Writers take the line-writing function as a parameter so
-that release.write_lines stays the single place every release file goes through.
+release.py re-exports `sha256_file` (from hashing.py) and `describe_files`. Writers take the line-writing function as a
+parameter so that release.write_lines stays the single place every release file goes through.
 """
-import hashlib
 import json
 import os
 import platform
@@ -11,16 +10,9 @@ import shutil
 from collections.abc import Callable
 from pathlib import Path
 
+from ..hashing import sha256_file
 from . import extraction, preprocessing, splits, validation
 from .release_constants import RELEASE_FILES, SOURCE_REFERENCE
-
-
-def sha256_file(path):
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for block in iter(lambda: f.read(1 << 20), b""):
-            h.update(block)
-    return h.hexdigest()
 
 
 def describe_files(folder, skip=("release_manifest.json", "SHA256SUMS")):

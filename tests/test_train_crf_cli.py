@@ -283,7 +283,7 @@ class TestCRFTrainCLI:
         ])
         assert ret == 1
         captured = capsys.readouterr()
-        assert "Frozen ID list not found" in captured.err
+        assert "non_existent.ids: No such file or directory" in captured.err and str(tmp_path) not in captured.err
 
     def test_train_missing_selected_id_in_input_failure(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]

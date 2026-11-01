@@ -100,6 +100,15 @@ def test_train_hmm_with_a_missing_ids_file_is_one_error_line(
     assert not (tmp_path / "new-run").exists()
 
 
+def test_train_hmm_with_a_repeated_train_id_is_one_error_line_from_the_shared_id_reader(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    argv = setup_run(tmp_path)[0][2:]
+    (tmp_path / "train.ids").write_text("unit-train\nunit-train\n", encoding="utf-8")
+    assert train_hmm.main(argv) == 1
+    assert capsys.readouterr().err == "error: Duplicate ID 'unit-train' found at line 2 in train.ids\n"
+    assert not (tmp_path / "new-run").exists()
+
+
 def test_train_hmm_flags_predict_ids_without_predict_input_as_a_usage_error(
         tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     argv = [*setup_run(tmp_path)[0][2:], "--predict-ids", str(tmp_path / "train.ids")]

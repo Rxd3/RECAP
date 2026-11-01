@@ -594,6 +594,13 @@ def test_time_models_reports_ids_that_match_no_record(tmp_path: Path, capsys: py
     assert_one_error_line(capsys.readouterr().err, "validation_mode_A.ids")
 
 
+def test_time_models_refuses_an_id_list_that_repeats_an_id(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    data = tiny_data_root(tmp_path / "data")
+    (data / "splits" / RELEASE / "primary_eval" / "validation_mode_A.ids").write_text("v1\nv1\n", encoding="utf-8")
+    assert time_models.main(time_argv(tiny_hmm(tmp_path), tmp_path / "t.json", data)) == 1
+    assert_one_error_line(capsys.readouterr().err, "Duplicate ID 'v1' found at line 2 in validation_mode_A.ids")
+
+
 @pytest.mark.parametrize("extra", [
     ["--fit-train", "train.jsonl"],
     ["--fit-train", "train.jsonl", "--fit-ids", "x.ids", "--smoothing", "0.1"],

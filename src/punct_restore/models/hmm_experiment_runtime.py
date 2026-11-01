@@ -15,11 +15,11 @@ from typing import Any
 from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_workflow import (
     file_identity,
-    read_id_selection,
     selected_records,
     write_json,
 )
 from punct_restore.paths import REPO_ROOT as ROOT
+from punct_restore.prediction_io import read_ids
 
 
 def hardware() -> dict[str, Any]:
@@ -106,7 +106,7 @@ def runtime_benchmark(
 ) -> dict[str, Any]:
     """Measure in-memory inference speed of every frozen winner and write runtime.json."""
     ids_path = ROOT / config["splits_dir"] / config["runtime"]["comparison_ids"]
-    ids = read_id_selection(ids_path)
+    ids = tuple(read_ids(ids_path, strict=True))
     observations = _comparison_observations(config, ids)
     tokens = sum(len(row["tokens"]) for row in observations)
     report = {
