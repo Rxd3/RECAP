@@ -18,9 +18,10 @@ import itertools
 import os
 import re
 
+from ..paths import REPO_ROOT
 from .preprocessing import ABBREVIATIONS, TITLES
 
-LABEL_SETS_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "configs", "label_sets.yaml")
+LABEL_SETS_PATH = os.path.join(REPO_ROOT, "configs", "label_sets.yaml")
 
 
 def load_label_sets(path=LABEL_SETS_PATH):

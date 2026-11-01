@@ -23,6 +23,7 @@ from contextlib import ExitStack
 from itertools import zip_longest
 from pathlib import Path, PurePosixPath
 
+from ..paths import REPO_ROOT
 from . import extraction, labeling, preprocessing, splits, validation
 
 RELEASE_FILES = ("train", "validation", "test", "test_amb")
@@ -41,7 +42,7 @@ SOURCE_REFERENCE = ("Liu, X. Y. and Beigi, H. (2024). Spontaneous Informal Speec
 
 def code_fingerprint():
     """SHA-256 over this package's source files, recorded in the manifest."""
-    here = os.path.dirname(os.path.abspath(__file__))
+    here = os.path.join(REPO_ROOT, "src", "punct_restore", "data")
     h = hashlib.sha256()
     for name in sorted(os.listdir(here)):
         if name.endswith(".py"):

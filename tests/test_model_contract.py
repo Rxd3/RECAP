@@ -11,13 +11,13 @@ import joblib
 import pytest
 
 from punct_restore import pipeline
+from punct_restore.cli import run_demo
 from punct_restore.data.labeling import load_label_sets
 from punct_restore.models.crf import CRFModel
 from punct_restore.models.gap_classifier import GapClassifier
 from punct_restore.models.hidden_event_lm import HiddenEventLM
 from punct_restore.models.hmm import HMMModel
 from punct_restore.pipeline import ModelAdapter, RestorationPipeline, load_model
-from scripts import run_demo
 
 _SENTENCES = [
     ["hello", "world", "how", "are", "you"],

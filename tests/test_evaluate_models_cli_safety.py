@@ -1,4 +1,4 @@
-"""Safety tests for scripts/evaluate_models.py: non-UTF-8 input, hostile model names, failed output, bad --out.
+"""Safety tests for punct_restore.cli.evaluate_models: non-UTF-8 input, hostile model names, failed output, bad --out.
 
 main(argv) runs in-process through the `cli` fixture; every test works inside its own tmp_path.
 """

@@ -1,23 +1,52 @@
 """Independent workflow gates and inference/metric checks on tiny fixtures."""
 
 import json
-import sys
 from copy import deepcopy
 
 import pytest
 import yaml
 
+from punct_restore.cli import run_hmm_experiments as workflow
+from punct_restore.cli import verify_hmm_experiments as audit
 from punct_restore.models.hmm_workflow import predict_run
 from test_hmm_cli import ROOT, jsonl, setup_run
 from test_hmm_workflow import run
 
-sys.path.insert(0, str(ROOT / "scripts"))
-import run_hmm_experiments as workflow  # noqa: E402
-import verify_hmm_experiments as audit  # noqa: E402
+HMM_COMMANDS = ("train_hmm", "predict_hmm", "run_hmm_experiments", "verify_hmm_experiments")
 
 
 def config():
     return yaml.safe_load((ROOT / "configs/hmm_sponspeech_v2.yaml").read_text())
+
+
+def test_source_files_list_each_hmm_command_as_module_then_stub():
+    """The hashed code names the file that holds it, then the stub that still runs it."""
+    expected = ["src/punct_restore/models/hmm.py", "src/punct_restore/models/hmm_workflow.py"]
+    for command in HMM_COMMANDS:
+        expected += [f"src/punct_restore/cli/{command}.py", f"scripts/{command}.py"]
+    assert list(workflow.SOURCE_FILES) == expected
+    assert [name for name in expected if not (ROOT / name).is_file()] == []
+    assert list(workflow.implementation()) == expected
+
+
+def test_check_evaluator_still_hashes_scripts_evaluate_models_in_the_pinned_checkout(
+    tmp_path, monkeypatch
+):
+    """The pinned evaluator commit keeps its scorer at scripts/evaluate_models.py, so that path stays."""
+    names = [
+        "src/punct_restore/evaluation/report.py",
+        "scripts/evaluate_models.py",
+        "configs/label_sets.yaml",
+    ]
+    for name in names:
+        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / name).write_text(name, encoding="utf-8")
+    pinned = {"commit": "pinned", "dirty": False}
+    monkeypatch.setattr(workflow, "code_identity", lambda _root: pinned)
+    files = workflow.check_evaluator(tmp_path, "pinned")["files"]
+    assert sorted(files) == sorted(names)
+    scorer = tmp_path / "scripts/evaluate_models.py"
+    assert files["scripts/evaluate_models.py"] == workflow.sha256(scorer)
 
 
 def test_selection_uses_only_validation_score_and_predeclared_tie_break():

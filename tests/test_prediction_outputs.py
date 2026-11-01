@@ -1,7 +1,7 @@
 """Safe output handling of the prediction CLIs: path collisions, partial output, stdout encoding.
 
-Covers src/punct_restore/prediction_io.py and its two users, scripts/train_crf.py predict and
-scripts/tune_threshold.py predict/tune.
+Covers src/punct_restore/prediction_io.py and its two users, punct_restore.cli.train_crf predict and
+punct_restore.cli.tune_threshold predict/tune.
 """
 
 from __future__ import annotations
@@ -19,10 +19,11 @@ from typing import Any
 import pytest
 
 from punct_restore import prediction_io
+from punct_restore.cli import train_crf, tune_threshold
 from punct_restore.evaluation.inputs import Vocab, load_bundle, sha256_file
 from punct_restore.evaluation.manifest import check_manifest
 from punct_restore.models.crf import CRFModel
-from scripts import train_crf, tune_threshold
+from punct_restore.paths import REPO_ROOT
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "train_crf.py"
 PREDICTION = {"sample_id": "s1", "model_name": "m", "label_mode": "A", "predicted_labels": ["O"]}
@@ -163,8 +164,7 @@ def test_crf_train_never_overwrites_the_label_config(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     config = tmp_path / "label_sets.yaml"
-    config.write_bytes(Path(train_crf.__file__).resolve().parents[1].joinpath(
-        "configs", "label_sets.yaml").read_bytes())
+    config.write_bytes(REPO_ROOT.joinpath("configs", "label_sets.yaml").read_bytes())
     before = config.read_bytes()
     argv = [*_train_argv(tmp_path, config, tmp_path / "m.json"),
             "--config-path", str(config), "--overwrite"]

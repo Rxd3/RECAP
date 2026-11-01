@@ -1,4 +1,4 @@
-"""scripts/build_word_clusters.py on a tiny fake data root (release ``rel``, mode A)."""
+"""punct_restore.cli.build_word_clusters on a tiny fake data root (release ``rel``, mode A)."""
 
 from __future__ import annotations
 
@@ -15,8 +15,8 @@ from pathlib import Path
 
 import pytest
 
+from punct_restore.cli import build_word_clusters as cli
 from punct_restore.features.word_clusters import load_cluster_map
-from scripts import build_word_clusters as cli
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "build_word_clusters.py"

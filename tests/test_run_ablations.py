@@ -1,4 +1,4 @@
-"""Tests for scripts/run_ablations.py: seeded-sample CRF feature ablations (validation only)."""
+"""Tests for punct_restore.cli.run_ablations: seeded-sample CRF feature ablations (validation only)."""
 
 from __future__ import annotations
 
@@ -18,9 +18,9 @@ from typing import Any
 
 import pytest
 
+from punct_restore.cli import run_ablations
 from punct_restore.features.crf_features import FeatureConfig
 from punct_restore.features.word_clusters import ClusterMap, map_to_json
-from scripts import run_ablations
 
 ROOT = Path(__file__).resolve().parents[1]
 RELEASE = "rel"
@@ -409,9 +409,10 @@ def test_jsonl_duplicate_sample_id_is_an_error(tmp_path, capsys, repeated, line)
 
 
 def test_script_runs_standalone_and_has_no_personal_paths():
-    script = ROOT / "scripts" / "run_ablations.py"
+    stub = ROOT / "scripts" / "run_ablations.py"
+    module = ROOT / "src" / "punct_restore" / "cli" / "run_ablations.py"
     result = subprocess.run(
-        [sys.executable, str(script), "--help"],
+        [sys.executable, str(stub), "--help"],
         capture_output=True,
         text=True,
         check=False,
@@ -421,8 +422,8 @@ def test_script_runs_standalone_and_has_no_personal_paths():
     assert "--data-root" in result.stdout and "--release" in result.stdout
     assert "--cluster-map" in result.stdout
     assert "--code" not in result.stdout
-    source = script.read_text(encoding="utf-8")
-    assert not re.search(r"[A-Za-z]:[/\\]", source)
+    sources = [path.read_text(encoding="utf-8") for path in (stub, module)]
+    assert not any(re.search(r"[A-Za-z]:[/\\]", source) for source in sources)
 
 
 # --- mode C only variants: case_improved (CASE CRF) and factored (mode A CRF + CASE -> joint labels) -------------

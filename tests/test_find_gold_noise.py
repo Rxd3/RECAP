@@ -1,4 +1,4 @@
-"""Tests for scripts/find_gold_noise.py on a tiny generated data root: no real data.
+"""Tests for punct_restore.cli.find_gold_noise on a tiny generated data root: no real data.
 
 The fixture has three videos in validation, one in test, one in test_amb and one in the default-train list. The
 expected numbers in the tests below were counted by hand from ``VALIDATION`` / ``TEST`` / ``TRAIN``.
@@ -21,7 +21,8 @@ import pytest
 from test_gold_noise import make_record
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "scripts" / "find_gold_noise.py"
+SCRIPT = ROOT / "scripts" / "find_gold_noise.py"  # the stub: subprocess runs
+CLI_MODULE = ROOT / "src" / "punct_restore" / "cli" / "find_gold_noise.py"  # the code: in-process loads
 RELEASE = "sponspeech-m1-v2"
 SRT = "Well. 506 00:18:45,000 -- 00:18:44,999 Oh no."
 
@@ -77,7 +78,7 @@ def build_root(base: Path) -> Path:
 @pytest.fixture(scope="module")
 def mod() -> Iterator[ModuleType]:
     name = "find_gold_noise_under_test"
-    spec = importlib.util.spec_from_file_location(name, SCRIPT)
+    spec = importlib.util.spec_from_file_location(name, CLI_MODULE)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module
@@ -386,7 +387,7 @@ def test_usage_errors_exit_2(mod: ModuleType, root: Path, tmp_path: Path, extra:
 # --- as a user runs it -----------------------------------------------------------------------------------------------
 
 def run_script(root: Path, out: Path, cwd: Path) -> subprocess.CompletedProcess[str]:
-    """The script in a fresh interpreter without PYTHONPATH."""
+    """The stub in a fresh interpreter without PYTHONPATH (the installed package is found in site-packages)."""
     environ = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
     return subprocess.run([sys.executable, str(SCRIPT), *argv_for(root, out)], cwd=cwd, env=environ,
                           capture_output=True, text=True, check=False)
@@ -403,6 +404,6 @@ def test_runs_as_a_subprocess_without_pythonpath(root: Path, tmp_path: Path) -> 
 
 def test_the_script_and_module_have_no_marker_or_bom() -> None:
     marker = "TO" + "DO"                                     # split so this file does not match itself
-    for path in (SCRIPT, ROOT / "src" / "punct_restore" / "data" / "gold_noise.py"):
+    for path in (SCRIPT, CLI_MODULE, ROOT / "src" / "punct_restore" / "data" / "gold_noise.py"):
         raw = path.read_bytes()
         assert not raw.startswith(b"\xef\xbb\xbf") and marker not in raw.decode("utf-8")

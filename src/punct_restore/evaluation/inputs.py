@@ -16,9 +16,9 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any
 
+from ..paths import REPO_ROOT as ROOT
 from .metrics import join_joint
 
-ROOT = Path(__file__).resolve().parents[3]
 LABEL_SETS_PATH = ROOT / "configs" / "label_sets.yaml"
 MODES = ("A", "B", "C")
 NO_PUNCT = "O"

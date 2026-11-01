@@ -1,4 +1,4 @@
-"""scripts/train_hidden_event_lm.py: train and predict CLI for the hidden-event language model (method H)."""
+"""punct_restore.cli.train_hidden_event_lm: train and predict CLI for the hidden-event language model (method H)."""
 
 from __future__ import annotations
 
@@ -14,11 +14,11 @@ from typing import Any
 import pytest
 from eval_fixtures import assert_one_error_line, gold_row, write_ids, write_jsonl
 
+from punct_restore.cli import train_hidden_event_lm as cli
 from punct_restore.evaluation import load_vocab
 from punct_restore.evaluation.inputs import load_bundle
 from punct_restore.evaluation.manifest import check_manifest
 from punct_restore.models.hidden_event_lm import HiddenEventLM
-from scripts import train_hidden_event_lm as cli
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "train_hidden_event_lm.py"
 TRAIN_ROWS = [

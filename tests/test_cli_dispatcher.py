@@ -163,3 +163,10 @@ def test_an_unknown_command_prints_nothing_on_stdout(capsys, name):
     assert main([name]) == 2
     captured = capsys.readouterr()
     assert captured.out == "" and name in captured.err and captured.err.count("\n") == 1
+
+
+@pytest.mark.parametrize("name", sorted(COMMANDS))
+def test_every_command_answers_help(name, capsys):
+    with pytest.raises(SystemExit) as stop:
+        main([name, "--help"])
+    assert stop.value.code == 0 and capsys.readouterr().out.startswith(f"usage: recap {name}")

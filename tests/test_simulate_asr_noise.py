@@ -1,4 +1,4 @@
-"""Tests for scripts/simulate_asr_noise.py (the CLI) on a tiny synthetic data root; the edit model is in test_asr_noise.py."""
+"""Tests for punct_restore.cli.simulate_asr_noise (the CLI) on a tiny synthetic data root; the edit model is in test_asr_noise.py."""
 
 from __future__ import annotations
 
@@ -20,7 +20,8 @@ from punct_restore.data.asr_noise import Edits
 from punct_restore.evaluation import load_scored_gold, load_vocab
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "scripts" / "simulate_asr_noise.py"
+SCRIPT = ROOT / "scripts" / "simulate_asr_noise.py"  # the stub: subprocess runs
+CLI_MODULE = ROOT / "src" / "punct_restore" / "cli" / "simulate_asr_noise.py"  # the code: in-process loads
 MODULE = ROOT / "src" / "punct_restore" / "data" / "asr_noise.py"
 RELEASE = "sponspeech-m1-v2"
 MODES = ("A", "B", "C")
@@ -36,7 +37,7 @@ IDS = {m: Path("splits", RELEASE, "primary_eval", f"validation_mode_{m}.ids") fo
 @pytest.fixture(scope="module")
 def sim() -> Iterator[ModuleType]:
     name = "simulate_asr_noise_under_test"
-    spec = importlib.util.spec_from_file_location(name, SCRIPT)
+    spec = importlib.util.spec_from_file_location(name, CLI_MODULE)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module  # dataclasses looks its module up here
@@ -405,7 +406,7 @@ def test_wer_must_be_above_zero_and_at_most_half(sim, root, tmp_path, wer):
 
 
 def run_script(root: Path, out: Path, cwd: Path, **env: str) -> subprocess.CompletedProcess[str]:
-    """The script as a user runs it: a fresh interpreter, no PYTHONPATH."""
+    """The stub as a user runs it: a fresh interpreter, no PYTHONPATH (the installed package is found in site-packages)."""
     environ = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"} | env
     return subprocess.run([sys.executable, str(SCRIPT), *argv_for(root, out)], cwd=cwd, env=environ,
                           capture_output=True, text=True, check=False)
@@ -432,7 +433,7 @@ def test_output_is_byte_identical_under_different_hash_seeds(root, tmp_path):
 
 def test_script_and_tests_have_no_todo_marker_or_bom():
     marker = "TO" + "DO"  # split so this file does not match itself
-    for path in (SCRIPT, MODULE, Path(__file__), Path(__file__).with_name("test_asr_noise.py")):
+    for path in (SCRIPT, CLI_MODULE, MODULE, Path(__file__), Path(__file__).with_name("test_asr_noise.py")):
         data = path.read_bytes()
         assert not data.startswith(b"\xef\xbb\xbf") and marker.encode() not in data
 

@@ -1,4 +1,4 @@
-"""scripts/project_joint.py: mode C predictions projected to mode A (the joint-vs-punctuation-only study, H1)."""
+"""punct_restore.cli.project_joint: mode C predictions projected to mode A (the joint-vs-punctuation-only study, H1)."""
 
 from __future__ import annotations
 
@@ -20,10 +20,10 @@ from eval_fixtures import (
     write_jsonl,
 )
 
+from punct_restore.cli import project_joint
 from punct_restore.evaluation import load_vocab
 from punct_restore.evaluation.inputs import load_bundle, sha256_file
 from punct_restore.evaluation.manifest import check_manifest
-from scripts import project_joint
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "project_joint.py"
 MODEL = "crf_joint"
@@ -222,7 +222,7 @@ def test_stdout_without_reconfigure_still_prints_the_summary(
     assert buffer.getvalue() == "projected 2 predictions to a_pred.jsonl\n"
 
 
-def test_script_runs_standalone_without_an_installed_package(case: Case) -> None:
+def test_stub_runs_in_isolated_mode_without_PYTHONPATH(case: Case) -> None:
     done = subprocess.run([sys.executable, "-I", str(SCRIPT), *case.argv()], capture_output=True, text=True,
                           check=False)
     assert (done.returncode, done.stderr) == (0, "")

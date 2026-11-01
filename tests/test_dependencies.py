@@ -42,7 +42,7 @@ def _distribution(name: str) -> str:
 
 
 def _first_party_names() -> set[str]:
-    """Script files and script packages: scripts import their siblings by bare module name."""
+    """Names of the script files and of the folders holding them; the scripts are stubs that import punct_restore."""
     scripts = ROOT / "scripts"
     return {path.stem for path in scripts.rglob("*.py")} | {path.parent.name for path in scripts.rglob("*.py")}
 

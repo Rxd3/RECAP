@@ -14,8 +14,7 @@ from typing import Any
 
 from punct_restore.data.validation import check_model_input, validate_record
 from punct_restore.data.labeling import load_label_sets
-
-ROOT = Path(__file__).resolve().parents[3]
+from punct_restore.paths import REPO_ROOT as ROOT
 
 
 def read_jsonl(path: Path) -> Iterator[dict[str, Any]]:

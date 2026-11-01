@@ -1,4 +1,4 @@
-"""Command line tests for the compare and errors commands of scripts/evaluate_models.py.
+"""Command line tests for the compare and errors commands of punct_restore.cli.evaluate_models.
 
 main(argv) runs in-process through the `cli` fixture; only the working-directory test starts a subprocess.
 Cases come from cli_analysis_cases (8 gold rows over 4 groups; model_a and model_b make different mistakes).

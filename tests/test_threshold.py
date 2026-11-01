@@ -1,4 +1,4 @@
-"""Tests for threshold decoding over CRF marginals and scripts/tune_threshold.py."""
+"""Tests for threshold decoding over CRF marginals and punct_restore.cli.tune_threshold."""
 
 from __future__ import annotations
 
@@ -13,11 +13,11 @@ from typing import Any
 
 import pytest
 
+from punct_restore.cli import tune_threshold
 from punct_restore.evaluation.inputs import Vocab, load_bundle
 from punct_restore.evaluation.manifest import check_manifest
 from punct_restore.models.crf import CRFModel
 from punct_restore.models.threshold import check_tau, decode_with_threshold, is_o_label
-from scripts import tune_threshold
 
 # ---------------------------------------------------------------- decode_with_threshold
 

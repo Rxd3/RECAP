@@ -1,8 +1,8 @@
-"""scripts/train_crf.py must run from a plain checkout, without `pip install -e .`.
+"""The scripts/train_crf.py stub must run from any folder, with no PYTHONPATH.
 
-The script runs in a subprocess with PYTHONPATH removed and the cwd outside the repo, so only
-the script's own sys.path bootstrap can make `punct_restore` importable. (If the package is
-also installed in the interpreter's site-packages, this test cannot tell the two apart.)
+The stub runs in a subprocess with PYTHONPATH removed and the cwd outside the repo. It then
+imports the `punct_restore` package installed in the venv; no path bootstrap is involved, so
+nothing resolves against the working directory.
 """
 
 from __future__ import annotations
@@ -27,4 +27,4 @@ def test_train_crf_help_runs_without_pythonpath(tmp_path: Path) -> None:
         check=False,
     )
     assert result.returncode == 0, result.stderr
-    assert "usage:" in result.stdout
+    assert "usage: recap train-crf" in result.stdout

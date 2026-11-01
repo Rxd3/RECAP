@@ -150,3 +150,15 @@ def test_truncated_view_cannot_publish_a_release(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match="release validation failed"):
         build(tmp_path, "truncated-view")
     assert not (tmp_path / "truncated-view/processed/fixture/release_manifest.json").exists()
+
+
+def test_code_fingerprint_hashes_the_data_package_sources():
+    """The fingerprint covers exactly the .py files next to release.py (the folder is derived from REPO_ROOT)."""
+    import hashlib
+    from pathlib import Path
+
+    folder = Path(release.__file__).resolve().parent
+    digest = hashlib.sha256()
+    for path in sorted(folder.glob("*.py"), key=lambda p: p.name):
+        digest.update(path.name.encode() + b"\0" + path.read_bytes())
+    assert len(list(folder.glob("*.py"))) > 1 and release.code_fingerprint() == digest.hexdigest()

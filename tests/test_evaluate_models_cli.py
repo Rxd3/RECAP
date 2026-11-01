@@ -1,4 +1,4 @@
-"""Command line tests for scripts/evaluate_models.py (spec section 8; RUN.json and RUN.md from section 7).
+"""Command line tests for punct_restore.cli.evaluate_models (spec section 8; RUN.json and RUN.md from section 7).
 
 main(argv) runs in-process through the `cli` fixture; only the exit-code and encoding tests start a subprocess.
 Tests marked EXPECTED TO FAIL document known defects of the current code and must not be weakened.

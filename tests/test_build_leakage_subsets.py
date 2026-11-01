@@ -1,4 +1,4 @@
-"""scripts/build_leakage_subsets.py on a tiny fake data root (release ``rel``, mode A)."""
+"""punct_restore.cli.build_leakage_subsets on a tiny fake data root (release ``rel``, mode A)."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts import build_leakage_subsets as subsets
+from punct_restore.cli import build_leakage_subsets as subsets
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "build_leakage_subsets.py"
@@ -163,7 +163,7 @@ def test_a_missing_group_id_is_fine_when_the_group_is_not_needed(tmp_path: Path)
     assert run(root, tmp_path / "out") == 0
 
 
-def test_cli_runs_as_a_subprocess_from_a_plain_checkout(tmp_path: Path) -> None:
+def test_the_stub_runs_as_a_subprocess_without_pythonpath(tmp_path: Path) -> None:
     root = make_root(tmp_path)
     out = tmp_path / "out"
     env = {key: value for key, value in os.environ.items() if key != "PYTHONPATH"}

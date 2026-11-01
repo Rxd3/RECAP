@@ -22,12 +22,12 @@ from test_threshold import (
     _write_jsonl,
 )
 
+from punct_restore.cli import tune_threshold
 from punct_restore.evaluation.inputs import Vocab, load_bundle
 from punct_restore.evaluation.manifest import check_manifest
 from punct_restore.models import threshold
 from punct_restore.models.crf import CRFModel, get_mode_vocabulary
 from punct_restore.models.threshold import decode_with_threshold, is_o_label
-from scripts import tune_threshold
 
 MODE_A = ["O", "COMMA", "PERIOD", "QUESTION"]
 MODE_C = get_mode_vocabulary("C")

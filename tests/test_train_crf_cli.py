@@ -1,4 +1,4 @@
-"""Tests for RECAP CRF training, prediction, and inspection CLI (scripts/train_crf.py).
+"""Tests for RECAP CRF training, prediction, and inspection CLI (punct_restore.cli.train_crf).
 
 Owned by Member 3 (Omar Alzyod).
 Covers:
@@ -21,12 +21,11 @@ import json
 import os
 from pathlib import Path
 import subprocess
-import sys
 from typing import Any
 
 import pytest
 
-import scripts.train_crf as train_crf
+import punct_restore.cli.train_crf as train_crf
 from punct_restore.models.crf import CRFModel
 
 
@@ -164,6 +163,7 @@ class TestCRFTrainCLI:
         assert len(manifest["code_fingerprint"]) == 64
         assert "fingerprinted_files" in manifest
         assert "scripts/train_crf.py" in manifest["fingerprinted_files"]
+        assert "src/punct_restore/cli/train_crf.py" in manifest["fingerprinted_files"]
         assert "configs/label_sets.yaml" in manifest["fingerprinted_files"]
         assert "pyproject.toml" in manifest["fingerprinted_files"]
 
@@ -824,6 +824,7 @@ class TestCRFInspectCLI:
         files = train_crf.get_fingerprinted_files()
         assert files == sorted(files)
         assert "scripts/train_crf.py" in files
+        assert "src/punct_restore/cli/train_crf.py" in files
         assert "configs/label_sets.yaml" in files
         assert "pyproject.toml" in files
         assert "src/punct_restore/models/crf.py" in files
@@ -952,3 +953,17 @@ class TestPredictManifestAndProvenance:
         train_crf.write_predictions_jsonl([pred], out)
         expected = (json.dumps(pred, ensure_ascii=False) + "\n").replace("\n", os.linesep)
         assert out.read_bytes() == expected.encode("utf-8")
+
+
+@pytest.mark.parametrize(
+    ("argv", "expected"),
+    [
+        (["C:/Users/u/RECAP/.venv/Scripts/recap.exe", "train-crf", "train"], ["recap", "train-crf", "train"]),
+        (["/home/u/RECAP/.venv/bin/recap", "train-crf", "train"], ["recap", "train-crf", "train"]),
+        (["scripts/train_crf.py", "train", "--mode", "A"], ["scripts/train_crf.py", "train", "--mode", "A"]),
+        (["-m", "train"], ["-m", "train"]),
+        ([], []),
+    ],
+)
+def test_the_recorded_command_never_holds_the_launcher_path(argv: list[str], expected: list[str]) -> None:
+    assert train_crf.recorded_command(argv) == expected

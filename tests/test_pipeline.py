@@ -12,6 +12,7 @@ from typing import Any
 import pytest
 
 from punct_restore import pipeline
+from punct_restore.cli import run_demo
 from punct_restore.data import labeling
 from punct_restore.data.labeling import load_label_sets
 from punct_restore.models.crf import CRFModel
@@ -22,7 +23,6 @@ from punct_restore.pipeline import (
     clean_tokens,
     reconstruct,
 )
-from scripts import run_demo
 
 ROOT = Path(__file__).resolve().parents[1]
 
