@@ -13,7 +13,7 @@ from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any
+from typing import Any, cast
 
 from ..hashing import sha256_file
 from ..paths import REPO_ROOT as ROOT
@@ -69,6 +69,13 @@ class Bundle:
     ignored_prediction_ids: int
     inputs: Mapping[str, Mapping[str, str] | None]  # read-only views (MappingProxyType)
     policy_version: str | None = None  # the gold file's data release policy, e.g. "m1-v2"
+
+    def identity(self, key: str) -> Mapping[str, str]:
+        """The path and SHA-256 recorded for the input ``key``; an input that was not given has none."""
+        recorded = self.inputs[key]
+        if recorded is None:
+            raise EvaluationInputError(f"the bundle records no {key} file identity")
+        return recorded
 
 
 def load_vocab(path: str | Path = LABEL_SETS_PATH) -> Vocab:
@@ -238,7 +245,7 @@ def _read_gold(path: Path, vocab: Vocab) -> tuple[str, dict[str, GoldRecord], st
         if gold.sample_id in records:
             raise EvaluationInputError(f"{where}: duplicate sample_id {gold.sample_id!r}")
         records[gold.sample_id] = gold
-    return mode, records, policy_version
+    return cast(str, mode), records, policy_version  # _read_jsonl raises on an empty file
 
 
 def _read_ids(path: Path, gold: Mapping[str, GoldRecord], gold_name: str) -> tuple[str, ...]:
@@ -281,7 +288,7 @@ def _read_predictions(path: Path, mode: str, vocab: Vocab, gold: Mapping[str, Go
                                                  len(gold[sample_id].tokens), where,
                                                  "predicted_labels")
     _require_covered(scored, predictions, path, "prediction")
-    return model, predictions, len(predictions.keys() - set(scored))
+    return cast(str, model), predictions, len(predictions.keys() - set(scored))  # _read_jsonl raises on an empty file
 
 
 def _read_masks(path: Path, gold: Mapping[str, GoldRecord],

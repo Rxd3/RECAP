@@ -130,7 +130,7 @@ def _configure_model(args: argparse.Namespace, mode: str) -> tuple[CRFModel, Fea
         f"max_iter={args.max_iterations})..."
     )
     try:
-        feature_model_name = getattr(args, "model_name", None) or f"crf_{args.preset}"
+        feature_model_name = args.model_name or f"crf_{args.preset}"
         model = CRFModel(
             label_mode=mode,
             algorithm=args.algorithm,

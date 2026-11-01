@@ -177,3 +177,11 @@ def test_the_listing_describes_commands_not_team_roles(capsys):
     assert main([]) == 0
     listing = capsys.readouterr().out
     assert not [word for word in ("Member", "Omar", "M5 ", "team extension", "owned by") if word in listing]
+
+
+@pytest.mark.parametrize("name", sorted(COMMANDS))
+def test_no_command_help_names_team_roles(name, capsys):
+    with pytest.raises(SystemExit):
+        main([name, "--help"])
+    shown = capsys.readouterr().out
+    assert not [word for word in ("Member", "Omar", "Abdullah", "M5 ", "team extension", "owned by") if word in shown]

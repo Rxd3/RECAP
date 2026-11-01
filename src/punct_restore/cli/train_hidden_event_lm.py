@@ -51,18 +51,20 @@ def _interned(value: Any) -> Any:
 
 
 def _slim(record: dict[str, Any], mode: str) -> dict[str, Any]:
-    fields = ("sample_id", "split", "label_mode", "tokens", "punct_labels")
+    fields: tuple[str, ...] = ("sample_id", "split", "label_mode", "tokens", "punct_labels")
     fields += ("case_labels",) if mode == "C" else ()
     return {field: _interned(record.get(field)) for field in fields}
 
 
-def _keep_line(line: str, where: str, wanted: set[str], kept: Container[str], mode: str) -> dict[str, Any] | None:
-    """The slim record of a listed training line, or None for an unlisted one; ``kept`` holds the IDs taken so far."""
+def _keep_line(
+    line: str, where: str, wanted: set[str], taken_ids: Container[str], mode: str
+) -> dict[str, Any] | None:
+    """The slim record of a listed training line, or None for an unlisted one; ``taken_ids`` are the IDs so far."""
     record = parse_sample_record(line, where)
     sample_id = record["sample_id"]
     if sample_id not in wanted:
         return None
-    if sample_id in kept:
+    if sample_id in taken_ids:
         raise ValueError(f"{where}: duplicate sample_id {sample_id!r}")
     if record.get("split") != "train":
         raise ValueError(f"{where}: {sample_id!r} has split {record.get('split')!r}; only train records can be used")

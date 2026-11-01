@@ -23,7 +23,7 @@ from collections import Counter
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeGuard
 
 from punct_restore.hashing import sha256_file
 from punct_restore.prediction_io import parse_sample_record, read_ids, write_predictions_jsonl
@@ -36,7 +36,7 @@ def is_o_label(label: str) -> bool:
     return label == NO_PUNCT or label.startswith(f"{NO_PUNCT}|")
 
 
-def _is_finite_number(value: object) -> bool:
+def _is_finite_number(value: object) -> TypeGuard[float]:
     """True for a finite int or float (not a bool); an int too big for a float is not finite."""
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return False
@@ -317,7 +317,7 @@ def _gamma_settings(data: Mapping[str, Any]) -> tuple[float, dict[str, float] | 
         return 0.0, None
     priors = data.get("priors")
     check_priors(priors)
-    return gamma, dict(priors)
+    return gamma, dict(_as_priors(priors))
 
 
 def read_tau_file(path: Path, model_path: Path) -> TauSettings:

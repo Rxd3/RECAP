@@ -15,7 +15,7 @@ from .release_constants import RELEASE_FILES, SOURCE_REFERENCE
 def describe_files(folder: str | os.PathLike[str],
                    skip: Collection[str] = ("release_manifest.json", "SHA256SUMS")) -> dict[str, dict[str, str | int]]:
     """{relative path: {sha256, bytes, lines}} for every file below `folder`."""
-    out = {}
+    out: dict[str, dict[str, str | int]] = {}
     for d, _, fs in os.walk(folder):
         for x in fs:
             p = os.path.join(d, x)

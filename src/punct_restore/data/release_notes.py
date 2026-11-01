@@ -21,10 +21,10 @@ def _header_lines(release_id: str, manifest: dict) -> list[str]:
 def _table_lines(stats: dict) -> list[str]:
     """The record-count rows per file, then the default and primary subset table."""
     lines = []
-    for n in RELEASE_FILES:
-        s = stats["status_by_file"][n]
-        lines.append(f"| {n} | {s.get('accepted', 0) + s.get('flagged', 0)} | {s.get('flagged', 0)} "
-                     f"| {s.get('rejected', 0)} |\n")
+    for name in RELEASE_FILES:
+        status = stats["status_by_file"][name]
+        lines.append(f"| {name} | {status.get('accepted', 0) + status.get('flagged', 0)} "
+                     f"| {status.get('flagged', 0)} | {status.get('rejected', 0)} |\n")
     lines.append("\n## Default and primary subsets (sample counts)\n\n"
                  "| mode | default train | validation | test | test_amb |\n|---|---:|---:|---:|---:|\n")
     for m in ("A", "B", "C"):

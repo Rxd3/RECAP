@@ -89,7 +89,7 @@ def _identity_or_none(path: str | None) -> dict[str, str] | None:
 
 def _provenance(args: argparse.Namespace) -> dict[str, Any]:
     """The split name and the identity (repo-relative path and SHA-256) of every input file of a tune run."""
-    inputs = {"gold": file_identity(args.gold), "ids": file_identity(args.ids)}
+    inputs: dict[str, dict[str, str] | None] = {"gold": file_identity(args.gold), "ids": file_identity(args.ids)}
     inputs |= {key: _identity_or_none(getattr(args, key)) for key in ("masks", "train", "train_ids")}
     return {"split": args.split or Path(args.gold).stem, "inputs": inputs}
 

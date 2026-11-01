@@ -80,7 +80,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--split-manifest",
         type=Path,
         required=True,
-        help="frozen manifest to checksum; schema owned by Member 1",
+        help="frozen manifest to checksum (its schema is set by the data release)",
     )
     parser.add_argument(
         "--predict-input", type=Path, help="optional records to predict; no gold labels are read"

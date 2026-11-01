@@ -340,7 +340,7 @@ def _features_at(tokens: Sequence[str], i: int, cfg: FeatureConfig) -> _Feats:
         token_feats.update(_filler_features(tokens, i))
     if cfg.use_question_lookback:
         token_feats.update(_question_lookback_features(tokens, i))
-    if cfg.use_word_clusters:  # __post_init__ guarantees a non-empty map
+    if cfg.use_word_clusters and cfg.word_clusters is not None:  # __post_init__ guarantees a non-empty map
         token_feats.update(_cluster_features(tokens, i, cfg.word_clusters))
     return token_feats
 

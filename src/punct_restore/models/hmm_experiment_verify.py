@@ -161,10 +161,10 @@ def _verify_mode(
     winner: dict[str, Any],
 ) -> dict[str, Any]:
     """Audit one mode: its search candidates, refit winner and final splits."""
-    mode_report = {"candidates_independently_checked": 0, "final_reports": {}}
-    mode_report["candidates_independently_checked"] = _check_candidates(run, config, mode)
+    candidates_checked = _check_candidates(run, config, mode)
     model_path, fresh, refit = _refit_winner(run, config, output, mode, winner, stats)
-    mode_report["independent_refit"] = refit
+    mode_report: dict[str, Any] = {
+        "candidates_independently_checked": candidates_checked, "final_reports": {}, "independent_refit": refit}
     for split in ["validation", "test", "test_amb"]:
         mode_report["final_reports"][split] = _verify_split(run, config, mode, split, model_path, fresh)
     return mode_report
@@ -192,7 +192,7 @@ def _write_report(
 ) -> None:
     """Audit every mode and the runtime measurements into the new folder `output`; write verification.json last."""
     config = plan["config"]
-    report = {
+    report: dict[str, Any] = {
         "schema": "recap-hmm-verification-v1",
         "at_utc": now(),
         "plan": file_identity(run / "plan.json"),

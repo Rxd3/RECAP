@@ -59,6 +59,7 @@ from punct_restore.prediction_io import (
 )
 
 MODES = ("A", "B", "C")
+DEFAULT_EDIT_MODEL = "v1"  # the --edit-model default; a namespace built without the option means this model
 
 
 class InputError(ValueError):
@@ -174,7 +175,7 @@ def write_jsonl(path: Path, rows: Iterable[Mapping[str, Any]]) -> None:
 
 def summarize(args: argparse.Namespace, inputs: Sequence[ModeInput], tokens: Mapping[str, Sequence[str]],
               plan: Mapping[str, Edits]) -> dict[str, Any]:
-    edit_model = getattr(args, "edit_model", "v1")
+    edit_model = getattr(args, "edit_model", DEFAULT_EDIT_MODEL)  # callers of summarize may omit the option
     counts, before = edit_counts(plan, edit_model=edit_model), sum(len(t) for t in tokens.values())
     kind_to_cost = {"deletion": "delete", "insertion": "insert", "substitution": "replace", "swap": "swap"}
     spent = {name: counts[name] * COST[kind_to_cost[name]] for name in counts}
@@ -236,8 +237,8 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     parser.add_argument("--split", choices=["validation", "test"], required=True)
     parser.add_argument("--wer", type=wer_value, required=True, help="target word error rate, above 0 up to 0.5")
     parser.add_argument("--seed", type=int, default=2026)
-    parser.add_argument("--edit-model", choices=list(EDIT_MODELS), default="v1",
-                        help="word-error model (default: v1)")
+    parser.add_argument("--edit-model", choices=list(EDIT_MODELS), default=DEFAULT_EDIT_MODEL,
+                        help=f"word-error model (default: {DEFAULT_EDIT_MODEL})")
     parser.add_argument("--masks", type=Path, help="mode C casing masks (default: the release's case_joint file)")
     parser.add_argument("--out", type=Path, required=True, help="new folder; it must not exist")
     return parser.parse_args(argv)
@@ -274,7 +275,7 @@ def run(args: argparse.Namespace) -> str:
         raise InputError(f"{out.name}: the folder to create it in does not exist")
     inputs = load_inputs(args)
     tokens = shared_tokens(inputs)
-    edit_model = getattr(args, "edit_model", "v1")
+    edit_model = args.edit_model
     vocab = load_train_vocab(args) if edit_model == "v2" else frozenset()
     plan = build_plan(tokens, args.wer, args.seed, edit_model=edit_model, vocab=vocab)
     default_masks = args.data_root / "processed" / args.release / "masks" / "case_joint" / f"{args.split}.jsonl"

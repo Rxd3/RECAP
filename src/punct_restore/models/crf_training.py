@@ -136,12 +136,12 @@ def compute_code_fingerprint() -> str:
     repo_root = ROOT
     file_list = get_fingerprinted_files()
 
-    h = hashlib.sha256()
+    digest = hashlib.sha256()
     for rel_posix in file_list:
         content = (repo_root / rel_posix).read_bytes()
-        h.update(rel_posix.encode("utf-8") + b"\0" + content)
+        digest.update(rel_posix.encode("utf-8") + b"\0" + content)
 
-    return h.hexdigest()
+    return digest.hexdigest()
 
 
 def git_status_porcelain() -> str:
@@ -172,9 +172,9 @@ def collect_training_diagnostics(model: CRFModel) -> dict[str, Any]:
         training_diagnostics["num_iterations"] = len(log.iterations)
     if hasattr(log, "lines") and log.lines:
         for line in reversed(log.lines):
-            s = line.strip()
-            if "terminated" in s.lower() or "converged" in s.lower():
-                training_diagnostics["termination_status"] = s
+            text = line.strip()
+            if "terminated" in text.lower() or "converged" in text.lower():
+                training_diagnostics["termination_status"] = text
                 break
     return training_diagnostics
 

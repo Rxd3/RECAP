@@ -333,7 +333,8 @@ class HMMModel:
         into output or consulted when decoding. No caller records are mutated.
         """
         self._require_fitted()
-        predictions, seen_ids = [], set()
+        predictions: list[dict[str, Any]] = []
+        seen_ids: set[str] = set()
         for record in records:
             sample_id, tokens = _observation(record, seen_ids)
             seen_ids.add(sample_id)

@@ -26,7 +26,7 @@ from .preprocessing import ABBREVIATIONS, TITLES, Token
 LABEL_SETS_PATH = os.path.join(REPO_ROOT, "configs", "label_sets.yaml")
 
 
-_KIND_NAMES = {dict: "mapping", list: "list", str: "string"}
+_KIND_NAMES: dict[type, str] = {dict: "mapping", list: "list", str: "string"}
 
 
 def _field(config: Mapping[str, Any], dotted: str, kind: type, file_name: str) -> Any:
@@ -240,13 +240,14 @@ def _read_marks(text: str) -> list[tuple[str, str]]:
     text = re.sub(r"([.,;?!])([\"'-])(?=[A-Za-z])", r"\1\2 ", text)
     text = " ".join(c if re.search(r"@|www\.|://", c) else re.sub(r"(?<=[a-z])\.(?=[A-Z][a-z])", ". ", c)
                     for c in text.split())
-    words, trails = [], []
+    words: list[str] = []
+    trails: list[str] = []
     for ch in text.split():
-        if not ALNUM.search(ch):
+        if (first_match := ALNUM.search(ch)) is None:
             if trails:
                 trails[-1] += " " + ch
             continue
-        first = ALNUM.search(ch).start()
+        first = first_match.start()
         lead = ch[:first]
         if lead.endswith(".") and ch[first].islower():
             lead, first = lead[:-1], first - 1
@@ -289,5 +290,6 @@ def _signature(pairs: Iterable[tuple[str, str]]) -> str:
 
 def cross_check_standard(tokens: Sequence[Token], labels: Sequence[str], text: str) -> bool:
     """True if an independent reading of the text puts the same standard marks after the same letters/digits."""
-    a = _signature((t.text.lower(), STANDARD_MARK_OF[label]) for t, label in zip(tokens, labels, strict=False))
-    return a == _signature(_read_marks(text))
+    from_labels = _signature(
+        (token.text.lower(), STANDARD_MARK_OF[label]) for token, label in zip(tokens, labels, strict=False))
+    return from_labels == _signature(_read_marks(text))

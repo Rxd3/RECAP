@@ -20,7 +20,7 @@ import copy
 import math
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import sklearn_crfsuite
 
@@ -383,7 +383,7 @@ class CRFModel:
         """A fitted model rebuilt from the bundle of a saved artifact (a bundle checked by ``read_bundle``)."""
         hp = bundle.get("hyperparameters", {})
         model = cls(
-            label_mode=bundle.get("label_mode"),
+            label_mode=cast(str, bundle.get("label_mode")),  # read_bundle checked it
             algorithm=hp.get("algorithm", "lbfgs"),
             c1=hp.get("c1", 0.1),
             c2=hp.get("c2", 0.1),

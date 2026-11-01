@@ -1,6 +1,6 @@
 """ASR-like word errors for gold records, with every label kept consistent (robustness study).
 
-Used by scripts/simulate_asr_noise.py, which does the file reading and writing.
+Used by punct_restore.cli.simulate_asr_noise (`recap simulate-asr-noise`), which does the file reading and writing.
 
 Edit model (v1, default). One plan is drawn from the tokens of a set of samples and applied to each record. Candidates:
 deletion of a function word (cost 1, never the last remaining token), substitution by a homophone of the same

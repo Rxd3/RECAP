@@ -8,7 +8,7 @@ from contextlib import ExitStack
 from dataclasses import dataclass
 from itertools import zip_longest
 from pathlib import PurePosixPath
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 from . import preprocessing, splits, validation
 from .release_constants import RELEASE_FILES
@@ -74,8 +74,8 @@ def verify_release(readback: ReleaseReadback) -> ReleaseCheck:
     """
     results, kept = readback.results, readback.kept
     valid, file_errors = _validate_view_files(readback.out, readback.files, readback.label_sets)
-    checks = {"source_records": len(results), "rejected": len(results) - len(kept), "file_errors": file_errors,
-              "view_mismatches": {}}
+    checks: dict[str, Any] = {"source_records": len(results), "rejected": len(results) - len(kept),
+                              "file_errors": file_errors, "view_mismatches": {}}
     for name in RELEASE_FILES:
         diffs = _view_diffs(readback.out, name)
         if diffs:

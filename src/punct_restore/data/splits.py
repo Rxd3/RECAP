@@ -63,14 +63,14 @@ def overlap_counts(eval_recs: Sequence[Mapping[str, Any]], ref_recs: Sequence[Ma
     ref_groups = {r["group_id"] for r in ref_recs}
     ref_texts = {r["original_text"] for r in ref_recs}
     ref_inputs = {tuple(r["tokens"]) for r in ref_recs}
-    ref_grams = set()
-    for r in ref_recs:
-        t = r["tokens"]
-        ref_grams.update(" ".join(t[i:i + NGRAM]) for i in range(len(t) - NGRAM + 1))
+    ref_grams: set[str] = set()
+    for ref_rec in ref_recs:
+        ref_tokens = ref_rec["tokens"]
+        ref_grams.update(" ".join(ref_tokens[i:i + NGRAM]) for i in range(len(ref_tokens) - NGRAM + 1))
     near = 0
-    for r in eval_recs:
-        t = r["tokens"]
-        grams = {" ".join(t[i:i + NGRAM]) for i in range(len(t) - NGRAM + 1)}
+    for eval_rec in eval_recs:
+        eval_tokens = eval_rec["tokens"]
+        grams = {" ".join(eval_tokens[i:i + NGRAM]) for i in range(len(eval_tokens) - NGRAM + 1)}
         if grams and sum(g in ref_grams for g in grams) / len(grams) >= NEAR_DUP:
             near += 1
     return {"eval_records": len(eval_recs),

@@ -50,7 +50,7 @@ _HANDOFF_INSTRUCTIONS = (
 _SPLITS = ("validation", "test", "test_amb")
 # What the packager reads from the study files besides the frozen plan and selection.
 _SCORED = {"primary": object, "counts": object}
-_RUN_RECORD = {"training_summary": {}}
+_RUN_RECORD: dict[str, Any] = {"training_summary": {}}
 
 
 def _verification_schema(modes: Iterable[str]) -> dict[str, Any]:

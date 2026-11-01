@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
-from typing import BinaryIO
+from typing import IO
 
 BLOCK_SIZE = 1 << 20
 
 
-def sha256_stream(handle: BinaryIO) -> str:
+def sha256_stream(handle: IO[bytes]) -> str:
     """Hex SHA-256 of what is left of a binary stream, read in blocks."""
     digest = hashlib.sha256()
     for block in iter(lambda: handle.read(BLOCK_SIZE), b""):

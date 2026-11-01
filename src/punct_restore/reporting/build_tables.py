@@ -1,6 +1,6 @@
-"""Shared Markdown helpers for the reporting scripts.
+"""Shared Markdown helpers for the reporting commands.
 
-The table numbers the scripts print come from JSON files written by scripts/evaluate_models.py; a few fixed
+The table numbers the commands print come from JSON files written by `recap evaluate-models`; a few fixed
 descriptions in the section prose are written into build_m3_final_sections.py.
 """
 

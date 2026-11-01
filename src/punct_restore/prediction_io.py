@@ -340,7 +340,7 @@ def one_line_error_naming(exc: BaseException, *paths: str | os.PathLike[str] | N
         if reason:
             name = Path(os.fsdecode(exc.filename)).name if exc.filename else ""
             text = f"{name}: {reason}" if name else reason
-    for path in filter(None, paths):
+    for path in (given for given in paths if given):
         text = text.replace(str(Path(path)), Path(path).name)
     return " ".join(text.splitlines())
 

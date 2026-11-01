@@ -82,7 +82,7 @@ def model_report(bundle: Bundle, spec: BlockSpec) -> dict[str, Any]:
     groups: list[list[Aligned]] = [[] for _ in BOUNDS]
     for record in bundle.records:
         groups[bucket_index(len(record.gold))].append(record)
-    return {"model_name": bundle.model_name, "predictions": dict(bundle.inputs["predictions"]),
+    return {"model_name": bundle.model_name, "predictions": dict(bundle.identity("predictions")),
             "length_buckets": [
                 bucket_entry(group, spec, low, high) for group, (low, high) in zip(groups, BOUNDS, strict=False)
             ],
@@ -105,8 +105,9 @@ def write_report(args: argparse.Namespace) -> None:
     spec = blocks_for("A", vocab)[0]
     bundles = {name: load_mode_a(args, path, vocab) for name, path in args.predictions}
     shared = next(iter(bundles.values())).inputs
-    doc = {"label_mode": "A", "inputs": {key: dict(shared[key]) if shared[key] else None
-                                         for key in ("gold", "ids", "masks")},
+    identities = {key: shared[key] for key in ("gold", "ids", "masks")}
+    doc = {"label_mode": "A", "inputs": {key: dict(identity) if identity else None
+                                         for key, identity in identities.items()},
            "models": {name: model_report(bundle, spec) for name, bundle in bundles.items()}}
     write_new_text(args.out, json.dumps(doc, indent=1) + "\n")
     print(f"wrote {len(bundles)} model report(s) to {args.out.name}")

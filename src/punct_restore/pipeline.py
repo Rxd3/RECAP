@@ -45,8 +45,9 @@ _MODES = ("A", "B", "C")
 # model_family and is recognised by its model_name.
 _HMM_FAMILY = "hmm"
 _CRF_FAMILY = "crf"
-_JSON_FAMILIES = {_HMM_FAMILY: HMMModel, HIDDEN_EVENT_LM_FAMILY: HiddenEventLM}
-_JOBLIB_FAMILIES = {_CRF_FAMILY: CRFModel, GAP_CLASSIFIER_FAMILY: GapClassifier}
+_ModelClass = type[HMMModel | HiddenEventLM | CRFModel | GapClassifier]
+_JSON_FAMILIES: dict[str, _ModelClass] = {_HMM_FAMILY: HMMModel, HIDDEN_EVENT_LM_FAMILY: HiddenEventLM}
+_JOBLIB_FAMILIES: dict[str, _ModelClass] = {_CRF_FAMILY: CRFModel, GAP_CLASSIFIER_FAMILY: GapClassifier}
 _FAMILIES_BY_SUFFIX = {".json": _JSON_FAMILIES, ".joblib": _JOBLIB_FAMILIES, ".pkl": _JOBLIB_FAMILIES}
 
 

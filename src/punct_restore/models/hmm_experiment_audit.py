@@ -206,14 +206,16 @@ def _targets(row: dict[str, Any], mode: str) -> list[str]:
     )
 
 
-def _error_sample(sid: str, row: dict[str, Any], i: int, g: str, p: str) -> dict[str, Any]:
+def _error_sample(
+    sid: str, row: dict[str, Any], position: int, gold_label: str, predicted_label: str
+) -> dict[str, Any]:
     """One error example with its surrounding tokens."""
     return {
         "sample_id": sid,
-        "position": i,
-        "gold": g,
-        "predicted": p,
-        "context_tokens": row["tokens"][max(0, i - 3) : i + 4],
+        "position": position,
+        "gold": gold_label,
+        "predicted": predicted_label,
+        "context_tokens": row["tokens"][max(0, position - 3) : position + 4],
         "selection_rule": "first two occurrences per ordered confusion pair",
     }
 
@@ -234,8 +236,9 @@ def _collect_pairs(
 ) -> tuple[dict[str, list[tuple[str, str]]], int, list[dict[str, Any]]]:
     """Per-block (gold, predicted) pairs over the scored IDs, with the token count and error samples."""
     mode, masks = spec.mode, spec.masks
-    pairs = {name: [] for name in spec.block_names}
-    selected_tokens, samples, sample_counts = 0, [], Counter()
+    pairs: dict[str, list[tuple[str, str]]] = {name: [] for name in spec.block_names}
+    selected_tokens, samples = 0, []
+    sample_counts: Counter[tuple[str, str]] = Counter()
     for row in gold:
         sid = row["sample_id"]
         if sid not in wanted:
@@ -245,23 +248,24 @@ def _collect_pairs(
         if len(labels) != len(row["tokens"]) or len(targets) != len(labels):
             raise ValueError("prediction/gold token alignment violation")
         selected_tokens += len(targets)
-        for i, (g, p) in enumerate(zip(targets, labels, strict=True)):
+        for position, (gold_label, predicted_label) in enumerate(zip(targets, labels, strict=True)):
             for name in spec.block_names:
-                if name.startswith(("joint/", "casing/unmasked")) and i in masks.get(sid, set()):
+                if name.startswith(("joint/", "casing/unmasked")) and position in masks.get(sid, set()):
                     continue
-                if name.endswith("non_final") and i == len(targets) - 1:
+                if name.endswith("non_final") and position == len(targets) - 1:
                     continue
-                if name.endswith("non_initial") and i == 0:
+                if name.endswith("non_initial") and position == 0:
                     continue
-                pair = (g, p)
+                pair = (gold_label, predicted_label)
                 if mode == "C" and name.startswith("punctuation/"):
-                    pair = (g.split("|")[0], p.split("|")[0])
+                    pair = (gold_label.split("|")[0], predicted_label.split("|")[0])
                 elif mode == "C" and name.startswith("casing/"):
-                    pair = (g.split("|")[1], p.split("|")[1])
+                    pair = (gold_label.split("|")[1], predicted_label.split("|")[1])
                 pairs[name].append(pair)
-                if spec.examples and name == spec.primary and g != p and sample_counts[g, p] < 2:
-                    samples.append(_error_sample(sid, row, i, g, p))
-                    sample_counts[g, p] += 1
+                if (spec.examples and name == spec.primary and gold_label != predicted_label
+                        and sample_counts[gold_label, predicted_label] < 2):
+                    samples.append(_error_sample(sid, row, position, gold_label, predicted_label))
+                    sample_counts[gold_label, predicted_label] += 1
     return pairs, selected_tokens, samples
 
 

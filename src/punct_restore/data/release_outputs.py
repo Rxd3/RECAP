@@ -68,7 +68,9 @@ def write_split_map(split_out: str, results: list) -> None:
 def _screen_source_split(s: str, refs: tuple, by_source: dict) -> tuple:
     """(reason counts, kept records, excluded-TSV rows) for source split `s` against its reference splits."""
     ref = splits.Reference([r for name in refs for r in by_source[name]])
-    reasons, keep, dropped = collections.Counter(), [], []
+    reasons: collections.Counter[str] = collections.Counter()
+    keep: list = []
+    dropped: list[str] = []
     for r in by_source[s]:
         why = splits.overlap_reason(r, ref)
         if why is None and {"low_comma_video", "tts_source"} & set(r["unresolved"]["A"]):

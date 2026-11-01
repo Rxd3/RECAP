@@ -455,3 +455,15 @@ def test_errors_name_file_and_location(tmp_path: Path, vocab: Vocab, kwargs: dic
     message = _error(_bundle, tmp_path, vocab, **kwargs)
     for fragment in fragments:
         assert fragment in message
+
+
+def test_bundle_identity_returns_the_recorded_file_identity() -> None:
+    identity = {"path": "gold.jsonl", "sha256": "abc"}
+    bundle = Bundle("A", "m", (), 0, {"gold": identity, "masks": None})
+    assert bundle.identity("gold") == identity
+
+
+def test_bundle_identity_of_an_input_that_was_not_given_is_an_input_error() -> None:
+    bundle = Bundle("A", "m", (), 0, {"gold": None})
+    with pytest.raises(EvaluationInputError, match="no gold file identity"):
+        bundle.identity("gold")

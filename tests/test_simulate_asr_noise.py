@@ -331,6 +331,21 @@ def test_summary_cost_is_computed_from_the_cost_table(sim, monkeypatch):
     assert summary["edit_cost"] == 3 and summary["cost_share"]["swap"] == 1.0
 
 
+def test_summary_of_a_namespace_without_the_edit_model_option_is_the_v1_summary(sim):
+    args = argparse.Namespace(release="r", split="validation", wer=0.5, seed=1)  # no edit_model attribute
+    plan = {"s": Edits(deleted=frozenset({0}))}
+    summary = sim.summarize(args, [], {"s": ["a", "b", "c", "d"]}, plan)
+    assert "edit_model" not in summary and "vocabulary_source" not in summary
+    assert summary["edits"]["deletion"] == 1
+
+
+def test_summary_of_edit_model_v2_names_the_model_and_its_vocabulary(sim):
+    args = argparse.Namespace(release="r", split="validation", wer=0.5, seed=1, edit_model="v2")
+    plan = {"s": Edits(deleted=frozenset({0}))}
+    summary = sim.summarize(args, [], {"s": ["a", "b", "c", "d"]}, plan)
+    assert summary["edit_model"] == "v2" and summary["vocabulary_source"] == "default_train"
+
+
 def rewrite(path: Path, change: Callable[[list[dict[str, Any]]], Any]) -> None:
     rows = read_rows(path)
     change(rows)
