@@ -191,6 +191,29 @@ def test_fit_applies_the_crf_validation(bad_records):
         GapClassifier("A").fit(bad_records)
 
 
+NOT_TEXT = [pytest.param(None, id="null"), pytest.param(1, id="number"), pytest.param({}, id="object"),
+            pytest.param(["x"], id="list")]
+
+
+@pytest.mark.parametrize("bad", NOT_TEXT)
+@pytest.mark.parametrize(("field", "fragment"), [("tokens", "tokens must contain non-empty strings"),
+                                                 ("punct_labels", "punct_labels must be a list of strings")])
+def test_fit_refuses_a_token_or_label_that_is_not_text_with_a_one_line_value_error(
+        field: str, fragment: str, bad: Any) -> None:
+    record = {**MODE_A[0], field: [bad, MODE_A[0][field][1]]}
+    with pytest.raises(ValueError, match=fragment) as caught:
+        GapClassifier("A").fit([record, *MODE_A[1:]])
+    assert "\n" not in str(caught.value)
+
+
+@pytest.mark.parametrize("bad", NOT_TEXT)
+def test_predict_refuses_a_token_that_is_not_text_with_a_one_line_value_error(bad: Any) -> None:
+    model = _fit_a()
+    with pytest.raises(ValueError, match="tokens must contain non-empty strings") as caught:
+        model.predict([{"sample_id": "p", "tokens": ["did", bad]}])
+    assert "\n" not in str(caught.value)
+
+
 def test_fit_rejects_a_non_sequence():
     with pytest.raises(TypeError):
         GapClassifier("A").fit("not records")  # type: ignore[arg-type]
@@ -407,15 +430,15 @@ def test_save_unfitted_is_a_runtime_error(tmp_path):
         GapClassifier("A").save_model(tmp_path / "x.joblib")
 
 
-def test_load_missing_file_is_file_not_found(tmp_path):
-    with pytest.raises(FileNotFoundError):
+def test_load_missing_file_is_file_not_found_naming_the_file_only(tmp_path):
+    with pytest.raises(FileNotFoundError, match=r"^absent\.joblib: model artifact not found$"):
         GapClassifier.load_model(tmp_path / "absent.joblib")
 
 
 def test_load_folder_is_not_reported_as_missing(tmp_path):
     folder = tmp_path / "gap.joblib"
     folder.mkdir()
-    with pytest.raises(ValueError, match=r"gap\.joblib: is a folder, not a model file") as exc:
+    with pytest.raises(IsADirectoryError, match=r"^gap\.joblib: is a folder, not a file$") as exc:
         GapClassifier.load_model(folder)
     assert str(tmp_path) not in str(exc.value)
 
@@ -434,7 +457,7 @@ def test_load_os_error_is_not_relabelled_as_a_corrupt_artifact(tmp_path, monkeyp
 def test_load_corrupt_file_is_one_friendly_value_error(tmp_path):
     path = tmp_path / "bad.joblib"
     path.write_bytes(b"this is not a joblib file")
-    with pytest.raises(ValueError, match="bad.joblib") as exc:
+    with pytest.raises(ValueError, match=r"^bad\.joblib: corrupt or unreadable model artifact$") as exc:
         GapClassifier.load_model(path)
     assert "\n" not in str(exc.value) and str(tmp_path) not in str(exc.value)
 
@@ -493,7 +516,7 @@ _IMPROVED = FeatureConfig.improved().to_dict()  # what _saved() writes by defaul
 def test_load_reports_every_inconsistent_part_as_a_corrupt_artifact(tmp_path, changes, detail):
     _, path = _saved(tmp_path)
     _rewrite(path, **changes)
-    with pytest.raises(ValueError, match=rf"Corrupt model artifact gap\.joblib: .*{detail}"):
+    with pytest.raises(ValueError, match=rf"^gap\.joblib: corrupt model artifact: .*{detail}"):
         GapClassifier.load_model(path)
 
 
@@ -514,21 +537,21 @@ def test_load_accepts_a_feature_config_saved_before_the_question_lookback_switch
 def test_load_still_refuses_an_unknown_key_next_to_a_legacy_feature_config(tmp_path):
     _, path = _saved(tmp_path)
     _rewrite(path, feature_config={**_LEGACY, "bogus": True})
-    with pytest.raises(ValueError, match=r"Corrupt model artifact gap\.joblib: .*feature_config"):
+    with pytest.raises(ValueError, match=r"^gap\.joblib: corrupt model artifact: .*feature_config"):
         GapClassifier.load_model(path)
 
 
 def test_load_refuses_a_feature_config_missing_a_key_that_is_not_a_later_addition(tmp_path):
     _, path = _saved(tmp_path)
     _rewrite(path, feature_config={k: v for k, v in _LEGACY.items() if k != "window_size"})
-    with pytest.raises(ValueError, match=r"Corrupt model artifact gap\.joblib: .*feature_config"):
+    with pytest.raises(ValueError, match=r"^gap\.joblib: corrupt model artifact: .*feature_config"):
         GapClassifier.load_model(path)
 
 
 def test_load_refuses_a_present_key_that_does_not_round_trip(tmp_path):
     _, path = _saved(tmp_path)
     _rewrite(path, feature_config={**_IMPROVED, "window_size": float("nan")})  # nan != nan after rebuild
-    with pytest.raises(ValueError, match=r"Corrupt model artifact gap\.joblib: .*feature_config"):
+    with pytest.raises(ValueError, match=r"^gap\.joblib: corrupt model artifact: .*feature_config"):
         GapClassifier.load_model(path)
 
 
@@ -575,14 +598,14 @@ def test_load_accepts_a_feature_config_older_than_both_later_switches(tmp_path):
 def test_load_still_refuses_an_unknown_key_next_to_a_pre_cluster_feature_config(tmp_path):
     _, path = _saved(tmp_path)
     _rewrite(path, feature_config={**_NO_CLUSTER_KEYS, "bogus": True})
-    with pytest.raises(ValueError, match=r"Corrupt model artifact gap\.joblib: .*feature_config"):
+    with pytest.raises(ValueError, match=r"^gap\.joblib: corrupt model artifact: .*feature_config"):
         GapClassifier.load_model(path)
 
 
 def test_load_refuses_a_cluster_switch_that_is_on_without_a_map(tmp_path):
     _, path = _saved(tmp_path)
     _rewrite(path, feature_config={**_IMPROVED, "use_word_clusters": True})
-    with pytest.raises(ValueError, match=r"Corrupt model artifact gap\.joblib: .*feature_config") as exc:
+    with pytest.raises(ValueError, match=r"^gap\.joblib: corrupt model artifact: .*feature_config") as exc:
         GapClassifier.load_model(path)
     assert "\n" not in str(exc.value)
 
@@ -590,7 +613,7 @@ def test_load_refuses_a_cluster_switch_that_is_on_without_a_map(tmp_path):
 def test_load_refuses_a_cluster_map_that_is_not_a_mapping(tmp_path):
     _, path = _saved(tmp_path)
     _rewrite(path, feature_config={**_IMPROVED, "use_word_clusters": True, "word_clusters": ["did", "you"]})
-    with pytest.raises(ValueError, match=r"Corrupt model artifact gap\.joblib: .*feature_config"):
+    with pytest.raises(ValueError, match=r"^gap\.joblib: corrupt model artifact: .*feature_config"):
         GapClassifier.load_model(path)
 
 

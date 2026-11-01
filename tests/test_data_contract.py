@@ -259,7 +259,7 @@ def build(tmp_path, name, titles=None):
     out = tmp_path / name
     sources = release.ReleaseSources(str(raw), str(out / "processed"), str(out / "splits"), "fixture",
                                      raw_manifest=str(manifest), titles_path=titles)
-    release.build_release(sources, log=lambda _: None)
+    release.build_release_from(sources, log=lambda _: None)
     return out / "processed" / "fixture", out / "splits" / "fixture"
 
 

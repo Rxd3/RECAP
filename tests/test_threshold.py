@@ -85,6 +85,18 @@ def test_decode_returns_new_list_and_leaves_input_untouched() -> None:
     assert decode_with_threshold([], 0.5) == []
 
 
+@pytest.mark.parametrize("label", [None, 1, {}, ["O"]], ids=["null", "number", "object", "list"])
+def test_a_label_that_is_not_text_is_not_an_o_label(label: Any) -> None:
+    assert is_o_label(label) is False
+
+
+@pytest.mark.parametrize("label", [None, 1, 1.5, ("O",)], ids=["null", "number", "float", "tuple"])
+def test_decoding_refuses_a_label_that_is_not_text_in_one_line(label: Any) -> None:
+    with pytest.raises(ValueError, match=r"^token 1 has a label that is not text: ") as caught:
+        decode_with_threshold([{"O": 1.0}, {"O": 0.5, label: 0.5}], 0.2)
+    assert "\n" not in str(caught.value)
+
+
 def test_is_o_label() -> None:
     assert is_o_label("O") and is_o_label("O|LOWER")
     assert not is_o_label("COMMA") and not is_o_label("COMMA|FIRST_UPPER") and not is_o_label("OX")
@@ -416,7 +428,7 @@ def test_predict_rejects_malformed_tau_file(
     assert tune_threshold.main(_predict_argv(mode_a, tau_file, out, man)) == 1
     assert not out.exists() and not man.exists()
     err = capsys.readouterr().err
-    assert err.startswith("error: ") and len(err.splitlines()) == 1 and "tau file" in err
+    assert err.startswith("error: ") and len(err.splitlines()) == 1 and "tau.json: " in err
 
 
 def test_predict_missing_tau_file_is_a_friendly_error(

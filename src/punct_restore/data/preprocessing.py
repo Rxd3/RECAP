@@ -19,6 +19,8 @@ from dataclasses import dataclass
 from itertools import chain, islice
 from typing import TypedDict
 
+from ..hashing import sha256_file
+
 # --- Source identity (SponSpeech; D1 approved) ------------------------------------------------------------------
 
 SOURCE_ID = "sponspeech"
@@ -113,8 +115,7 @@ def verify_raw_manifest(manifest_path: str | os.PathLike[str]) -> list[str]:
     name = os.path.basename(manifest_path)
     def check_one(numbered_line: tuple[int, str]) -> str | None:
         digest, rel = parse_manifest_line(numbered_line[1], numbered_line[0], name)
-        with open(os.path.join(base, rel), "rb") as fh:
-            return rel if hashlib.sha256(fh.read()).hexdigest() != digest else None
+        return rel if sha256_file(os.path.join(base, rel)) != digest else None
     try:
         with open(manifest_path, encoding="utf-8") as f:
             return [bad for bad in _map_source_files(check_one, enumerate(f, 1)) if bad is not None]

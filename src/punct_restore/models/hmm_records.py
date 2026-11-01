@@ -21,8 +21,8 @@ def read_jsonl(path: Path) -> Iterator[dict[str, Any]]:
         with path.open(encoding="utf-8") as handle:
             for number, line in enumerate(handle, 1):
                 if not line.strip():
-                    raise ValueError(f"{path.name}:{number}: blank JSONL record")
-                yield parse_json_object(line, f"{path.name}:{number}")
+                    raise ValueError(f"{path.name} line {number}: blank JSONL record")
+                yield parse_json_object(line, f"{path.name} line {number}")
     except UnicodeDecodeError as exc:
         raise ValueError(f"{path.name}: not valid UTF-8") from exc
 

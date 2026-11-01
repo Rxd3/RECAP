@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 from typing import Any, NamedTuple
 
-import joblib
+from punct_restore.models.crf_io import load_artifact
 
 RULE = "=" * 70
 _SECTIONS = (
@@ -29,13 +29,9 @@ class Inspection(NamedTuple):
 
 
 def _load_artifact(model_path: Path) -> dict[str, Any]:
-    """The bundle dict of the artifact; FileNotFoundError if absent, ValueError if unreadable or not a dict."""
-    if not model_path.is_file():
-        raise FileNotFoundError(f"{model_path.name}: artifact not found")
-    try:  # joblib is unpickling: the artifact is a local file the user chose to inspect
-        bundle = joblib.load(model_path)
-    except Exception as e:  # broad on purpose: unpickling a corrupt or foreign file can raise any exception type
-        raise ValueError(f"{model_path.name}: not a readable CRF artifact") from e  # the unpickling text is not shown
+    """The bundle dict of the artifact; FileNotFoundError if absent, IsADirectoryError if a folder, ValueError if
+    unreadable or not a dict."""
+    bundle = load_artifact(model_path, "artifact")
     if not isinstance(bundle, dict):
         raise ValueError(f"{model_path.name}: invalid artifact format: root is {type(bundle).__name__}")
     return bundle

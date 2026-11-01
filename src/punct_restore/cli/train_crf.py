@@ -36,15 +36,21 @@ from punct_restore.models.crf_prediction import (
     write_model_predictions,
 )
 from punct_restore.models.crf_training import (
+    TrainingFailed,
     TrainingRun,
     TrainingSource,
     build_sidecar_manifest,
     build_training_provenance,
     collect_training_diagnostics,
-    get_process_memory_stats,
+    process_memory,
 )
 from punct_restore.models.crf_training_data import load_and_filter_training_records
-from punct_restore.prediction_io import check_new_output_paths, one_line_error, reconfigure_stdout
+from punct_restore.prediction_io import (
+    check_new_output_paths,
+    one_line_error,
+    one_line_error_with_short_paths,
+    reconfigure_stdout,
+)
 
 __all__ = ["main"]
 
@@ -61,8 +67,8 @@ def _error(message: str) -> None:
     sys.stderr.write(f"error: {message}\n")
 
 
-def _prepare_train_paths(args: argparse.Namespace) -> tuple[Path, Path, Path, Path] | None:
-    """Check the input and output paths; return (input, ids, output, manifest) or None after reporting why not."""
+def _prepare_train_paths(args: argparse.Namespace) -> tuple[Path, Path, Path, Path]:
+    """Check the input and output paths; return (input, ids, output, manifest). TrainingFailed says why not."""
     input_path = Path(args.input)
     ids_path = Path(args.ids)
     output_path = Path(args.output)
@@ -77,27 +83,23 @@ def _prepare_train_paths(args: argparse.Namespace) -> tuple[Path, Path, Path, Pa
                                {"--input": input_path, "--ids": ids_path,
                                 "--config-path": Path(args.config_path) if args.config_path else None})
     except ValueError as e:
-        _error(str(e))
-        return None
+        raise TrainingFailed(str(e)) from e
 
     # Safety: do not silently overwrite existing files
     if output_path.exists() and not args.overwrite:
-        _error(f"{output_path.name}: output artifact already exists; use --overwrite to replace")
-        return None
+        raise TrainingFailed(f"{output_path.name}: output artifact already exists; use --overwrite to replace")
     if manifest_path.exists() and not args.overwrite:
-        _error(f"{manifest_path.name}: manifest already exists; use --overwrite to replace")
-        return None
+        raise TrainingFailed(f"{manifest_path.name}: manifest already exists; use --overwrite to replace")
     return input_path, ids_path, output_path, manifest_path
 
 
-def _load_records(input_path: Path, ids_path: Path, mode: str) -> tuple[list[dict[str, Any]], int] | None:
-    """Load and verify the frozen training records; return (records, token count) or None after reporting why not."""
+def _load_records(input_path: Path, ids_path: Path, mode: str) -> tuple[list[dict[str, Any]], int]:
+    """Load and verify the frozen training records; return (records, token count). TrainingFailed says why not."""
     print(f"[RECAP CRF] Loading and verifying training records for Mode {mode}...")
     try:
         records, frozen_ids = load_and_filter_training_records(input_path, ids_path, mode)
     except (OSError, ValueError) as e:  # a missing or unreadable file, or a record that breaks the frozen-data rules
-        _error(one_line_error(e, input_path, ids_path))
-        return None
+        raise TrainingFailed(one_line_error_with_short_paths(e, input_path, ids_path)) from e
 
     total_tokens = sum(len(r["tokens"]) for r in records)
     print(
@@ -119,8 +121,8 @@ def _feature_config(args: argparse.Namespace) -> FeatureConfig:
     )
 
 
-def _configure_model(args: argparse.Namespace, mode: str) -> tuple[CRFModel, FeatureConfig] | None:
-    """Configure the CRF model; return (model, feature config) or None after reporting why not."""
+def _configure_model(args: argparse.Namespace, mode: str) -> tuple[CRFModel, FeatureConfig]:
+    """Configure the CRF model; return (model, feature config). TrainingFailed says why not."""
     feature_config = _feature_config(args)
 
     print(
@@ -128,7 +130,7 @@ def _configure_model(args: argparse.Namespace, mode: str) -> tuple[CRFModel, Fea
         f"max_iter={args.max_iterations})..."
     )
     try:
-        feature_model_name = getattr(args, "model_name", None) or f"crf_{args.preset}"
+        feature_model_name = args.model_name or f"crf_{args.preset}"
         model = CRFModel(
             label_mode=mode,
             algorithm=args.algorithm,
@@ -141,34 +143,34 @@ def _configure_model(args: argparse.Namespace, mode: str) -> tuple[CRFModel, Fea
             config_path=args.config_path,
         )
     except (OSError, ValueError) as e:  # a bad hyperparameter, or a --config-path file that cannot be read
-        _error(one_line_error(e, args.config_path))
-        return None
+        raise TrainingFailed(one_line_error_with_short_paths(e, args.config_path)) from e
     return model, feature_config
 
 
-def _fit_model(model: CRFModel, records: list[dict[str, Any]], provenance: dict[str, Any]) -> float | None:
-    """Fit the model; return the training duration in seconds, or None after reporting a failure."""
+def _fit_model(model: CRFModel, records: list[dict[str, Any]], provenance: dict[str, Any]) -> float:
+    """Fit the model; return the training duration in seconds. TrainingFailed says why a fit failed."""
     start_time = time.perf_counter()
     print("[RECAP CRF] Training model...")
     try:
         model.fit(records, config={"provenance": provenance})
     except (OSError, ValueError) as e:  # the backend refuses its settings or the records, or has no disk for its files
-        _error(f"training failed: {one_line_error(e)}")
-        return None
+        raise TrainingFailed(f"training failed: {one_line_error(e)}") from e
     duration = time.perf_counter() - start_time
     print(f"[RECAP CRF] Training completed in {duration:.2f} seconds.")
     return duration
 
 
-def _report_memory() -> dict[str, float]:
-    """Collect the OS-level process memory diagnostics and print the peak figures when available."""
-    mem_stats = get_process_memory_stats()
-    if mem_stats:
+def _report_memory() -> tuple[dict[str, float] | None, str | None]:
+    """Collect the OS-level process memory diagnostics: print the peak figures, or one note saying why not."""
+    mem_stats, unavailable = process_memory()
+    if mem_stats is None:
+        print(f"[RECAP CRF] Note: process memory figures are unavailable ({unavailable}); the manifest records none.")
+    else:
         print(
             f"[RECAP CRF] Process Memory (Kernel): Peak Working Set = {mem_stats['peak_working_set_mb']} MB, "
             f"Peak Private Commit = {mem_stats['peak_private_commit_mb']} MB"
         )
-    return mem_stats
+    return mem_stats, unavailable
 
 
 def _report_optimizer(model: CRFModel) -> dict[str, Any]:
@@ -182,8 +184,8 @@ def _report_optimizer(model: CRFModel) -> dict[str, Any]:
     return training_diagnostics
 
 
-def _save_artifact(model: CRFModel, output_path: Path) -> str | None:
-    """Save the model artifact and return its SHA-256, or None after reporting why it could not be saved.
+def _save_artifact(model: CRFModel, output_path: Path) -> str:
+    """Save the model artifact and return its SHA-256; TrainingFailed says why it could not be saved.
 
     A failure deletes the half-written file only when this run created it. With ``--overwrite`` the file was already
     there: it is left in place (the failed write may have cut it short, but it is never deleted).
@@ -197,23 +199,20 @@ def _save_artifact(model: CRFModel, output_path: Path) -> str | None:
         if created_here:
             with contextlib.suppress(OSError):  # best effort; the save error is the one reported
                 output_path.unlink(missing_ok=True)
-        _error(one_line_error(e))
-        return None
+        raise TrainingFailed(one_line_error(e)) from e
     print(f"[RECAP CRF] Saved artifact: {output_path} (SHA-256: {artifact_hash})")
     return artifact_hash
 
 
-def _write_manifest(sidecar_manifest: Mapping[str, Any], manifest_path: Path) -> bool:
-    """Write the sidecar manifest JSON (sorted keys) and report where; False after reporting why it failed."""
+def _write_manifest(sidecar_manifest: Mapping[str, Any], manifest_path: Path) -> None:
+    """Write the sidecar manifest JSON (sorted keys) and report where; TrainingFailed says why it failed."""
     try:
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
         with open(manifest_path, "w", encoding="utf-8") as f:
             json.dump(sidecar_manifest, f, indent=2, sort_keys=True)
     except OSError as e:
-        _error(one_line_error(e))
-        return False
+        raise TrainingFailed(one_line_error(e)) from e
     print(f"[RECAP CRF] Saved manifest: {manifest_path}")
-    return True
 
 
 def _hyperparameters(args: argparse.Namespace) -> dict[str, Any]:
@@ -227,36 +226,20 @@ def _hyperparameters(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
-def cmd_train(args: argparse.Namespace) -> int:
-    """Execute CRF training with frozen ID enforcement and provenance recording."""
-    paths = _prepare_train_paths(args)
-    if paths is None:
-        return 1
-    input_path, ids_path, output_path, manifest_path = paths
-
+def _train(args: argparse.Namespace) -> None:
+    """Run the training steps in order; TrainingFailed from any step stops the run."""
+    input_path, ids_path, output_path, manifest_path = _prepare_train_paths(args)
     mode = args.mode.upper()
-    loaded = _load_records(input_path, ids_path, mode)
-    if loaded is None:
-        return 1
-    records, total_tokens = loaded
-
-    configured = _configure_model(args, mode)
-    if configured is None:
-        return 1
-    model, feature_config = configured
-
+    records, total_tokens = _load_records(input_path, ids_path, mode)
+    model, feature_config = _configure_model(args, mode)
     provenance = build_training_provenance(TrainingSource(
         input_path=input_path, ids_path=ids_path, num_sequences=len(records), num_tokens=total_tokens,
         dataset_release=args.dataset_release, policy_version=args.policy_version, run_id=args.run_id,
     ))
     duration = _fit_model(model, records, provenance)
-    if duration is None:
-        return 1
-    mem_stats = _report_memory()
+    mem_stats, memory_unavailable = _report_memory()
     training_diagnostics = _report_optimizer(model)
     artifact_hash = _save_artifact(model, output_path)
-    if artifact_hash is None:
-        return 1
 
     # Generate comprehensive sidecar manifest
     sidecar_manifest = build_sidecar_manifest(TrainingRun(
@@ -264,9 +247,19 @@ def cmd_train(args: argparse.Namespace) -> int:
         feature_config=feature_config, hyperparameters=_hyperparameters(args),
         training_diagnostics=training_diagnostics, memory_diagnostics=mem_stats, provenance=provenance,
         training_command=recorded_command(sys.argv), duration=duration, output_path=output_path,
-        artifact_hash=artifact_hash,
+        artifact_hash=artifact_hash, memory_unavailable=memory_unavailable,
     ))
-    return 0 if _write_manifest(sidecar_manifest, manifest_path) else 1
+    _write_manifest(sidecar_manifest, manifest_path)
+
+
+def cmd_train(args: argparse.Namespace) -> int:
+    """Execute CRF training with frozen ID enforcement and provenance recording; 1 after one `error:` line."""
+    try:
+        _train(args)
+    except TrainingFailed as e:
+        _error(str(e))
+        return 1
+    return 0
 
 
 def cmd_predict(args: argparse.Namespace) -> int:
@@ -299,8 +292,8 @@ def cmd_inspect(args: argparse.Namespace) -> int:
     """Inspect and display metadata of a trained CRF model artifact."""
     try:
         report = inspect_artifact(Path(args.model))
-    except (FileNotFoundError, ValueError) as e:
-        _error(str(e))
+    except (OSError, ValueError) as e:  # a missing artifact or a folder (named by name only), or one that is unreadable
+        _error(one_line_error(e))
         return 1
     for line in report.summary:
         print(line)

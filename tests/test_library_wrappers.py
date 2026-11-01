@@ -34,9 +34,9 @@ def test_read_frozen_ids_skips_blank_lines_strips_each_id_and_returns_a_list(tmp
 
 
 def test_read_frozen_ids_raises_file_not_found_for_a_missing_file_and_for_a_folder(tmp_path: Path) -> None:
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(FileNotFoundError, match="^Frozen ID list not found: gone.ids$"):
         read_frozen_ids(tmp_path / "gone.ids")
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(FileNotFoundError, match=f"^Frozen ID list not found: {tmp_path.name}$"):
         read_frozen_ids(tmp_path)
 
 

@@ -26,6 +26,15 @@ EXPECTED_COMMANDS = {
     **{name.replace("_", "-"): f"punct_restore.reporting.{name}" for name in REPORTING_MODULES},
 }
 NOT_AVAILABLE = "(not available)"
+ROLE_WORDS = ("Member", "Omar", "Abdullah", "M5 ", "team extension", "owned by")
+SUBCOMMANDS = {
+    "train-crf": ("train", "predict", "inspect"),
+    "prepare-data": ("extract", "build"),
+    "tune-threshold": ("tune", "predict"),
+    "train-hidden-event-lm": ("train", "predict"),
+    "evaluate-models": ("score", "compare", "errors", "baseline"),
+    "run-hmm-experiments": ("tune", "finalize"),
+}
 
 
 def test_no_argument_lists_every_command(capsys):
@@ -177,3 +186,22 @@ def test_the_listing_describes_commands_not_team_roles(capsys):
     assert main([]) == 0
     listing = capsys.readouterr().out
     assert not [word for word in ("Member", "Omar", "M5 ", "team extension", "owned by") if word in listing]
+
+
+@pytest.mark.parametrize("name", sorted(COMMANDS))
+def test_no_command_help_names_team_roles(name, capsys):
+    with pytest.raises(SystemExit):
+        main([name, "--help"])
+    shown = capsys.readouterr().out
+    assert not [word for word in ROLE_WORDS if word in shown]
+
+
+@pytest.mark.parametrize(
+    ("name", "subcommand"), [(name, sub) for name, subs in SUBCOMMANDS.items() for sub in subs],
+)
+def test_no_subcommand_help_names_team_roles(name, subcommand, capsys):
+    with pytest.raises(SystemExit) as stop:
+        main([name, subcommand, "--help"])
+    shown = capsys.readouterr().out
+    assert stop.value.code == 0 and shown.startswith(f"usage: recap {name} {subcommand}")
+    assert not [word for word in ROLE_WORDS if word in shown]

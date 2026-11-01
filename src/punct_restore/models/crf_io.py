@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 import joblib
 import sklearn_crfsuite
 
+from punct_restore.file_io import require_file
 from punct_restore.models.crf_modes import LABEL_MODES
 
 if TYPE_CHECKING:  # crf.py imports this module at run time
@@ -54,39 +55,52 @@ def write_model(model: CRFModel, path: str | Path) -> None:
     joblib.dump(bundle, save_path)
 
 
+def load_artifact(path: str | Path, what: str) -> Any:
+    """The object the joblib artifact file at ``path`` holds; the caller checks its type. ``what`` names the file in
+    a not-found message.
+
+    Raises:
+        FileNotFoundError: ``<name>: <what> not found``.
+        IsADirectoryError: ``<name>: is a folder, not a file``.
+        ValueError: ``<name>: not a readable CRF artifact`` (the unpickling text is not shown).
+    """
+    load_path = Path(path)
+    require_file(load_path, what)
+    try:  # joblib is pickle: artifacts are this project's own saved models, or a local file the user chose to inspect
+        return joblib.load(load_path)
+    except Exception as e:  # broad on purpose: unpickling a corrupt or foreign file can raise any exception type
+        raise ValueError(f"{load_path.name}: not a readable CRF artifact") from e
+
+
 def read_bundle(path: str | Path) -> dict[str, Any]:
     """Load the artifact at ``path`` and check root type, schema, family, label mode and backend presence.
 
     Raises:
         FileNotFoundError: If the artifact path does not exist.
-        ValueError: If the artifact is unreadable or its schema, family or metadata is incompatible.
+        IsADirectoryError: If the artifact path is a folder.
+        ValueError: ``<name>: <reason>`` if the artifact is unreadable or its schema, family or metadata is
+            incompatible.
     """
-    load_path = Path(path)
-    if not load_path.is_file():
-        raise FileNotFoundError(f"Model artifact not found at {load_path}")
-
-    try:
-        bundle = joblib.load(load_path)  # joblib is pickle: artifacts are this project's own saved models only
-    except Exception as e:
-        raise ValueError(f"{load_path.name}: not a readable CRF artifact") from e  # the unpickling text is not shown
+    bundle = load_artifact(path, "model artifact")
+    name = Path(path).name
 
     if not isinstance(bundle, dict):
-        raise ValueError(f"Corrupt artifact: expected dict root, got {type(bundle).__name__}")
+        raise ValueError(f"{name}: corrupt artifact: expected dict root, got {type(bundle).__name__}")
 
     schema_ver = bundle.get("schema_version")
     if schema_ver != MODEL_SCHEMA_VERSION:
-        raise ValueError(f"Unsupported model schema_version: {schema_ver!r}")
+        raise ValueError(f"{name}: unsupported model schema_version {schema_ver!r}")
 
     family = bundle.get("model_family")
     if family != "crf":
-        raise ValueError(f"Incompatible model family: {family!r}, expected 'crf'")
+        raise ValueError(f"{name}: incompatible model family {family!r}, expected 'crf'")
 
     label_mode = bundle.get("label_mode")
     if label_mode not in LABEL_MODES:
-        raise ValueError(f"Invalid label_mode in artifact: {label_mode!r}")
+        raise ValueError(f"{name}: invalid label_mode in artifact: {label_mode!r}")
 
     if bundle.get("backend_state") is None:
-        raise ValueError("Corrupt artifact: missing backend_state.")
+        raise ValueError(f"{name}: corrupt artifact: missing backend_state")
 
     return bundle
 
@@ -99,7 +113,16 @@ def restore_model(cls: type[CRFModel], bundle: dict[str, Any]) -> CRFModel:
     restored_vocab = bundle.get("vocabulary")
     if restored_vocab != model.vocabulary:
         raise ValueError(
-            f"Artifact vocabulary {restored_vocab} does not match expected {model.vocabulary}"
+            f"artifact vocabulary {restored_vocab} does not match expected {model.vocabulary}"
         )
 
     return model
+
+
+def load_fitted(cls: type[CRFModel], path: str | Path) -> CRFModel:
+    """A fitted ``cls`` from the artifact at ``path``; every ValueError starts with the artifact's file name."""
+    bundle = read_bundle(path)  # names the file itself
+    try:
+        return restore_model(cls, bundle)
+    except ValueError as exc:
+        raise ValueError(f"{Path(path).name}: {exc}") from exc

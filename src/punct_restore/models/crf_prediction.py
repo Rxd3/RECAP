@@ -12,10 +12,12 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
+from punct_restore.file_io import require_file
 from punct_restore.models.crf import CRFModel, require_scoring_mode
 from punct_restore.prediction_io import (
     check_new_output_paths,
     one_line_error,
+    one_line_error_with_short_paths,
     read_observations,
     write_prediction_outputs,
 )
@@ -27,7 +29,7 @@ class PredictionFailed(Exception):
 
 def _named(exc: BaseException, path: Path) -> str:
     """The one-line reason of ``exc``, led by the file name of ``path`` unless the text already names it."""
-    text = one_line_error(exc, path)
+    text = one_line_error_with_short_paths(exc, path)
     return text if path.name in text else f"{path.name}: {text}"
 
 
@@ -41,10 +43,8 @@ def check_predict_paths(
 ) -> None:
     """Raise PredictionFailed for a missing, unreadable or clashing path; files are named by name only."""
     try:
-        if not model_path.is_file():
-            raise PredictionFailed(f"{model_path.name}: model artifact not found")
-        if not input_path.is_file():
-            raise PredictionFailed(f"{input_path.name}: input JSONL not found")
+        require_file(model_path, "model artifact")
+        require_file(input_path, "input JSONL")
         check_new_output_paths(
             {"--output": output_path, "--manifest-out": manifest_path},
             {"--input": input_path, "--model": model_path, "--ids": ids_path},
@@ -77,7 +77,7 @@ def read_input_records(input_path: Path, ids_path: Path | None) -> list[dict[str
     try:
         return read_observations(input_path, ids_path)
     except (OSError, ValueError) as e:
-        raise PredictionFailed(one_line_error(e, input_path, ids_path)) from e
+        raise PredictionFailed(one_line_error_with_short_paths(e, input_path, ids_path)) from e
 
 
 def predict_records(model: CRFModel, records: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
@@ -115,5 +115,5 @@ def write_model_predictions(
             ordered_labels=model.vocabulary,
         )
     except (OSError, ValueError) as e:
-        reason = one_line_error(e, output_path, manifest_path, input_path)
+        reason = one_line_error_with_short_paths(e, output_path, manifest_path, input_path)
         raise PredictionFailed(f"could not write prediction outputs: {reason}") from e

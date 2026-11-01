@@ -10,6 +10,7 @@ from typing import Any
 
 import yaml
 
+from punct_restore.file_io import read_yaml
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm_experiment_commands import Study, execute, score, train_command
 from punct_restore.models.hmm_experiment_identity import check_evaluator, implementation
@@ -108,15 +109,10 @@ def _freeze_selection(
 def _load_config(config_path: Path) -> dict[str, Any]:
     """Read and validate the experiment config.
 
-    Text that is not UTF-8, bad or too deeply nested YAML, a missing key or a wrong type is a ValueError that
-    starts with the file name.
+    Text that is not UTF-8 or YAML (also one nested too deeply), a config that is no object, a missing key or a
+    wrong type is a ValueError of one line that starts with the file name.
     """
-    try:
-        return validate_config(yaml.safe_load(config_path.read_text(encoding="utf-8")))
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"{config_path.name}: not valid UTF-8") from exc
-    except (KeyError, TypeError, yaml.YAMLError, RecursionError) as exc:  # RecursionError: nested too deeply
-        raise ValueError(f"{config_path.name}: invalid experiment config: {exc}") from exc
+    return validate_config(read_yaml(config_path), config_path.name)
 
 
 def tune(config_path: Path, evaluator: Path, run: Path, *, log: Log = discard_log) -> None:

@@ -62,7 +62,7 @@ def finalize(run: Path, evaluator: Path, *, log: Log = discard_log) -> None:
         },
     )
     study = Study(config=config, evaluator=evaluator, run=run)
-    results = {}
+    results: dict[str, dict[str, Any]] = {}
     for mode, winner in selection["modes"].items():
         results[mode] = {}
         for split in ["validation", *config["evaluation"]["test_sets"]]:

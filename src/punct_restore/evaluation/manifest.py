@@ -55,12 +55,12 @@ def check_manifest(manifest_path: str | Path, bundle: Bundle, vocab: Vocab) -> N
         "model_name": bundle.model_name,
         "label_mode": bundle.label_mode,
         "ordered_labels": list(vocab.labels(bundle.label_mode)),
-        "predictions_sha256": bundle.inputs["predictions"]["sha256"],
+        "predictions_sha256": bundle.identity("predictions")["sha256"],
     }
     for field, value in expected.items():
         if manifest[field] != value:
             raise EvaluationInputError(
                 f"{path.name}: {field} is {manifest[field]!r}, expected {value!r}")
-    if input_identity["sha256"] != bundle.inputs["gold"]["sha256"]:
+    if input_identity["sha256"] != bundle.identity("gold")["sha256"]:
         raise EvaluationInputError(
             f"{path.name}: predictions were made from a different input file than the gold file")

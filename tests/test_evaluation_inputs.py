@@ -5,7 +5,6 @@ from __future__ import annotations
 import dataclasses
 import functools
 import hashlib
-import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
@@ -34,6 +33,7 @@ from punct_restore.evaluation.inputs import (
     EvaluationInputError,
     Vocab,
     file_identity,
+    file_identity_with,
     load_bundle,
     load_scored_gold,
     load_vocab,
@@ -140,14 +140,45 @@ def test_load_vocab_bad_structure_rejected(tmp_path: Path, build: Callable[[dict
     assert "bad.yaml" in _error(load_vocab, bad)
 
 
+LOAD_VOCAB_REASONS = {
+    "casing_key_missing": ("casing", "bad.yaml: missing casing"),
+    "joint_labels_missing": ("joint", "bad.yaml: missing modes.C.labels"),
+    "casing_is_text": ("casing_text", "bad.yaml: casing is not a JSON list"),
+    "whole_file_is_a_list": ("list", "bad.yaml: not a JSON object"),
+    "empty_file": ("empty", "bad.yaml: not a JSON object"),
+    "invalid_yaml": ("syntax", "bad.yaml: not valid YAML"),
+}
+
+
+def _vocab_config_text(kind: str) -> str:
+    cfg = yaml.safe_load(LABEL_SETS_PATH.read_text(encoding="utf-8"))
+    if kind == "casing":
+        del cfg["casing"]
+    elif kind == "joint":
+        del cfg["modes"]["C"]["labels"]
+    elif kind == "casing_text":
+        cfg["casing"] = "LOWER"
+    elif kind == "list":
+        return yaml.safe_dump([1, 2])
+    elif kind == "empty":
+        return ""
+    else:
+        return "punctuation: [O, COMMA"
+    return yaml.safe_dump(cfg)
+
+
+@pytest.mark.parametrize(("kind", "message"), LOAD_VOCAB_REASONS.values(), ids=LOAD_VOCAB_REASONS.keys())
+def test_load_vocab_says_what_is_wrong_in_the_words_of_the_shared_readers(tmp_path: Path, kind: str, message: str
+                                                                          ) -> None:
+    """One YAML reader and one shape check (file_io): the same one line, naming the file and the key, as every other."""
+    bad = tmp_path / "bad.yaml"
+    bad.write_text(_vocab_config_text(kind), encoding="utf-8")
+    assert _error(load_vocab, bad) == message
+
+
 def test_load_vocab_missing_file_propagates_oserror(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         load_vocab(tmp_path / "nope.yaml")
-
-
-def test_load_vocab_without_pyyaml_is_a_friendly_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setitem(sys.modules, "yaml", None)
-    assert "PyYAML" in _error(load_vocab)
 
 
 def _bom_crlf_copy(case: Case, folder: Path) -> Case:
@@ -420,6 +451,18 @@ def test_bundle_inputs_identity(tmp_path: Path, vocab: Vocab) -> None:
     assert file_identity(LABEL_SETS_PATH) == {"path": "configs/label_sets.yaml", "sha256": sha256_file(LABEL_SETS_PATH)}
 
 
+def test_file_identity_with_shows_a_path_relative_to_its_root_or_the_last_parts_outside_it(tmp_path: Path) -> None:
+    path = tmp_path / "folder" / "f.txt"
+    path.parent.mkdir()
+    path.write_text("x", encoding="utf-8")
+    digest = sha256_file(path)
+    elsewhere = tmp_path / "elsewhere"
+    assert file_identity_with(path, tmp_path, 1) == {"path": "folder/f.txt", "sha256": digest}  # inside the root
+    assert file_identity_with(path, elsewhere, 2) == {"path": "folder/f.txt", "sha256": digest}  # outside: 2 parts
+    assert file_identity_with(path, elsewhere, 1) == {"path": "f.txt", "sha256": digest}  # outside: the name only
+    assert file_identity(path) == file_identity_with(path, elsewhere, 2)  # the default root is the repository
+
+
 def test_bundle_inputs_identity_includes_masks_in_mode_c(tmp_path: Path, vocab: Vocab) -> None:
     case = valid_case(tmp_path, "C")
     assert _load(case, vocab).inputs["masks"] == {
@@ -442,3 +485,15 @@ def test_errors_name_file_and_location(tmp_path: Path, vocab: Vocab, kwargs: dic
     message = _error(_bundle, tmp_path, vocab, **kwargs)
     for fragment in fragments:
         assert fragment in message
+
+
+def test_bundle_identity_returns_the_recorded_file_identity() -> None:
+    identity = {"path": "gold.jsonl", "sha256": "abc"}
+    bundle = Bundle("A", "m", (), 0, {"gold": identity, "masks": None})
+    assert bundle.identity("gold") == identity
+
+
+def test_bundle_identity_of_an_input_that_was_not_given_is_an_input_error() -> None:
+    bundle = Bundle("A", "m", (), 0, {"gold": None})
+    with pytest.raises(EvaluationInputError, match="no gold file identity"):
+        bundle.identity("gold")

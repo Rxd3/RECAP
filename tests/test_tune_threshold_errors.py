@@ -37,7 +37,7 @@ def test_tune_with_a_missing_model_names_the_file_only(
     argv = _tune_argv(mode_a, tmp_path / "tau.json")
     argv[argv.index("--model") + 1] = str(tmp_path / FOLDER / "ghost.joblib")
     assert tune_threshold.main(argv) == 1
-    assert _one_line(capsys) == "error: Model artifact not found at ghost.joblib\n"
+    assert _one_line(capsys) == "error: ghost.joblib: model artifact not found\n"
 
 
 def test_predict_with_a_missing_model_names_the_file_only(
@@ -48,7 +48,7 @@ def test_predict_with_a_missing_model_names_the_file_only(
     argv = _predict_argv(mode_a, tau_file, tmp_path / "p.jsonl", tmp_path / "p.man.json")
     argv[argv.index("--model") + 1] = str(tmp_path / FOLDER / "ghost.joblib")
     assert tune_threshold.main(argv) == 1
-    assert _one_line(capsys) == "error: Model artifact not found at ghost.joblib\n"
+    assert _one_line(capsys) == "error: ghost.joblib: model artifact not found\n"
 
 
 def test_predict_with_a_corrupt_model_names_the_file_only(
@@ -69,16 +69,45 @@ def test_predict_with_a_missing_tau_file_names_the_file_only(
 ) -> None:
     argv = _predict_argv(mode_a, tmp_path / FOLDER / "ghost.json", tmp_path / "p.jsonl", tmp_path / "p.man.json")
     assert tune_threshold.main(argv) == 1
-    assert _one_line(capsys) == "error: tau file not found at ghost.json\n"
+    assert _one_line(capsys) == "error: ghost.json: tau file not found\n"
+
+
+def test_predict_with_a_tau_file_that_is_a_folder_says_so_naming_it_only(
+    mode_a: Fixture, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    folder = _in_folder(tmp_path, "tau.json")
+    folder.mkdir()
+    assert tune_threshold.main(_predict_argv(mode_a, folder, tmp_path / "p.jsonl", tmp_path / "p.man.json")) == 1
+    assert _one_line(capsys) == "error: tau.json: is a folder, not a file\n"
+
+
+def test_tune_with_a_missing_train_file_names_the_file_only(
+    mode_a: Fixture, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    ghost = tmp_path / FOLDER / "ghost.jsonl"
+    argv = [*_tune_argv(mode_a, tmp_path / "tau.json"), "--train", str(ghost), "--train-ids", str(mode_a.ids)]
+    assert tune_threshold.main(argv) == 1
+    assert _one_line(capsys) == "error: ghost.jsonl: training file not found\n"
+
+
+def test_tune_with_a_train_file_that_is_a_folder_says_so_naming_it_only(
+    mode_a: Fixture, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    folder = _in_folder(tmp_path, "train.jsonl")
+    folder.mkdir()
+    argv = [*_tune_argv(mode_a, tmp_path / "tau.json"), "--train", str(folder), "--train-ids", str(mode_a.ids)]
+    assert tune_threshold.main(argv) == 1
+    assert _one_line(capsys) == "error: train.jsonl: is a folder, not a file\n"
 
 
 @pytest.mark.parametrize(
     ("content", "message"),
-    [("{not json", "tau file bad.json is not valid JSON"),
-     ("[" * 100_000, "tau file bad.json is not valid JSON"),
-     ("[1, 2]", "tau file bad.json must be a JSON object"),
-     (json.dumps({"tau": 5, "model_sha256": "x"}), "tau file bad.json: tau must be")],
-    ids=["not-json", "nested-too-deeply", "not-an-object", "bad-tau"],
+    [("{not json", "bad.json: not valid JSON"),
+     ("[" * 100_000, "bad.json: not valid JSON"),
+     ("[1, 2]", "bad.json: not a JSON object"),
+     (json.dumps({"tau": 0.5}), "bad.json: missing model_sha256"),
+     (json.dumps({"tau": 5, "model_sha256": "x"}), "bad.json: tau must be")],
+    ids=["not-json", "nested-too-deeply", "not-an-object", "no-model-hash", "bad-tau"],
 )
 def test_predict_with_a_bad_tau_file_names_the_file_only(
     mode_a: Fixture, tmp_path: Path, capsys: pytest.CaptureFixture[str], content: str, message: str
@@ -105,7 +134,7 @@ def test_predict_with_a_tau_file_that_is_not_utf8_names_the_file_only(
     tau_file = _in_folder(tmp_path, "bad.json")
     tau_file.write_bytes(b'{"tau": \xe9\xff}')
     assert tune_threshold.main(_predict_argv(mode_a, tau_file, tmp_path / "p.jsonl", tmp_path / "p.man.json")) == 1
-    assert _one_line(capsys) == "error: tau file bad.json is not valid UTF-8\n"
+    assert _one_line(capsys) == "error: bad.json: not valid UTF-8\n"
 
 
 def test_predict_with_a_tau_file_for_another_model_shows_no_folder(
@@ -114,7 +143,7 @@ def test_predict_with_a_tau_file_for_another_model_shows_no_folder(
     tau_file = _in_folder(tmp_path, "tau.json")
     tau_file.write_text(json.dumps({"tau": 0.3, "model_sha256": "0" * 64}), encoding="utf-8")
     assert tune_threshold.main(_predict_argv(mode_a, tau_file, tmp_path / "p.jsonl", tmp_path / "p.man.json")) == 1
-    assert _one_line(capsys) == "error: tau file was tuned for a different model\n"
+    assert _one_line(capsys) == "error: tau.json: tuned for a different model\n"
 
 
 def test_tune_refuses_an_existing_out_and_names_it_by_file_name(

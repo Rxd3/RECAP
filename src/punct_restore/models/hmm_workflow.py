@@ -5,25 +5,32 @@ from __future__ import annotations
 import json
 import platform
 import subprocess
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
 from typing import Any
 
+from punct_restore.evaluation.inputs import file_identity_with
+from punct_restore.file_io import write_new_file
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_records import SelectedRecords
+from punct_restore.models.hmm_release import checked_release_file, read_release_manifest
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import parse_json_object, read_ids, write_new_file
+from punct_restore.prediction_io import read_ids
 
 # isort: split
 # old import path kept (restructure spec §2)
 from punct_restore.data.labeling import load_label_sets as load_label_sets
 from punct_restore.data.validation import check_model_input as check_model_input
 from punct_restore.data.validation import validate_record as validate_record
+from punct_restore.file_io import read_json_object as read_json_object
 from punct_restore.models.hmm_records import read_jsonl as read_jsonl
+from punct_restore.models.hmm_release import ReleaseInputs as ReleaseInputs
+from punct_restore.models.hmm_release import verify_release_inputs as verify_release_inputs
+from punct_restore.models.hmm_release import verify_training_release as verify_training_release
 
 
 def portable_path(path: Path) -> str:
@@ -34,7 +41,8 @@ def portable_path(path: Path) -> str:
 
 
 def file_identity(path: Path) -> dict[str, str]:
-    return {"path": portable_path(path), "sha256": sha256_file(path)}
+    """The evaluator's file identity, with the file name alone for a file outside the repository."""
+    return file_identity_with(path, ROOT, 1)
 
 
 def code_identity(root: Path = ROOT) -> dict[str, Any]:
@@ -88,134 +96,6 @@ def selected_records(
         counts.update(selection.counts)
 
 
-def read_json_object(path: Path) -> dict[str, Any]:
-    """The JSON object a UTF-8 file holds.
-
-    Raises:
-        OSError: If the file cannot be read.
-        ValueError: One line that starts with the file name only: not valid UTF-8, not valid JSON (also when it
-            is nested too deeply) or not a JSON object.
-    """
-    try:
-        text = path.read_text(encoding="utf-8")
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"{path.name}: not valid UTF-8") from exc
-    return parse_json_object(text, path.name)
-
-
-def checked_release_file(
-    path: Path, root: Path, entries: dict[str, Any], *, expected: str | None = None
-) -> str:
-    try:
-        relative = path.resolve().relative_to(root.resolve()).as_posix()
-    except ValueError as exc:
-        raise ValueError(
-            f"{path.name}: file must be inside its declared release directory"
-        ) from exc
-    if relative not in entries or (expected is not None and relative != expected):
-        raise ValueError(f"{relative}: not the expected release file {expected or ''}")
-    entry = entries[relative]
-    if path.stat().st_size != entry["bytes"] or sha256_file(path) != entry["sha256"]:
-        raise ValueError(f"{relative}: release checksum mismatch")
-    return relative
-
-
-def _check_split_manifest(split_manifest: Path, manifest: dict[str, Any]) -> None:
-    """Authenticate the supplied split checksum index against the release manifest."""
-    lines = split_manifest.read_text(encoding="utf-8").splitlines()
-    expected_sums = {name: entry["sha256"] for name, entry in manifest["split_files"].items()}
-    actual_sums = {}
-    for line in lines:
-        digest, name = line.split("  ", 1)
-        if name in actual_sums:
-            raise ValueError("duplicate path in split checksum manifest")
-        actual_sums[name] = digest
-    if actual_sums != expected_sums:
-        raise ValueError("split checksum manifest does not match release")
-
-
-def _check_prediction_files(
-    manifest: dict[str, Any],
-    processed: Path,
-    splits: Path,
-    mode: str,
-    prediction: Path,
-    prediction_ids: Path | None,
-) -> None:
-    """Check the prediction input (and its ID selection) against the release."""
-    relative = checked_release_file(prediction, processed, manifest["files"])
-    if not relative.startswith(f"mode_{mode}/"):
-        raise ValueError("prediction input mode does not match model")
-    if prediction_ids is not None:
-        name = Path(relative).stem
-        checked_release_file(
-            prediction_ids,
-            splits,
-            manifest["split_files"],
-            expected=f"primary_eval/{name}_mode_{mode}.ids",
-        )
-
-
-@dataclass(frozen=True)
-class ReleaseInputs:
-    """The files and identities a training command was given, to be checked against the data release."""
-
-    train: Path
-    train_ids: Path
-    split_manifest: Path
-    label_config: Path
-    mode: str
-    release_id: str
-    policy_version: str
-    prediction: Path | None = None
-    prediction_ids: Path | None = None
-
-
-_MANIFEST_TEXT_FIELDS = ("release_id", "policy_version", "label_sets_sha256")
-_MANIFEST_FILE_TABLES = ("files", "split_files")
-
-
-def read_release_manifest(path: Path) -> dict[str, Any]:
-    """A release manifest with the fields the HMM commands read; a wrong shape is a ValueError naming the file."""
-    manifest = read_json_object(path)
-    for field in _MANIFEST_TEXT_FIELDS:
-        if not isinstance(manifest.get(field), str):
-            raise ValueError(f"{path.name}: release manifest has no text field {field}")
-    for table in _MANIFEST_FILE_TABLES:
-        entries = manifest.get(table)
-        if not isinstance(entries, dict) or not all(
-            isinstance(entry, dict) and isinstance(entry.get("sha256"), str) and isinstance(entry.get("bytes"), int)
-            for entry in entries.values()
-        ):
-            raise ValueError(f"{path.name}: release manifest {table} must map names to sha256 and bytes")
-    source = manifest.get("source")
-    if not isinstance(source, dict) or not isinstance(source.get("revision"), str):
-        raise ValueError(f"{path.name}: release manifest has no source revision")
-    return manifest
-
-
-def verify_training_release(manifest_path: Path, inputs: ReleaseInputs) -> dict[str, Any]:
-    """Check the command's inputs against the release manifest; return the manifest."""
-    manifest = read_release_manifest(manifest_path)
-    if (
-        manifest.get("schema_version") != 1
-        or manifest.get("release_id") != inputs.release_id
-        or manifest.get("policy_version") != inputs.policy_version
-    ):
-        raise ValueError("release identity/schema/policy does not match command")
-    if sha256_file(inputs.label_config) != manifest["label_sets_sha256"]:
-        raise ValueError("label configuration does not match the data release")
-    processed, splits, mode = manifest_path.parent, inputs.split_manifest.parent, inputs.mode
-    checked_release_file(inputs.train, processed, manifest["files"], expected=f"mode_{mode}/train.jsonl")
-    checked_release_file(
-        inputs.train_ids, splits, manifest["split_files"], expected=f"default_train/mode_{mode}.ids"
-    )
-    _check_split_manifest(inputs.split_manifest, manifest)
-    if inputs.prediction is not None:
-        _check_prediction_files(manifest, processed, splits, mode, inputs.prediction, inputs.prediction_ids)
-    return manifest
-
-
 def write_json(path: Path, value: Any) -> None:
     write_new_file(path, json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False, allow_nan=False) + "\n")
 
@@ -240,10 +120,12 @@ def _check_release_compatibility(
     """Require the artifact, input file and ID selection to belong to the release."""
     release = read_release_manifest(release_manifest)
     meta = model.metadata
+    label_configuration = meta.get("label_configuration")  # the artifact's own note: any JSON value
     if (
         release["release_id"] != meta.get("dataset_release_id")
         or release["policy_version"] != meta.get("label_policy_version")
-        or release["label_sets_sha256"] != meta.get("label_configuration", {}).get("sha256")
+        or release["label_sets_sha256"]
+        != (label_configuration.get("sha256") if isinstance(label_configuration, dict) else None)
     ):
         raise ValueError("artifact is incompatible with this data release")
     relative = checked_release_file(input_path, release_manifest.parent, release["files"])
@@ -268,13 +150,21 @@ def _check_inputs_unchanged(inputs: dict[str, Any], paths: list[tuple[str, Path 
             raise ValueError(f"{path.name}: input changed during inference")
 
 
+def write_predictions_file(path: Path, predictions: Iterable[Mapping[str, Any]]) -> None:
+    """Create ``path`` holding one JSON object per prediction: UTF-8, LF line ends, no NaN, never overwriting.
+
+    Raises:
+        FileExistsError: If ``path`` exists (it is left alone).
+        ValueError: If a prediction holds a NaN or infinite number; no file is made then.
+    """
+    write_new_file(path, "".join(json.dumps(row, ensure_ascii=False, allow_nan=False) + "\n" for row in predictions))
+
+
 def _write_predictions(output_dir: Path, predictions: list[dict[str, Any]]) -> Path:
     """Create output_dir and write predictions.jsonl; return its path."""
     output_dir.mkdir(parents=True, exist_ok=False)
     predictions_path = output_dir / "predictions.jsonl"
-    with predictions_path.open("x", encoding="utf-8", newline="\n") as handle:
-        for row in predictions:
-            handle.write(json.dumps(row, ensure_ascii=False, allow_nan=False) + "\n")
+    write_predictions_file(predictions_path, predictions)
     return predictions_path
 
 
@@ -341,7 +231,7 @@ def _input_identities(model_path: Path, input_path: Path, options: PredictionOpt
     return inputs
 
 
-def predict_run(
+def predict_run_with(
     model_path: Path, input_path: Path, output_dir: Path, options: PredictionOptions | None = None
 ) -> dict[str, Any]:
     """Load an artifact and export predictions without refitting or reading gold fields."""
@@ -386,3 +276,20 @@ def predict_run(
     manifest = _run_manifest(facts)
     write_json(output_dir / "predictions.manifest.json", manifest)
     return manifest
+
+
+def predict_run(
+    model_path: Path,
+    input_path: Path,
+    output_dir: Path,
+    *,
+    ids_path: Path | None = None,
+    release_manifest: Path | None = None,
+    selection_record: Path | None = None,
+    command: list[str] | None = None,
+) -> dict[str, Any]:
+    """Main's call signature of `predict_run_with` (old import path and signature kept, restructure spec §2)."""
+    options = PredictionOptions(
+        ids_path=ids_path, release_manifest=release_manifest, selection_record=selection_record, command=command
+    )
+    return predict_run_with(model_path, input_path, output_dir, options)

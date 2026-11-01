@@ -6,7 +6,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from punct_restore.models.hmm_workflow import PredictionOptions, portable_path, predict_run
+from punct_restore.models.hmm_workflow import PredictionOptions, portable_path, predict_run_with
 from punct_restore.prediction_io import one_line_error
 
 
@@ -41,7 +41,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.selection_record:
         command += ["--selection-record", portable_path(args.selection_record)]
     try:
-        report = predict_run(
+        report = predict_run_with(
             args.model,
             args.input,
             args.output_dir,

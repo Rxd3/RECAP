@@ -9,9 +9,19 @@ import pytest
 from test_data_contract import build
 from test_hmm_cli import ROOT, SCRIPT, jsonl, setup_run
 
+from punct_restore.evaluation.inputs import file_identity as shared_file_identity
+from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_records import SelectedRecords
-from punct_restore.models.hmm_workflow import ReleaseInputs, verify_training_release, write_json
+from punct_restore.models.hmm_workflow import (
+    PredictionOptions,
+    ReleaseInputs,
+    file_identity,
+    predict_run_with,
+    verify_release_inputs,
+    write_json,
+    write_predictions_file,
+)
 from punct_restore.prediction_io import read_ids
 
 
@@ -192,7 +202,7 @@ def test_release_identity_and_checksum_failures_stop_training(tmp_path, bad):
         opts["label_config"] = tmp_path / "unmatched.yaml"
         opts["label_config"].write_text("not-the-release-config")
     with pytest.raises(ValueError):
-        verify_training_release(processed / "release_manifest.json", ReleaseInputs(**opts))
+        verify_release_inputs(processed / "release_manifest.json", ReleaseInputs(**opts))
 
 
 def test_old_cli_without_training_selection_fails_instead_of_training_everything(tmp_path):
@@ -218,3 +228,146 @@ def test_write_json_leaves_no_half_written_file_when_the_value_is_not_valid_json
     with pytest.raises(ValueError, match="Out of range float"):
         write_json(out, {"a": 1, "x": float("nan")})
     assert not out.exists()
+
+
+def _refused_split_manifest(tmp_path, content):
+    """verify_release_inputs's ValueError text when the release's split checksum file is replaced by `content`."""
+    _, processed, _, _, opts = release_args(tmp_path)
+    opts["split_manifest"].write_bytes(content(opts["split_manifest"].read_bytes()))
+    with pytest.raises(ValueError) as refused:
+        verify_release_inputs(processed / "release_manifest.json", ReleaseInputs(**opts))
+    return str(refused.value)
+
+
+def test_a_split_checksum_manifest_that_is_not_utf8_is_a_value_error_naming_the_file(tmp_path):
+    assert _refused_split_manifest(tmp_path, lambda good: b"\xff\xfe") == "SHA256SUMS: not valid UTF-8"
+
+
+@pytest.mark.parametrize("tail", [b"oops\n", b"\n", b"0" * 64 + b"  \n"], ids=["no-separator", "blank", "no-path"])
+def test_a_split_checksum_line_of_another_shape_is_a_value_error_naming_the_file_and_line(tmp_path, tail):
+    """The line number counts from 1 and points at the bad line, not at the first one."""
+    lines = []
+
+    def append(good):
+        lines.extend(good.splitlines())
+        return good + tail
+
+    message = _refused_split_manifest(tmp_path, append)
+    assert message == f"SHA256SUMS line {len(lines) + 1}: expected '<sha256>  <path>'"
+
+
+def test_the_hmm_file_identity_keeps_its_wording_while_sharing_the_evaluators_code(tmp_path):
+    outside = tmp_path / "folder" / "f.txt"
+    outside.parent.mkdir()
+    outside.write_text("x")
+    assert file_identity(outside) == {"path": "f.txt", "sha256": sha256_file(outside)}  # name only, as before
+    inside = ROOT / "configs" / "label_sets.yaml"
+    assert file_identity(inside) == shared_file_identity(inside) == {
+        "path": "configs/label_sets.yaml", "sha256": sha256_file(inside)}
+
+
+def test_the_predictions_file_is_utf8_with_lf_one_object_per_line_and_is_never_overwritten(tmp_path):
+    path = tmp_path / "predictions.jsonl"
+    write_predictions_file(path, [{"id": "é", "x": 1}, {"id": "b"}])
+    expected = '{"id": "é", "x": 1}\n{"id": "b"}\n'.encode()  # UTF-8 text, LF line ends
+    assert path.read_bytes() == expected
+    with pytest.raises(FileExistsError):
+        write_predictions_file(path, [{"id": "other"}])
+    assert path.read_bytes() == expected
+
+
+def test_a_prediction_that_is_not_a_number_is_refused_before_the_file_is_created(tmp_path):
+    path = tmp_path / "predictions.jsonl"
+    with pytest.raises(ValueError, match="Out of range float"):
+        write_predictions_file(path, [{"id": "a"}, {"id": "b", "score": float("nan")}])
+    assert not path.exists()
+
+
+# ---- the split checksum manifest and the release manifest: every message starts with the file name ----
+
+
+def test_a_split_checksum_manifest_that_repeats_a_path_is_refused_naming_the_file(tmp_path):
+    message = _refused_split_manifest(tmp_path, lambda good: good + good.splitlines(keepends=True)[0])
+    assert message == "SHA256SUMS: duplicate path in split checksum manifest"
+
+
+def test_a_split_checksum_manifest_that_differs_from_the_release_is_refused_naming_the_file(tmp_path):
+    message = _refused_split_manifest(tmp_path, lambda good: b"0" * 64 + b"  invalid\n")
+    assert message == "SHA256SUMS: split checksum manifest does not match release"
+
+
+def _refused_release_manifest(tmp_path, change):
+    """verify_release_inputs's ValueError text when the release manifest is rewritten as `change(content)`.
+
+    `change` gets the manifest and returns the new one; a second return value tells the test where it put the damage.
+    """
+    _, processed, _, _, opts = release_args(tmp_path)
+    path = processed / "release_manifest.json"
+    path.write_text(json.dumps(change(json.loads(path.read_text(encoding="utf-8")))), encoding="utf-8")
+    with pytest.raises(ValueError) as refused:
+        verify_release_inputs(path, ReleaseInputs(**opts))
+    return str(refused.value)
+
+
+RELEASE_PROBLEMS = {
+    "no-release-id": (lambda m: {k: v for k, v in m.items() if k != "release_id"}, "missing release_id"),
+    "release-id-number": (lambda m: {**m, "release_id": 7}, "release_id is not nonempty text"),
+    "policy-null": (lambda m: {**m, "policy_version": None}, "policy_version is not nonempty text"),
+    "label-hash-list": (lambda m: {**m, "label_sets_sha256": ["x"]}, "label_sets_sha256 is not nonempty text"),
+    "files-list": (lambda m: {**m, "files": []}, "files is not a JSON object"),
+    "split-files-null": (lambda m: {**m, "split_files": None}, "split_files is not a JSON object"),
+    "no-source": (lambda m: {k: v for k, v in m.items() if k != "source"}, "missing source"),
+    "source-list": (lambda m: {**m, "source": []}, "source is not a JSON object"),
+    "source-without-revision": (lambda m: {**m, "source": {}}, "missing source.revision"),
+    "revision-number": (lambda m: {**m, "source": {"revision": 3}}, "source.revision is not nonempty text"),
+}
+
+
+@pytest.mark.parametrize("problem", RELEASE_PROBLEMS)
+def test_a_release_manifest_of_the_wrong_shape_is_refused_naming_the_file_and_the_key(tmp_path, problem):
+    change, reason = RELEASE_PROBLEMS[problem]
+    assert _refused_release_manifest(tmp_path, change) == f"release_manifest.json: {reason}"
+
+
+ENTRY_PROBLEMS = {  # a file entry of the release manifest, and the reason ({entry} is where it sits)
+    "null": (None, "{entry} is not a JSON object"),
+    "list": ([], "{entry} is not a JSON object"),
+    "no-sha": ({"bytes": 1}, "missing {entry}.sha256"),
+    "sha-number": ({"sha256": 5, "bytes": 1}, "{entry}.sha256 is not nonempty text"),
+    "no-bytes": ({"sha256": "x"}, "missing {entry}.bytes"),
+    "bytes-text": ({"sha256": "x", "bytes": "9"}, "{entry}.bytes is not a whole number"),
+    "bytes-bool": ({"sha256": "x", "bytes": True}, "{entry}.bytes is not a whole number"),
+}
+
+
+@pytest.mark.parametrize("table", ["files", "split_files"])
+@pytest.mark.parametrize("problem", ENTRY_PROBLEMS)
+def test_a_release_file_entry_of_the_wrong_shape_is_refused_naming_the_file_and_the_entry(tmp_path, table, problem):
+    entry, reason = ENTRY_PROBLEMS[problem]
+    where = []
+
+    def change(manifest):
+        first = next(iter(manifest[table]))
+        where.append(f"{table}.{first}")
+        return {**manifest, table: {**manifest[table], first: entry}}
+
+    message = _refused_release_manifest(tmp_path, change)
+    assert message == f"release_manifest.json: {reason.format(entry=where[0])}"
+
+
+# ---- a model whose own notes are damaged: predicting against a release must not crash on them ----
+
+
+@pytest.mark.parametrize("note", [5, "text", ["sha256"], None], ids=["number", "text", "list", "null"])
+def test_a_model_whose_label_configuration_note_is_no_object_is_incompatible_with_the_release_not_a_crash(
+        tmp_path, note):
+    args, processed, _, out, _ = release_args(tmp_path)
+    assert run(args).returncode == 0
+    saved = json.loads((out / "model.json").read_text(encoding="utf-8"))
+    saved["metadata"]["label_configuration"] = note
+    damaged = tmp_path / "damaged.json"
+    damaged.write_text(json.dumps(saved), encoding="utf-8")
+    with pytest.raises(ValueError, match="^artifact is incompatible with this data release$"):
+        predict_run_with(damaged, processed / "mode_A/validation.jsonl", tmp_path / "predicted",
+                         PredictionOptions(release_manifest=processed / "release_manifest.json"))
+    assert not (tmp_path / "predicted").exists()

@@ -27,6 +27,7 @@ from punct_restore.evaluation.inputs import Bundle, Vocab, sha256_file
 from punct_restore.evaluation.metrics import score_block
 from punct_restore.evaluation.report import ci_text, md_text, pct, printable
 from punct_restore.evaluation.views import block_pairs, blocks_for
+from punct_restore.reporting import build_tables
 
 BLOCK_KEYS = {"labels", "macro_over", "scored_positions", "per_class", "macro_f1", "micro", "accuracy",
               "confusion", "empty_support"}
@@ -277,3 +278,8 @@ def test_public_text_helpers() -> None:
 ])
 def test_pct_rounds_the_stored_value_half_up(value: float, shown: str) -> None:
     assert pct(value) == shown
+
+
+def test_pct_takes_the_stored_decimal_as_text_too_and_the_reporting_tables_use_this_one() -> None:
+    assert pct("0.67985") == "67.99"  # the tables read stored values as text; one pct serves both
+    assert build_tables.pct is pct

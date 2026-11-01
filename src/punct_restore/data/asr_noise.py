@@ -1,6 +1,6 @@
 """ASR-like word errors for gold records, with every label kept consistent (robustness study).
 
-Used by scripts/simulate_asr_noise.py, which does the file reading and writing.
+Used by punct_restore.cli.simulate_asr_noise (`recap simulate-asr-noise`), which does the file reading and writing.
 
 Edit model (v1, default). One plan is drawn from the tokens of a set of samples and applied to each record. Candidates:
 deletion of a function word (cost 1, never the last remaining token), substitution by a homophone of the same
@@ -153,15 +153,15 @@ def _replacements_v2(words: Iterable[str], vocab: Iterable[str]) -> dict[str, tu
     vocab_set = set(vocab)
     by_del: dict[tuple[str, str], list[str]] = defaultdict(list)
     by_sub: dict[tuple[str, int, str], list[str]] = defaultdict(list)
-    for v in sorted(vocab_set):
-        if not v:
+    for known in sorted(vocab_set):
+        if not known:
             continue
-        c0 = v[0]
-        for k in range(len(v)):
-            short = v[:k] + v[k + 1:]
-            by_del[(c0, short)].append(v)
+        c0 = known[0]
+        for k in range(len(known)):
+            short = known[:k] + known[k + 1:]
+            by_del[(c0, short)].append(known)
             if k > 0:
-                by_sub[(c0, k, short)].append(v)
+                by_sub[(c0, k, short)].append(known)
     out: dict[str, tuple[str, ...]] = {}
     for word in sorted(set(words)):
         if not word:

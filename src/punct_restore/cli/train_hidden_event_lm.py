@@ -16,21 +16,20 @@ on stderr (files by name only) and exits 1; a usage error exits 2.
 from __future__ import annotations
 
 import argparse
-import contextlib
 import sys
-from collections.abc import Container, Iterator
+from collections.abc import Container
 from pathlib import Path
 from typing import Any
 
+from punct_restore.file_io import iter_jsonl, refuse_existing, require_file
 from punct_restore.models.hidden_event_lm import HiddenEventLM
 from punct_restore.prediction_io import (
     check_new_output_paths,
-    one_line_error,
+    one_line_error_with_short_paths,
     parse_sample_record,
     read_ids,
-    read_observations,
     reconfigure_stdout,
-    refuse_existing,
+    select_observations,
     write_prediction_outputs,
 )
 
@@ -38,18 +37,10 @@ PATH_OPTIONS = ("input", "ids", "output", "model", "manifest_out")
 
 
 def _require_files(*named: tuple[str, Path | None]) -> None:
-    for flag, path in named:
-        if path is not None and not path.is_file():
-            raise ValueError(f"{flag}: {path.name} is not an existing file")
-
-
-@contextlib.contextmanager
-def _utf8_file(path: Path) -> Iterator[None]:
-    """Turn a UnicodeDecodeError raised while reading ``path`` into a one-line ValueError naming the file."""
-    try:
-        yield
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"{path.name}: not valid UTF-8") from exc
+    """Raise unless every given path is a file; ``what`` names it in the not-found message (``None`` is skipped)."""
+    for what, path in named:
+        if path is not None:
+            require_file(path, what)
 
 
 def _interned(value: Any) -> Any:
@@ -60,18 +51,20 @@ def _interned(value: Any) -> Any:
 
 
 def _slim(record: dict[str, Any], mode: str) -> dict[str, Any]:
-    fields = ("sample_id", "split", "label_mode", "tokens", "punct_labels")
+    fields: tuple[str, ...] = ("sample_id", "split", "label_mode", "tokens", "punct_labels")
     fields += ("case_labels",) if mode == "C" else ()
     return {field: _interned(record.get(field)) for field in fields}
 
 
-def _keep_line(line: str, where: str, wanted: set[str], kept: Container[str], mode: str) -> dict[str, Any] | None:
-    """The slim record of a listed training line, or None for an unlisted one; ``kept`` holds the IDs taken so far."""
+def _keep_line(
+    line: str, where: str, wanted: set[str], taken_ids: Container[str], mode: str
+) -> dict[str, Any] | None:
+    """The slim record of a listed training line, or None for an unlisted one; ``taken_ids`` are the IDs so far."""
     record = parse_sample_record(line, where)
     sample_id = record["sample_id"]
     if sample_id not in wanted:
         return None
-    if sample_id in kept:
+    if sample_id in taken_ids:
         raise ValueError(f"{where}: duplicate sample_id {sample_id!r}")
     if record.get("split") != "train":
         raise ValueError(f"{where}: {sample_id!r} has split {record.get('split')!r}; only train records can be used")
@@ -88,16 +81,16 @@ def read_training_records(input_path: Path, ids_path: Path, mode: str) -> list[d
     ids = read_ids(ids_path)
     wanted = set(ids)
     kept: dict[str, dict[str, Any]] = {}
-    with _utf8_file(input_path), open(input_path, encoding="utf-8") as handle:
-        for number, line in enumerate(handle, 1):
-            if not line.strip():
-                continue
-            record = _keep_line(line, f"{input_path.name} line {number}", wanted, kept, mode)
-            if record is not None:
-                kept[record["sample_id"]] = record
+
+    def keep_line(line: str, where: str) -> dict[str, Any] | None:
+        return _keep_line(line, where, wanted, kept, mode)  # reads `kept` as it grows: iter_jsonl is lazy
+
+    for _, record in iter_jsonl(input_path, keep_line):
+        if record is not None:
+            kept[record["sample_id"]] = record
     missing = [sample_id for sample_id in ids if sample_id not in kept]
     if missing:
-        raise ValueError(f"{len(missing)} listed ID(s) are missing from {input_path.name}, first {missing[0]!r}")
+        raise ValueError(f"{input_path.name}: {len(missing)} listed ID(s) are missing, first {missing[0]!r}")
     return list(kept.values())
 
 
@@ -105,25 +98,19 @@ def _cmd_train(args: argparse.Namespace) -> str:
     input_path, ids_path, output = Path(args.input), Path(args.ids), Path(args.output)
     check_new_output_paths({"--output": output}, {"--input": input_path, "--ids": ids_path})
     refuse_existing(output)
-    _require_files(("--input", input_path), ("--ids", ids_path))
+    _require_files(("input JSONL", input_path), ("ID list", ids_path))
     model = HiddenEventLM(
         args.mode, order=args.order, discount=args.discount, min_count=args.min_count, model_name=args.model_name
     )
-    model.fit(read_training_records(input_path, ids_path, args.mode))
+    records = read_training_records(input_path, ids_path, args.mode)
+    try:
+        model.fit(records)
+    except ValueError as exc:  # a record the model refuses: its message names the sample, this adds the file
+        raise ValueError(f"{input_path.name}: {exc}") from exc
     model.save_model(output)
     summary = model.training_summary
     return (f"trained mode {args.mode} order {args.order}: {summary['num_sequences']} sequences, "
             f"{summary['num_tokens']} tokens, {summary['vocabulary_size']} word types -> {output.name}")
-
-
-def _read_named(input_path: Path, ids_path: Path | None) -> list[dict]:
-    """``read_observations`` with the input file named in a JSON error, as train does."""
-    try:
-        return read_observations(input_path, ids_path)
-    except ValueError as exc:
-        if input_path.name in str(exc):  # read_observations already names the file (a full path is shortened later)
-            raise
-        raise ValueError(f"{input_path.name}: {exc}") from exc
 
 
 def _cmd_predict(args: argparse.Namespace) -> str:
@@ -133,12 +120,10 @@ def _cmd_predict(args: argparse.Namespace) -> str:
     check_new_output_paths({"--output": output, "--manifest-out": manifest},
                            {"--model": model_path, "--input": input_path, "--ids": ids_path})
     refuse_existing(output, manifest)
-    _require_files(("--model", model_path), ("--input", input_path), ("--ids", ids_path))
+    _require_files(("model artifact", model_path), ("input JSONL", input_path), ("ID list", ids_path))
     model = HiddenEventLM.load_model(model_path)
-    if ids_path is not None:
-        read_ids(ids_path)  # read_observations reads the list again; here its errors do not get the input's name
-    observations = _read_named(input_path, ids_path)
-    predictions = model.predict(observations)
+    ids = read_ids(ids_path) if ids_path is not None else None  # read once: its errors name the list, not the input
+    predictions = model.predict(select_observations(input_path, ids))
     refuse_existing(output, manifest)  # decoding is long: an output may have appeared since the first check
     write_prediction_outputs(predictions, output, manifest, input_path=input_path, model_name=model.model_name,
                              label_mode=model.label_mode, ordered_labels=model.vocabulary)
@@ -147,7 +132,7 @@ def _cmd_predict(args: argparse.Namespace) -> str:
 
 def _one_line(exc: ValueError | OSError, args: argparse.Namespace) -> str:
     """The message on one line, with files named by name only (an OSError reports just its file's name)."""
-    return one_line_error(exc, *(getattr(args, option, None) for option in PATH_OPTIONS))
+    return one_line_error_with_short_paths(exc, *(getattr(args, option, None) for option in PATH_OPTIONS))
 
 
 def _build_parser() -> argparse.ArgumentParser:

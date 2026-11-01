@@ -262,7 +262,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--scores-root", type=Path, default=ROOT / "results" / "scores",
                         help="folder holding threshold/, crf_validation/, leakage/, crf_test/, hmm/ and runtime/")
     parser.add_argument("--manifests", type=Path,
-                        help="folder with Member 3's crf_mode_<m>_<preset>_full_01.manifest.json files "
+                        help="folder with the CRF training manifests crf_mode_<m>_<preset>_full_01.manifest.json "
                              "(default: <scores-root>/crf_training_manifests)")
     parser.add_argument("--out", type=Path, required=True, help="Markdown file to create (must not exist)")
     return parser

@@ -10,9 +10,9 @@ from pathlib import Path
 from typing import Any
 
 from punct_restore.data.labeling import load_label_sets
+from punct_restore.file_io import read_object, require_object
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm import HMMModel
-from punct_restore.models.hmm_experiment_protocol import read_json
 from punct_restore.models.hmm_records import read_jsonl
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import read_ids
@@ -82,20 +82,60 @@ def assert_block(actual: Mapping[str, Any], expected: Mapping[str, Any]) -> None
 
 def probability_checks(model: HMMModel) -> None:
     """Require every start, transition and emission distribution of the model to sum to one."""
-    assert_close(sum(math.exp(v) for v in model._log_start), 1.0)
+    tables = model.distributions
+    assert_close(sum(math.exp(v) for v in tables.log_start), 1.0)
     for state in range(len(model.labels)):
         assert_close(
-            sum(math.exp(v) for v in model._log_transition[state])
-            + math.exp(model._log_end[state]),
+            sum(math.exp(v) for v in tables.log_transition[state]) + math.exp(tables.log_end[state]),
             1.0,
         )
-        missing = len(model._vocabulary) - len(model._log_emissions[state])
+        missing = len(tables.vocabulary) - len(tables.log_emissions[state])
         assert_close(
-            sum(math.exp(v) for v in model._log_emissions[state].values())
-            + missing * math.exp(model._log_default[state])
-            + math.exp(model._log_unknown[state]),
+            sum(math.exp(v) for v in tables.log_emissions[state].values())
+            + missing * math.exp(tables.log_default[state])
+            + math.exp(tables.log_unknown[state]),
             1.0,
         )
+
+
+# The keys of a shared scorer report that a recount reads: its counts and, per metric block, its labels and scores.
+_COUNTS = {"sequences": object, "tokens": object, "ignored_prediction_ids": object}
+_BLOCK = {
+    "labels": list[str],
+    "macro_over": list[str],
+    "confusion": list,
+    "scored_positions": object,
+    "macro_f1": float,
+    "accuracy": float,
+    "micro": {"precision": float, "recall": float, "f1": float},
+    "per_class": {},
+}
+_PREDICTION_ROW = {"sample_id": str, "label_mode": object, "predicted_labels": list[str]}
+_CLASS = {"support": object, "predicted": object, "precision": float, "recall": float, "f1": float}
+
+
+def _report_schema(mode: str) -> dict[str, Any]:
+    """The top-level keys of a shared scorer report that check_report reads (mode C also cites its mask file)."""
+    cited = ("gold", "ids", "predictions", *(("masks",) if mode == "C" else ()))
+    return {
+        "primary": {"value": float},
+        "counts": _COUNTS,
+        "blocks": {},
+        "inputs": {key: {"sha256": str} for key in cited},
+    }
+
+
+def _require_blocks(name: str, blocks: dict[str, Any], wanted: Iterable[str]) -> None:
+    """Require each wanted metric block to hold what the recount compares, with an entry for each of its labels.
+
+    The labels it averages over must be some of its labels, and at least one (the recount divides by their number).
+    """
+    for block_name in wanted:
+        block = require_object(name, blocks, {block_name: _BLOCK}, "blocks")[block_name]
+        if not block["macro_over"] or not set(block["macro_over"]) <= set(block["labels"]):
+            raise ValueError(f"{name}: blocks.{block_name}.macro_over is not a nonempty subset of labels")
+        classes = dict.fromkeys(block["labels"], _CLASS)
+        require_object(name, block["per_class"], classes, f"blocks.{block_name}.per_class")
 
 
 def _report_paths(config: dict[str, Any], mode: str, split: str) -> tuple[Path, Path, Path]:
@@ -104,6 +144,14 @@ def _report_paths(config: dict[str, Any], mode: str, split: str) -> tuple[Path, 
     gold_path = ROOT / config["processed_dir"] / f"mode_{mode}/{split}.jsonl"
     mask_path = ROOT / config["processed_dir"] / f"masks/case_joint/{split}.jsonl"
     return ids_path, gold_path, mask_path
+
+
+def _prediction_rows(path: Path) -> list[dict[str, Any]]:
+    """The rows of a prediction file; each must hold the keys the audit reads (a ValueError names file and line)."""
+    rows = list(read_jsonl(path))
+    for number, row in enumerate(rows, 1):
+        require_object(f"{path.name} line {number}", row, _PREDICTION_ROW)
+    return rows
 
 
 def _read_gold_and_predictions(
@@ -115,7 +163,7 @@ def _read_gold_and_predictions(
     gold_ids = [row["sample_id"] for row in gold]
     if len(gold_ids) != len(set(gold_ids)) or not wanted <= set(gold_ids):
         raise ValueError("gold/selection ID violation")
-    pred = list(read_jsonl(predictions))
+    pred = _prediction_rows(predictions)
     pred_ids = [row["sample_id"] for row in pred]
     expected_ids = [sid for sid in gold_ids if sid in wanted] if baseline else gold_ids
     if pred_ids != expected_ids:
@@ -163,14 +211,16 @@ def _targets(row: dict[str, Any], mode: str) -> list[str]:
     )
 
 
-def _error_sample(sid: str, row: dict[str, Any], i: int, g: str, p: str) -> dict[str, Any]:
+def _error_sample(
+    sid: str, row: dict[str, Any], position: int, gold_label: str, predicted_label: str
+) -> dict[str, Any]:
     """One error example with its surrounding tokens."""
     return {
         "sample_id": sid,
-        "position": i,
-        "gold": g,
-        "predicted": p,
-        "context_tokens": row["tokens"][max(0, i - 3) : i + 4],
+        "position": position,
+        "gold": gold_label,
+        "predicted": predicted_label,
+        "context_tokens": row["tokens"][max(0, position - 3) : position + 4],
         "selection_rule": "first two occurrences per ordered confusion pair",
     }
 
@@ -191,8 +241,9 @@ def _collect_pairs(
 ) -> tuple[dict[str, list[tuple[str, str]]], int, list[dict[str, Any]]]:
     """Per-block (gold, predicted) pairs over the scored IDs, with the token count and error samples."""
     mode, masks = spec.mode, spec.masks
-    pairs = {name: [] for name in spec.block_names}
-    selected_tokens, samples, sample_counts = 0, [], Counter()
+    pairs: dict[str, list[tuple[str, str]]] = {name: [] for name in spec.block_names}
+    selected_tokens, samples = 0, []
+    sample_counts: Counter[tuple[str, str]] = Counter()
     for row in gold:
         sid = row["sample_id"]
         if sid not in wanted:
@@ -202,23 +253,24 @@ def _collect_pairs(
         if len(labels) != len(row["tokens"]) or len(targets) != len(labels):
             raise ValueError("prediction/gold token alignment violation")
         selected_tokens += len(targets)
-        for i, (g, p) in enumerate(zip(targets, labels, strict=True)):
+        for position, (gold_label, predicted_label) in enumerate(zip(targets, labels, strict=True)):
             for name in spec.block_names:
-                if name.startswith(("joint/", "casing/unmasked")) and i in masks.get(sid, set()):
+                if name.startswith(("joint/", "casing/unmasked")) and position in masks.get(sid, set()):
                     continue
-                if name.endswith("non_final") and i == len(targets) - 1:
+                if name.endswith("non_final") and position == len(targets) - 1:
                     continue
-                if name.endswith("non_initial") and i == 0:
+                if name.endswith("non_initial") and position == 0:
                     continue
-                pair = (g, p)
+                pair = (gold_label, predicted_label)
                 if mode == "C" and name.startswith("punctuation/"):
-                    pair = (g.split("|")[0], p.split("|")[0])
+                    pair = (gold_label.split("|")[0], predicted_label.split("|")[0])
                 elif mode == "C" and name.startswith("casing/"):
-                    pair = (g.split("|")[1], p.split("|")[1])
+                    pair = (gold_label.split("|")[1], predicted_label.split("|")[1])
                 pairs[name].append(pair)
-                if spec.examples and name == spec.primary and g != p and sample_counts[g, p] < 2:
-                    samples.append(_error_sample(sid, row, i, g, p))
-                    sample_counts[g, p] += 1
+                if (spec.examples and name == spec.primary and gold_label != predicted_label
+                        and sample_counts[gold_label, predicted_label] < 2):
+                    samples.append(_error_sample(sid, row, position, gold_label, predicted_label))
+                    sample_counts[gold_label, predicted_label] += 1
     return pairs, selected_tokens, samples
 
 
@@ -265,10 +317,11 @@ def check_report(
     lookup = {row["sample_id"]: row for row in pred}
     _check_label_vocabulary(pred, label_sets, mode)
     masks = _read_masks(mode, mask_path, gold)
-    report = read_json(report_path)
+    report = read_object(report_path, _report_schema(mode))
     _check_input_hashes(report, mode, predictions, (ids_path, gold_path, mask_path))
     primary = config["search"]["selection_blocks"][mode]
     block_names = [primary] if options.primary_only else list(report["blocks"])
+    _require_blocks(report_path.name, report["blocks"], dict.fromkeys([primary, *block_names]))
     spec = _PairSpec(mode=mode, block_names=block_names, primary=primary, masks=masks, examples=options.examples)
     pairs, selected_tokens, samples = _collect_pairs(gold, wanted, lookup, spec)
     _check_counts_and_blocks(report, pairs, wanted, selected_tokens, pred_ids)

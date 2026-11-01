@@ -24,6 +24,13 @@ from punct_restore.models.crf import CRFModel
 from punct_restore.paths import REPO_ROOT as ROOT
 
 
+class TrainingFailed(Exception):
+    """A training step failed for a reason the user can fix; the message is the one line for the user (`error: ...`).
+
+    Not an OSError or ValueError, so the `except (OSError, ValueError)` clauses of the steps never swallow it.
+    """
+
+
 def get_package_version(pkg_name: str) -> str:
     """Safely obtain installed package version or return 'unknown'."""
     try:
@@ -79,6 +86,16 @@ def get_process_memory_stats() -> dict[str, float]:
     return {}
 
 
+def process_memory() -> tuple[dict[str, float] | None, str | None]:
+    """(figures, None) when the OS reports the process memory; (None, why) when it does not."""
+    stats = get_process_memory_stats()
+    if stats:
+        return stats, None
+    if sys.platform != "win32":
+        return None, f"not available on {sys.platform}"
+    return None, "the Windows memory API gave no figures"
+
+
 def get_fingerprinted_files() -> list[str]:
     """Return deterministically sorted repository-relative POSIX paths of model-defining files."""
     repo_root = ROOT
@@ -119,12 +136,12 @@ def compute_code_fingerprint() -> str:
     repo_root = ROOT
     file_list = get_fingerprinted_files()
 
-    h = hashlib.sha256()
+    digest = hashlib.sha256()
     for rel_posix in file_list:
         content = (repo_root / rel_posix).read_bytes()
-        h.update(rel_posix.encode("utf-8") + b"\0" + content)
+        digest.update(rel_posix.encode("utf-8") + b"\0" + content)
 
-    return h.hexdigest()
+    return digest.hexdigest()
 
 
 def git_status_porcelain() -> str:
@@ -155,9 +172,9 @@ def collect_training_diagnostics(model: CRFModel) -> dict[str, Any]:
         training_diagnostics["num_iterations"] = len(log.iterations)
     if hasattr(log, "lines") and log.lines:
         for line in reversed(log.lines):
-            s = line.strip()
-            if "terminated" in s.lower() or "converged" in s.lower():
-                training_diagnostics["termination_status"] = s
+            text = line.strip()
+            if "terminated" in text.lower() or "converged" in text.lower():
+                training_diagnostics["termination_status"] = text
                 break
     return training_diagnostics
 
@@ -217,17 +234,21 @@ class TrainingRun:
     feature_config: FeatureConfig
     hyperparameters: Mapping[str, Any]
     training_diagnostics: Mapping[str, Any]
-    memory_diagnostics: Mapping[str, Any]
+    memory_diagnostics: Mapping[str, Any] | None
     provenance: Mapping[str, Any]
     training_command: Sequence[str]
     duration: float
     output_path: Path
     artifact_hash: str
+    memory_unavailable: str | None = None  # why memory_diagnostics is None
 
 
 def build_sidecar_manifest(run: TrainingRun) -> dict[str, Any]:
-    """Build the comprehensive sidecar manifest that is written next to a saved CRF artifact."""
-    return {
+    """Build the comprehensive sidecar manifest that is written next to a saved CRF artifact.
+
+    Without memory figures (`memory_diagnostics` None) it also holds `memory_diagnostics_unavailable`, the reason.
+    """
+    manifest: dict[str, Any] = {
         "schema_version": 1,
         "run_id": run.run_id,
         "label_mode": run.mode,
@@ -258,3 +279,6 @@ def build_sidecar_manifest(run: TrainingRun) -> dict[str, Any]:
         "reproducibility_warning": git_status_porcelain(),
         "created_at": datetime.now(UTC).isoformat(),
     }
+    if run.memory_diagnostics is None:
+        manifest["memory_diagnostics_unavailable"] = run.memory_unavailable or "unknown"
+    return manifest

@@ -13,8 +13,9 @@ from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any
+from typing import Any, cast
 
+from ..file_io import read_yaml, require_object
 from ..hashing import sha256_file
 from ..paths import REPO_ROOT as ROOT
 from .metrics import join_joint
@@ -70,23 +71,40 @@ class Bundle:
     inputs: Mapping[str, Mapping[str, str] | None]  # read-only views (MappingProxyType)
     policy_version: str | None = None  # the gold file's data release policy, e.g. "m1-v2"
 
+    def identity(self, key: str) -> Mapping[str, str]:
+        """The path and SHA-256 recorded for the input ``key``; an input that was not given has none."""
+        recorded = self.inputs[key]
+        if recorded is None:
+            raise EvaluationInputError(f"the bundle records no {key} file identity")
+        return recorded
+
+
+# What label_sets.yaml must hold for load_vocab to build the vocabularies (see file_io.require_object).
+_VOCAB_SCHEMA = {
+    "punctuation": {"standard": list[str], "extended": list[str]},
+    "casing": list[str],
+    "modes": {"C": {"labels": list[str]}},
+}
+
 
 def load_vocab(path: str | Path = LABEL_SETS_PATH) -> Vocab:
-    """Ordered vocabularies from configs/label_sets.yaml (agreed 4/8/3/12 structure)."""
+    """Ordered vocabularies from configs/label_sets.yaml (agreed 4/8/3/12 structure).
+
+    Raises:
+        OSError: If the file cannot be read.
+        EvaluationInputError: One line that starts with the file name: not valid UTF-8 or YAML, a key that is
+            missing or of the wrong kind (`file_io.read_yaml` and `file_io.require_object` word these), or
+            vocabularies that are not the agreed structure.
+    """
     name = Path(path).name
     try:
-        import yaml  # PyYAML is a declared runtime dependency (pyproject)
-    except ModuleNotFoundError as exc:
-        raise EvaluationInputError('PyYAML is required: python -m pip install -e ".[dev]"') from exc
-    try:
-        with open(path, encoding="utf-8") as handle:
-            config = yaml.safe_load(handle)
-        standard = tuple(config["punctuation"]["standard"])
-        extended = tuple(config["punctuation"]["extended"])
-        casing = tuple(config["casing"])
-        joint = tuple(config["modes"]["C"]["labels"])
-    except (KeyError, TypeError, UnicodeDecodeError, yaml.YAMLError) as exc:
-        raise EvaluationInputError(f"{name}: not a valid label configuration") from exc
+        config = require_object(name, read_yaml(path), _VOCAB_SCHEMA)
+    except ValueError as exc:
+        raise EvaluationInputError(str(exc)) from exc
+    standard = tuple(config["punctuation"]["standard"])
+    extended = tuple(config["punctuation"]["extended"])
+    casing = tuple(config["casing"])
+    joint = tuple(config["modes"]["C"]["labels"])
     expected = tuple(join_joint(p, c) for p in standard for c in casing)
     sizes = (len(standard), len(extended), len(casing))
     if (sizes != (4, 8, 3) or standard[0] != NO_PUNCT or extended[:4] != standard
@@ -95,14 +113,22 @@ def load_vocab(path: str | Path = LABEL_SETS_PATH) -> Vocab:
     return Vocab(A=standard, B=extended, C=joint, casing=casing)
 
 
-def file_identity(path: str | Path) -> dict[str, str]:
-    """Repo-relative POSIX path (folder/name outside the repo) and SHA-256; no absolute paths."""
+def file_identity_with(path: str | Path, root: Path, outside_parts: int) -> dict[str, str]:
+    """POSIX path relative to the repository ``root``, and SHA-256; no absolute paths.
+
+    A file outside ``root`` shows its last ``outside_parts`` path parts (2: folder and file name; 1: file name).
+    """
     resolved = Path(path).resolve()
     try:
-        shown = resolved.relative_to(ROOT).as_posix()
+        shown = resolved.relative_to(root).as_posix()
     except ValueError:
-        shown = "/".join(resolved.parts[-2:])
+        shown = "/".join(resolved.parts[-outside_parts:])
     return {"path": shown, "sha256": sha256_file(resolved)}
+
+
+def file_identity(path: str | Path) -> dict[str, str]:
+    """Repo-relative POSIX path (folder/name outside the repo) and SHA-256; no absolute paths."""
+    return file_identity_with(path, ROOT, 2)
 
 
 def _text_lines(path: Path) -> Iterator[tuple[int, str]]:
@@ -230,7 +256,7 @@ def _read_gold(path: Path, vocab: Vocab) -> tuple[str, dict[str, GoldRecord], st
         if gold.sample_id in records:
             raise EvaluationInputError(f"{where}: duplicate sample_id {gold.sample_id!r}")
         records[gold.sample_id] = gold
-    return mode, records, policy_version
+    return cast(str, mode), records, policy_version  # _read_jsonl raises on an empty file
 
 
 def _read_ids(path: Path, gold: Mapping[str, GoldRecord], gold_name: str) -> tuple[str, ...]:
@@ -273,7 +299,7 @@ def _read_predictions(path: Path, mode: str, vocab: Vocab, gold: Mapping[str, Go
                                                  len(gold[sample_id].tokens), where,
                                                  "predicted_labels")
     _require_covered(scored, predictions, path, "prediction")
-    return model, predictions, len(predictions.keys() - set(scored))
+    return cast(str, model), predictions, len(predictions.keys() - set(scored))  # _read_jsonl raises on an empty file
 
 
 def _read_masks(path: Path, gold: Mapping[str, GoldRecord],

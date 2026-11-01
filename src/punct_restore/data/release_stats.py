@@ -10,10 +10,10 @@ from .release_constants import RELEASE_FILES
 
 
 def label_distribution(label_lists: Sequence[Sequence[str]], vocab: Sequence[str]) -> dict[str, Any]:
-    c = collections.Counter(label for labels in label_lists for label in labels)
-    n = sum(c.values())
-    return {"records": len(label_lists), "tokens": n, "counts": {label: c.get(label, 0) for label in vocab},
-            "percent": {label: round(100 * c.get(label, 0) / n, 3) if n else 0.0 for label in vocab}}
+    seen = collections.Counter(label for labels in label_lists for label in labels)
+    total = sum(seen.values())
+    return {"records": len(label_lists), "tokens": total, "counts": {label: seen.get(label, 0) for label in vocab},
+            "percent": {label: round(100 * seen.get(label, 0) / total, 3) if total else 0.0 for label in vocab}}
 
 
 def length_stats(records: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
@@ -21,10 +21,10 @@ def length_stats(records: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     if not lens:
         return {}
 
-    def q(p: float) -> int:
-        return lens[min(len(lens) - 1, int(p * len(lens)))]
+    def quantile(fraction: float) -> int:
+        return lens[min(len(lens) - 1, int(fraction * len(lens)))]
     return {"records": len(lens), "tokens": sum(lens), "min": lens[0], "median": statistics.median(lens),
-            "mean": round(statistics.fmean(lens), 2), "p95": q(0.95), "max": lens[-1]}
+            "mean": round(statistics.fmean(lens), 2), "p95": quantile(0.95), "max": lens[-1]}
 
 
 def mode_labels(r: Mapping[str, Any], mode: str) -> list[str]:
@@ -36,9 +36,9 @@ def pairwise_overlap(by_file: dict, controlled: dict) -> dict:
     overlap = {}
     for view, sets in (("official", {n: by_file[n] for n in RELEASE_FILES}),
                        ("leakage_controlled", {"train": by_file["train"], **controlled})):
-        for i, a in enumerate(RELEASE_FILES):
-            for b in RELEASE_FILES[i + 1:]:
-                overlap[f"{view}:{b}_vs_{a}"] = splits.overlap_counts(sets[b], sets[a])
+        for index, earlier in enumerate(RELEASE_FILES):
+            for later in RELEASE_FILES[index + 1:]:
+                overlap[f"{view}:{later}_vs_{earlier}"] = splits.overlap_counts(sets[later], sets[earlier])
     return overlap
 
 
@@ -136,12 +136,12 @@ def build_stats(inputs: StatsInputs) -> dict:
              "labels": {}, "labels_default_and_primary": {}, "canonical_vs_native": {}, "case_masks": {},
              "case_categories": {n: dict(collections.Counter(c for r in by_file[n] for c in r["case_cats"]))
                                  for n in RELEASE_FILES}}
-    for n in RELEASE_FILES:
-        recs = by_file[n]
-        stats["labels"][n] = _label_stats(recs, label_sets)
-        subset = default[n] if n in default else []
-        stats["labels_default_and_primary"][n] = _subset_label_stats(subset, label_sets)
-        stats["canonical_vs_native"][n] = _native_change_stats(recs)
-        stats["case_masks"][n] = _case_mask_stats(recs)
+    for name in RELEASE_FILES:
+        recs = by_file[name]
+        stats["labels"][name] = _label_stats(recs, label_sets)
+        subset = default[name] if name in default else []
+        stats["labels_default_and_primary"][name] = _subset_label_stats(subset, label_sets)
+        stats["canonical_vs_native"][name] = _native_change_stats(recs)
+        stats["case_masks"][name] = _case_mask_stats(recs)
     stats["final_token"] = _final_token_stats(by_file)
     return stats

@@ -1,6 +1,6 @@
 """Input/output shared by the commands: gold-free prediction files and manifests (train_crf, tune_threshold,
-project_joint, factor_predictions), the one ``.ids`` reader, the JSON-line parsers, the create-new-file writer,
-output path checks and one-line errors."""
+project_joint, factor_predictions), the one ``.ids`` reader, the JSON-line parsers, output path checks and one-line
+errors. The file-level helpers (create-new writers, JSONL and JSON readers) are in punct_restore.file_io."""
 
 from __future__ import annotations
 
@@ -14,7 +14,13 @@ from pathlib import Path
 from typing import Any
 
 from .evaluation.inputs import file_identity
+from .file_io import iter_jsonl, require_file
 from .hashing import sha256_file
+
+# isort: split
+# old import path kept: these helpers moved to file_io (restructure spec section 2)
+from .file_io import refuse_existing as refuse_existing
+from .file_io import write_new_file as write_new_file
 
 
 def read_ids(path: str | os.PathLike[str], *, strict: bool = False, allow_empty: bool = False) -> list[str]:
@@ -64,7 +70,7 @@ def read_frozen_ids(ids_path: Path) -> list[str]:
         ValueError: If the ID list is empty or contains duplicate IDs.
     """
     if not ids_path.is_file():
-        raise FileNotFoundError(f"Frozen ID list not found: {ids_path.name}")
+        raise FileNotFoundError(f"Frozen ID list not found: {ids_path.name}")  # main's wording (old library name)
     return read_ids(ids_path)
 
 
@@ -88,43 +94,15 @@ def parse_sample_record(line: str, where: str) -> dict[str, Any]:
     return record
 
 
-def write_new_file(path: Path, text: str, *, newline: str | None = "\n") -> None:
-    """Create ``path`` holding ``text`` as UTF-8, with LF line ends unless ``newline`` says otherwise.
-
-    A file that already exists is never replaced and never deleted (FileExistsError). If writing fails, the
-    half-written file this call created is deleted (a delete that itself fails is ignored) and the write
-    error is re-raised.
-    """
-    handle = open(path, "x", encoding="utf-8", newline=newline)  # FileExistsError here: not our file
-    try:
-        with handle:
-            handle.write(text)
-    except BaseException:
-        with contextlib.suppress(OSError):
-            path.unlink(missing_ok=True)
-        raise
-
-
-def _gold_free_observation(rec: Mapping[str, Any], line_num: int) -> dict[str, Any]:
-    """Keep only sample_id and validated observable tokens (strictly gold-free)."""
+def _gold_free_observation(rec: Mapping[str, Any], where: str) -> dict[str, Any]:
+    """Keep only sample_id and validated observable tokens (strictly gold-free); ``where`` is ``<file> line N``."""
     s_id = rec["sample_id"]
     tokens = rec.get("tokens")
     if not tokens or not isinstance(tokens, list):
-        raise ValueError(f"Invalid tokens at line {line_num} for ID {s_id!r}")
+        raise ValueError(f"{where}: tokens of {s_id!r} must be a nonempty list")
     if any(not isinstance(t, str) or not t.strip() for t in tokens):
-        raise ValueError(f"Tokens contain invalid elements at line {line_num} for ID {s_id!r}")
+        raise ValueError(f"{where}: tokens of {s_id!r} must be nonempty, non-whitespace strings")
     return {"sample_id": s_id, "tokens": list(tokens)}
-
-
-def _sample_records(path: Path) -> Iterator[tuple[int, dict[str, Any]]]:
-    """``(line number, record)`` of every nonblank line of a JSONL file; ValueError names the file (and line)."""
-    try:
-        with open(path, encoding="utf-8") as f:
-            for number, line in enumerate(f, 1):
-                if line.strip():
-                    yield number, parse_sample_record(line.strip(), f"{path.name} line {number}")
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"{path.name}: not valid UTF-8") from exc
 
 
 def read_observations(input_path: Path, ids_path: Path | None) -> list[dict[str, Any]]:
@@ -134,36 +112,50 @@ def read_observations(input_path: Path, ids_path: Path | None) -> list[dict[str,
 
     Raises:
         FileNotFoundError: If the input JSONL or the ID list does not exist.
+        IsADirectoryError: If the input JSONL is a folder.
         ValueError: On corrupt, duplicate or invalid records (a bad line reads ``<file> line N: <reason>``, a file
             that is not UTF-8 ``<file>: not valid UTF-8``), or IDs missing from the input.
     """
-    if not input_path.is_file():
-        raise FileNotFoundError(f"Input JSONL not found at {input_path}")
-    target_ids = read_ids(ids_path) if ids_path is not None else None
-    target_set = set(target_ids) if target_ids is not None else None
+    require_file(input_path, "input JSONL")  # before the ID list is read: a missing input is named first
+    return select_observations(input_path, read_ids(ids_path) if ids_path is not None else None)
 
+
+def select_observations(input_path: Path, ids: Sequence[str] | None) -> list[dict[str, Any]]:
+    """``read_observations`` for an ID list that is already read (``None``: keep every record).
+
+    Raises:
+        FileNotFoundError: If the input JSONL does not exist.
+        IsADirectoryError: If the input JSONL is a folder.
+        ValueError: As ``read_observations``; the message starts with the input's file name.
+    """
+    require_file(input_path, "input JSONL")
+    wanted = set(ids) if ids is not None else None
     observations: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
-    for line_num, rec in _sample_records(input_path):
+    for line_num, rec in iter_jsonl(input_path, parse_sample_record):
         s_id = rec["sample_id"]
+        where = f"{input_path.name} line {line_num}"
         if s_id in seen_ids:
-            raise ValueError(f"Duplicate sample_id {s_id!r} encountered at line {line_num}")
+            raise ValueError(f"{where}: duplicate sample_id {s_id!r}")
         seen_ids.add(s_id)
-        if target_set is None or s_id in target_set:
-            observations.append(_gold_free_observation(rec, line_num))
-
-    if target_ids is not None:
-        missing_ids = set(target_ids) - {o["sample_id"] for o in observations}
-        if missing_ids:
-            raise ValueError(
-                f"Missing {len(missing_ids)} selected IDs from input file {input_path}. "
-                f"Examples: {sorted(missing_ids)[:5]}"
-            )
-        if len(observations) != len(target_ids):
-            raise ValueError(
-                f"Found {len(observations)} matching records, expected {len(target_ids)} from ID list."
-            )
+        if wanted is None or s_id in wanted:
+            observations.append(_gold_free_observation(rec, where))
+    if ids is not None:
+        _require_all_found(input_path, ids, observations)
     return observations
+
+
+def _require_all_found(input_path: Path, ids: Sequence[str], observations: Sequence[Mapping[str, Any]]) -> None:
+    """Raise ValueError (leading with the input's name) unless the observations are exactly the listed IDs."""
+    missing_ids = set(ids) - {o["sample_id"] for o in observations}
+    if missing_ids:
+        raise ValueError(
+            f"{input_path.name}: missing {len(missing_ids)} selected IDs. Examples: {sorted(missing_ids)[:5]}"
+        )
+    if len(observations) != len(ids):
+        raise ValueError(
+            f"{input_path.name}: found {len(observations)} matching records, expected {len(ids)} from the ID list"
+        )
 
 
 def write_predictions_jsonl(predictions: Sequence[Mapping[str, Any]], path: Path) -> None:
@@ -232,17 +224,6 @@ def write_prediction_outputs(
             for path in started:
                 with contextlib.suppress(OSError):
                     path.unlink(missing_ok=True)
-
-
-def refuse_existing(*paths: Path | None) -> None:
-    """Raise FileExistsError for the first of ``paths`` that already exists; ``None`` entries are skipped.
-
-    A dangling symlink counts as existing. Nothing is touched. The error holds the path as given, so each command
-    words it its own way (``one_line_error`` shows the file name only).
-    """
-    for path in paths:
-        if path is not None and os.path.lexists(path):
-            raise FileExistsError(errno.EEXIST, "already exists; refusing to overwrite", str(path))
 
 
 def same_path(a: str | Path, b: str | Path) -> bool:
@@ -355,7 +336,13 @@ def os_error_code(exc: OSError) -> int | None:
     return exc.errno
 
 
-def one_line_error(exc: BaseException, *paths: str | os.PathLike[str] | None) -> str:
+def os_reason(exc: OSError) -> str | None:
+    """Why an OS error is shown: the folder wording for a folder opened as a file (Windows says "permission
+    denied" for it), else the system text; None when the error has none."""
+    return OS_REASONS[errno.EISDIR] if os_error_code(exc) == errno.EISDIR else exc.strerror
+
+
+def one_line_error_with_short_paths(exc: BaseException, *paths: str | os.PathLike[str] | None) -> str:
     """The message on one line, without the ``error: `` prefix.
 
     An OSError reads ``<file name>: <reason>`` (its own text carries the full path, which is never shown);
@@ -363,14 +350,23 @@ def one_line_error(exc: BaseException, *paths: str | os.PathLike[str] | None) ->
     """
     text = str(exc)
     if isinstance(exc, OSError):
-        # the system text says "permission denied" for a folder on Windows: that one reason is rewritten
-        reason = OS_REASONS[errno.EISDIR] if os_error_code(exc) == errno.EISDIR else exc.strerror
+        reason = os_reason(exc)
         if reason:
             name = Path(os.fsdecode(exc.filename)).name if exc.filename else ""
             text = f"{name}: {reason}" if name else reason
-    for path in filter(None, paths):
+    for path in (given for given in paths if given):
         text = text.replace(str(Path(path)), Path(path).name)
     return " ".join(text.splitlines())
+
+
+def one_line_error(exc: BaseException) -> str:
+    """The message on one line, in main's call form ``one_line_error(exc)`` (kept, spec section 2).
+
+    A path quoted in the text of a non-OS error stays; ``one_line_error_with_short_paths`` also cuts the paths it is
+    given. One wording differs from main: opening a folder as a file, which Windows reports as "permission denied",
+    now reads ``<name>: is a folder, not a file``.
+    """
+    return one_line_error_with_short_paths(exc)
 
 
 def reconfigure_stdout() -> None:

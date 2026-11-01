@@ -17,6 +17,8 @@ from punct_restore.models.hmm_workflow import write_json
 
 IMPLEMENTATION = {"models/hmm.py": "a" * 64}
 EVALUATOR = {"commit": "pinned", "files": {}}
+CODE = {"commit": "c", "dirty": False}
+TUNING_INPUTS = {"release_manifest": {"path": "release_manifest.json", "sha256": "0" * 64}}
 GRID = [(0.1, 1), (1.0, 1)]  # (smoothing, min_token_count)
 SCORES = {(0.1, 1): 0.4, (1.0, 1): 0.6}  # validation primary score of each grid point
 
@@ -45,7 +47,10 @@ def _study(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, searched: list[tuple
     candidates = [_candidate(run, *point) for point in searched]
     winner = max(candidates, key=lambda c: c["validation_primary"])
     write_json(run / "mode_A/selection.json", {"candidates": candidates, "selected": winner})
-    write_json(run / "plan.json", {"config": config, "implementation": IMPLEMENTATION, "evaluator": EVALUATOR})
+    write_json(run / "plan.json", {
+        "config": config, "implementation": IMPLEMENTATION, "evaluator": EVALUATOR, "code": CODE,
+        "tuning_inputs": TUNING_INPUTS,
+    })
     write_json(run / "selection.json", {
         "plan_sha256": sha256_file(run / "plan.json"), "modes": {"A": winner},
         "mode_selection_sha256": {"A": sha256_file(run / "mode_A/selection.json")},
@@ -138,6 +143,29 @@ def test_a_candidate_report_whose_score_disagrees_with_the_record_is_refused(
         verified_frozen_selection(run, tmp_path / "evaluator")
 
 
+@pytest.mark.parametrize(
+    ("item", "message"),
+    [
+        ({}, "selection.json: missing candidates.0.smoothing"),
+        (["O"], "selection.json: candidates.0 is not a JSON object"),
+        (1, "selection.json: candidates.0 is not a JSON object"),
+        (None, "selection.json: candidates.0 is not a JSON object"),
+        ("text", "selection.json: candidates.0 is not a JSON object"),
+    ],
+    ids=["object", "list", "number", "null", "text"],
+)
+def test_a_candidate_that_is_no_candidate_record_is_refused_naming_its_place(
+        item: Any, message: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The mode selection is hash-bound to the frozen one, so only a consistent forgery reaches the shape check."""
+    run = _study(tmp_path, monkeypatch)
+    path = run / "mode_A/selection.json"
+    _rewrite(path, lambda selection: {**selection, "candidates": [item, *selection["candidates"][1:]]})
+    _rewrite(run / "selection.json", lambda frozen: {**frozen, "mode_selection_sha256": {"A": sha256_file(path)}})
+    with pytest.raises(ValueError) as refused:
+        verified_frozen_selection(run, tmp_path / "evaluator")
+    assert str(refused.value) == message
+
+
 def test_a_winner_that_is_not_the_best_validation_candidate_is_refused(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     run = _study(tmp_path, monkeypatch)
@@ -168,10 +196,19 @@ def _rewrite_winner_to_the_worse_candidate(run: Path) -> dict[str, Any]:
         (b'{"config": {}, "implementation": {}}', r"^plan\.json: missing evaluator$"),
         (b"[" * 100_000, r"^plan\.json: not valid JSON$"),
         (b"\xff\xfe", r"^plan\.json: not valid UTF-8$"),
-        (b'{"config": {}, "implementation": {}, "evaluator": {}}', r"^plan\.json: invalid experiment config: .*schema"),
+        (b'{"config": {}, "implementation": {}, "evaluator": {}, "code": {}, "tuning_inputs": {"release_manifest": 1}}',
+         r"^plan\.json: invalid experiment config: missing schema_version$"),
+        (b'{"config": {}, "implementation": {}, "evaluator": {}, "tuning_inputs": {"release_manifest": {}}}',
+         r"^plan\.json: missing code$"),
+        (b'{"config": {}, "implementation": {}, "evaluator": {}, "code": {}}',
+         r"^plan\.json: missing tuning_inputs$"),
+        (b'{"config": {}, "implementation": {}, "evaluator": {}, "code": {}, "tuning_inputs": []}',
+         r"^plan\.json: tuning_inputs is not a JSON object$"),
+        (b'{"config": {}, "implementation": {}, "evaluator": {}, "code": {}, "tuning_inputs": {}}',
+         r"^plan\.json: missing tuning_inputs\.release_manifest$"),
     ],
     ids=["no-keys", "array", "null", "config-array", "no-implementation", "no-evaluator", "nested", "not-utf8",
-         "config-lacks-a-key"],
+         "config-lacks-a-key", "no-code", "no-tuning-inputs", "tuning-inputs-array", "no-release-manifest-identity"],
 )
 def test_a_plan_of_the_wrong_shape_is_one_value_error_that_starts_with_its_file_name(
         content: bytes, message: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

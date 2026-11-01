@@ -15,10 +15,11 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-from punct_restore.prediction_io import write_new_file
+from punct_restore.file_io import write_new_file
 
+from .hmm_distributions import HMMDistributions
 from .hmm_validation import positive_integer as _positive_integer
-from .hmm_validation import validate_counts
+from .hmm_validation import read_artifact, validate_counts
 from .hmm_validation import validated_tokens as _tokens
 
 __all__ = ["HMMModel"]
@@ -166,6 +167,15 @@ class HMMModel:
             "vocabulary_size": len(counts.vocabulary),
             "unknown_training_tokens": sum(counts.unknown),
         }
+
+    @property
+    def distributions(self) -> HMMDistributions:
+        """A read-only copy of the log-probability tables, for checks; never the model's own tables."""
+        self._require_fitted()
+        return HMMDistributions.copy_of(
+            self._log_start, self._log_transition, self._log_end, self._vocabulary,
+            self._log_emissions, self._log_default, self._log_unknown,
+        )
 
     def fit(
         self,
@@ -323,7 +333,8 @@ class HMMModel:
         into output or consulted when decoding. No caller records are mutated.
         """
         self._require_fitted()
-        predictions, seen_ids = [], set()
+        predictions: list[dict[str, Any]] = []
+        seen_ids: set[str] = set()
         for record in records:
             sample_id, tokens = _observation(record, seen_ids)
             seen_ids.add(sample_id)
@@ -366,8 +377,8 @@ class HMMModel:
             ValueError: One line that starts with the file name: not valid UTF-8 or JSON (also one nested too
                 deeply), the wrong shape, or counts that do not add up.
         """
+        payload = read_artifact(Path(path))
         try:
-            payload = json.loads(Path(path).read_text(encoding="utf-8"))
             if (
                 type(payload["format_version"]) is not int
                 or payload["format_version"] != _FORMAT_VERSION
@@ -379,8 +390,10 @@ class HMMModel:
             model._validate_counts(counts)
             model._install(counts, _json_metadata(payload["metadata"]))
             return model
-        except (KeyError, TypeError, ValueError, OverflowError, RecursionError) as exc:  # RecursionError: nested JSON
+        except ValueError as exc:
             raise ValueError(f"{Path(path).name}: invalid HMM artifact: {exc}") from exc
+        except OverflowError as exc:  # a count or a smoothing value too large for a float
+            raise ValueError(f"{Path(path).name}: invalid HMM artifact: a number is out of range") from exc
 
     def _validate_counts(self, counts: _Counts) -> None:
         validate_counts(counts, len(self.labels), self._min_token_count)

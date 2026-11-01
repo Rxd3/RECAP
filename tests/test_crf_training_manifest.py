@@ -128,3 +128,21 @@ def test_the_run_and_the_source_cannot_be_changed_after_they_are_built(tmp_path:
         source.run_id = "later"  # type: ignore[misc]
     with pytest.raises(dataclasses.FrozenInstanceError):
         _run(tmp_path).mode = "B"  # type: ignore[misc]
+
+
+def test_a_run_without_memory_figures_records_null_and_why(tmp_path: Path) -> None:
+    run = dataclasses.replace(_run(tmp_path), memory_diagnostics=None, memory_unavailable="not available on linux")
+
+    manifest = build_sidecar_manifest(run)
+
+    assert manifest["memory_diagnostics"] is None
+    assert manifest["memory_diagnostics_unavailable"] == "not available on linux"
+    assert set(manifest) == {*MANIFEST_KEYS, "memory_diagnostics_unavailable"}
+
+
+def test_a_run_with_memory_figures_has_no_reason_key(tmp_path: Path) -> None:
+    figures = {"peak_working_set_mb": 1.5}
+    manifest = build_sidecar_manifest(dataclasses.replace(_run(tmp_path), memory_diagnostics=figures))
+
+    assert manifest["memory_diagnostics"] == figures
+    assert list(manifest) == MANIFEST_KEYS

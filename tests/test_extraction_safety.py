@@ -107,3 +107,39 @@ def test_a_manifest_that_is_not_utf8_is_one_error_naming_it(tmp_path: Path) -> N
     manifest.write_bytes(b"\xe9\xff not utf-8\n")
     with pytest.raises(ValueError, match=r"^MANIFEST\.sha256: not valid UTF-8$"):
         extraction.verify_extraction(tmp_path, manifest)
+
+
+def test_an_archive_that_is_a_folder_is_named_as_a_folder_before_its_size_is_read(tmp_path: Path) -> None:
+    (tmp_path / "adir").mkdir()
+    with pytest.raises(IsADirectoryError) as caught:
+        extraction.extract_archive(tmp_path / "adir", tmp_path / "raw")
+    assert str(caught.value) == "adir: is a folder, not a file"
+
+
+def test_a_missing_archive_is_named_by_file_name_only(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError) as caught:
+        extraction.extract_archive(tmp_path / "deep" / "gone.tar.gz", tmp_path / "raw")
+    assert str(caught.value) == "gone.tar.gz: archive not found"
+
+
+def test_a_member_that_is_not_a_regular_file_is_refused_by_name() -> None:
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w") as tar:
+        folder = tarfile.TarInfo("sponspeech/adir")
+        folder.type = tarfile.DIRTYPE
+        tar.addfile(folder)
+    buffer.seek(0)
+    with tarfile.open(fileobj=buffer, mode="r:") as tar, pytest.raises(ValueError) as caught:
+        extraction._file_bytes(tar, tar.getmembers()[0])
+    assert str(caught.value) == "sponspeech/adir: not a regular file"
+
+
+def test_a_manifest_that_is_not_directly_in_raw_root_is_named_first_and_without_its_folder(tmp_path: Path) -> None:
+    (tmp_path / "raw").mkdir()
+    (tmp_path / "elsewhere").mkdir()
+    manifest = tmp_path / "elsewhere" / "MANIFEST.sha256"
+    manifest.write_text("", encoding="utf-8")
+    with pytest.raises(ValueError) as caught:
+        extraction.verify_extraction(tmp_path / "raw", manifest)
+    assert str(caught.value) == (
+        "MANIFEST.sha256: must be placed directly in raw_root (its paths start with sponspeech_text/)")

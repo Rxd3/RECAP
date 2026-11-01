@@ -110,7 +110,7 @@ def test_load_vocab_rejects_non_utf8_yaml(tmp_path: Path, keep_real_config: bool
     bad.write_bytes((LABEL_SETS_PATH.read_bytes() if keep_real_config else b"") + tail)
     with pytest.raises(EvaluationInputError) as info:
         load_vocab(bad)
-    assert str(info.value) == "bad.yaml: not a valid label configuration"
+    assert str(info.value) == "bad.yaml: not valid UTF-8"
 
 
 # ---------------------------------------------------------------- metadata.group_id

@@ -10,7 +10,7 @@ import pytest
 
 from punct_restore.features.crf_features import FeatureConfig
 from punct_restore.models.crf import CRFModel
-from punct_restore.models.crf_io import MODEL_SCHEMA_VERSION, _build_bundle
+from punct_restore.models.crf_io import MODEL_SCHEMA_VERSION, _build_bundle, load_artifact
 
 RECORDS = [
     {"sample_id": "b1", "tokens": ["hello", "everyone"], "punct_labels": ["O", "PERIOD"]},
@@ -75,8 +75,32 @@ def test_load_model_still_rejects_an_artifact_whose_vocabulary_does_not_match_it
     bundle = _saved_bundle(fitted, tmp_path / "m.joblib")
     joblib.dump({**bundle, "vocabulary": ["O", "COMMA"]}, tmp_path / "tampered.joblib")
 
-    with pytest.raises(ValueError, match="does not match expected"):
+    with pytest.raises(ValueError, match="^tampered.joblib: artifact vocabulary .* does not match expected"):
         CRFModel.load_model(tmp_path / "tampered.joblib")
+
+
+@pytest.mark.parametrize(("change", "reason"), [
+    ({"schema_version": 99}, "unsupported model schema_version 99"),
+    ({"model_family": "hmm"}, "incompatible model family 'hmm', expected 'crf'"),
+    ({"label_mode": "D"}, "invalid label_mode in artifact: 'D'"),
+    ({"backend_state": None}, "corrupt artifact: missing backend_state"),
+], ids=["schema", "family", "label-mode", "backend"])
+def test_load_model_starts_every_refusal_with_the_artifact_file_name(
+        fitted: CRFModel, tmp_path: Path, change: dict, reason: str) -> None:
+    bundle = _saved_bundle(fitted, tmp_path / "m.joblib")
+    joblib.dump({**bundle, **change}, tmp_path / "tampered.joblib")
+
+    with pytest.raises(ValueError) as caught:
+        CRFModel.load_model(tmp_path / "tampered.joblib")
+
+    assert str(caught.value) == f"tampered.joblib: {reason}"
+
+
+def test_load_model_names_an_artifact_that_is_not_a_dict(tmp_path: Path) -> None:
+    joblib.dump([1, 2], tmp_path / "list.joblib")
+
+    with pytest.raises(ValueError, match=r"^list\.joblib: corrupt artifact: expected dict root, got list$"):
+        CRFModel.load_model(tmp_path / "list.joblib")
 
 
 # --- _to_bundle ---------------------------------------------------------------------------------------------
@@ -117,3 +141,46 @@ def test_the_bundle_is_built_from_to_bundle_and_the_public_settings_only() -> No
     assert list(bundle) == [
         "schema_version", "model_family", "model_name", "label_mode", "vocabulary", "hyperparameters",
         "feature_config", "training_metadata", "environment", "backend_state"]
+
+
+# --- an artifact path that is not a file ---------------------------------------------------------------------
+
+
+def test_load_model_names_a_missing_artifact_by_file_name_only(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError) as caught:
+        CRFModel.load_model(tmp_path / "deep" / "ghost.joblib")
+    assert str(caught.value) == "ghost.joblib: model artifact not found"
+
+
+def test_load_model_says_a_folder_is_a_folder(tmp_path: Path) -> None:
+    (tmp_path / "m.joblib").mkdir()
+    with pytest.raises(IsADirectoryError) as caught:
+        CRFModel.load_model(tmp_path / "m.joblib")
+    assert str(caught.value) == "m.joblib: is a folder, not a file"
+
+
+# --- the one loader of a joblib artifact ----------------------------------------------------------------------
+
+
+def test_load_artifact_names_a_missing_file_by_what_it_is_and_a_folder_as_a_folder(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError) as missing:
+        load_artifact(tmp_path / "deep" / "ghost.joblib", "thing")
+    assert str(missing.value) == "ghost.joblib: thing not found"
+    (tmp_path / "m.joblib").mkdir()
+    with pytest.raises(IsADirectoryError) as folder:
+        load_artifact(tmp_path / "m.joblib", "thing")
+    assert str(folder.value) == "m.joblib: is a folder, not a file"
+
+
+def test_load_artifact_gives_back_whatever_the_file_holds(tmp_path: Path) -> None:
+    path = tmp_path / "list.joblib"
+    joblib.dump([1, 2], path)
+    assert load_artifact(path, "thing") == [1, 2]  # the caller checks the type
+
+
+def test_load_artifact_does_not_show_the_unpickling_error_of_a_file_that_is_no_artifact(tmp_path: Path) -> None:
+    path = tmp_path / "junk.joblib"
+    path.write_bytes(b"not a pickle at all")
+    with pytest.raises(ValueError) as caught:
+        load_artifact(path, "thing")
+    assert str(caught.value) == "junk.joblib: not a readable CRF artifact"

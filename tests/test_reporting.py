@@ -577,6 +577,21 @@ def test_time_models_reports_malformed_validation_records_by_name(tmp_path: Path
     assert_one_error_line(capsys.readouterr().err, "validation.jsonl")
 
 
+@pytest.mark.parametrize(("content", "message"), [
+    (b"\xff\xfe\n", "error: validation.jsonl: not valid UTF-8\n"),
+    (b'{"sample_id": "v1", "tokens": ["a"]}\n{oops\n', "error: validation.jsonl line 2: not valid JSON\n"),
+    (b"[" * 100_000, "error: validation.jsonl line 1: not valid JSON\n"),
+    (b'["not", "an", "object"]\n', "error: validation.jsonl line 1: not a JSON object\n"),
+])
+def test_time_models_words_a_bad_validation_line_the_way_the_other_commands_do(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], content: bytes, message: str
+) -> None:
+    data = tiny_data_root(tmp_path / "data")
+    (data / "processed" / RELEASE / "mode_A" / "validation.jsonl").write_bytes(content)
+    assert time_models.main(time_argv(tiny_hmm(tmp_path), tmp_path / "t.json", data)) == 1
+    assert capsys.readouterr().err == message
+
+
 @pytest.mark.parametrize("row", ['{"tokens": ["a"]}', '["not", "an", "object"]'])
 def test_time_models_reports_a_validation_record_without_sample_id_by_name(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], row: str

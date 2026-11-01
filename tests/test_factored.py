@@ -129,10 +129,17 @@ def test_unknown_case_label_is_refused(punct, case):
     assert "'b'" in message and "'MIXED'" in message
 
 
-@pytest.mark.parametrize("labels", ["O", None, [["O"]], [1]])
+@pytest.mark.parametrize("labels", ["O", None, [["O"]], [1], [None], [{}]])
 def test_labels_that_are_not_a_list_of_strings_are_refused(punct, case, labels):
     punct[0] = {**punct[0], "predicted_labels": labels}
     assert "'b'" in _err(punct, case)
+
+
+@pytest.mark.parametrize("label", [None, 1, {}, ["LOWER"]], ids=["null", "number", "object", "list"])
+def test_a_casing_label_that_is_not_text_is_refused_naming_the_sample(punct, case, label):
+    case[1]["predicted_labels"][0] = label
+    message = _err(punct, case)
+    assert "case sample_id 'b'" in message and "\n" not in message
 
 
 @pytest.mark.parametrize("record", [None, "x", {"predicted_labels": []}, {"sample_id": "", "label_mode": "A"}])

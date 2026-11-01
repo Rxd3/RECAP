@@ -101,7 +101,9 @@ def _verify_case(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Case:
     plan, selection = {"config": {"processed_dir": "p", "modes": ["A"]}}, {"modes": {"A": {}, "B": {}}}
     monkeypatch.setattr(verify_module, "verified_frozen_selection", lambda run, evaluator: (plan, selection))
     monkeypatch.setattr(verify_module, "authenticate", lambda cfg, phase: ({}, {}))
-    monkeypatch.setattr(verify_module, "read_json", lambda path: results if path.name == "results.json" else {})
+    monkeypatch.setattr(
+        verify_module, "read_object", lambda path, schema: results if path.name == "results.json" else {}
+    )
     monkeypatch.setattr(verify_module, "_verify_mode", lambda *args: {})
     monkeypatch.setattr(verify_module, "_check_runtime", lambda *args: None)
     lines = [

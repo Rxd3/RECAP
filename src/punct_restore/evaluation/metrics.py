@@ -40,7 +40,7 @@ def _class_scores(tp: int, support: int, predicted: int) -> dict[str, float | in
             "support": support, "predicted": predicted}
 
 
-def class_counts(matrix: Sequence[Sequence[int]]) -> tuple[tuple[int, ...], ...]:
+def class_counts(matrix: Sequence[Sequence[int]]) -> tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...]]:
     """(tp, support, predicted) per class from a square confusion matrix."""
     tp = tuple(matrix[i][i] for i in range(len(matrix)))
     support = tuple(sum(row) for row in matrix)

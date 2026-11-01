@@ -20,63 +20,53 @@ import re
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
+from ..file_io import read_yaml as read_yaml  # old import path kept: the one YAML reader is in file_io
+from ..file_io import require_object
 from ..paths import REPO_ROOT
 from .preprocessing import ABBREVIATIONS, TITLES, Token
 
 LABEL_SETS_PATH = os.path.join(REPO_ROOT, "configs", "label_sets.yaml")
 
 
-_KIND_NAMES = {dict: "mapping", list: "list", str: "string"}
+# What label_sets.yaml must hold for load_label_sets to build the label sets (see file_io.require_object).
+_LABEL_SCHEMA = {
+    "punctuation": {"standard": list[str], "extended": list[str]},
+    "casing": list[str],
+    "modes": {"C": {"separator": str, "labels": list[str]}},
+    "extended_to_standard": {},
+}
 
 
-def _field(config: Mapping[str, Any], dotted: str, kind: type, file_name: str) -> Any:
-    """The entry at `dotted` ('modes.C.labels') of the parsed YAML, which must be a `kind`; else a ValueError."""
-    keys = dotted.split(".")
-    node: Any = config
-    for depth, key in enumerate(keys):
-        path = ".".join(keys[:depth + 1])
-        if key not in node:
-            raise ValueError(f"{file_name}: missing {path}")
-        node = node[key]
-        wanted = kind if depth == len(keys) - 1 else dict
-        if not isinstance(node, wanted):
-            raise ValueError(f"{file_name}: {path} must be a {_KIND_NAMES[wanted]}")
-    return node
+def read_label_config(path: str | os.PathLike[str] = LABEL_SETS_PATH) -> dict[str, Any]:
+    """The raw label configuration mapping; a ValueError names the file (not UTF-8, not YAML, not a mapping)."""
+    return require_object(os.path.basename(path), read_yaml(path), {})
 
 
-def _read_yaml(path: str | os.PathLike[str], file_name: str) -> Any:
-    """The parsed YAML of `path`; a ValueError that names `file_name` only (a YAML error mark shows the whole path)."""
-    import yaml  # PyYAML is a declared runtime dependency of RECAP
-    try:
-        with open(path, encoding="utf-8") as f:
-            return yaml.safe_load(f)
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"{file_name}: not valid UTF-8") from exc
-    except (yaml.YAMLError, RecursionError) as exc:  # RecursionError: nested too deeply
-        raise ValueError(f"{file_name}: not valid YAML") from exc
+def label_sets_from_config(config: Mapping[str, Any], file_name: str) -> dict[str, Any]:
+    """The label sets of an already parsed label configuration, after checking its 4/8/12 structure.
+
+    `file_name` is the name of the file `config` was read from; it starts the ValueError that
+    `file_io.require_object` raises for a missing key or a value of the wrong kind, and the one for a vocabulary
+    that is not the agreed 4/8/12 structure (`<file name>: does not have the agreed 4/8/12 structure`).
+    """
+    cfg = require_object(file_name, config, _LABEL_SCHEMA)
+    std, ext, case = cfg["punctuation"]["standard"], cfg["punctuation"]["extended"], cfg["casing"]
+    separator, joint_listed = cfg["modes"]["C"]["separator"], cfg["modes"]["C"]["labels"]
+    projection = cfg["extended_to_standard"]
+    joint = [f"{p}{separator}{c}" for p, c in itertools.product(std, case)]
+    if (len(std), len(ext), len(case)) != (4, 8, 3) or ext[:4] != std or joint_listed != joint:
+        raise ValueError(f"{file_name}: does not have the agreed 4/8/12 structure")
+    return {"A": list(std), "B": list(ext), "C": joint, "casing": list(case), "separator": separator,
+            "projection": projection}
 
 
 def load_label_sets(path: str | os.PathLike[str] = LABEL_SETS_PATH) -> dict[str, Any]:
     """Read configs/label_sets.yaml (the vocabulary source of truth) and check its 4/8/12 structure.
 
     Raises ValueError("<file name>: <what is wrong>") for a file that is not valid UTF-8 or YAML, or that parses but
-    lacks a key or has a value of the wrong type.
+    lacks a key or has a value of the wrong type (`file_io.require_object` words it).
     """
-    file_name = os.path.basename(path)
-    cfg = _read_yaml(path, file_name)
-    if not isinstance(cfg, dict):
-        raise ValueError(f"{file_name}: the top level must be a mapping")
-    std = _field(cfg, "punctuation.standard", list, file_name)
-    ext = _field(cfg, "punctuation.extended", list, file_name)
-    case = _field(cfg, "casing", list, file_name)
-    separator = _field(cfg, "modes.C.separator", str, file_name)
-    joint_listed = _field(cfg, "modes.C.labels", list, file_name)
-    projection = _field(cfg, "extended_to_standard", dict, file_name)
-    joint = [f"{p}{separator}{c}" for p, c in itertools.product(std, case)]
-    if (len(std), len(ext), len(case)) != (4, 8, 3) or ext[:4] != std or joint_listed != joint:
-        raise ValueError("configs/label_sets.yaml does not have the agreed 4/8/12 structure")
-    return {"A": list(std), "B": list(ext), "C": joint, "casing": list(case), "separator": separator,
-            "projection": projection}
+    return label_sets_from_config(read_label_config(path), os.path.basename(path))
 
 
 # --- Punctuation ---------------------------------------------------------------------------------------------------
@@ -233,13 +223,14 @@ def _read_marks(text: str) -> list[tuple[str, str]]:
     text = re.sub(r"([.,;?!])([\"'-])(?=[A-Za-z])", r"\1\2 ", text)
     text = " ".join(c if re.search(r"@|www\.|://", c) else re.sub(r"(?<=[a-z])\.(?=[A-Z][a-z])", ". ", c)
                     for c in text.split())
-    words, trails = [], []
+    words: list[str] = []
+    trails: list[str] = []
     for ch in text.split():
-        if not ALNUM.search(ch):
+        if (first_match := ALNUM.search(ch)) is None:
             if trails:
                 trails[-1] += " " + ch
             continue
-        first = ALNUM.search(ch).start()
+        first = first_match.start()
         lead = ch[:first]
         if lead.endswith(".") and ch[first].islower():
             lead, first = lead[:-1], first - 1
@@ -282,5 +273,6 @@ def _signature(pairs: Iterable[tuple[str, str]]) -> str:
 
 def cross_check_standard(tokens: Sequence[Token], labels: Sequence[str], text: str) -> bool:
     """True if an independent reading of the text puts the same standard marks after the same letters/digits."""
-    a = _signature((t.text.lower(), STANDARD_MARK_OF[label]) for t, label in zip(tokens, labels, strict=False))
-    return a == _signature(_read_marks(text))
+    from_labels = _signature(
+        (token.text.lower(), STANDARD_MARK_OF[label]) for token, label in zip(tokens, labels, strict=False))
+    return from_labels == _signature(_read_marks(text))

@@ -122,7 +122,7 @@ def test_an_unapproved_projection_stops_the_build_with_a_value_error_before_any_
     with pytest.raises(ValueError, match="not approved"):
         sources = release.ReleaseSources(str(tmp_path / "raw"), str(tmp_path / "processed"), str(tmp_path / "splits"),
                                          "fixture", label_sets_path=str(unapproved))
-        release.build_release(sources, log=lambda _: None)
+        release.build_release_from(sources, log=lambda _: None)
     assert not (tmp_path / "processed").exists() and not (tmp_path / "splits").exists()
 
 

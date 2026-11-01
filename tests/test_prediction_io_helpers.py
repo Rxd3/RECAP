@@ -72,16 +72,29 @@ def test_one_line_error_never_shows_a_folder_of_a_missing_file(tmp_path: Path) -
     assert prediction_io.one_line_error(exc) == "x.json: No such file or directory"
 
 
-def test_one_line_error_cuts_the_paths_it_is_given_to_their_file_names(tmp_path: Path) -> None:
+def test_one_line_error_with_short_paths_cuts_the_paths_it_is_given_to_their_file_names(tmp_path: Path) -> None:
     data, ids = tmp_path / "deep" / "data.jsonl", tmp_path / "train.ids"
     exc = ValueError(f"Corrupt JSON at line 3 in {data}:\n{ids} is empty")
-    line = prediction_io.one_line_error(exc, data, ids, None)
+    line = prediction_io.one_line_error_with_short_paths(exc, data, ids, None)
     assert line == "Corrupt JSON at line 3 in data.jsonl: train.ids is empty"
 
 
-def test_one_line_error_leaves_a_path_it_is_not_given_alone(tmp_path: Path) -> None:
+def test_one_line_error_with_short_paths_leaves_a_path_it_is_not_given_alone(tmp_path: Path) -> None:
     other = tmp_path / "other.txt"
-    assert prediction_io.one_line_error(ValueError(f"bad {other}"), tmp_path / "data.jsonl") == f"bad {other}"
+    line = prediction_io.one_line_error_with_short_paths(ValueError(f"bad {other}"), tmp_path / "data.jsonl")
+    assert line == f"bad {other}"
+
+
+def test_one_line_error_with_short_paths_without_paths_reads_as_one_line_error(tmp_path: Path) -> None:
+    exc = OSError(28, "No space left on device", str(tmp_path / "out.jsonl"))
+    assert prediction_io.one_line_error_with_short_paths(exc) == prediction_io.one_line_error(exc)
+
+
+def test_one_line_error_takes_the_exception_alone_and_leaves_a_quoted_path_as_main_did(tmp_path: Path) -> None:
+    quoted = ValueError(f"bad {tmp_path / 'data.jsonl'}")
+    assert prediction_io.one_line_error(quoted) == f"bad {tmp_path / 'data.jsonl'}"
+    with pytest.raises(TypeError):
+        prediction_io.one_line_error(quoted, tmp_path / "data.jsonl")  # type: ignore[call-arg]
 
 
 def test_one_line_error_takes_the_text_of_any_other_exception() -> None:
@@ -94,6 +107,26 @@ def test_one_line_error_uses_the_reason_alone_when_the_os_error_has_no_file() ->
 
 def test_one_line_error_falls_back_to_the_text_of_an_os_error_without_a_reason() -> None:
     assert prediction_io.one_line_error(OSError("plain\ntext")) == "plain text"
+
+
+# --- os_reason ------------------------------------------------------------------------------------
+
+
+def test_os_reason_is_the_system_text_of_the_error() -> None:
+    assert prediction_io.os_reason(OSError(errno.ENOSPC, "No space left on device", "out.jsonl")) == (
+        "No space left on device")
+
+
+def test_os_reason_says_folder_for_a_folder_opened_as_a_file_even_when_windows_says_permission_denied(
+        tmp_path: Path) -> None:
+    folder = tmp_path / "adir"
+    folder.mkdir()
+    assert prediction_io.os_reason(PermissionError(errno.EACCES, "Permission denied", str(folder))) == (
+        "is a folder, not a file")
+
+
+def test_os_reason_is_none_when_the_error_has_no_system_text() -> None:
+    assert prediction_io.os_reason(OSError("plain")) is None
 
 
 # --- check_script_paths --------------------------------------------------------------------------
@@ -274,3 +307,43 @@ def test_reconfigure_stdout_leaves_a_stdout_without_reconfigure_alone(monkeypatc
     prediction_io.reconfigure_stdout()
     print("ok")
     assert buffer.getvalue() == "ok\n"
+
+
+# --- require_file --------------------------------------------------------------------------------
+
+
+def test_require_file_accepts_a_file(tmp_path: Path) -> None:
+    (tmp_path / "x.txt").write_text("x", encoding="utf-8")
+    assert prediction_io.require_file(tmp_path / "x.txt", "widget") is None
+
+
+def test_require_file_says_a_folder_is_a_folder_naming_it_only(tmp_path: Path) -> None:
+    (tmp_path / "adir").mkdir()
+    with pytest.raises(IsADirectoryError) as caught:
+        prediction_io.require_file(tmp_path / "adir", "widget")
+    assert str(caught.value) == "adir: is a folder, not a file"
+
+
+def test_require_file_says_what_is_not_found_naming_the_file_only(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError) as caught:
+        prediction_io.require_file(tmp_path / "deep" / "ghost.txt", "widget")
+    assert str(caught.value) == "ghost.txt: widget not found"
+
+
+def test_read_observations_names_a_missing_input_and_a_folder_by_name_only(tmp_path: Path) -> None:
+    (tmp_path / "adir").mkdir()
+    with pytest.raises(FileNotFoundError) as missing:
+        prediction_io.read_observations(tmp_path / "ghost.jsonl", None)
+    assert str(missing.value) == "ghost.jsonl: input JSONL not found"
+    with pytest.raises(IsADirectoryError) as folder:
+        prediction_io.read_observations(tmp_path / "adir", None)
+    assert str(folder.value) == "adir: is a folder, not a file"
+
+
+def test_read_observations_never_puts_the_folder_in_its_message(tmp_path: Path) -> None:
+    (tmp_path / "in.jsonl").write_text('{"sample_id": "a", "tokens": ["x"]}\n', encoding="utf-8")
+    (tmp_path / "want.ids").write_text("a\nb\n", encoding="utf-8")
+    with pytest.raises(ValueError) as caught:
+        prediction_io.read_observations(tmp_path / "in.jsonl", tmp_path / "want.ids")
+    assert str(caught.value).startswith("in.jsonl: missing 1 selected IDs.")
+    assert str(tmp_path) not in str(caught.value)

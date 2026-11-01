@@ -3,12 +3,14 @@ write_new_file. Each test pins one point of the contract the old per-module copi
 
 from __future__ import annotations
 
+import ast
 import os
 from pathlib import Path
 
 import pytest
 
 from punct_restore import data, prediction_io
+from punct_restore.paths import REPO_ROOT
 
 # --- read_ids ------------------------------------------------------------------------------------
 
@@ -100,11 +102,6 @@ def test_read_ids_accepts_a_str_path_as_the_documented_data_api_does(tmp_path: P
     assert data.read_ids(str(_ids(tmp_path, b"a\nb\n"))) == ["a", "b"]
 
 
-def test_data_read_ids_is_the_shared_reader_so_it_refuses_duplicates_too(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="Duplicate ID 'a'"):
-        data.read_ids(_ids(tmp_path, b"a\na\n"))
-
-
 # --- parse_json_object / parse_sample_record -----------------------------------------------------
 
 
@@ -174,3 +171,26 @@ def test_write_new_file_creates_no_missing_folder(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         prediction_io.write_new_file(tmp_path / "missing" / "o.txt", "x")
     assert not (tmp_path / "missing").exists()
+
+
+# --- the file-level helpers are imported from their home -------------------------------------------
+
+_SOURCE = REPO_ROOT / "src" / "punct_restore"
+_FILE_HELPERS = {"require_file", "refuse_existing", "write_new_file"}  # prediction_io keeps them for old imports only
+_IMPORT_HOME_MODULES = [
+    "cli/train_hidden_event_lm.py", "data/extraction.py", "models/crf_io.py", "models/crf_prediction.py",
+    "models/hidden_event_lm.py", "pipeline.py", "reporting/asr_noise_table.py",
+]
+
+
+@pytest.mark.parametrize("module", _IMPORT_HOME_MODULES)
+def test_a_module_imports_the_file_helpers_from_file_io_not_from_the_prediction_io_re_export(module: str) -> None:
+    tree = ast.parse((_SOURCE / module).read_text(encoding="utf-8"))
+    through_prediction_io = sorted(
+        alias.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom) and (node.module or "").endswith("prediction_io")
+        for alias in node.names
+        if alias.name in _FILE_HELPERS
+    )
+    assert through_prediction_io == []

@@ -10,9 +10,13 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any
 
-from punct_restore.models.hmm_experiment_protocol import now, read_json
+from punct_restore.file_io import read_object
+from punct_restore.models.hmm_experiment_protocol import now
 from punct_restore.models.hmm_workflow import portable_path
 from punct_restore.paths import REPO_ROOT as ROOT
+
+# What the experiment reads from a report the shared evaluator has just written.
+_SCORE_REPORT = {"primary": {"block": object, "value": object}}
 
 
 class HmmCommandFailed(RuntimeError):
@@ -79,7 +83,7 @@ def score(study: Study, mode: str, split: str, predictions: Path, out: Path) -> 
     if mode == "C":
         args += ["--masks", f"{config['processed_dir']}/masks/case_joint/{split}.jsonl"]
     execute(args, study.run, out.with_suffix(".log"))
-    report = read_json(out)
+    report = read_object(out, _SCORE_REPORT)
     if report["primary"]["block"] != config["search"]["selection_blocks"][mode]:
         raise ValueError("shared scorer returned an unexpected primary block")
     return report

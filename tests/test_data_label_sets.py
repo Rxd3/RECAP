@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 import yaml
@@ -30,6 +31,14 @@ def _without(config: dict, *keys: str) -> dict:
         node = node[key]
     del node[keys[-1]]
     return copy
+
+
+def _at(config: dict, *keys: str) -> object:
+    """The entry of `config` at `keys`."""
+    node: Any = config
+    for key in keys:
+        node = node[key]
+    return node
 
 
 def _with(config: dict, value: object, *keys: str) -> dict:
@@ -81,12 +90,13 @@ def test_a_missing_key_is_a_value_error_naming_the_file_and_the_key(
 @pytest.mark.parametrize(
     ("keys", "value", "expected"),
     [
-        (("punctuation",), ["O"], "punctuation must be a mapping"),
-        (("punctuation", "standard"), "O,COMMA,PERIOD,QUESTION", "punctuation.standard must be a list"),
-        (("casing",), "LOWER", "casing must be a list"),
-        (("modes", "C", "separator"), 7, "modes.C.separator must be a string"),
-        (("modes", "C", "labels"), {"O|LOWER": 1}, "modes.C.labels must be a list"),
-        (("extended_to_standard",), ["approved"], "extended_to_standard must be a mapping"),
+        (("punctuation",), ["O"], "punctuation is not a JSON object"),
+        (("punctuation", "standard"), "O,COMMA,PERIOD,QUESTION", "punctuation.standard is not a JSON list"),
+        (("casing",), "LOWER", "casing is not a JSON list"),
+        (("modes", "C", "separator"), 7, "modes.C.separator is not nonempty text"),
+        (("modes", "C", "separator"), "", "modes.C.separator is not nonempty text"),
+        (("modes", "C", "labels"), {"O|LOWER": 1}, "modes.C.labels is not a JSON list"),
+        (("extended_to_standard",), ["approved"], "extended_to_standard is not a JSON object"),
     ],
 )
 def test_a_value_of_the_wrong_type_is_a_value_error_naming_the_file_and_the_key(
@@ -97,12 +107,26 @@ def test_a_value_of_the_wrong_type_is_a_value_error_naming_the_file_and_the_key(
     assert str(problem.value) == f"{path.name}: {expected}"
 
 
+@pytest.mark.parametrize("item", [{}, ["O"], 1, None], ids=["object", "list", "number", "null"])
+@pytest.mark.parametrize("keys", [("punctuation", "standard"), ("punctuation", "extended"), ("casing",),
+                                  ("modes", "C", "labels")])
+def test_a_label_list_with_an_item_that_is_not_text_is_a_value_error_naming_the_item(
+        tmp_path: Path, keys: tuple[str, ...], item: object) -> None:
+    """A list check that only asks for a list lets `[1, 2, 3, 4]` build the label sets of a mode."""
+    labels = list(_at(_config(), *keys))
+    labels[1] = item
+    path = _written(tmp_path, _with(_config(), labels, *keys))
+    with pytest.raises(ValueError) as problem:
+        labeling.load_label_sets(path)
+    assert str(problem.value) == f"{path.name}: {'.'.join(keys)}.1 is not nonempty text"
+
+
 @pytest.mark.parametrize("content", [[], "just text", None, 3])
 def test_a_file_that_is_not_a_mapping_at_the_top_is_a_value_error(tmp_path: Path, content: object) -> None:
     path = _written(tmp_path, content)
     with pytest.raises(ValueError) as problem:
         labeling.load_label_sets(path)
-    assert str(problem.value) == f"{path.name}: the top level must be a mapping"
+    assert str(problem.value) == f"{path.name}: not a JSON object"
 
 
 def test_the_message_names_the_file_only_not_its_folder(tmp_path: Path) -> None:
@@ -135,3 +159,24 @@ def test_a_file_that_cannot_be_read_as_yaml_is_one_value_error_naming_the_file_o
     with pytest.raises(ValueError) as problem:
         labeling.load_label_sets(path)
     assert str(problem.value) == f"broken.yaml: {reason}"  # the YAML mark would show the whole path
+
+
+def test_a_wrong_structure_names_the_given_file_not_the_default_one(tmp_path: Path) -> None:
+    folder = tmp_path / "secretfolder"
+    folder.mkdir()
+    path = folder / "c1.yaml"
+    path.write_text(yaml.safe_dump(_with(_config(), ["LOWER"], "casing")), encoding="utf-8")
+    with pytest.raises(ValueError) as problem:
+        labeling.load_label_sets(path)
+    assert str(problem.value) == "c1.yaml: does not have the agreed 4/8/12 structure"
+
+
+def test_label_sets_from_config_builds_the_sets_of_a_parsed_mapping_and_names_the_given_file() -> None:
+    """The parsed-mapping form is what load_label_sets does after reading; train-hmm checks more on the same one."""
+    assert labeling.label_sets_from_config(_config(), "x.yaml") == labeling.load_label_sets()
+    with pytest.raises(ValueError) as problem:
+        labeling.label_sets_from_config(_with(_config(), ["LOWER"], "casing"), "x.yaml")
+    assert str(problem.value) == "x.yaml: does not have the agreed 4/8/12 structure"
+    with pytest.raises(ValueError) as missing:
+        labeling.label_sets_from_config(_without(_config(), "casing"), "x.yaml")
+    assert str(missing.value) == "x.yaml: missing casing"

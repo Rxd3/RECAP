@@ -30,8 +30,7 @@ import json
 import os
 import shutil
 import sys
-import tempfile
-from collections.abc import Iterable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -49,10 +48,18 @@ from punct_restore.data.asr_noise import (
     remap_positions,
     train_vocabulary,
 )
+from punct_restore.file_io import iter_jsonl, write_new_folder
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import one_line_error, parse_json_object, read_ids, reconfigure_stdout
+from punct_restore.prediction_io import (
+    one_line_error,
+    os_reason,
+    parse_json_object,
+    read_ids,
+    reconfigure_stdout,
+)
 
 MODES = ("A", "B", "C")
+DEFAULT_EDIT_MODEL = "v1"  # the --edit-model default
 
 
 class InputError(ValueError):
@@ -64,18 +71,19 @@ def _display_name(path: Path) -> str:
     return "/".join(part for part in (path.parent.name, path.name) if part)
 
 
+def _line_text(line: str, _where: str) -> str:
+    """The line itself; ``scan`` parses it, because its messages name the folder too (``mode_A/validation.jsonl``)."""
+    return line.removeprefix("\ufeff")  # a byte order mark on the first line is not part of the JSON
+
+
 def _lines(path: Path) -> Iterator[tuple[int, str]]:
     """(line number, text) of the non-blank lines of a UTF-8 file; problems name the file."""
     try:
-        with path.open(encoding="utf-8-sig") as handle:
-            for number, line in enumerate(handle, 1):
-                if line.strip():
-                    yield number, line
-    except UnicodeDecodeError:
+        yield from iter_jsonl(path, _line_text)
+    except ValueError:  # the only one iter_jsonl raises here: the bytes are not UTF-8 (``_line_text`` cannot fail)
         raise InputError(f"{_display_name(path)}: not UTF-8 text") from None
-    except OSError as exc:  # Windows reports EACCES for a folder, POSIX EISDIR
-        reason = "is a folder, not a file" if path.is_dir() else (exc.strerror or "cannot be read")
-        raise InputError(f"{_display_name(path)}: {reason}") from None
+    except OSError as exc:  # os_reason words a folder alike on Windows (EACCES) and POSIX (EISDIR)
+        raise InputError(f"{_display_name(path)}: {os_reason(exc) or 'cannot be read'}") from None
 
 
 def scan(path: Path, wanted: frozenset[str]) -> Iterator[tuple[int, dict[str, Any]]]:
@@ -169,7 +177,7 @@ def write_jsonl(path: Path, rows: Iterable[Mapping[str, Any]]) -> None:
 
 def summarize(args: argparse.Namespace, inputs: Sequence[ModeInput], tokens: Mapping[str, Sequence[str]],
               plan: Mapping[str, Edits]) -> dict[str, Any]:
-    edit_model = getattr(args, "edit_model", "v1")
+    edit_model = args.edit_model
     counts, before = edit_counts(plan, edit_model=edit_model), sum(len(t) for t in tokens.values())
     kind_to_cost = {"deletion": "delete", "insertion": "insert", "substitution": "replace", "swap": "swap"}
     spent = {name: counts[name] * COST[kind_to_cost[name]] for name in counts}
@@ -183,22 +191,37 @@ def summarize(args: argparse.Namespace, inputs: Sequence[ModeInput], tokens: Map
         "cost_share": {kind: part / (cost or 1) for kind, part in spent.items()},  # all 0 when no edits
         "achieved_wer": cost / before,
     }
-    if edit_model != "v1":
+    if edit_model != DEFAULT_EDIT_MODEL:
         summary["edit_model"] = edit_model
         summary["vocabulary_source"] = "default_train"
     return summary
 
 
-def write_outputs(folder: Path, args: argparse.Namespace, inputs: Sequence[ModeInput],
-                  masks: Sequence[Mapping[str, Any]], plan: Mapping[str, Edits],
-                  summary: Mapping[str, Any]) -> None:
+def _jsonl_writer(rows: Iterable[Mapping[str, Any]]) -> Callable[[Path], None]:
+    """A writer for ``write_new_folder`` that streams ``rows`` to the path it is given."""
+    def write(path: Path) -> None:
+        write_jsonl(path, rows)
+    return write
+
+
+def _copier(source: Path) -> Callable[[Path], None]:
+    """A writer for ``write_new_folder`` that copies ``source`` byte for byte to the path it is given."""
+    def copy(path: Path) -> None:
+        shutil.copyfile(source, path)
+    return copy
+
+
+def output_files(args: argparse.Namespace, inputs: Sequence[ModeInput], masks: Sequence[Mapping[str, Any]],
+                 plan: Mapping[str, Edits], summary: Mapping[str, Any]) -> dict[str, str | Callable[[Path], None]]:
+    """The files of the noisy release by path inside it, in the order they are written; nothing is read yet."""
+    files: dict[str, str | Callable[[Path], None]] = {}
     for item in inputs:
         rows = (apply_edits(r, plan.get(r["sample_id"], NO_EDITS)) for r in item.records())
-        write_jsonl(folder / f"mode_{item.mode}" / f"{args.split}.jsonl", rows)
-        shutil.copyfile(item.ids_path, folder / f"{args.split}_mode_{item.mode}.ids")
-    write_jsonl(folder / "masks" / f"{args.split}.jsonl", masks)
-    text = json.dumps(summary, indent=2, sort_keys=True) + "\n"
-    (folder / "summary.json").write_text(text, encoding="utf-8", newline="\n")
+        files[f"mode_{item.mode}/{args.split}.jsonl"] = _jsonl_writer(rows)
+        files[f"{args.split}_mode_{item.mode}.ids"] = _copier(item.ids_path)
+    files[f"masks/{args.split}.jsonl"] = _jsonl_writer(masks)
+    files["summary.json"] = json.dumps(summary, indent=2, sort_keys=True) + "\n"
+    return files
 
 
 def wer_value(text: str) -> float:
@@ -216,8 +239,8 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     parser.add_argument("--split", choices=["validation", "test"], required=True)
     parser.add_argument("--wer", type=wer_value, required=True, help="target word error rate, above 0 up to 0.5")
     parser.add_argument("--seed", type=int, default=2026)
-    parser.add_argument("--edit-model", choices=list(EDIT_MODELS), default="v1",
-                        help="word-error model (default: v1)")
+    parser.add_argument("--edit-model", choices=list(EDIT_MODELS), default=DEFAULT_EDIT_MODEL,
+                        help=f"word-error model (default: {DEFAULT_EDIT_MODEL})")
     parser.add_argument("--masks", type=Path, help="mode C casing masks (default: the release's case_joint file)")
     parser.add_argument("--out", type=Path, required=True, help="new folder; it must not exist")
     return parser.parse_args(argv)
@@ -254,7 +277,7 @@ def run(args: argparse.Namespace) -> str:
         raise InputError(f"{out.name}: the folder to create it in does not exist")
     inputs = load_inputs(args)
     tokens = shared_tokens(inputs)
-    edit_model = getattr(args, "edit_model", "v1")
+    edit_model = args.edit_model
     vocab = load_train_vocab(args) if edit_model == "v2" else frozenset()
     plan = build_plan(tokens, args.wer, args.seed, edit_model=edit_model, vocab=vocab)
     default_masks = args.data_root / "processed" / args.release / "masks" / "case_joint" / f"{args.split}.jsonl"
@@ -262,13 +285,7 @@ def run(args: argparse.Namespace) -> str:
     c_ids = next(item.ids for item in inputs if item.mode == "C")
     masks = remapped_masks(masks_path, c_ids, tokens, plan)
     summary = summarize(args, inputs, tokens, plan)
-    folder = Path(tempfile.mkdtemp(prefix=f".{out.name}.tmp-", dir=out.parent))
-    try:
-        write_outputs(folder, args, inputs, masks, plan, summary)
-        folder.rename(out)
-    except BaseException:
-        shutil.rmtree(folder, ignore_errors=True)
-        raise
+    write_new_folder(out, output_files(args, inputs, masks, plan, summary))
     return (f"wrote {out.name}: edit cost {summary['edit_cost']} of budget {summary['budget']} "
             f"(WER {summary['achieved_wer']:.4f}), tokens {summary['tokens_before']} -> {summary['tokens_after']}")
 

@@ -2,15 +2,43 @@
 
 from __future__ import annotations
 
-import json
 import math
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
 
+from punct_restore.file_io import require_object
 from punct_restore.hashing import sha256_file
-from punct_restore.models.hmm_workflow import checked_release_file, file_identity
+from punct_restore.models.hmm_workflow import checked_release_file, file_identity, read_release_manifest
 from punct_restore.paths import REPO_ROOT as ROOT
+
+# isort: split
+# old import path kept: the one JSON reader is in file_io
+from punct_restore.file_io import read_json as read_json
+
+# What an experiment config must hold for the steps after validate_config to index it, whatever the file says:
+# every key that any step reads, with the kind of value it needs (see file_io.require_object).
+_CONFIG_SCHEMA = {
+    "schema_version": object,
+    "experiment_id": str,
+    "dataset_release_id": str,
+    "policy_version": str,
+    "processed_dir": str,
+    "splits_dir": str,
+    "label_config": str,
+    "modes": list[str],
+    "search": {
+        "smoothing": list[float],
+        "min_token_count": list[float],
+        "selection_split": object,
+        "selection_blocks": {},
+        "metric": object,
+        "score_precision": object,
+        "tie_break": list[str],
+        "retrain_on_validation": object,
+    },
+    "evaluation": {"repository_commit": str, "test_sets": list[str], "zero_division": object},
+    "runtime": {"comparison_ids": str, "warmup_sequences": int, "repetitions": int, "model_threads": object},
+}
 
 
 def now() -> str:
@@ -18,26 +46,10 @@ def now() -> str:
     return datetime.now(UTC).isoformat()
 
 
-def read_json(path: Path) -> Any:
-    """Parse a UTF-8 JSON file.
-
-    Raises:
-        OSError: If the file cannot be read.
-        ValueError: One line, ``<file name>: not valid UTF-8`` or ``<file name>: not valid JSON`` (also for a
-            document nested too deeply).
-    """
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"{path.name}: not valid UTF-8") from exc
-    except (json.JSONDecodeError, RecursionError) as exc:  # RecursionError: nested too deeply for the parser
-        raise ValueError(f"{path.name}: not valid JSON") from exc
-
-
-def validate_config(config: dict[str, Any]) -> dict[str, Any]:
-    """Reject any experiment config that is not the frozen validation-only protocol."""
+def _check_modes_and_search(config: dict[str, Any]) -> None:
+    """The protocol rules for the modes and the selection settings (the shape of the config is already checked)."""
     if config["schema_version"] != 1 or not config["modes"]:
-        raise ValueError("invalid experiment schema/modes")
+        raise ValueError("schema_version must be 1 and modes must not be empty")
     if len(set(config["modes"])) != len(config["modes"]) or set(config["modes"]) - set("ABC"):
         raise ValueError("modes must be unique members of A/B/C")
     search = config["search"]
@@ -51,30 +63,60 @@ def validate_config(config: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("report test and test_amb separately")
     for mode in config["modes"]:
         expected = "joint/unmasked" if mode == "C" else "punctuation/all"
-        if search["selection_blocks"][mode] != expected:
+        if search["selection_blocks"].get(mode) != expected:
             raise ValueError(f"mode {mode}: wrong primary selection block")
-    for values, kind in [(search["smoothing"], float), (search["min_token_count"], int)]:
-        if not values or len(set(values)) != len(values):
-            raise ValueError("search values must be nonempty and unique")
-        for value in values:
-            if isinstance(value, bool) or not isinstance(value, (float, int)):
-                raise ValueError("search parameters must be numeric")
-            if not math.isfinite(value) or value <= 0 or (kind is int and type(value) is not int):
-                raise ValueError("smoothing/cutoffs must be positive; cutoffs must be integers")
+
+
+def _check_search_values(values: list[Any], kind: type) -> None:
+    """Require a search grid to be nonempty, unique, positive and finite (cutoffs: whole numbers)."""
+    if not values or len(set(values)) != len(values):
+        raise ValueError("search values must be nonempty and unique")
+    for value in values:
+        if (isinstance(value, float) and not math.isfinite(value)) or value <= 0 or (
+            kind is int and type(value) is not int
+        ):
+            raise ValueError("smoothing/cutoffs must be positive; cutoffs must be integers")
+
+
+def _check_rules(config: dict[str, Any]) -> None:
+    """The protocol rules for the whole config (its shape is already checked); a ValueError says which one fails."""
+    _check_modes_and_search(config)
+    search = config["search"]
+    _check_search_values(search["smoothing"], float)
+    _check_search_values(search["min_token_count"], int)
     runtime = config["runtime"]
     if runtime["repetitions"] < 2 or runtime["warmup_sequences"] < 1:
         raise ValueError("runtime measurement requires warmup and repetitions")
     if runtime["model_threads"] != 1 or config["evaluation"]["zero_division"] != 0:
         raise ValueError("this implementation uses one model thread and zero_division=0")
+
+
+def validate_config(config: Any, source: str = "config") -> dict[str, Any]:
+    """Reject any experiment config that is not the frozen validation-only protocol.
+
+    `source` names the file the config came from. The shape comes first: a config that is not an object, or lacks
+    a key a later step indexes, or holds a value of another kind (a mode that is no text, a search value that is
+    no number) is a ValueError of one line, `<source>: invalid experiment config: <what is wrong>`, that names
+    the key. Only then are the protocol rules checked; a rule that fails is a ValueError of the same form.
+    """
+    where = f"{source}: invalid experiment config"
+    require_object(where, config, _CONFIG_SCHEMA)
+    try:
+        _check_rules(config)
+    except ValueError as exc:
+        raise ValueError(f"{where}: {exc}") from exc
     return config
 
 
 def authenticate(config: dict[str, Any], phase: str) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Check the release manifest, split lists and masks the given phase may read."""
+    """Check the release manifest, split lists and masks the given phase may read.
+
+    A release manifest of the wrong shape is a ValueError that starts with its file name.
+    """
     processed = ROOT / config["processed_dir"]
     splits = ROOT / config["splits_dir"]
     manifest_path = processed / "release_manifest.json"
-    manifest = read_json(manifest_path)
+    manifest = read_release_manifest(manifest_path)
     if (
         manifest["release_id"] != config["dataset_release_id"]
         or manifest["policy_version"] != config["policy_version"]

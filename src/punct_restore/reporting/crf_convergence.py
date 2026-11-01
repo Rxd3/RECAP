@@ -17,7 +17,7 @@ import math
 import sys
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import joblib
 
@@ -67,7 +67,7 @@ def read_losses(bundle: dict[str, Any], path: Path) -> list[float]:
     losses = [step.get("loss") if isinstance(step, dict) else None for step in iterations]
     if any(isinstance(x, bool) or not isinstance(x, (int, float)) or not math.isfinite(x) for x in losses):
         raise ValueError(f"{path.name}: the training log has an iteration without a finite loss")
-    return losses
+    return cast(list[float], losses)  # every loss is a finite number, checked above
 
 
 def convergence_entry(path: Path) -> dict[str, Any]:

@@ -218,7 +218,9 @@ def validate_record(record: object) -> None:
     for key in ("group_id", "normalized_text"):
         _require(isinstance(meta.get(key), str), f"record without a string metadata.{key}")
     _require(isinstance(meta.get("original_text", ""), str), "metadata.original_text is not a string")
-    tokens, labels, offsets = record.get("tokens"), record.get("punct_labels"), meta.get("offsets")
+    tokens: Any = record.get("tokens")  # each is checked by _is_list_of below
+    labels: Any = record.get("punct_labels")
+    offsets: Any = meta.get("offsets")
     _require(_is_list_of(tokens, lambda t: isinstance(t, str)), "record without a list of string tokens")
     _require(_is_list_of(labels, lambda x: isinstance(x, str)), "record without a list of string punct_labels")
     _require(_is_list_of(offsets, _is_span), "record without a list of [start, end] metadata.offsets")

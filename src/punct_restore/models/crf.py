@@ -20,12 +20,12 @@ import copy
 import math
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import sklearn_crfsuite
 
 from punct_restore.features.crf_features import FeatureConfig, extract_sequence_features
-from punct_restore.models.crf_io import read_bundle, restore_model, write_model
+from punct_restore.models.crf_io import load_fitted, write_model
 from punct_restore.models.crf_modes import (
     LABEL_MODES,
     SCORING_MODES,
@@ -370,7 +370,7 @@ class CRFModel:
             FileNotFoundError: If the artifact path does not exist.
             ValueError: If artifact schema, model family, or metadata is corrupted/incompatible.
         """
-        return restore_model(cls, read_bundle(path))
+        return load_fitted(cls, path)
 
     def _to_bundle(self) -> dict[str, Any]:
         """The private state a saved artifact keeps beside the public settings; the counterpart of ``_from_bundle``."""
@@ -383,7 +383,7 @@ class CRFModel:
         """A fitted model rebuilt from the bundle of a saved artifact (a bundle checked by ``read_bundle``)."""
         hp = bundle.get("hyperparameters", {})
         model = cls(
-            label_mode=bundle.get("label_mode"),
+            label_mode=cast(str, bundle.get("label_mode")),  # read_bundle checked it
             algorithm=hp.get("algorithm", "lbfgs"),
             c1=hp.get("c1", 0.1),
             c2=hp.get("c2", 0.1),
