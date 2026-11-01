@@ -81,7 +81,10 @@ configs need affected owners' review.
 ## Boundaries
 
 - Data loading validates [DATA_CONTRACT.md](DATA_CONTRACT.md), records rejection
-  counts and never silently changes sequence lengths.
+  counts and never silently changes sequence lengths. Consumers read a release through the library
+  API `punct_restore.data.load_records(path)` (raises `ValueError` on any contract violation, never
+  repairs) and `punct_restore.data.read_ids(path)` (the sample IDs of an `.ids` list); see
+  [data/README.md](../data/README.md).
 - Both models follow [MODEL_CONTRACT.md](MODEL_CONTRACT.md). Training adapters
   derive the target vector from `label_mode`; observable model inputs contain
   tokens and identifiers only. Evaluation retains gold in a separate path.
