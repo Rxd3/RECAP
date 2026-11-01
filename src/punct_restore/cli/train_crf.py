@@ -14,67 +14,37 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess  # noqa: F401 - tests patch train_crf.subprocess.run, which git_status_porcelain calls
 import sys
 import time
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from punct_restore.cli.train_crf_inspect import cmd_inspect
-from punct_restore.cli.train_crf_predict import cmd_predict
 from punct_restore.features.crf_features import FeatureConfig
 from punct_restore.hashing import sha256_file
-from punct_restore.models.crf import (
-    CRFModel,
-    require_scoring_mode,
+from punct_restore.models.crf import CRFModel
+from punct_restore.models.crf_inspection import RULE, inspect_artifact
+from punct_restore.models.crf_prediction import (
+    PredictionFailed,
+    check_predict_paths,
+    inference_summary,
+    load_scoring_model,
+    predict_records,
+    read_input_records,
+    write_model_predictions,
 )
 from punct_restore.models.crf_training import (
+    TrainingRun,
+    TrainingSource,
     build_sidecar_manifest,
     build_training_provenance,
     collect_training_diagnostics,
-    compute_code_fingerprint,
-    get_fingerprinted_files,
-    get_package_version,
     get_process_memory_stats,
-    git_status_porcelain,
-    load_and_filter_training_records,
 )
-from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import (
-    check_new_output_paths,
-    one_line_error,
-    read_observations,
-    reconfigure_stdout,
-    write_prediction_outputs,
-    write_predictions_jsonl,  # noqa: F401 - re-exported: tests call train_crf.write_predictions_jsonl
-)
+from punct_restore.models.crf_training_data import load_and_filter_training_records
+from punct_restore.prediction_io import check_new_output_paths, one_line_error, reconfigure_stdout
 
-# Every public name this module had before the training logic moved to punct_restore.models.crf_training and the
-# predict and inspect commands to punct_restore.cli.train_crf_predict and punct_restore.cli.train_crf_inspect.
-__all__ = [
-    "CRFModel",
-    "FeatureConfig",
-    "ROOT",
-    "build_cli_parser",
-    "check_new_output_paths",
-    "cmd_inspect",
-    "cmd_predict",
-    "cmd_train",
-    "compute_code_fingerprint",
-    "get_fingerprinted_files",
-    "get_package_version",
-    "get_process_memory_stats",
-    "git_status_porcelain",
-    "load_and_filter_training_records",
-    "main",
-    "read_observations",
-    "recorded_command",
-    "require_scoring_mode",
-    "sha256_file",
-    "write_prediction_outputs",
-    "write_predictions_jsonl",
-]
+__all__ = ["main", "recorded_command"]
 
 
 def recorded_command(argv: Sequence[str]) -> list[str]:
@@ -264,10 +234,10 @@ def cmd_train(args: argparse.Namespace) -> int:
         return 1
     model, feature_config = configured
 
-    provenance = build_training_provenance(
-        dataset_release=args.dataset_release, policy_version=args.policy_version, run_id=args.run_id,
+    provenance = build_training_provenance(TrainingSource(
         input_path=input_path, ids_path=ids_path, num_sequences=len(records), num_tokens=total_tokens,
-    )
+        dataset_release=args.dataset_release, policy_version=args.policy_version, run_id=args.run_id,
+    ))
     duration = _fit_model(model, records, provenance)
     if duration is None:
         return 1
@@ -278,14 +248,60 @@ def cmd_train(args: argparse.Namespace) -> int:
         return 1
 
     # Generate comprehensive sidecar manifest
-    sidecar_manifest = build_sidecar_manifest(
+    sidecar_manifest = build_sidecar_manifest(TrainingRun(
         run_id=args.run_id or output_path.stem, mode=mode, model=model, preset=args.preset,
         feature_config=feature_config, hyperparameters=_hyperparameters(args),
         training_diagnostics=training_diagnostics, memory_diagnostics=mem_stats, provenance=provenance,
         training_command=recorded_command(sys.argv), duration=duration, output_path=output_path,
         artifact_hash=artifact_hash,
-    )
+    ))
     return 0 if _write_manifest(sidecar_manifest, manifest_path) else 1
+
+
+def cmd_predict(args: argparse.Namespace) -> int:
+    """Generate contract-compliant predictions from a saved CRF model artifact."""
+    model_path, input_path, output_path = Path(args.model), Path(args.input), Path(args.output)
+    manifest_path = Path(args.manifest_out) if args.manifest_out else None
+    ids_path = Path(args.ids) if args.ids else None
+    try:
+        check_predict_paths(model_path, input_path, output_path, manifest_path, ids_path, args.overwrite)
+        print(f"[RECAP CRF] Loading model from {model_path}...")
+        model = load_scoring_model(model_path)
+        records = read_input_records(input_path, ids_path)
+        if ids_path is not None:
+            print(f"[RECAP CRF] Restricting inference to {len(records):,} IDs from {ids_path.name}...")
+        print(f"[RECAP CRF] Running batch inference on {len(records):,} sequences...")
+        start_time = time.perf_counter()
+        predictions = predict_records(model, records)
+        print(f"[RECAP CRF] {inference_summary(predictions, time.perf_counter() - start_time)}")
+        write_model_predictions(model, predictions, input_path, output_path, manifest_path)
+    except PredictionFailed as e:
+        sys.stderr.write(f"{e}\n")
+        return 1
+    print(f"[RECAP CRF] Predictions exported to {output_path}")
+    if manifest_path is not None:
+        print(f"[RECAP CRF] Manifest written to {manifest_path}")
+    return 0
+
+
+def cmd_inspect(args: argparse.Namespace) -> int:
+    """Inspect and display metadata of a trained CRF model artifact."""
+    try:
+        report = inspect_artifact(Path(args.model))
+    except FileNotFoundError as e:
+        sys.stderr.write(f"Error: {e}\n")
+        return 1
+    except ValueError as e:
+        sys.stderr.write(f"{e}\n")
+        return 1
+    for line in report.summary:
+        print(line)
+    for note in report.notes:
+        sys.stderr.write(note + "\n")
+    for line in report.manifest:
+        print(line)
+    print(RULE)
+    return 0
 
 
 def _add_train_arguments(p_train: argparse.ArgumentParser) -> None:

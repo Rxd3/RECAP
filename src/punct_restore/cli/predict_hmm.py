@@ -6,7 +6,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from punct_restore.models.hmm_workflow import portable_path, predict_run
+from punct_restore.models.hmm_workflow import PredictionOptions, portable_path, predict_run
 from punct_restore.prediction_io import one_line_error
 
 
@@ -45,10 +45,12 @@ def main(argv: list[str] | None = None) -> int:
             args.model,
             args.input,
             args.output_dir,
-            ids_path=args.ids,
-            release_manifest=args.release_manifest,
-            selection_record=args.selection_record,
-            command=command,
+            PredictionOptions(
+                ids_path=args.ids,
+                release_manifest=args.release_manifest,
+                selection_record=args.selection_record,
+                command=command,
+            ),
         )
     except (OSError, ValueError) as exc:
         print(f"error: {one_line_error(exc)}", file=sys.stderr)

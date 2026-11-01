@@ -70,7 +70,7 @@ def _target_sequence(
 
 
 def _checked_training_record(rec: Any, where: str, seen_ids: set[str]) -> tuple[str, list[str]]:
-    """sample_id (recorded in ``seen_ids``) and tokens of one training record; leakage-safe split check."""
+    """sample_id and tokens of one training record (its ID must not be in ``seen_ids``); leakage-safe split check."""
     if not isinstance(rec, Mapping):
         raise TypeError(f"{where} must be a Mapping, got {type(rec).__name__}")
     sample_id = rec.get("sample_id")
@@ -78,7 +78,6 @@ def _checked_training_record(rec: Any, where: str, seen_ids: set[str]) -> tuple[
         raise ValueError(f"{where}: sample_id must be a non-empty string.")
     if sample_id in seen_ids:
         raise ValueError(f"{where}: duplicate sample_id {sample_id!r} detected.")
-    seen_ids.add(sample_id)
     split = rec.get("split")  # prevent training on non-train data (leakage prevention)
     if split is not None and split != "train":
         raise ValueError(
@@ -114,6 +113,7 @@ def validate_training_records(
     for idx, rec in enumerate(records):
         where = f"Record at index {idx}"
         sample_id, tokens = _checked_training_record(rec, where, seen_ids)
+        seen_ids.add(sample_id)
         seq_len = len(tokens)
         target_sequence = _target_sequence(rec, where, sample_id, seq_len, label_mode, vocabulary)
 

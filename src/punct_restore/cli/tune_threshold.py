@@ -99,22 +99,24 @@ def _tau_model_name(base_name: str, tau: float, gamma: float = 0.0) -> str:
     return f"{name}_gamma{gamma:g}" if gamma > 0 else name
 
 
-def _predictions(
-    base_name: str,
-    mode: str,
-    sample_ids: Sequence[str],
-    marginals: Sequence[Sequence[Mapping[str, float]]],
-    tau: float,
-    *,
-    gamma: float = 0.0,
-    priors: Mapping[str, float] | None = None,
-) -> list[dict[str, Any]]:
+@dataclass(frozen=True)
+class Marginals:
+    """A model's per-token marginals for some sequences, the name and mode of its predictions, the label priors."""
+
+    base_name: str
+    mode: str
+    sample_ids: Sequence[str]
+    marginals: Sequence[Sequence[Mapping[str, float]]]
+    priors: Mapping[str, float] | None = None
+
+
+def _predictions(source: Marginals, tau: float, *, gamma: float = 0.0) -> list[dict[str, Any]]:
     """Prediction records (model contract) for every sequence, decoded at ``tau`` and ``gamma``."""
-    name = _tau_model_name(base_name, tau, gamma)
+    name = _tau_model_name(source.base_name, tau, gamma)
     return [
-        {"sample_id": sample_id, "model_name": name, "label_mode": mode,
-         "predicted_labels": decode_with_threshold(sequence, tau, priors=priors, gamma=gamma)}
-        for sample_id, sequence in zip(sample_ids, marginals, strict=True)
+        {"sample_id": sample_id, "model_name": name, "label_mode": source.mode,
+         "predicted_labels": decode_with_threshold(sequence, tau, priors=source.priors, gamma=gamma)}
+        for sample_id, sequence in zip(source.sample_ids, source.marginals, strict=True)
     ]
 
 
@@ -125,16 +127,12 @@ def _refuse_existing(*paths: Path) -> None:
 
 
 def _score_grid(
-    base_name: str,
-    mode: str,
-    sample_ids: Sequence[str],
-    marginals: Sequence[Sequence[Mapping[str, float]]],
+    source: Marginals,
     grid: Sequence[float],
     score_file: Callable[[Path], float],
     work_dir: Path,
     *,
     gammas: Sequence[float] = (0.0,),
-    priors: Mapping[str, float] | None = None,
 ) -> list[tuple[float, float, float]]:
     """``(tau, gamma, primary macro F1)`` of the decoded predictions for every gamma and tau."""
     work_dir.mkdir(parents=True, exist_ok=True)
@@ -143,11 +141,7 @@ def _score_grid(
         predictions_path = Path(tmp) / "predictions.jsonl"
         for gamma in gammas:
             for tau in grid:
-                write_predictions_jsonl(
-                    _predictions(base_name, mode, sample_ids, marginals, tau,
-                                 gamma=gamma, priors=priors),
-                    predictions_path,
-                )
+                write_predictions_jsonl(_predictions(source, tau, gamma=gamma), predictions_path)
                 scores.append((tau, gamma, score_file(predictions_path)))
     return scores
 
@@ -239,8 +233,8 @@ def cmd_tune(args: argparse.Namespace) -> int:
         bundle = load_bundle(args.gold, args.ids, predictions_path, args.masks, vocab)
         return evaluate(bundle, vocab)["primary"]["value"]
 
-    scores = _score_grid(model.model_name, mode, sample_ids, marginals, args.grid, score_file,
-                         out.parent, gammas=GAMMAS if priors is not None else (0.0,), priors=priors)
+    scores = _score_grid(Marginals(model.model_name, mode, sample_ids, marginals, priors), args.grid, score_file,
+                         out.parent, gammas=GAMMAS if priors is not None else (0.0,))
     best = pick_tau_gamma(scores)
     result = _tau_result(best, scores, priors, sha256_file(args.model), _provenance(args))  # before out exists
     with open(out, "x", encoding="utf-8") as handle:
@@ -308,8 +302,8 @@ def cmd_predict(args: argparse.Namespace) -> int:
     observations = read_observations(input_path, ids_path)
     marginals = model.predict_marginals(observations)
     sample_ids = [observation["sample_id"] for observation in observations]
-    predictions = _predictions(model.model_name, model.label_mode, sample_ids, marginals,
-                               settings.tau, gamma=settings.gamma, priors=settings.priors)
+    predictions = _predictions(Marginals(model.model_name, model.label_mode, sample_ids, marginals, settings.priors),
+                               settings.tau, gamma=settings.gamma)
     write_prediction_outputs(
         predictions,
         out,

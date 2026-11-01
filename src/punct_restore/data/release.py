@@ -17,47 +17,35 @@ import hashlib
 import json
 import os
 from collections.abc import Callable
+from typing import NamedTuple
 
 from .. import prediction_io
-from ..hashing import sha256_file
 from ..paths import REPO_ROOT
 from . import labeling, preprocessing, splits, validation
-from .release_checks import verify_release
-from .release_constants import (
-    JSON,
-    REJECT,
-    RELEASE_FILES,
-    SOURCE_REFERENCE,
-    UNRESOLVED_CASE,
-    UNRESOLVED_COMMON,
-    UNRESOLVED_TOKEN,
-)
+from .release_checks import ReleaseReadback, verify_release
+from .release_constants import REJECT, UNRESOLVED_COMMON, UNRESOLVED_TOKEN
 from .release_manifest import (
+    ManifestInputs,
     build_manifest,
     build_provenance,
     copy_license,
-    describe_files,
     with_file_inventory,
-    write_checksums,
     write_manifest,
 )
-from .release_notes import release_notes_lines
 from .release_outputs import (
     write_audit,
+    write_checksums,
     write_id_lists,
     write_json_reports,
     write_leakage_controlled,
     write_masks,
+    write_release_notes,
     write_split_map,
     write_views,
 )
-from .release_stats import build_stats, label_distribution, length_stats, mode_labels, pairwise_overlap
+from .release_stats import StatsInputs, build_stats, pairwise_overlap
 
-__all__ = [
-    "JSON", "REJECT", "RELEASE_FILES", "SOURCE_REFERENCE", "UNRESOLVED_CASE", "UNRESOLVED_COMMON", "UNRESOLVED_TOKEN",
-    "build_release", "code_fingerprint", "describe_files", "label_distribution", "length_stats", "load_records",
-    "mode_labels", "process", "read_ids", "read_titles", "sha256_file", "write_lines", "write_release_notes",
-]
+__all__ = ["build_release", "code_fingerprint", "load_records", "read_ids"]
 
 
 def code_fingerprint():
@@ -150,12 +138,6 @@ def read_ids(path: str | os.PathLike[str]) -> list[str]:
     return prediction_io.read_ids(path, allow_empty=True)
 
 
-def write_lines(path, lines):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8", newline="\n") as f:
-        f.writelines(lines)
-
-
 def read_titles(path):
     """video ID -> title from the dated metadata snapshot (JSONL: video_id, status, title)."""
     titles = {}
@@ -167,9 +149,18 @@ def read_titles(path):
     return titles
 
 
+class Preflight(NamedTuple):
+    """What the build needs once its preflight checks passed: the TTS titles, label sets and the two output folders."""
+
+    titles: dict | None
+    label_sets: dict
+    out: str
+    split_out: str
+
+
 def _preflight(release_id: str, processed_dir: str, splits_dir: str, label_sets_path: str,
-               raw_manifest: str | None, titles_path: str | None) -> tuple:
-    """Checks before anything is read or written; returns (titles, label_sets, out, split_out, raw_bad_before)."""
+               raw_manifest: str | None, titles_path: str | None) -> Preflight:
+    """Checks before anything is read or written; raises if the build must not start."""
     titles = read_titles(titles_path) if titles_path else None
     label_sets = labeling.load_label_sets(label_sets_path)
     if not label_sets["projection"].get("approved"):
@@ -181,7 +172,7 @@ def _preflight(release_id: str, processed_dir: str, splits_dir: str, label_sets_
     raw_bad_before = preprocessing.verify_raw_manifest(raw_manifest) if raw_manifest else None
     if raw_bad_before:
         raise ValueError(f"raw manifest mismatch before build: {raw_bad_before[:5]}")
-    return titles, label_sets, out, split_out, raw_bad_before
+    return Preflight(titles, label_sets, out, split_out)
 
 
 def _load_sources(raw_dir: str, titles: dict | None, log: Callable) -> tuple[dict, dict]:
@@ -215,7 +206,7 @@ def _log_checks(checks: dict, log: Callable) -> None:
 def build_release(raw_dir, processed_dir, splits_dir, release_id, *, label_sets_path=labeling.LABEL_SETS_PATH,
                   raw_manifest=None, titles_path=None, log=print):
     """Build the release; returns the manifest dict. `titles_path` is the metadata snapshot used for TTS flags."""
-    titles, label_sets, out, split_out, raw_bad_before = _preflight(
+    titles, label_sets, out, split_out = _preflight(
         release_id, processed_dir, splits_dir, label_sets_path, raw_manifest, titles_path)
     utts, contexts = _load_sources(raw_dir, titles, log)
     results = [process(u, contexts[u.group_id], label_sets) for s in preprocessing.SOURCE_SPLITS for u in utts[s]]
@@ -223,32 +214,28 @@ def build_release(raw_dir, processed_dir, splits_dir, release_id, *, label_sets_
     kept = [r for r in results if r["status"] != "rejected"]
     by_file, by_source = _group_kept(kept)
 
-    files = write_views(out, by_file, write_lines)       # rejected records are never written to a view
-    write_masks(out, by_file, write_lines)
-    write_audit(out, results, kept, write_lines)
-    write_split_map(split_out, results, write_lines)
-    controlled, controlled_report = write_leakage_controlled(split_out, by_source, write_lines)
+    files = write_views(out, by_file)       # rejected records are never written to a view
+    write_masks(out, by_file)
+    write_audit(out, results, kept)
+    write_split_map(split_out, results)
+    controlled, controlled_report = write_leakage_controlled(split_out, by_source)
     default = {"train": by_file["train"], **controlled}
-    write_id_lists(split_out, default, write_lines)
+    write_id_lists(split_out, default)
     log("leakage-controlled subsets: " + json.dumps({k: v["kept"] for k, v in controlled_report.items()}))
 
     overlap = pairwise_overlap(by_file, controlled)
-    stats = build_stats(results, kept, by_file, default, controlled_report, overlap, label_sets)
-    stats["checks"] = verify_release(out, files, results, kept, label_sets, raw_manifest, raw_bad_before)
+    stats = build_stats(StatsInputs(results, kept, by_file, default, controlled_report, overlap, label_sets))
+    verified = verify_release(ReleaseReadback(out, files, results, kept, label_sets, raw_manifest))
+    stats["checks"] = verified.checks
     write_json_reports(out, split_out, stats, controlled_report, overlap)
 
     copy_license(raw_dir, out)
-    manifest = build_manifest(release_id, label_sets_path, raw_manifest, titles is not None, code_fingerprint,
-                              len(results), len(kept))
+    manifest = build_manifest(ManifestInputs(release_id, label_sets_path, raw_manifest, titles is not None,
+                                             code_fingerprint, len(results), len(kept)))
     manifest["provenance"] = build_provenance(manifest["raw_manifest_sha256"], titles_path, contexts, by_file)
     write_release_notes(out, release_id, stats, manifest)
-    manifest = with_file_inventory(manifest, files, out, split_out)
+    manifest = with_file_inventory(manifest, verified.files, out, split_out)
     write_manifest(out, manifest)
-    write_checksums((out, split_out), write_lines)
+    write_checksums((out, split_out))
     _log_checks(stats["checks"], log)
     return manifest
-
-
-def write_release_notes(out, release_id, stats, manifest):
-    """Short human-readable notes stored with the release (all numbers come from stats)."""
-    write_lines(os.path.join(out, "RELEASE_NOTES.md"), release_notes_lines(release_id, stats, manifest))

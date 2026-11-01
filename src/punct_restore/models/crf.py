@@ -27,9 +27,8 @@ from punct_restore.features.crf_features import (
     FeatureConfig,
     extract_sequence_features,
 )
-from punct_restore.models.crf_io import MODEL_SCHEMA_VERSION, read_bundle, restore_model, write_model
+from punct_restore.models.crf_io import read_bundle, restore_model, write_model
 from punct_restore.models.crf_modes import (
-    CASING_VOCABULARY,
     LABEL_MODES,
     SCORING_MODES,
     get_mode_vocabulary,
@@ -37,15 +36,7 @@ from punct_restore.models.crf_modes import (
 )
 from punct_restore.models.crf_records import prediction_features, validate_training_records
 
-__all__ = [
-    "CASING_VOCABULARY",
-    "CRFModel",
-    "LABEL_MODES",
-    "MODEL_SCHEMA_VERSION",
-    "SCORING_MODES",
-    "get_mode_vocabulary",
-    "require_scoring_mode",
-]
+__all__ = ["CRFModel", "SCORING_MODES", "get_mode_vocabulary", "require_scoring_mode"]
 
 
 class CRFModel:
@@ -110,6 +101,11 @@ class CRFModel:
     def is_fitted(self) -> bool:
         """Return True if model parameters have been estimated from training data."""
         return self._is_fitted
+
+    @property
+    def training_log(self) -> Any:
+        """The optimizer's log of the last fit (``iterations`` and ``lines``); None before a fit."""
+        return getattr(self._backend, "training_log_", None)
 
     @staticmethod
     def _validate_init_params(
@@ -371,3 +367,22 @@ class CRFModel:
             ValueError: If artifact schema, model family, or metadata is corrupted/incompatible.
         """
         return restore_model(cls, read_bundle(path))
+
+    @classmethod
+    def _from_bundle(cls, bundle: Mapping[str, Any]) -> CRFModel:
+        """A fitted model rebuilt from the bundle of a saved artifact (a bundle checked by ``read_bundle``)."""
+        hp = bundle.get("hyperparameters", {})
+        model = cls(
+            label_mode=bundle.get("label_mode"),
+            algorithm=hp.get("algorithm", "lbfgs"),
+            c1=hp.get("c1", 0.1),
+            c2=hp.get("c2", 0.1),
+            max_iterations=hp.get("max_iterations", 100),
+            all_possible_transitions=hp.get("all_possible_transitions", True),
+            feature_config=FeatureConfig.from_dict(bundle.get("feature_config", {})),
+            model_name=bundle.get("model_name"),
+        )
+        model._backend = bundle.get("backend_state")
+        model._is_fitted = True
+        model._training_metadata = bundle.get("training_metadata", {})
+        return model

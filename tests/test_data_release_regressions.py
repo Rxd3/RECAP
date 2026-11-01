@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from test_data_contract import FIXTURE, LS, build
 
-from punct_restore.data import labeling, release, splits, validation
+from punct_restore.data import labeling, release, release_outputs, splits, validation
 
 
 @pytest.mark.parametrize("boundary", ["...?", "?...", "...!", "! ...", ". . . ?", ",..."])
@@ -150,14 +150,14 @@ def test_joint_targets_do_not_silently_truncate():
 
 
 def test_truncated_view_cannot_publish_a_release(tmp_path, monkeypatch):
-    original_write = release.write_lines
+    original_write = release_outputs.write_lines
 
     def truncate_one_view(path, lines):
         if str(path).replace("\\", "/").endswith("mode_B/train.jsonl"):
             lines = list(lines)[:-1]
         original_write(path, lines)
 
-    monkeypatch.setattr(release, "write_lines", truncate_one_view)
+    monkeypatch.setattr(release_outputs, "write_lines", truncate_one_view)
     with pytest.raises(ValueError, match="release validation failed"):
         build(tmp_path, "truncated-view")
     assert not (tmp_path / "truncated-view/processed/fixture/release_manifest.json").exists()

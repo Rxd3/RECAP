@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import re
 from pathlib import Path
 
@@ -110,3 +111,40 @@ def test_the_scripts_import_pattern_catches_the_old_forms(line: str) -> None:
 @pytest.mark.parametrize("line", ["from punct_restore.cli import run_demo", "import scripts_helper", "SCRIPTS = ROOT"])
 def test_the_scripts_import_pattern_leaves_other_imports_alone(line: str) -> None:
     assert FROM_SCRIPTS.search(line) is None
+
+
+def _cli_imports(source: str) -> list[str]:
+    """Modules of `punct_restore.cli` that a cli module's source imports (absolute or relative), excluding itself."""
+    found = []
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            if node.level == 1 or module == "punct_restore.cli" or module.startswith("punct_restore.cli."):
+                names = [alias.name for alias in node.names] if node.level == 1 and not module else []
+                found += [module or "."] if not names else [f".{name}" for name in names]
+        elif isinstance(node, ast.Import):
+            found += [alias.name for alias in node.names if alias.name.startswith("punct_restore.cli")]
+    return found
+
+
+def test_no_cli_module_imports_another_cli_module() -> None:
+    """A command module depends on library packages only; the dispatcher imports commands by name at run time."""
+    cli = ROOT / "src" / "punct_restore" / "cli"
+    hits = [f"{_relative(path)}: {name}" for path in sorted(cli.glob("*.py")) if path.name != "__init__.py"
+            for name in _cli_imports(path.read_text(encoding="utf-8"))]
+    assert hits == []
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        ("from punct_restore.cli.run_hmm_experiments import frozen\n", ["punct_restore.cli.run_hmm_experiments"]),
+        ("from punct_restore.cli import train_crf\n", ["punct_restore.cli"]),
+        ("from . import train_crf_predict\n", [".train_crf_predict"]),
+        ("from .train_crf_inspect import cmd_inspect\n", ["train_crf_inspect"]),
+        ("import punct_restore.cli.train_hmm\n", ["punct_restore.cli.train_hmm"]),
+        ("from punct_restore.models.hmm import HMMModel\nfrom punct_restore.clinic import x\n", []),
+    ],
+)
+def test_the_cli_import_check_sees_every_import_form(source: str, expected: list[str]) -> None:
+    assert _cli_imports(source) == expected

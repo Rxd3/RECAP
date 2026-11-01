@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from test_train_crf_cli import create_synthetic_train_jsonl, write_id_file
+from crf_cli_fixtures import create_synthetic_train_jsonl, write_id_file
 
 import punct_restore.cli.train_crf as train_crf
 from punct_restore.models.crf import CRFModel

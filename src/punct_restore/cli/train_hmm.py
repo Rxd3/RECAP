@@ -13,11 +13,12 @@ from typing import Any, NamedTuple
 
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm import HMMModel
+from punct_restore.models.hmm_records import SelectedRecords
 from punct_restore.models.hmm_workflow import (
+    ReleaseInputs,
     code_identity,
     file_identity,
     portable_path,
-    selected_records,
     verify_training_release,
 )
 from punct_restore.paths import REPO_ROOT as ROOT
@@ -121,15 +122,17 @@ def _verify_release(args: argparse.Namespace) -> dict[str, Any] | None:
         )
     return verify_training_release(
         args.release_manifest,
-        train=args.train,
-        train_ids=args.train_ids,
-        split_manifest=args.split_manifest,
-        label_config=args.label_config,
-        mode=args.label_mode,
-        release_id=args.dataset_release_id,
-        policy_version=args.label_policy_version,
-        prediction=args.predict_input,
-        prediction_ids=args.predict_ids,
+        ReleaseInputs(
+            train=args.train,
+            train_ids=args.train_ids,
+            split_manifest=args.split_manifest,
+            label_config=args.label_config,
+            mode=args.label_mode,
+            release_id=args.dataset_release_id,
+            policy_version=args.label_policy_version,
+            prediction=args.predict_input,
+            prediction_ids=args.predict_ids,
+        ),
     )
 
 
@@ -238,20 +241,16 @@ def _fit_model(
         min_token_count=args.min_token_count,
     )
     start = perf_counter()
-    training_counts: dict[str, int] = {}
-    model.fit(
-        selected_records(
-            args.train,
-            train_ids,
-            training_mode=args.label_mode,
-            policy_version=release["policy_version"] if release else None,
-            source_revision=release["source"]["revision"] if release else None,
-            counts=training_counts,
-        ),
-        metadata=provenance,
+    training = SelectedRecords(
+        args.train,
+        train_ids,
+        training_mode=args.label_mode,
+        policy_version=release["policy_version"] if release else None,
+        source_revision=release["source"]["revision"] if release else None,
     )
+    model.fit(training, metadata=provenance)
     training_seconds = perf_counter() - start
-    return model, training_counts, training_seconds
+    return model, training.counts, training_seconds
 
 
 def _predict(
@@ -260,10 +259,10 @@ def _predict(
     """Predict the optional prediction input (no gold labels are read); None when there is none."""
     if args.predict_input is None:
         return None
-    counts: dict[str, int] = {}
     start = perf_counter()
-    records = model.predict(selected_records(args.predict_input, prediction_ids, counts=counts))
-    return _Prediction(records, counts, perf_counter() - start)
+    selection = SelectedRecords(args.predict_input, prediction_ids)
+    records = model.predict(selection)
+    return _Prediction(records, selection.counts, perf_counter() - start)
 
 
 def _verify_inputs_unchanged(args: argparse.Namespace, provenance: dict[str, Any]) -> None:

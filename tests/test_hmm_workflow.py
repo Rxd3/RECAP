@@ -10,11 +10,8 @@ from test_data_contract import build
 from test_hmm_cli import ROOT, SCRIPT, jsonl, setup_run
 
 from punct_restore.models.hmm import HMMModel
-from punct_restore.models.hmm_workflow import (
-    selected_records,
-    verify_training_release,
-    write_json,
-)
+from punct_restore.models.hmm_records import SelectedRecords
+from punct_restore.models.hmm_workflow import ReleaseInputs, verify_training_release, write_json
 from punct_restore.prediction_io import read_ids
 
 
@@ -88,7 +85,7 @@ def test_prediction_selection_preserves_input_order_and_strips_privileged_fields
         for sid in ["first", "skip", "last"]
     ]
     jsonl(source, records)
-    selected = list(selected_records(source, ("last", "first")))
+    selected = list(SelectedRecords(source, ("last", "first")))
     assert [r["sample_id"] for r in selected] == ["first", "last"]
     assert all(set(r) == {"schema_version", "sample_id", "tokens"} for r in selected)
     assert records[0]["metadata"]["original_text"] == "NEVER EXPOSE"
@@ -195,7 +192,7 @@ def test_release_identity_and_checksum_failures_stop_training(tmp_path, bad):
         opts["label_config"] = tmp_path / "unmatched.yaml"
         opts["label_config"].write_text("not-the-release-config")
     with pytest.raises(ValueError):
-        verify_training_release(processed / "release_manifest.json", **opts)
+        verify_training_release(processed / "release_manifest.json", ReleaseInputs(**opts))
 
 
 def test_old_cli_without_training_selection_fails_instead_of_training_everything(tmp_path):

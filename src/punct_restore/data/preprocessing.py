@@ -176,14 +176,11 @@ def build_speaker_inventory(texts, min_recur=SPEAKER_MIN_RECUR):
     return {"labels": keep(labels), "timecode_names": keep(tc_names), "glued_ok": keep(labels + caps + glued)}
 
 
-def _flag_source_artifacts(text: str, flags: set[str]) -> None:
-    """Add the flags for asterisk text, folded inverted marks and a letter replaced by '?' (text is kept)."""
-    if ASTERISK_TEXT.search(text):
-        flags.add("asterisk_text")
-    if INVERTED_FOLD.search(text):
-        flags.add("inverted_mark_folded")
-    if QUESTION_IN_WORD.search(text):
-        flags.add("question_inside_word")
+def _flag_source_artifacts(text: str, flags: set[str]) -> set[str]:
+    """`flags` plus those for asterisk text, folded inverted marks and a letter replaced by '?' (text is kept)."""
+    found = {name for name, pattern in (("asterisk_text", ASTERISK_TEXT), ("inverted_mark_folded", INVERTED_FOLD),
+                                        ("question_inside_word", QUESTION_IN_WORD)) if pattern.search(text)}
+    return flags | found
 
 
 def normalize(text, speakers=None):
@@ -233,8 +230,7 @@ def normalize(text, speakers=None):
     t = remove(TURN_DASH_START, "turn_dash_start", t)
     if tc_name and tc_name.group(1) in speakers["timecode_names"] and t.startswith(tc_name.group(1) + " "):
         flags.add("possible_speaker_label")            # 'Dr. Kalu [00:20:58] ...': flagged, never removed
-    _flag_source_artifacts(t, flags)
-    return t, ops, flags
+    return t, ops, _flag_source_artifacts(t, flags)
 
 
 # --- Tokenization ------------------------------------------------------------------------------------------------

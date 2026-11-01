@@ -1,6 +1,7 @@
 """Text of the human-readable RELEASE_NOTES.md stored with a release (owned by Member 1).
 
-release.write_release_notes() writes these lines, so the file goes through release.write_lines like every other output.
+release_outputs.write_release_notes() writes these lines, so the file goes through release_outputs.write_lines like
+every other output.
 """
 from .release_constants import RELEASE_FILES
 

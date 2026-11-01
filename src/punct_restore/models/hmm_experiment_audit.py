@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import math
 from collections import Counter
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from punct_restore.data.labeling import load_label_sets
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm_experiment_protocol import read_json
-from punct_restore.models.hmm_workflow import read_jsonl
+from punct_restore.models.hmm_records import read_jsonl
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import read_ids
 
@@ -170,18 +171,23 @@ def _error_sample(sid: str, row: dict[str, Any], i: int, g: str, p: str) -> dict
     }
 
 
+@dataclass(frozen=True)
+class _PairSpec:
+    """What to collect from a scored split: the mode, the metric blocks, the primary block and the exclusions."""
+
+    mode: str
+    block_names: list[str]
+    primary: str
+    masks: dict[str, set[int]]
+    examples: bool
+
+
 def _collect_pairs(
-    gold: list[dict[str, Any]],
-    wanted: set[str],
-    lookup: dict[str, dict[str, Any]],
-    mode: str,
-    block_names: list[str],
-    primary: str,
-    masks: dict[str, set[int]],
-    examples: bool,
+    gold: list[dict[str, Any]], wanted: set[str], lookup: dict[str, dict[str, Any]], spec: _PairSpec
 ) -> tuple[dict[str, list], int, list[dict[str, Any]]]:
     """Per-block (gold, predicted) pairs over the scored IDs, with the token count and error samples."""
-    pairs = {name: [] for name in block_names}
+    mode, masks = spec.mode, spec.masks
+    pairs = {name: [] for name in spec.block_names}
     selected_tokens, samples, sample_counts = 0, [], Counter()
     for row in gold:
         sid = row["sample_id"]
@@ -193,7 +199,7 @@ def _collect_pairs(
             raise ValueError("prediction/gold token alignment violation")
         selected_tokens += len(targets)
         for i, (g, p) in enumerate(zip(targets, labels, strict=True)):
-            for name in block_names:
+            for name in spec.block_names:
                 if name.startswith(("joint/", "casing/unmasked")) and i in masks.get(sid, set()):
                     continue
                 if name.endswith("non_final") and i == len(targets) - 1:
@@ -206,7 +212,7 @@ def _collect_pairs(
                 elif mode == "C" and name.startswith("casing/"):
                     pair = (g.split("|")[1], p.split("|")[1])
                 pairs[name].append(pair)
-                if examples and name == primary and g != p and sample_counts[g, p] < 2:
+                if spec.examples and name == spec.primary and g != p and sample_counts[g, p] < 2:
                     samples.append(_error_sample(sid, row, i, g, p))
                     sample_counts[g, p] += 1
     return pairs, selected_tokens, samples
@@ -231,31 +237,36 @@ def _check_counts_and_blocks(
         assert_block(block, independent_scores(values, block["labels"], block["macro_over"]))
 
 
+@dataclass(frozen=True)
+class ReportOptions:
+    """How much of a scored report to recount: only its primary block, as a baseline, with error examples."""
+
+    primary_only: bool = False
+    baseline: bool = False
+    examples: bool = False
+
+
 def check_report(
-    config,
-    mode,
-    split,
-    predictions,
-    report_path,
-    *,
-    primary_only=False,
-    baseline=False,
-    examples=False,
-):
+    config: dict[str, Any],
+    mode: str,
+    split: str,
+    predictions: Path,
+    report_path: Path,
+    options: ReportOptions,
+) -> dict[str, Any]:
     """Recount a shared scorer report from the raw gold and prediction files."""
     label_sets = load_label_sets(ROOT / config["label_config"])
     ids_path, gold_path, mask_path = _report_paths(config, mode, split)
-    wanted, gold, pred, pred_ids = _read_gold_and_predictions(ids_path, gold_path, predictions, baseline)
+    wanted, gold, pred, pred_ids = _read_gold_and_predictions(ids_path, gold_path, predictions, options.baseline)
     lookup = {row["sample_id"]: row for row in pred}
     _check_label_vocabulary(pred, label_sets, mode)
     masks = _read_masks(mode, mask_path, gold)
     report = read_json(report_path)
     _check_input_hashes(report, mode, predictions, (ids_path, gold_path, mask_path))
     primary = config["search"]["selection_blocks"][mode]
-    block_names = [primary] if primary_only else list(report["blocks"])
-    pairs, selected_tokens, samples = _collect_pairs(
-        gold, wanted, lookup, mode, block_names, primary, masks, examples
-    )
+    block_names = [primary] if options.primary_only else list(report["blocks"])
+    spec = _PairSpec(mode, block_names, primary, masks, options.examples)
+    pairs, selected_tokens, samples = _collect_pairs(gold, wanted, lookup, spec)
     _check_counts_and_blocks(report, pairs, wanted, selected_tokens, pred_ids)
     assert_close(report["primary"]["value"], report["blocks"][primary]["macro_f1"])
     return {

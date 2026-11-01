@@ -6,18 +6,20 @@ import copy
 import platform
 import sys
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import joblib
 import sklearn_crfsuite
 
-from punct_restore.features.crf_features import FeatureConfig
 from punct_restore.models.crf_modes import LABEL_MODES
+
+if TYPE_CHECKING:  # crf.py imports this module at run time
+    from punct_restore.models.crf import CRFModel
 
 MODEL_SCHEMA_VERSION = 1
 
 
-def _build_bundle(model: Any) -> dict[str, Any]:
+def _build_bundle(model: CRFModel) -> dict[str, Any]:
     """The artifact dict of a fitted CRFModel: metadata, hyperparameters, features and the backend."""
     return {
         "schema_version": MODEL_SCHEMA_VERSION,
@@ -44,9 +46,9 @@ def _build_bundle(model: Any) -> dict[str, Any]:
     }
 
 
-def write_model(model: Any, path: str | Path) -> None:
+def write_model(model: CRFModel, path: str | Path) -> None:
     """Save a fitted CRFModel and its complete compatibility metadata to ``path``; RuntimeError if unfitted."""
-    if not model._is_fitted or model._backend is None:
+    if not model.is_fitted or model._backend is None:
         raise RuntimeError("Cannot save an unfitted CRFModel.")
 
     save_path = Path(path)
@@ -94,29 +96,9 @@ def read_bundle(path: str | Path) -> dict[str, Any]:
     return bundle
 
 
-def restore_model(cls: Any, bundle: dict[str, Any]) -> Any:
+def restore_model(cls: type[CRFModel], bundle: dict[str, Any]) -> CRFModel:
     """Rebuild a fitted ``cls`` (CRFModel) from a bundle checked by ``read_bundle``; verify its vocabulary."""
-    label_mode = bundle.get("label_mode")
-    hp = bundle.get("hyperparameters", {})
-    feat_dict = bundle.get("feature_config", {})
-    backend_state = bundle.get("backend_state")
-
-    # Reconstruct model instance
-    feature_config = FeatureConfig.from_dict(feat_dict)
-    model = cls(
-        label_mode=label_mode,
-        algorithm=hp.get("algorithm", "lbfgs"),
-        c1=hp.get("c1", 0.1),
-        c2=hp.get("c2", 0.1),
-        max_iterations=hp.get("max_iterations", 100),
-        all_possible_transitions=hp.get("all_possible_transitions", True),
-        feature_config=feature_config,
-        model_name=bundle.get("model_name"),
-    )
-
-    model._backend = backend_state
-    model._is_fitted = True
-    model._training_metadata = bundle.get("training_metadata", {})
+    model = cls._from_bundle(bundle)
 
     # Verify restored vocabulary
     restored_vocab = bundle.get("vocabulary")

@@ -1,7 +1,4 @@
-"""Constants shared by the release modules (owned by Member 1): file names, status sets, JSON style, source citation.
-
-release.py re-exports every name below, so `release.RELEASE_FILES` and friends keep working.
-"""
+"""Constants shared by the release modules (owned by Member 1): file names, status sets, JSON style, source citation."""
 
 RELEASE_FILES = ("train", "validation", "test", "test_amb")
 REJECT = {"no_tokens", "validation_error", "inverted_mark_folded", "question_inside_word"}

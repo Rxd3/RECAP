@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import math
 from collections import Counter
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -37,6 +37,7 @@ def _json_metadata(value: Mapping[str, Any] | None) -> dict[str, Any]:
 
 
 def _observation(record: Any, seen_ids: set[str]) -> tuple[str, list[str]]:
+    """Validate the observable fields of one record; seen_ids is only read, the caller remembers the ID."""
     if not isinstance(record, Mapping):
         raise ValueError("each record must be a mapping")
     if type(record.get("schema_version")) is not int or record["schema_version"] != 1:
@@ -46,12 +47,10 @@ def _observation(record: Any, seen_ids: set[str]) -> tuple[str, list[str]]:
         raise ValueError("sample_id must be a nonempty string")
     if sample_id in seen_ids:
         raise ValueError(f"duplicate sample_id: {sample_id}")
-    tokens = _tokens(record.get("tokens"))
-    seen_ids.add(sample_id)
-    return sample_id, tokens
+    return sample_id, _tokens(record.get("tokens"))
 
 
-@dataclass
+@dataclass(frozen=True)
 class _Counts:
     start: list[int]
     transition: list[list[int]]
@@ -63,57 +62,37 @@ class _Counts:
     num_sequences: int
 
 
-def _empty_counts(k: int) -> _Counts:
-    """Return zeroed counts for k states."""
+def _count_sequences(
+    sequences: Iterable[tuple[list[str], list[int]]], k: int, min_token_count: int
+) -> _Counts:
+    """Count k-state (tokens, states) sequences; words seen fewer than min_token_count times fold into unknown."""
+    start, end, state = [0] * k, [0] * k, [0] * k
+    transition = [[0] * k for _ in range(k)]
+    raw_emissions: list[Counter[str]] = [Counter() for _ in range(k)]
+    word_frequency: Counter[str] = Counter()
+    num_sequences = 0
+    for tokens, states in sequences:
+        start[states[0]] += 1
+        end[states[-1]] += 1
+        for position, (word, current) in enumerate(zip(tokens, states, strict=True)):
+            state[current] += 1
+            raw_emissions[current][word] += 1
+            word_frequency[word] += 1
+            if position:
+                transition[states[position - 1]][current] += 1
+        num_sequences += 1
+    vocabulary = sorted(word for word, frequency in word_frequency.items() if frequency >= min_token_count)
+    kept = set(vocabulary)
     return _Counts(
-        start=[0] * k,
-        transition=[[0] * k for _ in range(k)],
-        end=[0] * k,
-        state=[0] * k,
-        emissions=[{} for _ in range(k)],
-        unknown=[0] * k,
-        vocabulary=[],
-        num_sequences=0,
+        start=start,
+        transition=transition,
+        end=end,
+        state=state,
+        emissions=[{word: n for word, n in emissions.items() if word in kept} for emissions in raw_emissions],
+        unknown=[sum(n for word, n in emissions.items() if word not in kept) for emissions in raw_emissions],
+        vocabulary=vocabulary,
+        num_sequences=num_sequences,
     )
-
-
-def _count_sequence(
-    counts: _Counts,
-    raw_emissions: list[Counter[str]],
-    word_frequency: Counter[str],
-    tokens: list[str],
-    states: list[int],
-) -> None:
-    """Add one validated sequence to the running counts, in place."""
-    counts.start[states[0]] += 1
-    counts.end[states[-1]] += 1
-    for position, (word, state) in enumerate(zip(tokens, states, strict=True)):
-        counts.state[state] += 1
-        raw_emissions[state][word] += 1
-        word_frequency[word] += 1
-        if position:
-            counts.transition[states[position - 1]][state] += 1
-    counts.num_sequences += 1
-
-
-def _retain_vocabulary(
-    counts: _Counts,
-    raw_emissions: list[Counter[str]],
-    word_frequency: Counter[str],
-    min_token_count: int,
-) -> None:
-    """Keep words seen at least min_token_count times; fold the rest into unknown."""
-    counts.vocabulary = sorted(
-        word for word, frequency in word_frequency.items() if frequency >= min_token_count
-    )
-    vocabulary = set(counts.vocabulary)
-    for state, emissions in enumerate(raw_emissions):
-        counts.emissions[state] = {
-            word: count for word, count in emissions.items() if word in vocabulary
-        }
-        counts.unknown[state] = sum(
-            count for word, count in emissions.items() if word not in vocabulary
-        )
 
 
 class HMMModel:
@@ -194,20 +173,23 @@ class HMMModel:
     ) -> HMMModel:
         """Fit annotated train records; a failed refit preserves old state."""
         provenance = _json_metadata(metadata)
-        k = len(self.labels)
-        counts = _empty_counts(k)
-        word_frequency: Counter[str] = Counter()
-        raw_emissions: list[Counter[str]] = [Counter() for _ in range(k)]
+        counts = _count_sequences(
+            self._train_sequences(training_records), len(self.labels), self._min_token_count
+        )
+        if not counts.num_sequences:
+            raise ValueError("training_records must contain at least one nonempty train sequence")
+        self._install(counts, provenance)
+        return self
+
+    def _train_sequences(
+        self, training_records: Iterable[Mapping[str, Any]]
+    ) -> Iterator[tuple[list[str], list[int]]]:
+        """Validate the train records one by one, in order, and yield each one's tokens and state indices."""
         seen_ids: set[str] = set()
         for record in training_records:
             sample_id, tokens = _observation(record, seen_ids)
-            states = self._record_states(record, sample_id, tokens)
-            _count_sequence(counts, raw_emissions, word_frequency, tokens, states)
-        if not counts.num_sequences:
-            raise ValueError("training_records must contain at least one nonempty train sequence")
-        _retain_vocabulary(counts, raw_emissions, word_frequency, self._min_token_count)
-        self._install(counts, provenance)
-        return self
+            seen_ids.add(sample_id)
+            yield tokens, self._record_states(record, sample_id, tokens)
 
     def _record_states(self, record: Mapping[str, Any], sample_id: str, tokens: list[str]) -> list[int]:
         """Validate one train record and return its state indices."""
@@ -342,6 +324,7 @@ class HMMModel:
         predictions, seen_ids = [], set()
         for record in records:
             sample_id, tokens = _observation(record, seen_ids)
+            seen_ids.add(sample_id)
             predictions.append(
                 {
                     "sample_id": sample_id,

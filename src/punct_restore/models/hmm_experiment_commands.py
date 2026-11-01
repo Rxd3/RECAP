@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
 from typing import Any
@@ -12,6 +13,23 @@ from typing import Any
 from punct_restore.models.hmm_experiment_protocol import now, read_json
 from punct_restore.models.hmm_workflow import portable_path
 from punct_restore.paths import REPO_ROOT as ROOT
+
+
+class HmmCommandFailed(RuntimeError):
+    """A command of the experiment exited with an error; its output is in the log file the message names."""
+
+    def __init__(self, log: Path) -> None:
+        super().__init__(f"command failed; see {log.name}")
+        self.log = log
+
+
+@dataclass(frozen=True)
+class Study:
+    """The three things every step of one experiment needs: its config, the pinned evaluator and its run folder."""
+
+    config: dict[str, Any]
+    evaluator: Path
+    run: Path
 
 
 def execute(args: list[Any], run: Path, log: Path) -> dict[str, Any]:
@@ -38,23 +56,16 @@ def execute(args: list[Any], run: Path, log: Path) -> dict[str, Any]:
     with (run / "commands.jsonl").open("a", encoding="utf-8", newline="\n") as handle:
         handle.write(json.dumps(record) + "\n")
     if result.returncode:
-        raise RuntimeError(f"command failed; see {portable_path(log)}: {result.stderr[-1000:]}")
+        raise HmmCommandFailed(log)
     return record
 
 
-def score(
-    evaluator: Path,
-    config: dict[str, Any],
-    mode: str,
-    split: str,
-    predictions: Path,
-    out: Path,
-    run: Path,
-) -> dict[str, Any]:
+def score(study: Study, mode: str, split: str, predictions: Path, out: Path) -> dict[str, Any]:
     """Score predictions with the pinned shared evaluator and check the primary block."""
+    config = study.config
     args = [
         sys.executable,
-        portable_path(evaluator / "scripts/evaluate_models.py"),
+        portable_path(study.evaluator / "scripts/evaluate_models.py"),
         "score",
         "--gold",
         f"{config['processed_dir']}/mode_{mode}/{split}.jsonl",
@@ -67,7 +78,7 @@ def score(
     ]
     if mode == "C":
         args += ["--masks", f"{config['processed_dir']}/masks/case_joint/{split}.jsonl"]
-    execute(args, run, out.with_suffix(".log"))
+    execute(args, study.run, out.with_suffix(".log"))
     report = read_json(out)
     if report["primary"]["block"] != config["search"]["selection_blocks"][mode]:
         raise ValueError("shared scorer returned an unexpected primary block")

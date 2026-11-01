@@ -14,12 +14,9 @@ from typing import Any
 import joblib
 import pytest
 
-from punct_restore.features.crf_features import (
-    UNKNOWN_CLUSTER_LABEL,
-    FeatureConfig,
-    _cluster_label,
-    extract_sequence_features,
-)
+from punct_restore.features.crf_cues import _cluster_label
+from punct_restore.features.crf_features import FeatureConfig, extract_sequence_features
+from punct_restore.features.crf_lexicons import UNKNOWN_CLUSTER_LABEL
 from punct_restore.models.crf import CRFModel
 
 CLUSTERS = {"did": 5, "you": 12, "see": 0, "it": 12, "hello": 3, "everyone": 7}

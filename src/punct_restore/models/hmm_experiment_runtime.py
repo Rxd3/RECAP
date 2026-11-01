@@ -13,11 +13,8 @@ from time import perf_counter
 from typing import Any
 
 from punct_restore.models.hmm import HMMModel
-from punct_restore.models.hmm_workflow import (
-    file_identity,
-    selected_records,
-    write_json,
-)
+from punct_restore.models.hmm_records import SelectedRecords
+from punct_restore.models.hmm_workflow import file_identity, write_json
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import read_ids
 
@@ -60,12 +57,12 @@ def _comparison_observations(
 ) -> list[dict[str, Any]]:
     """The comparison records, verified identical across every label mode."""
     observations = list(
-        selected_records(ROOT / config["processed_dir"] / "mode_A/validation.jsonl", ids)
+        SelectedRecords(ROOT / config["processed_dir"] / "mode_A/validation.jsonl", ids)
     )
     # Verify the exact same observable workload exists in all modes.
     for mode in config["modes"]:
         other = list(
-            selected_records(ROOT / config["processed_dir"] / f"mode_{mode}/validation.jsonl", ids)
+            SelectedRecords(ROOT / config["processed_dir"] / f"mode_{mode}/validation.jsonl", ids)
         )
         if other != observations:
             raise ValueError("runtime comparison tokens differ across label modes")

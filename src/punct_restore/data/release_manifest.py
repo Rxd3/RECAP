@@ -1,13 +1,10 @@
-"""Manifest, provenance and checksums of a data release (owned by Member 1).
-
-release.py re-exports `sha256_file` (from hashing.py) and `describe_files`. Writers take the line-writing function as a
-parameter so that release.write_lines stays the single place every release file goes through.
-"""
+"""Manifest and provenance of a data release (owned by Member 1): what the release is and where its data came from."""
 import json
 import os
 import platform
 import shutil
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 from ..hashing import sha256_file
@@ -37,21 +34,33 @@ def copy_license(raw_dir: str, out: str) -> None:
         shutil.copyfile(license_src, os.path.join(out, "SPONSPEECH_LICENSE_AND_ATTRIBUTION.txt"))
 
 
-def build_manifest(release_id: str, label_sets_path: str, raw_manifest: str | None, titles_used: bool,
-                   code_sha256: Callable[[], str], source_count: int, released_count: int) -> dict:
-    """The release manifest without `provenance` and the file inventories; `code_sha256` is called in place."""
-    return {"release_id": release_id, "status": "final candidate: policies D1-D6 approved by the team lead",
+@dataclass(frozen=True)
+class ManifestInputs:
+    """What the release manifest records about one build; `code_sha256` is called when the manifest is built."""
+
+    release_id: str
+    label_sets_path: str
+    raw_manifest: str | None
+    titles_used: bool
+    code_sha256: Callable[[], str]
+    source_count: int
+    released_count: int
+
+
+def build_manifest(inputs: ManifestInputs) -> dict:
+    """The release manifest without `provenance` and the file inventories."""
+    return {"release_id": inputs.release_id, "status": "final candidate: policies D1-D6 approved by the team lead",
             "schema_version": validation.SCHEMA_VERSION, "policy_version": preprocessing.POLICY_VERSION,
             "source": {"id": preprocessing.SOURCE_ID, "revision": preprocessing.SOURCE_REVISION,
                        "license": "CC BY-NC 4.0", "reference": SOURCE_REFERENCE, "decision": "D1 approved"},
             "annotation_views": {"canonical": "mode_A, mode_B, mode_C (D3, D5 approved projection)",
                                  "native": "benchmark_native/mode_A (SponSpeech four-class view, comparison only)"},
-            "split_mapping": splits.SPLIT_OF, "label_sets_sha256": sha256_file(label_sets_path),
-            "code_sha256": code_sha256(), "python": platform.python_version(),
-            "raw_manifest_sha256": sha256_file(raw_manifest) if raw_manifest else None,
-            "titles_used_for_tts_check": titles_used,
-            "records": {"source": source_count, "released_per_view": released_count,
-                        "rejected": source_count - released_count},
+            "split_mapping": splits.SPLIT_OF, "label_sets_sha256": sha256_file(inputs.label_sets_path),
+            "code_sha256": inputs.code_sha256(), "python": platform.python_version(),
+            "raw_manifest_sha256": sha256_file(inputs.raw_manifest) if inputs.raw_manifest else None,
+            "titles_used_for_tts_check": inputs.titles_used,
+            "records": {"source": inputs.source_count, "released_per_view": inputs.released_count,
+                        "rejected": inputs.source_count - inputs.released_count},
             "manifest_revision": 2}
 
 
@@ -85,12 +94,3 @@ def write_manifest(out: str, manifest: dict) -> None:
     """release_manifest.json (LF line endings, sorted keys)."""
     with open(os.path.join(out, "release_manifest.json"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(manifest, f, indent=1, sort_keys=True)
-
-
-def write_checksums(folders: tuple[str, ...], write: Callable) -> None:
-    """SHA256SUMS in every folder, listing every other file below it."""
-    for folder in folders:
-        paths = sorted(Path(d, x).relative_to(folder).as_posix()
-                       for d, _, fs in os.walk(folder) for x in fs if x != "SHA256SUMS")
-        write(os.path.join(folder, "SHA256SUMS"),
-              (f"{sha256_file(os.path.join(folder, p))}  {p}\n" for p in paths))

@@ -1,9 +1,7 @@
-"""Statistics of a data release (owned by Member 1): label and length distributions, overlap checks, stats.json content.
-
-release.py re-exports `label_distribution`, `length_stats` and `mode_labels`.
-"""
+"""Statistics of a data release (owned by Member 1): label and length distributions, overlaps, stats.json content."""
 import collections
 import statistics
+from dataclasses import dataclass
 
 from . import labeling, splits
 from .release_constants import RELEASE_FILES
@@ -114,11 +112,24 @@ def _final_token_stats(by_file: dict) -> dict:
             for n in RELEASE_FILES}
 
 
-def build_stats(results: list, kept: list, by_file: dict, default: dict, controlled_report: dict,
-                overlap: dict, label_sets: dict) -> dict:
+@dataclass(frozen=True)
+class StatsInputs:
+    """The processed records of one release build and what was derived from them."""
+
+    results: list
+    kept: list
+    by_file: dict
+    default: dict
+    controlled_report: dict
+    overlap: dict
+    label_sets: dict
+
+
+def build_stats(inputs: StatsInputs) -> dict:
     """The stats.json content (without `checks`), computed from the processed records."""
-    stats = {**_overview_stats(results, kept, by_file),
-             "leakage_controlled": controlled_report, "overlap": overlap,
+    by_file, default, label_sets = inputs.by_file, inputs.default, inputs.label_sets
+    stats = {**_overview_stats(inputs.results, inputs.kept, by_file),
+             "leakage_controlled": inputs.controlled_report, "overlap": inputs.overlap,
              "subset_sizes": _subset_sizes(default),
              "labels": {}, "labels_default_and_primary": {}, "canonical_vs_native": {}, "case_masks": {},
              "case_categories": {n: dict(collections.Counter(c for r in by_file[n] for c in r["case_cats"]))

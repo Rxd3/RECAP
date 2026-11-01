@@ -19,7 +19,7 @@ import argparse
 import contextlib
 import os
 import sys
-from collections.abc import Iterator
+from collections.abc import Container, Iterator
 from pathlib import Path
 from typing import Any
 
@@ -71,18 +71,19 @@ def _slim(record: dict[str, Any], mode: str) -> dict[str, Any]:
     return {field: _interned(record.get(field)) for field in fields}
 
 
-def _keep_line(line: str, where: str, wanted: set[str], kept: dict[str, dict[str, Any]], mode: str) -> None:
+def _keep_line(line: str, where: str, wanted: set[str], kept: Container[str], mode: str) -> dict[str, Any] | None:
+    """The slim record of a listed training line, or None for an unlisted one; ``kept`` holds the IDs taken so far."""
     record = parse_sample_record(line, where)
     sample_id = record["sample_id"]
     if sample_id not in wanted:
-        return
+        return None
     if sample_id in kept:
         raise ValueError(f"{where}: duplicate sample_id {sample_id!r}")
     if record.get("split") != "train":
         raise ValueError(f"{where}: {sample_id!r} has split {record.get('split')!r}; only train records can be used")
     if record.get("label_mode") != mode:
         raise ValueError(f"{where}: {sample_id!r} has label_mode {record.get('label_mode')!r}, expected {mode!r}")
-    kept[sample_id] = _slim(record, mode)
+    return _slim(record, mode)
 
 
 def read_training_records(input_path: Path, ids_path: Path, mode: str) -> list[dict[str, Any]]:
@@ -95,8 +96,11 @@ def read_training_records(input_path: Path, ids_path: Path, mode: str) -> list[d
     kept: dict[str, dict[str, Any]] = {}
     with _utf8_file(input_path), open(input_path, encoding="utf-8") as handle:
         for number, line in enumerate(handle, 1):
-            if line.strip():
-                _keep_line(line, f"{input_path.name} line {number}", wanted, kept, mode)
+            if not line.strip():
+                continue
+            record = _keep_line(line, f"{input_path.name} line {number}", wanted, kept, mode)
+            if record is not None:
+                kept[record["sample_id"]] = record
     missing = [sample_id for sample_id in ids if sample_id not in kept]
     if missing:
         raise ValueError(f"{len(missing)} listed ID(s) are missing from {input_path.name}, first {missing[0]!r}")

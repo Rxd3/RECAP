@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from punct_restore.models.hmm import HMMModel
+from punct_restore.models.hmm import HMMModel, _observation
 
 ROOT = Path(__file__).resolve().parents[1]
 LABEL_CONFIG = yaml.safe_load((ROOT / "configs/label_sets.yaml").read_text(encoding="utf-8"))
@@ -236,6 +236,14 @@ def test_malformed_training_is_rejected(updates):
     sample.update(updates)
     with pytest.raises(ValueError):
         HMMModel(label_mode="A", labels=labels()).fit([sample])
+
+
+def test_the_observation_check_returns_id_and_tokens_and_leaves_the_seen_set_alone():
+    seen = {"earlier"}
+    assert _observation(record("later", ["a", "b"], ["O", "PERIOD"]), seen) == ("later", ["a", "b"])
+    assert seen == {"earlier"}
+    with pytest.raises(ValueError, match="duplicate sample_id: earlier"):
+        _observation(record("earlier", ["a"], ["O"]), seen)
 
 
 def test_empty_and_duplicate_records_are_rejected(fitted, training):

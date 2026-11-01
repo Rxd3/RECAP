@@ -5,31 +5,17 @@ from __future__ import annotations
 import json
 import platform
 import subprocess
-from collections.abc import Iterator
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
 from typing import Any
 
-from punct_restore.data.labeling import load_label_sets
-from punct_restore.data.validation import check_model_input, validate_record
 from punct_restore.hashing import sha256_file
+from punct_restore.models.hmm import HMMModel
+from punct_restore.models.hmm_records import SelectedRecords
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import read_ids, write_new_file
-
-
-def read_jsonl(path: Path) -> Iterator[dict[str, Any]]:
-    with path.open(encoding="utf-8") as handle:
-        for number, line in enumerate(handle, 1):
-            if not line.strip():
-                raise ValueError(f"{path.name}:{number}: blank JSONL record")
-            try:
-                record = json.loads(line)
-            except (ValueError, UnicodeError) as exc:
-                raise ValueError(f"{path.name}:{number}: invalid JSON: {exc}") from exc
-            if not isinstance(record, dict):
-                raise ValueError(f"{path.name}:{number}: record must be a JSON object")
-            yield record
 
 
 def portable_path(path: Path) -> str:
@@ -53,99 +39,6 @@ def code_identity(root: Path = ROOT) -> dict[str, Any]:
         return {"commit": git("rev-parse", "HEAD"), "dirty": bool(git("status", "--porcelain"))}
     except (OSError, subprocess.CalledProcessError):
         return {"commit": None, "dirty": None}
-
-
-def _check_record_basics(record: dict[str, Any], path: Path, seen: set[str]) -> tuple[str, list[Any]]:
-    """Validate schema_version, sample_id and tokens; remember the sample_id."""
-    sid, tokens = record.get("sample_id"), record.get("tokens")
-    if type(record.get("schema_version")) is not int or record["schema_version"] != 1:
-        raise ValueError(f"{path.name}: unsupported schema_version")
-    if not isinstance(sid, str) or not sid.strip() or sid in seen:
-        raise ValueError(f"{path.name}: invalid or duplicate sample_id {sid!r}")
-    seen.add(sid)
-    if (
-        not isinstance(tokens, list)
-        or not tokens
-        or any(not isinstance(word, str) or not word.strip() for word in tokens)
-    ):
-        raise ValueError(f"{sid}: tokens must be a nonempty list of nonempty strings")
-    return sid, tokens
-
-
-def _check_training_record(
-    record: dict[str, Any],
-    sid: str,
-    tokens: list[Any],
-    label_sets: Any,
-    training_mode: str,
-    policy_version: str | None,
-    source_revision: str | None,
-) -> None:
-    """Validate a training row, including the split, mode and release policy."""
-    errors = validate_record(record, label_sets) + check_model_input(tokens)
-    if errors:
-        raise ValueError(f"{sid}: {errors[0]}")
-    if record["split"] != "train" or record["label_mode"] != training_mode:
-        raise ValueError(f"{sid}: training input must contain only train/{training_mode}")
-    if policy_version is not None:
-        meta = record.get("metadata", {})
-        if (
-            meta.get("policy_version") != policy_version
-            or meta.get("source_revision") != source_revision
-            or meta.get("annotation_view") != "canonical"
-        ):
-            raise ValueError(f"{sid}: record does not match the canonical release policy")
-
-
-def _check_selection_complete(
-    path: Path, wanted: set[str] | None, selected: set[str], totals: dict[str, int]
-) -> None:
-    """Reject missing selection IDs and empty selections."""
-    if wanted is not None and selected != wanted:
-        missing = sorted(wanted - selected)
-        raise ValueError(f"{path.name}: {len(missing)} selection IDs missing, first: {missing[:3]}")
-    if not totals["selected_records"]:
-        raise ValueError(f"{path.name}: selection is empty")
-
-
-def selected_records(
-    path: Path,
-    ids: tuple[str, ...] | None,
-    *,
-    training_mode: str | None = None,
-    policy_version: str | None = None,
-    source_revision: str | None = None,
-    counts: dict[str, int] | None = None,
-) -> Iterator[dict[str, Any]]:
-    """Keep source-file order and reject missing IDs, even after the last yielded row.
-
-    Training validates every row, including excluded rows, to catch mixed splits.
-    Prediction checks observable fields only and removes gold and source metadata.
-    """
-    wanted = None if ids is None else set(ids)
-    seen: set[str] = set()
-    selected: set[str] = set()
-    totals = counts if counts is not None else {}
-    totals.update(input_records=0, selected_records=0, selected_tokens=0)
-    label_sets = load_label_sets() if training_mode is not None else None
-    for record in read_jsonl(path):
-        sid, tokens = _check_record_basics(record, path, seen)
-        if training_mode is not None:
-            _check_training_record(
-                record, sid, tokens, label_sets, training_mode, policy_version, source_revision
-            )
-        totals["input_records"] += 1
-        if wanted is not None and sid not in wanted:
-            continue
-        selected.add(sid)
-        totals["selected_records"] += 1
-        totals["selected_tokens"] += len(tokens)
-        yield (
-            record
-            if training_mode is not None
-            else {"schema_version": 1, "sample_id": sid, "tokens": tokens}
-        )
-    _check_selection_complete(path, wanted, selected, totals)
 
 
 def checked_release_file(
@@ -201,36 +94,40 @@ def _check_prediction_files(
         )
 
 
-def verify_training_release(
-    manifest_path: Path,
-    *,
-    train: Path,
-    train_ids: Path,
-    split_manifest: Path,
-    label_config: Path,
-    mode: str,
-    release_id: str,
-    policy_version: str,
-    prediction: Path | None = None,
-    prediction_ids: Path | None = None,
-) -> dict[str, Any]:
+@dataclass(frozen=True)
+class ReleaseInputs:
+    """The files and identities a training command was given, to be checked against the data release."""
+
+    train: Path
+    train_ids: Path
+    split_manifest: Path
+    label_config: Path
+    mode: str
+    release_id: str
+    policy_version: str
+    prediction: Path | None = None
+    prediction_ids: Path | None = None
+
+
+def verify_training_release(manifest_path: Path, inputs: ReleaseInputs) -> dict[str, Any]:
+    """Check the command's inputs against the release manifest; return the manifest."""
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if (
         manifest.get("schema_version") != 1
-        or manifest.get("release_id") != release_id
-        or manifest.get("policy_version") != policy_version
+        or manifest.get("release_id") != inputs.release_id
+        or manifest.get("policy_version") != inputs.policy_version
     ):
         raise ValueError("release identity/schema/policy does not match command")
-    if sha256_file(label_config) != manifest["label_sets_sha256"]:
+    if sha256_file(inputs.label_config) != manifest["label_sets_sha256"]:
         raise ValueError("label configuration does not match the data release")
-    processed, splits = manifest_path.parent, split_manifest.parent
-    checked_release_file(train, processed, manifest["files"], expected=f"mode_{mode}/train.jsonl")
+    processed, splits, mode = manifest_path.parent, inputs.split_manifest.parent, inputs.mode
+    checked_release_file(inputs.train, processed, manifest["files"], expected=f"mode_{mode}/train.jsonl")
     checked_release_file(
-        train_ids, splits, manifest["split_files"], expected=f"default_train/mode_{mode}.ids"
+        inputs.train_ids, splits, manifest["split_files"], expected=f"default_train/mode_{mode}.ids"
     )
-    _check_split_manifest(split_manifest, manifest)
-    if prediction is not None:
-        _check_prediction_files(manifest, processed, splits, mode, prediction, prediction_ids)
+    _check_split_manifest(inputs.split_manifest, manifest)
+    if inputs.prediction is not None:
+        _check_prediction_files(manifest, processed, splits, mode, inputs.prediction, inputs.prediction_ids)
     return manifest
 
 
@@ -293,62 +190,78 @@ def _write_predictions(output_dir: Path, predictions: list[dict[str, Any]]) -> P
     return predictions_path
 
 
-def _run_manifest(
-    model: Any,
-    inputs: dict[str, Any],
-    started_at: str,
-    predictions_path: Path,
-    counts: dict[str, int],
-    num_sequences: int,
-    timings: tuple[float, float],
-    command: list[str] | None,
-) -> dict[str, Any]:
-    """Build the prediction run manifest; timings is (load_seconds, prediction_seconds)."""
+@dataclass(frozen=True)
+class PredictionOptions:
+    """What binds a prediction run to a release or a frozen selection, and the command line to record."""
+
+    ids_path: Path | None = None
+    release_manifest: Path | None = None
+    selection_record: Path | None = None
+    command: list[str] | None = None
+
+
+@dataclass(frozen=True)
+class _RunFacts:
+    """What one prediction run read and measured, to be written as its manifest."""
+
+    model: HMMModel
+    inputs: dict[str, Any]
+    started_at: str
+    predictions_path: Path
+    counts: dict[str, int]
+    num_sequences: int
+    load_seconds: float
+    prediction_seconds: float
+    command: list[str] | None
+
+
+def _run_manifest(run: _RunFacts) -> dict[str, Any]:
+    """Build the prediction run manifest."""
     return {
         "schema_version": 1,
         "model_name": "hmm",
-        "label_mode": model.label_mode,
-        "run_id": model.metadata.get("run_id"),
-        "ordered_labels": list(model.labels),
-        "started_at_utc": started_at,
-        "inputs": inputs,
-        "model_sha256": inputs["model"]["sha256"],
-        "predictions_sha256": sha256_file(predictions_path),
-        "selection_counts": counts,
-        "num_sequences": num_sequences,
-        "num_tokens": counts["selected_tokens"],
-        "model_load_seconds": timings[0],
-        "prediction_seconds_including_input": timings[1],
+        "label_mode": run.model.label_mode,
+        "run_id": run.model.metadata.get("run_id"),
+        "ordered_labels": list(run.model.labels),
+        "started_at_utc": run.started_at,
+        "inputs": run.inputs,
+        "model_sha256": run.inputs["model"]["sha256"],
+        "predictions_sha256": sha256_file(run.predictions_path),
+        "selection_counts": run.counts,
+        "num_sequences": run.num_sequences,
+        "num_tokens": run.counts["selected_tokens"],
+        "model_load_seconds": run.load_seconds,
+        "prediction_seconds_including_input": run.prediction_seconds,
         "timing_scope": "JSONL reading, observable-input validation, selection, predict; excludes writes",
-        "training_provenance": model.metadata,
+        "training_provenance": run.model.metadata,
         "code": code_identity(),
         "environment": {"python": platform.python_version(), "platform": platform.platform()},
-        "command": command,
+        "command": run.command,
     }
 
 
+def _input_identities(model_path: Path, input_path: Path, options: PredictionOptions) -> dict[str, Any]:
+    """The identity of every file a prediction run reads, keyed by its role."""
+    inputs = {"model": file_identity(model_path), "input": file_identity(input_path)}
+    for key, path in [
+        ("ids", options.ids_path),
+        ("release_manifest", options.release_manifest),
+        ("selection_record", options.selection_record),
+    ]:
+        if path:
+            inputs[key] = file_identity(path)
+    return inputs
+
+
 def predict_run(
-    model_path: Path,
-    input_path: Path,
-    output_dir: Path,
-    *,
-    ids_path: Path | None = None,
-    release_manifest: Path | None = None,
-    selection_record: Path | None = None,
-    command: list[str] | None = None,
+    model_path: Path, input_path: Path, output_dir: Path, options: PredictionOptions | None = None
 ) -> dict[str, Any]:
     """Load an artifact and export predictions without refitting or reading gold fields."""
-    from .hmm import HMMModel
-
+    options = options or PredictionOptions()
+    ids_path, release_manifest, selection_record = options.ids_path, options.release_manifest, options.selection_record
     if output_dir.exists():
         raise ValueError("output-dir already exists; choose a new prediction run")
-    inputs = {"model": file_identity(model_path), "input": file_identity(input_path)}
-    if ids_path:
-        inputs["ids"] = file_identity(ids_path)
-    if release_manifest:
-        inputs["release_manifest"] = file_identity(release_manifest)
-    if selection_record:
-        inputs["selection_record"] = file_identity(selection_record)
+    inputs = _input_identities(model_path, input_path, options)
     started_at = datetime.now(UTC).isoformat()
     start = perf_counter()
     model = HMMModel.load_model(model_path)
@@ -358,9 +271,9 @@ def predict_run(
     if release_manifest:
         _check_release_compatibility(release_manifest, input_path, ids_path, model, inputs)
     ids = tuple(read_ids(ids_path, strict=True)) if ids_path else None
-    counts: dict[str, int] = {}
     start = perf_counter()
-    predictions = model.predict(selected_records(input_path, ids, counts=counts))
+    selection = SelectedRecords(input_path, ids)
+    predictions = model.predict(selection)
     prediction_seconds = perf_counter() - start
     checked = [
         ("model", model_path),
@@ -371,9 +284,9 @@ def predict_run(
     ]
     _check_inputs_unchanged(inputs, checked)
     predictions_path = _write_predictions(output_dir, predictions)
-    manifest = _run_manifest(
-        model, inputs, started_at, predictions_path, counts, len(predictions),
-        (load_seconds, prediction_seconds), command,
-    )
+    manifest = _run_manifest(_RunFacts(
+        model, inputs, started_at, predictions_path, selection.counts, len(predictions),
+        load_seconds, prediction_seconds, options.command,
+    ))
     write_json(output_dir / "predictions.manifest.json", manifest)
     return manifest

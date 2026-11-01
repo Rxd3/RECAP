@@ -1,6 +1,7 @@
 """Independent workflow gates and inference/metric checks on tiny fixtures."""
 
 import json
+import sys
 from copy import deepcopy
 
 import pytest
@@ -8,9 +9,14 @@ import yaml
 from test_hmm_cli import ROOT, jsonl, setup_run
 from test_hmm_workflow import run
 
-from punct_restore.cli import run_hmm_experiments as workflow
-from punct_restore.cli import verify_hmm_experiments as audit
-from punct_restore.models.hmm_workflow import predict_run
+from punct_restore.hashing import sha256_file
+from punct_restore.models import hmm_experiment_audit as audit
+from punct_restore.models import hmm_experiment_finalize, hmm_experiment_identity
+from punct_restore.models.hmm_experiment_commands import HmmCommandFailed, execute
+from punct_restore.models.hmm_experiment_finalize import finalize
+from punct_restore.models.hmm_experiment_identity import SOURCE_FILES, check_evaluator, implementation
+from punct_restore.models.hmm_experiment_protocol import choose, validate_config
+from punct_restore.models.hmm_workflow import PredictionOptions, predict_run
 
 HMM_COMMANDS = ("train_hmm", "predict_hmm", "run_hmm_experiments", "verify_hmm_experiments")
 
@@ -21,15 +27,27 @@ def config():
 
 def test_source_files_list_each_hmm_command_as_module_then_stub():
     """The hashed code names the file that holds it, then the stub that still runs it."""
-    models = ("hmm", "hmm_validation", "hmm_workflow", "hmm_experiment_protocol", "hmm_experiment_commands",
-              "hmm_experiment_runtime", "hmm_experiment_audit")
+    models = ("hmm", "hmm_validation", "hmm_records", "hmm_workflow", "hmm_experiment_protocol",
+              "hmm_experiment_commands", "hmm_experiment_runtime", "hmm_experiment_audit",
+              "hmm_experiment_identity", "hmm_experiment_tune", "hmm_experiment_frozen",
+              "hmm_experiment_finalize", "hmm_experiment_verify")
     expected = [f"src/punct_restore/models/{name}.py" for name in models]
     expected += ["src/punct_restore/hashing.py", "src/punct_restore/prediction_io.py"]  # the shared code they call
     for command in HMM_COMMANDS:
         expected += [f"src/punct_restore/cli/{command}.py", f"scripts/{command}.py"]
-    assert list(workflow.SOURCE_FILES) == expected
+    assert list(SOURCE_FILES) == expected
     assert [name for name in expected if not (ROOT / name).is_file()] == []
-    assert list(workflow.implementation()) == expected
+    assert list(implementation()) == expected
+
+
+def test_every_hmm_model_module_is_hashed_into_the_implementation_record():
+    """A new hmm*.py module that is not listed would let its edits pass the frozen-selection check."""
+    on_disk = {path.relative_to(ROOT).as_posix() for path in (ROOT / "src/punct_restore/models").glob("hmm*.py")}
+    assert on_disk - set(SOURCE_FILES) == set()
+
+
+def test_the_module_that_computes_the_implementation_record_is_itself_hashed():
+    assert "src/punct_restore/models/hmm_experiment_identity.py" in SOURCE_FILES
 
 
 def test_check_evaluator_still_hashes_scripts_evaluate_models_in_the_pinned_checkout(
@@ -45,11 +63,18 @@ def test_check_evaluator_still_hashes_scripts_evaluate_models_in_the_pinned_chec
         (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / name).write_text(name, encoding="utf-8")
     pinned = {"commit": "pinned", "dirty": False}
-    monkeypatch.setattr(workflow, "code_identity", lambda _root: pinned)
-    files = workflow.check_evaluator(tmp_path, "pinned")["files"]
+    monkeypatch.setattr(hmm_experiment_identity, "code_identity", lambda _root: pinned)
+    files = check_evaluator(tmp_path, "pinned")["files"]
     assert sorted(files) == sorted(names)
     scorer = tmp_path / "scripts/evaluate_models.py"
-    assert files["scripts/evaluate_models.py"] == workflow.sha256_file(scorer)
+    assert files["scripts/evaluate_models.py"] == sha256_file(scorer)
+
+
+def test_check_evaluator_rejects_a_dirty_or_unpinned_checkout(tmp_path, monkeypatch):
+    """The patched identity must be the one check_evaluator reads: a different commit is refused."""
+    monkeypatch.setattr(hmm_experiment_identity, "code_identity", lambda _root: {"commit": "other", "dirty": False})
+    with pytest.raises(ValueError, match="clean at the pinned"):
+        check_evaluator(tmp_path, "pinned")
 
 
 def test_selection_uses_only_validation_score_and_predeclared_tie_break():
@@ -59,10 +84,10 @@ def test_selection_uses_only_validation_score_and_predeclared_tie_break():
         {"validation_primary": 0.3, "min_token_count": 1, "smoothing": 0.1, "test_score": 0.0},
         {"validation_primary": 0.3, "min_token_count": 1, "smoothing": 0.01, "test_score": 0.0},
     ]
-    assert workflow.choose(records) is records[3]
+    assert choose(records) is records[3]
     for record in records:
         record["test_score"] = 1 - record["test_score"]
-    assert workflow.choose(records) is records[3]
+    assert choose(records) is records[3]
 
 
 @pytest.mark.parametrize(
@@ -97,16 +122,33 @@ def test_experiment_rejects_invalid_or_test_driven_protocols(bad):
     else:
         c["search"]["tie_break"] = ["test_score"]
     with pytest.raises(ValueError):
-        workflow.validate_config(c)
+        validate_config(c)
 
 
 def test_finalize_cannot_touch_test_data_before_global_selection_exists(tmp_path, monkeypatch):
     (tmp_path / "plan.json").write_text(json.dumps({"config": config()}))
     called = []
-    monkeypatch.setattr(workflow, "authenticate", lambda *args: called.append(args))
+    monkeypatch.setattr(hmm_experiment_finalize, "authenticate", lambda *args: called.append(args))
     with pytest.raises(FileNotFoundError):
-        workflow.finalize(tmp_path, tmp_path / "evaluator")
+        finalize(tmp_path, tmp_path / "evaluator")
     assert not called and not (tmp_path / "final").exists()
+
+
+def test_a_failing_command_raises_hmm_command_failed_naming_only_its_log(tmp_path):
+    log = tmp_path / "deep" / "c1.training.log"
+    failing = [sys.executable, "-c", "import sys; print('boom', file=sys.stderr); sys.exit(3)"]
+    with pytest.raises(HmmCommandFailed) as caught:
+        execute(failing, tmp_path, log)
+    assert str(caught.value) == "command failed; see c1.training.log"
+    assert isinstance(caught.value, RuntimeError)
+    assert "boom" in log.read_text(encoding="utf-8")  # the detail the message leaves out is in the log
+    assert json.loads((tmp_path / "commands.jsonl").read_text(encoding="utf-8"))["returncode"] == 3
+
+
+def test_a_succeeding_command_is_logged_and_returned(tmp_path):
+    record = execute([sys.executable, "-c", "print('fine')"], tmp_path, tmp_path / "ok.log")
+    assert record["returncode"] == 0 and record["log"] == "ok.log"
+    assert (tmp_path / "ok.log").read_text(encoding="utf-8").strip() == "fine"
 
 
 def test_independent_f1_counts_gold_O_errors_and_absent_classes():
@@ -167,7 +209,7 @@ def test_artifact_cannot_be_substituted_for_another_frozen_winner(tmp_path):
     )
     out = tmp_path / "prediction-output"
     with pytest.raises(ValueError, match="frozen selection"):
-        predict_run(trained / "model.json", prediction, out, selection_record=selection)
+        predict_run(trained / "model.json", prediction, out, PredictionOptions(selection_record=selection))
     assert not out.exists()
 
 

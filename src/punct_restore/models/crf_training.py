@@ -1,18 +1,19 @@
-"""CRF training support that is not CLI-specific: frozen-record loading, code fingerprint and manifest building.
+"""CRF training support that is not CLI-specific: code fingerprint, provenance and sidecar-manifest building.
 
 Used by punct_restore.cli.train_crf, which keeps the command-line handling (arguments, console output, exit codes).
+The frozen-ID record loading is in punct_restore.models.crf_training_data.
 """
 
 from __future__ import annotations
 
 import hashlib
 import importlib.metadata
-import json
 import os
 import platform
 import subprocess
 import sys
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -21,7 +22,6 @@ from punct_restore.features.crf_features import FeatureConfig
 from punct_restore.hashing import sha256_file
 from punct_restore.models.crf import CRFModel
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import read_ids
 
 
 def get_package_version(pkg_name: str) -> str:
@@ -147,170 +147,46 @@ def git_status_porcelain() -> str:
     return result.stdout
 
 
-def _parse_record_line(line_str: str, line_num: int, input_path: Path) -> dict[str, Any]:
-    """Parse one non-blank JSONL line into a record that has a non-empty string sample_id."""
-    try:
-        rec = json.loads(line_str)
-    except json.JSONDecodeError as e:
-        raise ValueError(
-            f"Corrupt JSON at line {line_num} in {input_path}: {e}"
-        ) from e
-
-    if not isinstance(rec, dict):
-        raise ValueError(f"Line {line_num} in {input_path} is not a JSON object")
-
-    sample_id = rec.get("sample_id")
-    if not isinstance(sample_id, str) or not sample_id.strip():
-        raise ValueError(f"Line {line_num} in {input_path} has missing or empty sample_id")
-    return rec
-
-
-def _check_selected_record(rec: dict[str, Any], sample_id: str, expected_mode: str) -> None:
-    """Raise ValueError unless a selected record is a train record of the expected mode with aligned labels."""
-    # Strict split validation: cannot train on non-train splits
-    split = rec.get("split")
-    if split != "train":
-        raise ValueError(
-            f"Selected record {sample_id!r} has split={split!r}, expected 'train'. "
-            "Non-train records cannot enter training."
-        )
-
-    # Label mode validation
-    mode = rec.get("label_mode")
-    if mode != expected_mode:
-        raise ValueError(
-            f"Selected record {sample_id!r} has label_mode={mode!r}, expected {expected_mode!r}."
-        )
-
-    # Token & label alignment validation
-    tokens = rec.get("tokens")
-    if not isinstance(tokens, list) or not tokens:
-        raise ValueError(f"Selected record {sample_id!r} has empty or non-list tokens")
-
-    punct_labels = rec.get("punct_labels")
-    if not isinstance(punct_labels, list) or len(punct_labels) != len(tokens):
-        raise ValueError(
-            f"Selected record {sample_id!r} has mismatched punct_labels length "
-            f"({len(punct_labels) if isinstance(punct_labels, list) else None} vs {len(tokens)})"
-        )
-
-    if expected_mode == "C":
-        case_labels = rec.get("case_labels")
-        if not isinstance(case_labels, list) or len(case_labels) != len(tokens):
-            raise ValueError(
-                f"Selected record {sample_id!r} has mismatched case_labels length "
-                f"({len(case_labels) if isinstance(case_labels, list) else None} vs {len(tokens)})"
-            )
-
-
-def _scan_selected_records(
-    input_path: Path,
-    target_id_set: set[str],
-    expected_mode: str,
-) -> tuple[list[dict[str, Any]], set[str]]:
-    """Read the JSONL file once; return the validated records whose sample_id is selected and the IDs found."""
-    selected_records: list[dict[str, Any]] = []
-    found_ids: set[str] = set()
-
-    with open(input_path, encoding="utf-8") as f:
-        for line_num, line in enumerate(f, 1):
-            line_str = line.strip()
-            if not line_str:
-                continue
-
-            rec = _parse_record_line(line_str, line_num, input_path)
-            sample_id = rec.get("sample_id")
-
-            # Check if this record is selected
-            if sample_id in target_id_set:
-                if sample_id in found_ids:
-                    raise ValueError(
-                        f"Duplicate sample_id {sample_id!r} encountered in source file {input_path}"
-                    )
-                found_ids.add(sample_id)
-                _check_selected_record(rec, sample_id, expected_mode)
-                selected_records.append(rec)
-
-    return selected_records, found_ids
-
-
-def load_and_filter_training_records(
-    input_path: Path,
-    ids_path: Path,
-    expected_mode: str,
-) -> tuple[list[dict[str, Any]], list[str]]:
-    """Load JSONL training records filtered strictly by membership in frozen IDs.
-
-    Enforces:
-    - Every ID in ids_path exists in input_path.
-    - Exact cardinality match between ID list and selected records.
-    - Records have split == 'train'.
-    - Records have label_mode == expected_mode.
-    - Token and label sequence lengths match exactly.
-    - Source sequence order is preserved.
-    """
-    if not input_path.is_file():
-        raise FileNotFoundError(f"Input JSONL file not found: {input_path}")
-
-    frozen_ids = read_ids(ids_path)
-    target_id_set = set(frozen_ids)
-
-    selected_records, found_ids = _scan_selected_records(input_path, target_id_set, expected_mode)
-
-    # Validate that every requested ID was found in the input file
-    missing_ids = target_id_set - found_ids
-    if missing_ids:
-        sample_missing = sorted(missing_ids)[:5]
-        raise ValueError(
-            f"Missing {len(missing_ids)} selected IDs from input file {input_path}. "
-            f"Examples: {sample_missing}"
-        )
-
-    if len(selected_records) != len(frozen_ids):
-        raise ValueError(
-            f"Selected record count ({len(selected_records)}) does not match ID-list cardinality ({len(frozen_ids)})"
-        )
-
-    return selected_records, frozen_ids
-
-
 def collect_training_diagnostics(model: CRFModel) -> dict[str, Any]:
     """Collect optimizer convergence diagnostics (iteration count, termination status) from a fitted model."""
     training_diagnostics: dict[str, Any] = {}
-    if hasattr(model, "_backend") and hasattr(model._backend, "training_log_"):
-        tl = getattr(model._backend, "training_log_", None)
-        if hasattr(tl, "iterations"):
-            training_diagnostics["num_iterations"] = len(tl.iterations)
-        if hasattr(tl, "lines") and tl.lines:
-            for line in reversed(tl.lines):
-                s = line.strip()
-                if "terminated" in s.lower() or "converged" in s.lower():
-                    training_diagnostics["termination_status"] = s
-                    break
+    log = model.training_log
+    if hasattr(log, "iterations"):
+        training_diagnostics["num_iterations"] = len(log.iterations)
+    if hasattr(log, "lines") and log.lines:
+        for line in reversed(log.lines):
+            s = line.strip()
+            if "terminated" in s.lower() or "converged" in s.lower():
+                training_diagnostics["termination_status"] = s
+                break
     return training_diagnostics
 
 
-def build_training_provenance(
-    *,
-    dataset_release: str | None,
-    policy_version: str | None,
-    run_id: str | None,
-    input_path: Path,
-    ids_path: Path,
-    num_sequences: int,
-    num_tokens: int,
-) -> dict[str, Any]:
+@dataclass(frozen=True)
+class TrainingSource:
+    """What one training run read: the frozen record file and ID list, their sizes and the release labels."""
+
+    input_path: Path
+    ids_path: Path
+    num_sequences: int
+    num_tokens: int
+    dataset_release: str | None = None
+    policy_version: str | None = None
+    run_id: str | None = None
+
+
+def build_training_provenance(source: TrainingSource) -> dict[str, Any]:
     """Describe the training inputs (paths, SHA-256 digests, sizes) recorded in the model and its manifest."""
     return {
-        "dataset_release": dataset_release or "unknown",
-        "policy_version": policy_version or "unknown",
-        "run_id": run_id or "unnamed_run",
-        "input_file": input_path.as_posix(),
-        "input_sha256": sha256_file(input_path),
-        "ids_file": ids_path.as_posix(),
-        "ids_sha256": sha256_file(ids_path),
-        "selected_sequences": num_sequences,
-        "selected_tokens": num_tokens,
+        "dataset_release": source.dataset_release or "unknown",
+        "policy_version": source.policy_version or "unknown",
+        "run_id": source.run_id or "unnamed_run",
+        "input_file": source.input_path.as_posix(),
+        "input_sha256": sha256_file(source.input_path),
+        "ids_file": source.ids_path.as_posix(),
+        "ids_sha256": sha256_file(source.ids_path),
+        "selected_sequences": source.num_sequences,
+        "selected_tokens": source.num_tokens,
     }
 
 
@@ -330,42 +206,46 @@ def _environment_info() -> dict[str, Any]:
     }
 
 
-def build_sidecar_manifest(
-    *,
-    run_id: str,
-    mode: str,
-    model: CRFModel,
-    preset: str,
-    feature_config: FeatureConfig,
-    hyperparameters: Mapping[str, Any],
-    training_diagnostics: Mapping[str, Any],
-    memory_diagnostics: Mapping[str, Any],
-    provenance: Mapping[str, Any],
-    training_command: Sequence[str],
-    duration: float,
-    output_path: Path,
-    artifact_hash: str,
-) -> dict[str, Any]:
+@dataclass(frozen=True)
+class TrainingRun:
+    """Everything the sidecar manifest of a trained and saved CRF model records."""
+
+    run_id: str
+    mode: str
+    model: CRFModel
+    preset: str
+    feature_config: FeatureConfig
+    hyperparameters: Mapping[str, Any]
+    training_diagnostics: Mapping[str, Any]
+    memory_diagnostics: Mapping[str, Any]
+    provenance: Mapping[str, Any]
+    training_command: Sequence[str]
+    duration: float
+    output_path: Path
+    artifact_hash: str
+
+
+def build_sidecar_manifest(run: TrainingRun) -> dict[str, Any]:
     """Build the comprehensive sidecar manifest that is written next to a saved CRF artifact."""
     return {
         "schema_version": 1,
-        "run_id": run_id,
-        "label_mode": mode,
-        "model_name": model.model_name,
-        "vocabulary": model.vocabulary,
-        "feature_preset": preset,
-        "feature_preset_version": feature_config.version,
-        "feature_config": feature_config.to_dict(),
-        "hyperparameters": hyperparameters,
-        "training_diagnostics": training_diagnostics,
-        "memory_diagnostics": memory_diagnostics,
-        "provenance": provenance,
-        "training_command": training_command,
-        "training_duration_seconds": round(duration, 3),
+        "run_id": run.run_id,
+        "label_mode": run.mode,
+        "model_name": run.model.model_name,
+        "vocabulary": run.model.vocabulary,
+        "feature_preset": run.preset,
+        "feature_preset_version": run.feature_config.version,
+        "feature_config": run.feature_config.to_dict(),
+        "hyperparameters": run.hyperparameters,
+        "training_diagnostics": run.training_diagnostics,
+        "memory_diagnostics": run.memory_diagnostics,
+        "provenance": run.provenance,
+        "training_command": run.training_command,
+        "training_duration_seconds": round(run.duration, 3),
         "artifact": {
-            "path": output_path.as_posix(),
-            "sha256": artifact_hash,
-            "size_bytes": output_path.stat().st_size,
+            "path": run.output_path.as_posix(),
+            "sha256": run.artifact_hash,
+            "size_bytes": run.output_path.stat().st_size,
         },
         "backend": {
             "name": "sklearn-crfsuite (python-crfsuite)",

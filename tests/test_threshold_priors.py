@@ -262,8 +262,8 @@ def test_score_grid_decodes_every_tau_gamma_pair_with_the_priors(tmp_path: Path)
         return 1.0 if record["predicted_labels"] == ["QUESTION"] else 0.0
 
     scores = tune_threshold._score_grid(
-        "m", "A", ["s"], [[RARE]], (0.5, 0.85), score_file, tmp_path,
-        gammas=(0.0, 1.0), priors=RARE_PRIORS)
+        tune_threshold.Marginals("m", "A", ["s"], [[RARE]], RARE_PRIORS), (0.5, 0.85), score_file, tmp_path,
+        gammas=(0.0, 1.0))
     assert scores == [(0.5, 0.0, 0.0), (0.85, 0.0, 0.0), (0.5, 1.0, 1.0), (0.85, 1.0, 0.0)]
     assert {name for name, _ in seen} == {"m_tau0.5", "m_tau0.85", "m_tau0.5_gamma1", "m_tau0.85_gamma1"}
 

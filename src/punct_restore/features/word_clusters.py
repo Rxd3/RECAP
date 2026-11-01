@@ -183,10 +183,10 @@ def map_to_json(cluster_map: ClusterMap) -> str:
     return json.dumps(payload, sort_keys=True, indent=1) + "\n"
 
 
-# A malformed map file raises ValueError, not TypeError, by the loader's contract (hence the TRY004 waivers).
+# A malformed map file raises ValueError, not TypeError, by the loader's contract.
 def _check_fields(payload: object) -> dict:
     if not isinstance(payload, dict):
-        raise ValueError("expected a JSON object")  # noqa: TRY004
+        raise ValueError("expected a JSON object")
     expected = {"format_version", "clusters", *_INT_FIELDS, *_STR_FIELDS}
     if missing := sorted(expected - payload.keys()):
         raise ValueError(f"missing field(s): {', '.join(missing)}")
@@ -199,16 +199,16 @@ def _check_fields(payload: object) -> dict:
         _require_int(field, payload[field], minimum)
     for field in _STR_FIELDS:
         if not isinstance(payload[field], str):
-            raise ValueError(f"{field} must be a string")  # noqa: TRY004
+            raise ValueError(f"{field} must be a string")
     return payload
 
 
 def _check_clusters(clusters: object, k: int, vocabulary_size: int) -> dict[str, int]:
     if not isinstance(clusters, dict):
-        raise ValueError("clusters must be an object of word -> cluster id")  # noqa: TRY004
+        raise ValueError("clusters must be an object of word -> cluster id")
     for cluster in clusters.values():
         if isinstance(cluster, bool) or not isinstance(cluster, int):
-            raise ValueError("clusters must map each word to an integer cluster id")  # noqa: TRY004
+            raise ValueError("clusters must map each word to an integer cluster id")
         if not 0 <= cluster < k:
             raise ValueError(f"a cluster id is outside 0..{k - 1}")
     if vocabulary_size != len(clusters):

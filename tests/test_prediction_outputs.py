@@ -22,6 +22,7 @@ from punct_restore import prediction_io
 from punct_restore.cli import train_crf, tune_threshold
 from punct_restore.evaluation.inputs import Vocab, load_bundle, sha256_file
 from punct_restore.evaluation.manifest import check_manifest
+from punct_restore.models import crf_training
 from punct_restore.models.crf import CRFModel
 from punct_restore.paths import REPO_ROOT
 
@@ -508,16 +509,16 @@ def test_git_status_porcelain_decodes_utf8_without_failing_on_bad_bytes(
         stdout = b"\xff M x.py\n".decode(kwargs["encoding"], kwargs["errors"])
         return subprocess.CompletedProcess(args, 0, stdout=stdout, stderr="")
 
-    monkeypatch.setattr(train_crf.subprocess, "run", fake_run)
-    assert train_crf.git_status_porcelain() == "� M x.py\n"
+    monkeypatch.setattr(crf_training.subprocess, "run", fake_run)
+    assert crf_training.git_status_porcelain() == "� M x.py\n"
     assert seen["encoding"] == "utf-8" and seen["errors"] == "replace"
     assert "text" not in seen
 
 
 def test_git_status_porcelain_never_returns_none(monkeypatch: pytest.MonkeyPatch) -> None:
     empty = subprocess.CompletedProcess(["git"], 0, stdout=None, stderr=None)
-    monkeypatch.setattr(train_crf.subprocess, "run", lambda *_a, **_k: empty)
-    assert train_crf.git_status_porcelain() == "unknown"
+    monkeypatch.setattr(crf_training.subprocess, "run", lambda *_a, **_k: empty)
+    assert crf_training.git_status_porcelain() == "unknown"
 
 
 # ---------------------------------------------------------------- prediction_io helpers

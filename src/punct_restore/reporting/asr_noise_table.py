@@ -36,7 +36,6 @@ from punct_restore.reporting.asr_noise_stats import (
     V2_SHARE_KEYS,
     V2_TARGET_SHARE,
     WERS,
-    SeedStats,
     compute_seed_stats,
     dec,
     mean_of,
@@ -45,7 +44,7 @@ from punct_restore.reporting.asr_noise_stats import (
 from punct_restore.reporting.build_tables import MODES, PRIMARY, load, pct
 
 Run = tuple[dict[str, Any], dict[str, dict[str, dict[str, Any]]]]  # (simulator summary, entries[mode][model])
-__all__ = ["SeedStats", "build", "build_summary", "compute_seed_stats", "main", "render_markdown"]
+__all__ = ["compute_seed_stats", "main", "render_markdown"]
 
 
 @contextmanager

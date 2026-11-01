@@ -10,28 +10,14 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
-from punct_restore.cli.run_hmm_experiments import frozen, now, read_json
 from punct_restore.hashing import sha256_file, sha256_stream
-from punct_restore.models.hmm_workflow import (
-    code_identity,
-    file_identity,
-    write_json,
-)
+from punct_restore.models.hmm_experiment_frozen import verified_frozen_selection
+from punct_restore.models.hmm_experiment_protocol import now, read_json
+from punct_restore.models.hmm_workflow import code_identity, file_identity, write_json
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import one_line_error
 
-__all__ = [
-    "ROOT",
-    "code_identity",
-    "file_identity",
-    "frozen",
-    "main",
-    "now",
-    "package",
-    "read_json",
-    "sha256_file",
-    "write_json",
-]
+__all__ = ["main"]
 
 _HANDOFF_INSTRUCTIONS = (
     "# Member 2 HMM handoff\n\n"
@@ -216,8 +202,8 @@ def _verify_archive(archive_path: Path, hashes: dict[str, str], sums: str) -> No
             raise ValueError("archive checksum index mismatch")
 
 
-def package(run, evaluator, output):
-    plan, selection = frozen(run, evaluator)
+def package(run: Path, evaluator: Path, output: Path) -> dict[str, Any]:
+    plan, selection = verified_frozen_selection(run, evaluator)
     verified = read_json(run / "verification/verification.json")
     _check_verification(run, verified)
     config = plan["config"]

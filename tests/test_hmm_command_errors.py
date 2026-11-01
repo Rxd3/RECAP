@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import errno
+import sys
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -17,6 +18,7 @@ from punct_restore.cli import (
     train_hmm,
     verify_hmm_experiments,
 )
+from punct_restore.models.hmm_experiment_commands import execute
 
 RUN_ARGV = ["--run-dir", "run", "--evaluator-root", "ev", "--output-dir", "out"]
 # (command module, the function main() calls and a test can replace, a command line that reaches it)
@@ -67,6 +69,23 @@ def test_a_bad_value_is_one_error_line_and_exit_1(
     module, argv = _setup(name, tmp_path, monkeypatch, ValueError("first\nsecond"))
     assert module.main(argv) == 1
     assert capsys.readouterr().err == "error: first second\n"
+
+
+@pytest.mark.parametrize("name", ["tune", "finalize"])
+def test_a_failed_subprocess_is_one_error_line_naming_its_log_file_only_and_exit_1(
+        name: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    log = tmp_path / "deep" / "c1.training.log"
+
+    def step_whose_command_fails(*_args: object) -> None:
+        failing = [sys.executable, "-c", "import sys; print('secret detail', file=sys.stderr); sys.exit(3)"]
+        execute(failing, tmp_path, log)
+
+    module, argv = _setup(name, tmp_path, monkeypatch, ValueError("replaced next"))
+    monkeypatch.setattr(module, COMMANDS[name][1], step_whose_command_fails)
+    assert module.main(argv) == 1
+    captured = capsys.readouterr()
+    assert captured.err == "error: command failed; see c1.training.log\n"
+    assert captured.out == ""
 
 
 @pytest.mark.parametrize("name", COMMANDS)
