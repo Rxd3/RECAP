@@ -324,7 +324,7 @@ they were. Moved helpers also live in their new modules, for example `FILLERS` i
 | `src/punct_restore/models/hmm_release.py` | The HMM commands' checks of their inputs against a data release. |
 | `src/punct_restore/models/hmm_distributions.py` | `HMMModel.distributions`: a read-only view of the fitted probabilities. |
 | `src/punct_restore/models/hmm_records.py` | Validated, ordered record selection from JSONL files for the HMM commands. |
-| `src/punct_restore/models/hmm_experiment_identity.py` | `SOURCE_FILES` (every `punct_restore` file that a fresh interpreter loads when the four HMM command modules (`cli.train_hmm`, `cli.predict_hmm`, `cli.run_hmm_experiments`, `cli.verify_hmm_experiments`) are imported, package `__init__.py` files included, followed by each command's `scripts/` stub; 54 entries), the code identity and the evaluator check. |
+| `src/punct_restore/models/hmm_experiment_identity.py` | `SOURCE_FILES` (every `punct_restore` file that a fresh interpreter loads when the four HMM command modules (`cli.train_hmm`, `cli.predict_hmm`, `cli.run_hmm_experiments`, `cli.verify_hmm_experiments`) are imported, package initializers included, followed by each command's `scripts/` stub; 54 entries), the code identity and the evaluator check. |
 | `src/punct_restore/models/hmm_experiment_tune.py` | The validation search: train and score every candidate, then freeze the winners. |
 | `src/punct_restore/models/hmm_experiment_frozen.py` | `verified_frozen_selection`, the gate every held-out step passes. |
 | `src/punct_restore/models/hmm_experiment_finalize.py` | The held-out step: predict and score every frozen winner, then time it. |
