@@ -14,11 +14,12 @@ from __future__ import annotations
 import copy
 import math
 from pathlib import Path
+
 import pytest
 
 from punct_restore.features.crf_features import FeatureConfig
+from punct_restore.models import crf_records
 from punct_restore.models.crf import CRFModel, get_mode_vocabulary
-
 
 # -------------------------------------------------------------------------------------------------
 # Synthetic Test Fixtures (Explicitly synthetic, not real SponSpeech data)
@@ -193,7 +194,7 @@ def test_predict_schema_and_length_preservation(synth_mode_a_data):
     preds = model.predict(test_inputs)
 
     assert len(preds) == 2
-    for p, orig in zip(preds, test_inputs):
+    for p, orig in zip(preds, test_inputs, strict=False):
         assert p["sample_id"] == orig["sample_id"]
         assert p["label_mode"] == "A"
         assert p["model_name"] == "crf_basic"
@@ -229,9 +230,9 @@ def test_predict_marginals_sums_to_one_and_matches_predict(synth_mode_a_data, sy
     predicted = model.predict(records)
 
     assert len(marginals) == len(predicted) == len(records)
-    for seq, pred in zip(marginals, predicted):
+    for seq, pred in zip(marginals, predicted, strict=True):
         assert len(seq) == len(pred["predicted_labels"])
-        for token_probs, label in zip(seq, pred["predicted_labels"]):
+        for token_probs, label in zip(seq, pred["predicted_labels"], strict=True):
             assert abs(sum(token_probs.values()) - 1.0) <= 1e-6
             assert list(token_probs) == model.vocabulary
             assert max(token_probs, key=token_probs.get) == label
@@ -332,7 +333,7 @@ def test_load_nonexistent_file_raises_error():
 def test_load_corrupt_file_raises_error(tmp_path):
     corrupt_file = tmp_path / "corrupt.joblib"
     corrupt_file.write_text("not a valid joblib file", encoding="utf-8")
-    with pytest.raises(ValueError, match="Corrupt or unreadable"):
+    with pytest.raises(ValueError, match="not a readable CRF artifact"):
         CRFModel.load_model(corrupt_file)
 
 
@@ -409,8 +410,9 @@ def test_get_mode_vocabulary_malformed_yaml_raises_error(tmp_path):
     """Malformed YAML syntax must raise error, not silently fall back."""
     bad_yaml = tmp_path / "malformed.yaml"
     bad_yaml.write_text("punctuation: [unclosed list", encoding="utf-8")
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError) as problem:
         get_mode_vocabulary("A", config_path=bad_yaml)
+    assert str(problem.value) == "malformed.yaml: not valid YAML"
 
 
 def test_get_mode_vocabulary_inconsistent_structure_raises_error(tmp_path):
@@ -466,3 +468,35 @@ def test_fit_records_optional_provenance_metadata(synth_mode_a_data):
     assert "provenance" in model._training_metadata
     assert model._training_metadata["provenance"]["dataset_release"] == "sponspeech-m1-v2"
     assert model._training_metadata["provenance"]["run_id"] == "exp_01"
+
+
+@pytest.mark.parametrize("bad", [{"a": 1}, ["O"], 3, None], ids=["dict", "list", "number", "null"])
+@pytest.mark.parametrize("mode", ["A", "B", "C"])
+def test_fit_rejects_a_punct_label_that_is_not_a_string_naming_the_sample(mode, bad):
+    record = {"sample_id": "s7", "tokens": ["hello", "world"], "punct_labels": ["O", bad],
+              "case_labels": ["LOWER", "LOWER"]}
+    with pytest.raises(ValueError, match=r"^Record at index 0 \(s7\): punct_labels must be a list of strings"):
+        CRFModel(label_mode=mode).fit([record])
+
+
+def _mode_c_record() -> dict:
+    return {"sample_id": "s1", "tokens": ["hello", "world"], "punct_labels": ["O", "PERIOD"],
+            "case_labels": ["FIRST_UPPER", "LOWER"]}
+
+
+def test_a_value_error_from_join_labels_names_the_sample(monkeypatch):
+    def refuse(*_args, **_kwargs):
+        raise ValueError("lengths differ")
+
+    monkeypatch.setattr(crf_records, "join_labels", refuse)
+    with pytest.raises(ValueError, match=r"\(s1\): failed to derive Mode C targets: lengths differ"):
+        CRFModel(label_mode="C").fit([_mode_c_record()])
+
+
+def test_a_bug_in_join_labels_is_not_reported_as_bad_data(monkeypatch):
+    def bug(*_args, **_kwargs):
+        raise RuntimeError("a bug")
+
+    monkeypatch.setattr(crf_records, "join_labels", bug)
+    with pytest.raises(RuntimeError, match="a bug"):
+        CRFModel(label_mode="C").fit([_mode_c_record()])

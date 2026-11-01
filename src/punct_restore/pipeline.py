@@ -20,6 +20,7 @@ from typing import Any
 import joblib
 
 from punct_restore.data.labeling import LABEL_SETS_PATH, load_label_sets
+from punct_restore.file_io import require_file
 from punct_restore.models.crf import CRFModel
 from punct_restore.models.gap_classifier import MODEL_FAMILY as GAP_CLASSIFIER_FAMILY
 from punct_restore.models.gap_classifier import GapClassifier
@@ -44,13 +45,14 @@ _MODES = ("A", "B", "C")
 # model_family and is recognised by its model_name.
 _HMM_FAMILY = "hmm"
 _CRF_FAMILY = "crf"
-_JSON_FAMILIES = {_HMM_FAMILY: HMMModel, HIDDEN_EVENT_LM_FAMILY: HiddenEventLM}
-_JOBLIB_FAMILIES = {_CRF_FAMILY: CRFModel, GAP_CLASSIFIER_FAMILY: GapClassifier}
+_ModelClass = type[HMMModel | HiddenEventLM | CRFModel | GapClassifier]
+_JSON_FAMILIES: dict[str, _ModelClass] = {_HMM_FAMILY: HMMModel, HIDDEN_EVENT_LM_FAMILY: HiddenEventLM}
+_JOBLIB_FAMILIES: dict[str, _ModelClass] = {_CRF_FAMILY: CRFModel, GAP_CLASSIFIER_FAMILY: GapClassifier}
 _FAMILIES_BY_SUFFIX = {".json": _JSON_FAMILIES, ".joblib": _JOBLIB_FAMILIES, ".pkl": _JOBLIB_FAMILIES}
 
 
 def _unsupported(path: Path, why: str) -> ValueError:
-    return ValueError(f"unsupported model file: {path.name} ({why})")
+    return ValueError(f"{path.name}: unsupported model file ({why})")
 
 
 def _read_payload(path: Path) -> Any:
@@ -60,7 +62,7 @@ def _read_payload(path: Path) -> Any:
             return json.loads(path.read_text(encoding="utf-8"))
         return joblib.load(path)  # pickle: load trusted files only (see the module docstring)
     except OSError as exc:  # the file exists but cannot be read: an OS problem, not a bad artifact
-        raise OSError(f"cannot read model file {path.name}: {exc.strerror or 'read error'}") from exc
+        raise OSError(f"{path.name}: cannot read model file ({exc.strerror or 'read error'})") from exc
     except Exception as exc:  # a corrupt or foreign file; the reason is not shown to the user
         raise _unsupported(path, "unreadable") from exc
 
@@ -78,13 +80,10 @@ def _family_of(payload: Any) -> Any:
 def load_model(path: Path) -> HMMModel | CRFModel | HiddenEventLM | GapClassifier:
     """Load a saved model: the suffix narrows the choice, the family marker inside the file decides."""
     path = Path(path)
+    require_file(path, "model file")
     families = _FAMILIES_BY_SUFFIX.get(path.suffix.lower())
     if families is None:
         raise _unsupported(path, "expected .json, .joblib or .pkl")
-    if path.is_dir():
-        raise IsADirectoryError(f"model path is a folder, not a file: {path.name}")
-    if not path.is_file():
-        raise FileNotFoundError(f"model file not found: {path.name}")
     family = _family_of(_read_payload(path))
     loader = families.get(family) if isinstance(family, str) else None
     if loader is None:
@@ -94,8 +93,16 @@ def load_model(path: Path) -> HMMModel | CRFModel | HiddenEventLM | GapClassifie
     return loader.load_model(path)
 
 
+def _require_text(items: Sequence[object], what: str) -> None:
+    """Raise a one-line ValueError for the first item that is not a string."""
+    for item in items:
+        if not isinstance(item, str):
+            raise ValueError(f"{what} must be strings, got {item!r}")
+
+
 def clean_tokens(tokens: Sequence[str]) -> list[str]:
     """Lowercase, strip edge punctuation and drop tokens that end up empty."""
+    _require_text(tokens, "tokens")
     cleaned = [token for token in (t.lower().strip(STRIP_CHARS) for t in tokens) if token]
     if not cleaned:
         raise ValueError("empty input")
@@ -120,6 +127,8 @@ def reconstruct(tokens: Sequence[str], labels: Sequence[str]) -> str:
     """Apply one label per token and join the words with single spaces."""
     if len(tokens) != len(labels):
         raise ValueError(f"{len(labels)} labels for {len(tokens)} tokens")
+    _require_text(tokens, "tokens")
+    _require_text(labels, "labels")
     words = []
     for token, label in zip(tokens, labels, strict=True):
         punct, case = _split_label(label)
@@ -141,8 +150,7 @@ class ModelAdapter:
 
     def __init__(self, model_path: Path, config_path: Path | str = LABEL_SETS_PATH) -> None:
         config_path = Path(config_path)
-        if not config_path.is_file():
-            raise FileNotFoundError(f"label sets config not found: {config_path.name}")
+        require_file(config_path, "label sets config")
         self.model = load_model(Path(model_path))
         mode = self.model.label_mode
         if mode not in _MODES:

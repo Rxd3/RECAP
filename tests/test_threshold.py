@@ -1,4 +1,4 @@
-"""Tests for threshold decoding over CRF marginals and scripts/tune_threshold.py."""
+"""Tests for threshold decoding over CRF marginals and punct_restore.cli.tune_threshold."""
 
 from __future__ import annotations
 
@@ -13,11 +13,11 @@ from typing import Any
 
 import pytest
 
+from punct_restore.cli import tune_threshold
 from punct_restore.evaluation.inputs import Vocab, load_bundle
 from punct_restore.evaluation.manifest import check_manifest
 from punct_restore.models.crf import CRFModel
 from punct_restore.models.threshold import check_tau, decode_with_threshold, is_o_label
-from scripts import tune_threshold
 
 # ---------------------------------------------------------------- decode_with_threshold
 
@@ -85,21 +85,37 @@ def test_decode_returns_new_list_and_leaves_input_untouched() -> None:
     assert decode_with_threshold([], 0.5) == []
 
 
+@pytest.mark.parametrize("label", [None, 1, {}, ["O"]], ids=["null", "number", "object", "list"])
+def test_a_label_that_is_not_text_is_not_an_o_label(label: Any) -> None:
+    assert is_o_label(label) is False
+
+
+@pytest.mark.parametrize("label", [None, 1, 1.5, ("O",)], ids=["null", "number", "float", "tuple"])
+def test_decoding_refuses_a_label_that_is_not_text_in_one_line(label: Any) -> None:
+    with pytest.raises(ValueError, match=r"^token 1 has a label that is not text: ") as caught:
+        decode_with_threshold([{"O": 1.0}, {"O": 0.5, label: 0.5}], 0.2)
+    assert "\n" not in str(caught.value)
+
+
 def test_is_o_label() -> None:
     assert is_o_label("O") and is_o_label("O|LOWER")
     assert not is_o_label("COMMA") and not is_o_label("COMMA|FIRST_UPPER") and not is_o_label("OX")
 
 
-# ---------------------------------------------------------------- pick_tau and parse_grid
+# ---------------------------------------------------------------- pick_tau_gamma at one gamma and parse_grid
 
 
-def test_pick_tau_prefers_highest_f1_then_nearest_half_then_lower() -> None:
-    assert tune_threshold.pick_tau([(0.2, 0.5), (0.4, 0.7), (0.6, 0.6)]) == 0.4
-    assert tune_threshold.pick_tau([(0.1, 0.7), (0.4, 0.7), (0.9, 0.7)]) == 0.4
-    assert tune_threshold.pick_tau([(0.3, 0.7), (0.7, 0.7)]) == 0.3
-    assert tune_threshold.pick_tau([(0.7, 0.7), (0.3, 0.7)]) == 0.3  # lower tau, whatever the order
+def _pick_tau_at_gamma_zero(rows: list[tuple[float, float]]) -> tuple[float, float]:
+    return tune_threshold.pick_tau_gamma([(tau, 0.0, f1) for tau, f1 in rows])
+
+
+def test_pick_tau_gamma_at_one_gamma_prefers_highest_f1_then_nearest_half_then_lower() -> None:
+    assert _pick_tau_at_gamma_zero([(0.2, 0.5), (0.4, 0.7), (0.6, 0.6)]) == (0.4, 0.0)
+    assert _pick_tau_at_gamma_zero([(0.1, 0.7), (0.4, 0.7), (0.9, 0.7)]) == (0.4, 0.0)
+    assert _pick_tau_at_gamma_zero([(0.3, 0.7), (0.7, 0.7)]) == (0.3, 0.0)
+    assert _pick_tau_at_gamma_zero([(0.7, 0.7), (0.3, 0.7)]) == (0.3, 0.0)  # lower tau, whatever the order
     with pytest.raises(ValueError, match="empty"):
-        tune_threshold.pick_tau([])
+        _pick_tau_at_gamma_zero([])
 
 
 def test_parse_grid_default_and_inclusive_stop() -> None:
@@ -412,7 +428,7 @@ def test_predict_rejects_malformed_tau_file(
     assert tune_threshold.main(_predict_argv(mode_a, tau_file, out, man)) == 1
     assert not out.exists() and not man.exists()
     err = capsys.readouterr().err
-    assert err.startswith("error: ") and len(err.splitlines()) == 1 and "tau file" in err
+    assert err.startswith("error: ") and len(err.splitlines()) == 1 and "tau.json: " in err
 
 
 def test_predict_missing_tau_file_is_a_friendly_error(

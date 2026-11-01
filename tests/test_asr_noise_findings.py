@@ -206,7 +206,7 @@ def test_a_tiny_seed_spread_is_an_order_of_magnitude_smaller(tmp_path: Path) -> 
     ],
 )
 def test_describe_ratio_rule(ratio: str | None, words: str) -> None:
-    import asr_noise_findings
+    from punct_restore.reporting import asr_noise_findings
 
     assert asr_noise_findings.describe_ratio(None if ratio is None else Decimal(ratio)) == words
 
@@ -229,7 +229,7 @@ def test_the_mix_finding_names_only_the_wers_that_miss(asr_scores: Path, tmp_pat
 
 
 def test_the_mix_tolerance_is_one_constant(asr_scores: Path, tmp_path: Path) -> None:
-    import asr_noise_findings
+    from punct_restore.reporting import asr_noise_findings
 
     tolerance = asr_noise_findings.MIX_TOLERANCE
     for deviation, verdict in ((tolerance / 2, "matches"), (tolerance * 2, "misses")):
@@ -288,7 +288,7 @@ def test_a_v1_summary_with_insertions_is_not_called_insertion_free(asr_scores: P
 
 
 def test_counts_and_labels_in_the_report_come_from_the_summary(asr_scores: Path, tmp_path: Path) -> None:
-    from scripts.reporting import asr_noise_table
+    from punct_restore.reporting import asr_noise_table
 
     summary, _ = report(asr_scores, tmp_path)
     fewer = {**summary, "wers": ["0.05", "0.15"]}
@@ -304,7 +304,7 @@ def test_counts_and_labels_in_the_report_come_from_the_summary(asr_scores: Path,
 
 
 def test_render_markdown_does_not_change_the_summary(asr_scores: Path, tmp_path: Path) -> None:
-    from scripts.reporting import asr_noise_table
+    from punct_restore.reporting import asr_noise_table
 
     summary: dict[str, Any]
     summary, _ = report(asr_scores, tmp_path)

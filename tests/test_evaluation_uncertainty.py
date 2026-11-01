@@ -127,7 +127,7 @@ def write_bundle(folder: Path, records: Sequence[Aligned], mode: str, vocab: Voc
     for record in records:
         tokens = [f"w{i}" for i in range(len(record.gold))]
         if mode == "C":
-            punct, case = zip(*map(split_joint, record.gold))
+            punct, case = zip(*map(split_joint, record.gold), strict=False)
         else:
             punct, case = record.gold, ("LOWER",) * len(record.gold)
         gold.append(gold_row(record.sample_id, mode, tokens, punct, case, record.group_id))

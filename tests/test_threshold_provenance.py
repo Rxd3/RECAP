@@ -1,4 +1,4 @@
-"""Tests for the provenance that ``tune_threshold.py tune`` records: the split name and the input identities."""
+"""Tests for the provenance that ``recap tune-threshold tune`` records: the split name and the input identities."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import pytest
 from test_threshold import Fixture, _build_fixture, _predict_argv, _sha256, _tune_argv
 from test_threshold_priors import _train_argv, _write_train
 
-from scripts import tune_threshold
+from punct_restore.cli import tune_threshold
 
 INPUT_KEYS = {"gold", "ids", "masks", "train", "train_ids"}
 

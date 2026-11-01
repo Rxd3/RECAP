@@ -1,4 +1,4 @@
-"""scripts/build_leakage_subsets.py on a tiny fake data root (release ``rel``, mode A)."""
+"""punct_restore.cli.build_leakage_subsets on a tiny fake data root (release ``rel``, mode A)."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts import build_leakage_subsets as subsets
+from punct_restore.cli import build_leakage_subsets as subsets
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "build_leakage_subsets.py"
@@ -145,6 +145,20 @@ def test_an_empty_bucket_writes_an_empty_file(tmp_path: Path) -> None:
     assert read_ids(out, "excluded_train_video") == ["test:A-0", "test:A-1", "test:A-2"]
 
 
+def test_an_empty_leakage_controlled_list_is_a_valid_release_where_everything_is_excluded(tmp_path: Path) -> None:
+    """The release writes the kept list empty when every record of the split is excluded."""
+    root = make_root(tmp_path)
+    kept_path(root).write_bytes(b"")
+    rows = ["sample_id\treason", *(f"test:{k}\t{why}" for k, why in EXCLUDED_ROWS),
+            *(f"test:{k}\tshared_video" for k in KEPT_KEYS)]
+    tsv_path(root).write_text("".join(f"{row}\n" for row in rows), encoding="utf-8", newline="\n")
+    out = tmp_path / "out"
+    assert run(root, out) == 0
+    assert (out / "kept.ids").read_bytes() == b""
+    assert read_ids(out, "all") == [f"test:{k}" for k in KEYS]
+    assert json.loads((out / "counts.json").read_text(encoding="utf-8"))["kept"] == 0
+
+
 def test_validation_split_uses_the_validation_files(tmp_path: Path) -> None:
     root = make_root(tmp_path, "test")
     make_root(tmp_path, "validation")
@@ -163,7 +177,7 @@ def test_a_missing_group_id_is_fine_when_the_group_is_not_needed(tmp_path: Path)
     assert run(root, tmp_path / "out") == 0
 
 
-def test_cli_runs_as_a_subprocess_from_a_plain_checkout(tmp_path: Path) -> None:
+def test_the_stub_runs_as_a_subprocess_without_pythonpath(tmp_path: Path) -> None:
     root = make_root(tmp_path)
     out = tmp_path / "out"
     env = {key: value for key, value in os.environ.items() if key != "PYTHONPATH"}
@@ -280,9 +294,10 @@ def test_a_listed_train_record_without_a_group_id_fails(tmp_path: Path, capsys: 
 
 
 @pytest.mark.parametrize("bad_line, needle", [
-    ("{not json", "line 3"),
-    ('{"tokens": ["x"]}', "sample_id"),
-    ("[1, 2]", "sample_id"),
+    ("{not json", "line 3: not valid JSON"),
+    ("[" * 50_000, "line 3: not valid JSON"),  # json gives up with a RecursionError
+    ('{"tokens": ["x"]}', "line 3: sample_id must be a nonempty string"),
+    ("[1, 2]", "line 3: not a JSON object"),
     ('{"sample_id": "test:A-0", "tokens": []}', "duplicate"),
 ])
 def test_a_bad_jsonl_line_fails_with_file_name(tmp_path: Path, capsys: pytest.CaptureFixture[str],

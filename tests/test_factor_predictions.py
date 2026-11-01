@@ -1,4 +1,4 @@
-"""scripts/factor_predictions.py: mode A punctuation + CASE casing predictions -> mode C predictions."""
+"""punct_restore.cli.factor_predictions: mode A punctuation + CASE casing predictions -> mode C predictions."""
 
 from __future__ import annotations
 
@@ -23,13 +23,14 @@ from eval_fixtures import (
     write_jsonl,
 )
 
+from punct_restore.cli import factor_predictions
 from punct_restore.data.labeling import load_label_sets
 from punct_restore.evaluation import load_vocab
 from punct_restore.evaluation.inputs import load_bundle, sha256_file
 from punct_restore.evaluation.manifest import check_manifest
-from scripts import factor_predictions
 
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "factor_predictions.py"
+SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "factor_predictions.py"  # the stub
+MODULE = Path(__file__).resolve().parents[1] / "src" / "punct_restore" / "cli" / "factor_predictions.py"  # the code
 
 
 def _punct_rows(ids: tuple[str, ...] = SCORED) -> list[dict[str, Any]]:
@@ -124,7 +125,7 @@ def test_blank_lines_are_skipped_but_counted_in_line_numbers(setup: Setup, capsy
 READ_ERRORS = [
     ("not JSON", "{not json", "line 1: not valid JSON"),
     ("not an object", "[1, 2]", "line 1: not a JSON object"),
-    ("nested too deeply", "[" * 5000 + "]" * 5000, "line 1: not valid JSON"),
+    ("nested too deeply", "[" * 100_000 + "]" * 100_000, "line 1: not valid JSON"),
 ]
 
 
@@ -241,7 +242,7 @@ def test_stdout_without_reconfigure_still_prints_the_summary(
     assert buffer.getvalue() == "factored 2 predictions to c_pred.jsonl\n"
 
 
-def test_script_runs_standalone_without_PYTHONPATH_or_an_installed_package(setup: Setup) -> None:
+def test_stub_runs_in_isolated_mode_without_PYTHONPATH(setup: Setup) -> None:
     done = subprocess.run([sys.executable, "-I", str(SCRIPT), *setup.argv()], capture_output=True, text=True,
                           check=False)
     assert (done.returncode, done.stderr) == (0, "")
@@ -258,5 +259,5 @@ def test_script_failure_is_exit_1_with_one_error_line(setup: Setup) -> None:
 
 
 def test_script_has_no_personal_paths() -> None:
-    source = SCRIPT.read_text(encoding="utf-8")
-    assert not re.search(r"[A-Za-z]:[/\\]", source)
+    for path in (SCRIPT, MODULE):
+        assert not re.search(r"[A-Za-z]:[/\\]", path.read_text(encoding="utf-8")), path.name

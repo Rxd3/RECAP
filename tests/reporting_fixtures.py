@@ -1,7 +1,7 @@
 """A tiny generated ``results/scores`` tree for the reporting-script tests (no real data).
 
-``write_scores_root`` writes, for modes A, B and C, only the blocks and keys that the scripts in
-``scripts/reporting`` read, in the committed layout. ``write_manifests`` writes the CRF training
+``write_scores_root`` writes, for modes A, B and C, only the blocks and keys that the modules in
+``punct_restore.reporting`` read, in the committed layout. ``write_manifests`` writes the CRF training
 manifests that the runtime section reads. The rest are helpers shared by test_reporting.py and
 test_reporting_safety.py: the ``scores`` fixture, running a ``main``, the one-line error check and a tiny HMM
 with its data root. Not a test module: pytest does not collect it.

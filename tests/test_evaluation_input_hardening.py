@@ -7,12 +7,28 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from eval_fixtures import (BAD_UTF8_LINE, BOM, FILE_NAMES, SCORED, Case, corrupt_line_two, gold_rows, perfect_preds,
-                           valid_case, write_case)
+from eval_fixtures import (
+    BAD_UTF8_LINE,
+    BOM,
+    FILE_NAMES,
+    SCORED,
+    Case,
+    corrupt_line_two,
+    gold_rows,
+    perfect_preds,
+    valid_case,
+    write_case,
+)
 
 from punct_restore.evaluation import evaluate
-from punct_restore.evaluation.inputs import (LABEL_SETS_PATH, Bundle, EvaluationInputError, Vocab, load_bundle,
-                                              load_vocab)
+from punct_restore.evaluation.inputs import (
+    LABEL_SETS_PATH,
+    Bundle,
+    EvaluationInputError,
+    Vocab,
+    load_bundle,
+    load_vocab,
+)
 
 
 def _folder(parent: Path, name: str) -> Path:
@@ -47,6 +63,13 @@ def test_non_utf8_input_names_file_and_line(tmp_path: Path, vocab: Vocab, target
     case = valid_case(tmp_path, "C")
     corrupt_line_two(getattr(case, target))
     assert _load_error(case, vocab) == f"{FILE_NAMES[target]} line 2: not UTF-8 text"
+
+
+@pytest.mark.parametrize("target", ["gold", "predictions", "masks"])
+def test_json_nested_too_deeply_names_file_and_line(tmp_path: Path, vocab: Vocab, target: str) -> None:
+    case = valid_case(tmp_path, "C")
+    getattr(case, target).write_bytes(b"[" * 100_000 + b"\n")  # the json module gives up with a RecursionError
+    assert _load_error(case, vocab) == f"{FILE_NAMES[target]} line 1: invalid JSON (nested too deeply)"
 
 
 def test_non_utf8_first_line_is_line_1(tmp_path: Path, vocab: Vocab) -> None:
@@ -87,7 +110,7 @@ def test_load_vocab_rejects_non_utf8_yaml(tmp_path: Path, keep_real_config: bool
     bad.write_bytes((LABEL_SETS_PATH.read_bytes() if keep_real_config else b"") + tail)
     with pytest.raises(EvaluationInputError) as info:
         load_vocab(bad)
-    assert str(info.value) == "bad.yaml: not a valid label configuration"
+    assert str(info.value) == "bad.yaml: not valid UTF-8"
 
 
 # ---------------------------------------------------------------- metadata.group_id

@@ -22,12 +22,12 @@ from test_threshold import (
     _write_jsonl,
 )
 
+from punct_restore.cli import tune_threshold
 from punct_restore.evaluation.inputs import Vocab, load_bundle
 from punct_restore.evaluation.manifest import check_manifest
 from punct_restore.models import threshold
 from punct_restore.models.crf import CRFModel, get_mode_vocabulary
 from punct_restore.models.threshold import decode_with_threshold, is_o_label
-from scripts import tune_threshold
 
 MODE_A = ["O", "COMMA", "PERIOD", "QUESTION"]
 MODE_C = get_mode_vocabulary("C")
@@ -253,12 +253,6 @@ def test_pick_tau_gamma_prefers_f1_then_smallest_gamma_then_tau_rule() -> None:
         pick([])
 
 
-def test_pick_tau_gamma_with_gamma_zero_only_agrees_with_pick_tau() -> None:
-    rows = [(0.2, 0.5), (0.4, 0.7), (0.6, 0.7), (0.8, 0.1)]
-    assert tune_threshold.pick_tau_gamma([(t, 0.0, f) for t, f in rows]) == (
-        tune_threshold.pick_tau(rows), 0.0)
-
-
 def test_score_grid_decodes_every_tau_gamma_pair_with_the_priors(tmp_path: Path) -> None:
     seen: list[tuple[str, list[str]]] = []
 
@@ -267,9 +261,9 @@ def test_score_grid_decodes_every_tau_gamma_pair_with_the_priors(tmp_path: Path)
         seen.append((record["model_name"], record["predicted_labels"]))
         return 1.0 if record["predicted_labels"] == ["QUESTION"] else 0.0
 
-    scores = tune_threshold._score_grid(
-        "m", "A", ["s"], [[RARE]], (0.5, 0.85), score_file, tmp_path,
-        gammas=(0.0, 1.0), priors=RARE_PRIORS)
+    scores = threshold.score_grid(
+        threshold.Marginals("m", "A", ["s"], [[RARE]], RARE_PRIORS), (0.5, 0.85), score_file, tmp_path,
+        gammas=(0.0, 1.0))
     assert scores == [(0.5, 0.0, 0.0), (0.85, 0.0, 0.0), (0.5, 1.0, 1.0), (0.85, 1.0, 0.0)]
     assert {name for name, _ in seen} == {"m_tau0.5", "m_tau0.85", "m_tau0.5_gamma1", "m_tau0.85_gamma1"}
 
@@ -402,7 +396,7 @@ def test_tune_train_file_errors_are_one_friendly_line(
         "bad_json": ("\n{oops\n", "train.jsonl line 2"),
         "not_object": ("[1]\n", "train.jsonl line 1"),
         "no_id": (_lines([{"tokens": ["a"]}]), "train.jsonl line 1"),
-        "missing": (_lines(rows[:5]), "1 listed ID(s) are missing from train.jsonl"),
+        "missing": (_lines(rows[:5]), "train.jsonl: 1 listed ID(s) are missing"),
         "duplicate": (_lines([*rows, rows[0]]), "train.jsonl line 7"),
         "wrong_mode": (_lines([*rows[:5], {**rows[5], "label_mode": "C"}]), "train.jsonl line 6"),
         "no_labels": (_lines([*rows[:5], {"sample_id": "train5", "label_mode": "A"}]), "punct_labels"),
@@ -503,7 +497,7 @@ def test_predict_rejects_a_bad_gamma_in_the_tau_file(
     code, out, man = _predict(mode_a, tau_file, tmp_path)
     assert code == 1 and not out.exists() and not man.exists()
     err = capsys.readouterr().err
-    assert err.startswith("error: ") and len(err.splitlines()) == 1 and "tau file" in err and "gamma" in err
+    assert err.startswith("error: ") and len(err.splitlines()) == 1 and "tau.json: " in err and "gamma" in err
 
 
 @pytest.mark.parametrize(

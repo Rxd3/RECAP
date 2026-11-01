@@ -225,7 +225,7 @@ def _assert_matches_sklearn(sk: ModuleType, pairs: Pairs, labels: Sequence[str],
         assert entry["support"] == support[i]
         assert entry["predicted"] == predicted[label]
     micro = sk.precision_recall_fscore_support(gold, pred, labels=list(macro_over), average="micro", zero_division=0)
-    for name, value in zip(("precision", "recall", "f1"), micro[:3]):
+    for name, value in zip(("precision", "recall", "f1"), micro[:3], strict=False):
         assert block["micro"][name] == pytest.approx(value)
     macro = sk.precision_recall_fscore_support(gold, pred, labels=list(macro_over), average="macro", zero_division=0)
     assert block["macro_f1"] == pytest.approx(macro[2])
@@ -238,7 +238,10 @@ def test_matches_sklearn(sk_metrics: ModuleType) -> None:
 
 def _random_punctuation_pairs(rng: random.Random) -> Pairs:
     weights = [6, 2, 2, 1]
-    return [(g, p) for g, p in zip(rng.choices(LABELS, weights, k=300), rng.choices(LABELS, weights, k=300))]
+    return [
+        (g, p)
+        for g, p in zip(rng.choices(LABELS, weights, k=300), rng.choices(LABELS, weights, k=300), strict=False)
+    ]
 
 
 def _random_joint_pairs(rng: random.Random, labels: Sequence[str]) -> Pairs:

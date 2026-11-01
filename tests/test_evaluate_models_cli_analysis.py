@@ -1,4 +1,4 @@
-"""Command line tests for the compare and errors commands of scripts/evaluate_models.py.
+"""Command line tests for the compare and errors commands of punct_restore.cli.evaluate_models.
 
 main(argv) runs in-process through the `cli` fixture; only the working-directory test starts a subprocess.
 Cases come from cli_analysis_cases (8 gold rows over 4 groups; model_a and model_b make different mistakes).
@@ -14,11 +14,18 @@ from types import ModuleType
 from typing import Any
 
 import pytest
-from cli_analysis_cases import (assert_nothing_written, assert_one_line, assert_usage_error, bundle_of, compare_argv,
-                                predictions_b, read_json)
+from cli_analysis_cases import (
+    assert_nothing_written,
+    assert_one_line,
+    assert_usage_error,
+    bundle_of,
+    compare_argv,
+    predictions_b,
+    read_json,
+)
 from eval_fixtures import SCRIPT_PATH, Case, assert_one_error_line, cli_argv, run_cli
 
-from punct_restore.evaluation import (BootstrapSpec, compare, comparison_markdown, error_examples, errors_markdown)
+from punct_restore.evaluation import BootstrapSpec, compare, comparison_markdown, error_examples, errors_markdown
 from punct_restore.evaluation.inputs import Vocab
 
 
@@ -81,7 +88,7 @@ def test_compare_refuses_overwrite(cli: ModuleType, capsys: pytest.CaptureFixtur
     code, _, err = run_cli(cli, capsys, compare_argv(grouped_case, tmp_path / "cmp.json"))
 
     assert code == 1
-    assert err == f"error: {existing} already exists; refusing to overwrite\n"
+    assert err == f"error: {existing.name}: already exists; refusing to overwrite\n"
     assert existing.read_text(encoding="utf-8") == "keep"
     assert not other.exists()
 
@@ -190,7 +197,7 @@ def test_errors_refuses_overwrite(cli: ModuleType, capsys: pytest.CaptureFixture
     code, _, err = run_cli(cli, capsys, cli_argv("errors", grouped_case, out))
 
     assert code == 1
-    assert err == f"error: {existing} already exists; refusing to overwrite\n"
+    assert err == f"error: {existing.name}: already exists; refusing to overwrite\n"
     assert existing.read_text(encoding="utf-8") == "keep"
     assert not out.exists()
 

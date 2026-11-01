@@ -1,4 +1,4 @@
-"""scripts/train_hidden_event_lm.py: train and predict CLI for the hidden-event language model (method H)."""
+"""punct_restore.cli.train_hidden_event_lm: train and predict CLI for the hidden-event language model (method H)."""
 
 from __future__ import annotations
 
@@ -14,11 +14,12 @@ from typing import Any
 import pytest
 from eval_fixtures import assert_one_error_line, gold_row, write_ids, write_jsonl
 
+from punct_restore import prediction_io
+from punct_restore.cli import train_hidden_event_lm as cli
 from punct_restore.evaluation import load_vocab
 from punct_restore.evaluation.inputs import load_bundle
 from punct_restore.evaluation.manifest import check_manifest
 from punct_restore.models.hidden_event_lm import HiddenEventLM
-from scripts import train_hidden_event_lm as cli
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "train_hidden_event_lm.py"
 TRAIN_ROWS = [
@@ -170,7 +171,7 @@ def test_train_output_equal_to_an_input_is_refused_before_reading(
 def test_a_listed_id_missing_from_the_input_is_refused(case: Case, capsys, tmp_path: Path) -> None:
     write_ids(case.train_ids, ["t1", "t2", "ghost"])
     err = _refused(capsys, tmp_path, case.train_argv())
-    assert "ghost" in err and "train.jsonl" in err
+    assert err == "error: train.jsonl: 1 listed ID(s) are missing, first 'ghost'\n"
     assert not case.model.exists()
 
 
@@ -194,6 +195,19 @@ def test_a_missing_input_file_names_the_file_only(case: Case, capsys, tmp_path: 
     assert name in err and not case.model.exists()
 
 
+@pytest.mark.parametrize(("option", "what"), [("input", "input JSONL"), ("ids", "ID list")])
+def test_train_says_which_file_is_not_found(case: Case, capsys, tmp_path: Path, option: str, what: str) -> None:
+    err = _refused(capsys, tmp_path, case.train_argv(**{option: case.folder / "ghost.txt"}))
+    assert err == f"error: ghost.txt: {what} not found\n" and not case.model.exists()
+
+
+@pytest.mark.parametrize("option", ["input", "ids"])
+def test_train_says_a_folder_given_as_a_file_is_a_folder(case: Case, capsys, tmp_path: Path, option: str) -> None:
+    (case.folder / "adir").mkdir()
+    err = _refused(capsys, tmp_path, case.train_argv(**{option: case.folder / "adir"}))
+    assert err == "error: adir: is a folder, not a file\n" and not case.model.exists()
+
+
 def test_corrupt_and_duplicate_input_lines_are_one_line_errors(case: Case, capsys, tmp_path: Path) -> None:
     lines = case.train.read_text(encoding="utf-8").splitlines()
     case.train.write_text("\n".join([*lines, "{not json"]) + "\n", encoding="utf-8")
@@ -203,6 +217,21 @@ def test_corrupt_and_duplicate_input_lines_are_one_line_errors(case: Case, capsy
     case.train.write_text("\n".join([*lines, "[1, 2]"]) + "\n", encoding="utf-8")
     assert "not a JSON object" in _refused(capsys, tmp_path, case.train_argv())
     assert not case.model.exists()
+
+
+@pytest.mark.parametrize("label", [None, 1, {}, ["O"]], ids=["null", "number", "object", "list"])
+@pytest.mark.parametrize(("mode", "field"), [("A", "punct_labels"), ("C", "punct_labels"), ("C", "case_labels")])
+def test_a_training_label_that_is_not_text_is_one_error_line_naming_the_sample(
+        tmp_path: Path, capsys, mode: str, field: str, label: object) -> None:
+    """A `null` label reached the event table as `KeyError: None` and printed a traceback."""
+    made = _build(tmp_path / "case", mode)
+    rows = [json.loads(line) for line in made.train.read_text(encoding="utf-8").splitlines()]
+    target = next(row for row in rows if row["sample_id"] == "t1")
+    target[field][0] = label
+    write_jsonl(made.train, rows)
+    err = _refused(capsys, tmp_path, made.train_argv(mode))
+    assert err.startswith(f"error: train.jsonl: 't1': unknown {field} label")
+    assert not made.model.exists()
 
 
 def test_bad_hyperparameters_are_one_line_errors(case: Case, capsys, tmp_path: Path) -> None:
@@ -218,7 +247,7 @@ def test_empty_ids_and_non_utf8_input_are_one_line_errors(case: Case, capsys, tm
     assert "train.jsonl" in _refused(capsys, tmp_path, case.train_argv())
 
 
-DEEP_LINE = "[" * 5000 + "]" * 5000  # json.loads gives up on it with RecursionError, which is not a ValueError
+DEEP_LINE = "[" * 100_000 + "]" * 100_000  # json.loads gives up on it with RecursionError, which is not a ValueError
 
 
 def test_a_deeply_nested_training_line_is_a_one_line_error(case: Case, capsys, tmp_path: Path) -> None:
@@ -270,6 +299,28 @@ def test_predict_outputs_may_not_collide_with_each_other_or_with_inputs(
     assert not trained.preds.exists()
 
 
+@pytest.mark.parametrize(("option", "what"), [("model", "model artifact"), ("input", "input JSONL")])
+def test_predict_says_which_file_is_not_found(
+        trained: Case, capsys, tmp_path: Path, option: str, what: str) -> None:
+    err = _refused(capsys, tmp_path, trained.predict_argv(**{option: trained.folder / "ghost.txt"}))
+    assert err == f"error: ghost.txt: {what} not found\n" and not trained.preds.exists()
+
+
+def test_predict_says_an_ids_file_is_not_found(trained: Case, capsys, tmp_path: Path) -> None:
+    err = _refused(capsys, tmp_path, trained.predict_argv("--ids", str(trained.folder / "ghost.txt")))
+    assert err == "error: ghost.txt: ID list not found\n" and not trained.preds.exists()
+
+
+@pytest.mark.parametrize("option", ["model", "input", "ids"])
+def test_predict_says_a_folder_given_as_a_file_is_a_folder(
+        trained: Case, capsys, tmp_path: Path, option: str) -> None:
+    (trained.folder / "adir").mkdir()
+    folder = trained.folder / "adir"
+    argv = trained.predict_argv("--ids", str(folder)) if option == "ids" else trained.predict_argv(**{option: folder})
+    err = _refused(capsys, tmp_path, argv)
+    assert err == "error: adir: is a folder, not a file\n" and not trained.preds.exists()
+
+
 def test_predict_checks_its_outputs_before_loading_the_model(trained: Case, capsys, tmp_path: Path) -> None:
     trained.model.write_text("{not json", encoding="utf-8")
     trained.preds.write_text("keep me", encoding="utf-8")
@@ -277,7 +328,7 @@ def test_predict_checks_its_outputs_before_loading_the_model(trained: Case, caps
 
 
 @pytest.mark.parametrize(("fault", "fragment"), [
-    ("missing model", "absent_model.json"), ("corrupt model", "invalid hidden-event LM artifact"),
+    ("missing model", "absent_model.json"), ("corrupt model", "not valid JSON"),
     ("missing input", "absent_input.jsonl"), ("missing id", "ghost"), ("missing ids file", "absent.ids")])
 def test_predict_faults_are_one_line_errors_and_write_nothing(
         trained: Case, capsys, tmp_path: Path, fault: str, fragment: str) -> None:
@@ -299,9 +350,24 @@ def test_predict_faults_are_one_line_errors_and_write_nothing(
     assert not trained.preds.exists() and not trained.man.exists()
 
 
-def test_a_corrupt_model_reports_the_artifact_error(trained: Case, capsys, tmp_path: Path) -> None:
-    trained.model.write_text("{not json", encoding="utf-8")
-    assert "invalid hidden-event LM artifact" in _refused(capsys, tmp_path, trained.predict_argv())
+@pytest.mark.parametrize(("content", "fragment"), [("{not json", "not valid JSON"),
+                                                   ("[1, 2]", "invalid hidden-event LM artifact")])
+def test_a_corrupt_model_reports_the_artifact_error(
+        trained: Case, capsys, tmp_path: Path, content: str, fragment: str) -> None:
+    trained.model.write_text(content, encoding="utf-8")
+    assert fragment in _refused(capsys, tmp_path, trained.predict_argv())
+
+
+@pytest.mark.parametrize("command", ["train", "predict"])
+def test_a_recursion_error_from_our_own_code_is_not_reported_as_bad_input(
+        trained: Case, monkeypatch: pytest.MonkeyPatch, command: str) -> None:
+    def bug(self: HiddenEventLM, records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        raise RecursionError("a bug in the model")
+
+    monkeypatch.setattr(HiddenEventLM, "fit" if command == "train" else "predict", bug)
+    argv = trained.train_argv(output=trained.folder / "again.json") if command == "train" else trained.predict_argv()
+    with pytest.raises(RecursionError, match="a bug in the model"):
+        cli.main(argv)
 
 
 def test_a_deeply_nested_predict_input_line_is_a_one_line_error(trained: Case, capsys, tmp_path: Path) -> None:
@@ -312,11 +378,11 @@ def test_a_deeply_nested_predict_input_line_is_a_one_line_error(trained: Case, c
     assert not trained.preds.exists() and not trained.man.exists()
 
 
-def test_a_corrupt_predict_input_line_is_prefixed_with_the_file_name(trained: Case, capsys, tmp_path: Path) -> None:
+def test_a_corrupt_predict_input_line_names_the_file_and_line_once(trained: Case, capsys, tmp_path: Path) -> None:
     lines = trained.valid.read_text(encoding="utf-8").splitlines()
     trained.valid.write_text("".join(f"{line}\n" for line in [*lines, "{not json"]), encoding="utf-8")
     line = _refused(capsys, tmp_path, trained.predict_argv())
-    assert line.startswith(f"error: {trained.valid.name}: ")
+    assert line == f"error: {trained.valid.name} line {len(lines) + 1}: not valid JSON\n"
 
 
 def test_a_model_with_an_oversized_count_is_a_one_line_error(trained: Case, capsys, tmp_path: Path) -> None:
@@ -334,6 +400,20 @@ def test_a_non_utf8_predict_file_is_named_in_a_one_line_error(
     err = _refused(capsys, tmp_path, trained.predict_argv("--ids", str(trained.valid_ids)))
     assert err == f"error: {broken}: not valid UTF-8\n"
     assert not trained.preds.exists()
+
+
+def test_predict_reads_the_id_list_once(trained: Case, capsys, monkeypatch: pytest.MonkeyPatch) -> None:
+    reads: list[Path] = []
+    real_read_ids = cli.read_ids
+
+    def counting_read_ids(path: Path, **options: Any) -> list[str]:
+        reads.append(Path(path))
+        return real_read_ids(path, **options)
+
+    monkeypatch.setattr(cli, "read_ids", counting_read_ids)
+    monkeypatch.setattr(prediction_io, "read_ids", counting_read_ids)
+    assert _run(capsys, trained.predict_argv("--ids", str(trained.valid_ids)))[0] == 0
+    assert reads == [trained.valid_ids]
 
 
 @pytest.mark.parametrize("appears", ["output", "manifest"])

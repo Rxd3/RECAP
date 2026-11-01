@@ -1,5 +1,6 @@
 """Member 2's HMM tests: synthetic fixtures only, never research results."""
 
+import gc
 import json
 import math
 from copy import deepcopy
@@ -9,7 +10,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from punct_restore.models.hmm import HMMModel
+from punct_restore.models.hmm import HMMModel, _observation
 
 ROOT = Path(__file__).resolve().parents[1]
 LABEL_CONFIG = yaml.safe_load((ROOT / "configs/label_sets.yaml").read_text(encoding="utf-8"))
@@ -238,6 +239,14 @@ def test_malformed_training_is_rejected(updates):
         HMMModel(label_mode="A", labels=labels()).fit([sample])
 
 
+def test_the_observation_check_returns_id_and_tokens_and_leaves_the_seen_set_alone():
+    seen = {"earlier"}
+    assert _observation(record("later", ["a", "b"], ["O", "PERIOD"]), seen) == ("later", ["a", "b"])
+    assert seen == {"earlier"}
+    with pytest.raises(ValueError, match="duplicate sample_id: earlier"):
+        _observation(record("earlier", ["a"], ["O"]), seen)
+
+
 def test_empty_and_duplicate_records_are_rejected(fitted, training):
     with pytest.raises(ValueError, match="at least one"):
         HMMModel(label_mode="A", labels=labels()).fit([])
@@ -325,3 +334,190 @@ def test_corrupt_artifacts_fail_validation(kind, fitted, tmp_path):
     path.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(ValueError, match="invalid HMM artifact"):
         HMMModel.load_model(path)
+
+
+def _saved(tmp_path, content):
+    path = tmp_path / "deep" / "model.json"
+    path.parent.mkdir()
+    path.write_bytes(content)
+    return path
+
+
+@pytest.mark.parametrize(
+    ("content", "message"),
+    [
+        (b"[" * 100_000, "model.json: not valid JSON"),  # nested far deeper than the JSON reader allows
+        (b"[1]", "model.json: invalid HMM artifact: not a JSON object"),
+        (b"null", "model.json: invalid HMM artifact: not a JSON object"),
+        (b"{}", "model.json: invalid HMM artifact: missing format_version"),
+        (b'{"format_version": 1}', "model.json: invalid HMM artifact: missing model_name"),
+        (b"{oops", "model.json: not valid JSON"),
+        (b"\xff\xfe", "model.json: not valid UTF-8"),
+    ],
+    ids=["nested", "array", "null", "empty-object", "missing-key", "bad-json", "not-utf8"],
+)
+def test_an_unusable_artifact_is_one_value_error_that_starts_with_the_file_name(tmp_path, content, message):
+    path = _saved(tmp_path, content)
+    with pytest.raises(ValueError) as raised:
+        HMMModel.load_model(path)
+    text = str(raised.value)
+    assert text == message
+    assert str(tmp_path) not in text
+
+
+PYTHON_TEXT = ("subscriptable", "unhashable", "indices", "NoneType", "KeyError", "TypeError", "__init__", "argument",
+               "positional", "keyword", "must be a mapping", "not iterable", "has no attribute", "punct_restore.")
+MISSING = object()
+
+
+def _artifact_damaged(fitted, tmp_path, keys, new):
+    """The saved artifact of `fitted` with the value at `keys` replaced (MISSING: removed); returns its path."""
+    path = tmp_path / "model.json"
+    fitted.save_model(path)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not keys:
+        payload = new
+    else:
+        holder = payload
+        for key in keys[:-1]:
+            holder = holder[key]
+        if new is MISSING:
+            del holder[keys[-1]]
+        else:
+            holder[keys[-1]] = new
+    damaged = tmp_path / "damaged" / "model.json"
+    damaged.parent.mkdir()
+    damaged.write_text(json.dumps(payload), encoding="utf-8")
+    return damaged
+
+
+COUNT_KEYS = ("start", "transition", "end", "state", "emissions", "unknown", "vocabulary", "num_sequences")
+ARTIFACT_PROBLEMS = [  # (the place in the artifact, its new value, the one reason load_model gives)
+    ((), None, "not a JSON object"),
+    ((), [], "not a JSON object"),
+    ((), {}, "missing format_version"),
+    (("model_name",), MISSING, "missing model_name"),
+    (("config",), MISSING, "missing config"),
+    *[(("config",), value, "config is not a JSON object") for value in (None, [], 5, "text")],
+    (("config",), {}, "missing config.label_mode"),
+    (("config", "label_mode"), MISSING, "missing config.label_mode"),
+    (("config", "labels"), MISSING, "missing config.labels"),
+    (("config", "extra"), 1, "unknown key config.extra"),
+    (("counts",), MISSING, "missing counts"),
+    *[(("counts",), value, "counts is not a JSON object") for value in (None, [], 5, "text")],
+    (("counts",), {}, "missing counts.start"),
+    *[(("counts", key), MISSING, f"missing counts.{key}") for key in COUNT_KEYS],
+    (("counts", "extra"), 1, "unknown key counts.extra"),
+    (("metadata",), MISSING, "missing metadata"),
+]
+
+
+@pytest.mark.parametrize(
+    ("keys", "new", "reason"), ARTIFACT_PROBLEMS,
+    ids=[f"{'.'.join(keys) or 'root'}-{'missing' if new is MISSING else type(new).__name__}-{n}"
+         for n, (keys, new, _) in enumerate(ARTIFACT_PROBLEMS)],
+)
+def test_an_artifact_that_lacks_a_key_or_holds_the_wrong_kind_is_refused_naming_the_key(
+        fitted, tmp_path, keys, new, reason):
+    """The message is the artifact's own wording, not Python's (`'config'`, `__init__() missing 1 required...`)."""
+    path = _artifact_damaged(fitted, tmp_path, keys, new)
+    with pytest.raises(ValueError) as raised:
+        HMMModel.load_model(path)
+    assert str(raised.value) == f"model.json: invalid HMM artifact: {reason}"
+
+
+def _places(value, prefix=()):
+    """Every place in a parsed artifact: dict keys, and the first two items of a list."""
+    yield prefix
+    if isinstance(value, dict):
+        for key, item in value.items():
+            yield from _places(item, (*prefix, key))
+    elif isinstance(value, list):
+        for index, item in enumerate(value[:2]):
+            yield from _places(item, (*prefix, index))
+
+
+@pytest.mark.parametrize("new", [MISSING, None, [], {}, "x", 5, [{}], [["O"]], [1], [None]],
+                         ids=["missing", "null", "list", "object", "text", "number", "items-object", "items-list",
+                              "items-number", "items-null"])
+def test_no_damage_to_an_artifact_shows_python_text_or_escapes_as_another_error(fitted, tmp_path, new):
+    """Every place of a saved artifact, damaged in every way: a ValueError of one line, or a model that loads."""
+    saved = tmp_path / "saved.json"
+    fitted.save_model(saved)
+    for keys in _places(json.loads(saved.read_text(encoding="utf-8"))):
+        if not keys or (new is MISSING and isinstance(keys[-1], int)):
+            continue
+        folder = tmp_path / ("-".join(map(str, keys)) or "root")
+        folder.mkdir()
+        try:
+            HMMModel.load_model(_artifact_damaged(fitted, folder, keys, new))
+        except ValueError as raised:
+            text = str(raised)
+            assert "\n" not in text and not [bit for bit in PYTHON_TEXT if bit in text], (keys, text)
+
+
+def test_a_save_that_fails_while_writing_leaves_no_half_written_file(training, tmp_path):
+    """A lone surrogate passes the metadata check but cannot be written as UTF-8: the file it started is removed."""
+    model = HMMModel(label_mode="A", labels=labels()).fit(training, metadata={"note": "\ud800"})
+    path = tmp_path / "model.json"
+    with pytest.raises(UnicodeEncodeError):
+        model.save_model(path)
+    assert not path.exists()
+
+
+def test_the_saved_bytes_are_sorted_json_with_one_final_line_feed(fitted, tmp_path):
+    path = tmp_path / "model.json"
+    fitted.save_model(path)
+    raw = path.read_bytes()
+    expected = json.dumps(json.loads(raw), ensure_ascii=False, allow_nan=False, sort_keys=True) + "\n"
+    assert raw == expected.encode("utf-8") and b"\r" not in raw
+
+
+def test_distributions_are_the_log_tables_of_the_fixture_by_hand(fitted):
+    # smoothing 1, K=4: states O/COMMA/PERIOD/QUESTION hold 2/1/2/1 tokens, the vocabulary is {a, b, c}.
+    tables = fitted.distributions
+    assert tables.log_start == pytest.approx([math.log(n / 7) for n in (3, 1, 1, 2)])
+    assert tables.log_transition[0] == pytest.approx([math.log(n / 7) for n in (1, 2, 2, 1)])
+    assert tables.log_transition[1] == pytest.approx([math.log(n / 6) for n in (1, 1, 2, 1)])
+    assert tables.log_end == pytest.approx([math.log(n / d) for n, d in ((1, 7), (1, 6), (3, 7), (2, 6))])
+    assert tables.vocabulary == {"a", "b", "c"}
+    assert dict(tables.log_emissions[0]) == pytest.approx({"a": math.log(3 / 6)})
+    assert tables.log_default == pytest.approx([math.log(1 / n) for n in (6, 5, 6, 5)])
+    assert tables.log_unknown == pytest.approx(tables.log_default)  # nothing was folded into the unknown bucket
+
+
+def test_the_distributions_reproduce_sequence_log_probability(fitted):
+    tables, index = fitted.distributions, {label: n for n, label in enumerate(fitted.labels)}
+    words, states = ["a", "a", "new"], ["O", "COMMA", "PERIOD"]
+    score = tables.log_start[index[states[0]]] + tables.log_end[index[states[-1]]]
+    for position, (word, state) in enumerate(zip(words, states, strict=True)):
+        table = tables.log_emissions[index[state]]
+        score += table.get(word, tables.log_default[index[state]]) if word in tables.vocabulary else (
+            tables.log_unknown[index[state]])
+        if position:
+            score += tables.log_transition[index[states[position - 1]]][index[state]]
+    assert score == pytest.approx(fitted.sequence_log_probability(words, states))
+
+
+def test_the_distributions_of_an_unfitted_model_are_refused():
+    with pytest.raises(RuntimeError, match="not fitted"):
+        _ = HMMModel(label_mode="A", labels=labels()).distributions
+
+
+def test_the_distributions_cannot_be_changed_and_hold_no_live_table_of_the_model(fitted):
+    words, states = ["a", "b"], ["O", "PERIOD"]
+    before, tables = fitted.sequence_log_probability(words, states), fitted.distributions
+    with pytest.raises(AttributeError):
+        tables.log_start = ()
+    with pytest.raises(TypeError):
+        tables.log_start[0] = 0.0
+    with pytest.raises(TypeError):
+        tables.log_transition[0][0] = 0.0
+    with pytest.raises(TypeError):
+        tables.log_emissions[0]["a"] = 0.0
+    with pytest.raises(AttributeError):
+        tables.vocabulary.add("x")
+    # Even the dict under a read-only emission table is a copy: writing to it does not reach the model.
+    gc.get_referents(tables.log_emissions[0])[0]["a"] = 0.0
+    assert fitted.sequence_log_probability(words, states) == before
+    assert fitted.distributions.log_emissions[0]["a"] == pytest.approx(math.log(3 / 6))

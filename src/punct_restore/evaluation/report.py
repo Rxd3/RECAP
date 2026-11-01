@@ -60,13 +60,13 @@ def evaluate(bundle: Bundle, vocab: Vocab,
     return rounded(report)
 
 
-def pct(value: float) -> str:
-    """Percentage with 2 decimals, rounded half-up from the stored decimal value.
+def pct(value: float | str | Decimal) -> str:
+    """Percentage with 2 decimals, rounded half-up from the stored decimal value (a number or its decimal text).
 
     Formatting the float directly would print 0.67985 as 67.98, because 100 * 0.67985 is
     67.98499... in binary floating point.
     """
-    return str((Decimal(repr(value)) * 100).quantize(PCT_STEP, rounding=ROUND_HALF_UP))
+    return str((Decimal(str(value)) * 100).quantize(PCT_STEP, rounding=ROUND_HALF_UP))
 
 
 def printable(text: str) -> str:

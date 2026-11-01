@@ -1,4 +1,5 @@
-"""Tests for scripts/simulate_asr_noise.py (the CLI) on a tiny synthetic data root; the edit model is in test_asr_noise.py."""
+"""Tests for punct_restore.cli.simulate_asr_noise (the CLI) on a tiny synthetic data root;
+the edit model is in test_asr_noise.py."""
 
 from __future__ import annotations
 
@@ -20,7 +21,8 @@ from punct_restore.data.asr_noise import Edits
 from punct_restore.evaluation import load_scored_gold, load_vocab
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "scripts" / "simulate_asr_noise.py"
+SCRIPT = ROOT / "scripts" / "simulate_asr_noise.py"  # the stub: subprocess runs
+CLI_MODULE = ROOT / "src" / "punct_restore" / "cli" / "simulate_asr_noise.py"  # the code: in-process loads
 MODULE = ROOT / "src" / "punct_restore" / "data" / "asr_noise.py"
 RELEASE = "sponspeech-m1-v2"
 MODES = ("A", "B", "C")
@@ -36,7 +38,7 @@ IDS = {m: Path("splits", RELEASE, "primary_eval", f"validation_mode_{m}.ids") fo
 @pytest.fixture(scope="module")
 def sim() -> Iterator[ModuleType]:
     name = "simulate_asr_noise_under_test"
-    spec = importlib.util.spec_from_file_location(name, SCRIPT)
+    spec = importlib.util.spec_from_file_location(name, CLI_MODULE)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module  # dataclasses looks its module up here
@@ -166,7 +168,9 @@ def test_listed_records_only_in_input_order_with_same_schema(sim, capsys, root, 
     produce(sim, capsys, root, out)
     before, after = listed_input(root, mode), read_rows(out / f"mode_{mode}" / "validation.jsonl")
     assert [r["sample_id"] for r in after] == [r["sample_id"] for r in before]
-    assert all(list(a) == list(b) and list(a["metadata"]) == list(b["metadata"]) for a, b in zip(after, before))
+    assert all(
+        list(a) == list(b) and list(a["metadata"]) == list(b["metadata"]) for a, b in zip(after, before, strict=False)
+    )
     assert all(a["metadata"]["original_text"] == "kept as is" for a in after)
     assert b"\r" not in (out / f"mode_{mode}" / "validation.jsonl").read_bytes()
     assert (out / f"validation_mode_{mode}.ids").read_bytes() == (root / IDS[mode]).read_bytes()
@@ -199,7 +203,7 @@ def test_achieved_cost_equals_the_rounded_budget(sim, capsys, root, tmp_path, we
     assert summary["tokens_after"] == total - edits["deletion"]
     before, after = listed_input(root, "A"), read_rows(out / "mode_A" / "validation.jsonl")
     assert sum(len(r["tokens"]) for r in after) == summary["tokens_after"]
-    assert sum(distance(b["tokens"], a["tokens"]) for a, b in zip(after, before)) <= summary["edit_cost"]
+    assert sum(distance(b["tokens"], a["tokens"]) for a, b in zip(after, before, strict=False)) <= summary["edit_cost"]
 
 
 def test_not_enough_candidates_exits_one_with_one_line(sim, capsys, tmp_path):
@@ -300,7 +304,7 @@ def test_masks_given_as_a_folder_says_so_whatever_the_platform_errno(sim, capsys
     assert code == 1 and stdout == ""
     assert_one_error_line(err)
     assert err == f"error: {tmp_path.name}/maskdir: is a folder, not a file\n"
-    assert [p.name for p in tmp_path.iterdir()] == ["data", "maskdir"]
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["data", "maskdir"]
 
 
 def test_display_name_is_the_parent_and_file_without_an_empty_parent(sim):
@@ -319,12 +323,56 @@ def test_masks_follow_the_mode_c_input_whatever_the_order_of_the_inputs(sim, cap
     assert [m["sample_id"] for m in masks] == [r["sample_id"] for r in read_rows(out / "mode_C" / "validation.jsonl")]
 
 
+def test_a_data_file_that_starts_with_a_byte_order_mark_reads_like_one_without(sim, capsys, root, tmp_path):
+    produce(sim, capsys, root, tmp_path / "plain")
+    path = root / DATA["B"]
+    path.write_bytes(b"\xef\xbb\xbf" + path.read_bytes())
+    produce(sim, capsys, root, tmp_path / "bom")
+    assert tree(tmp_path / "bom") == tree(tmp_path / "plain")
+
+
+def test_blank_lines_before_and_inside_a_data_file_are_counted_in_the_line_number(sim, capsys, root, tmp_path):
+    path = root / DATA["A"]
+    path.write_bytes(b"\n\n" + path.read_bytes() + b"\n{not json\n")
+    code, _, err = run(sim, capsys, argv_for(root, tmp_path / "out"))
+    rows = len(path.read_bytes().splitlines())
+    assert code == 1 and err == f"error: mode_A/validation.jsonl line {rows}: not valid JSON\n"
+
+
+def test_every_data_and_mask_file_is_read_through_the_shared_jsonl_reader(sim, capsys, root, tmp_path, monkeypatch):
+    read: list[str] = []
+    shared_reader = sim.iter_jsonl
+
+    def recording_reader(path, parse):
+        read.append(Path(path).name)
+        return shared_reader(path, parse)
+
+    monkeypatch.setattr(sim, "iter_jsonl", recording_reader)
+    produce(sim, capsys, root, tmp_path / "out")
+    assert read and set(read) == {"validation.jsonl"}  # the three data files and the masks all carry that name
+
+
 def test_summary_cost_is_computed_from_the_cost_table(sim, monkeypatch):
     monkeypatch.setattr(sim, "COST", {**sim.COST, "swap": 3})
-    args = argparse.Namespace(release="r", split="validation", wer=0.5, seed=1)
+    args = argparse.Namespace(release="r", split="validation", wer=0.5, seed=1, edit_model="v1")
     plan = {"s": Edits(swapped=frozenset({0}))}
     summary = sim.summarize(args, [], {"s": ["a", "b", "c", "d"]}, plan)
     assert summary["edit_cost"] == 3 and summary["cost_share"]["swap"] == 1.0
+
+
+def test_summary_of_edit_model_v1_has_neither_the_model_nor_a_vocabulary(sim):
+    args = argparse.Namespace(release="r", split="validation", wer=0.5, seed=1, edit_model="v1")
+    plan = {"s": Edits(deleted=frozenset({0}))}
+    summary = sim.summarize(args, [], {"s": ["a", "b", "c", "d"]}, plan)
+    assert "edit_model" not in summary and "vocabulary_source" not in summary
+    assert summary["edits"]["deletion"] == 1
+
+
+def test_summary_of_edit_model_v2_names_the_model_and_its_vocabulary(sim):
+    args = argparse.Namespace(release="r", split="validation", wer=0.5, seed=1, edit_model="v2")
+    plan = {"s": Edits(deleted=frozenset({0}))}
+    summary = sim.summarize(args, [], {"s": ["a", "b", "c", "d"]}, plan)
+    assert summary["edit_model"] == "v2" and summary["vocabulary_source"] == "default_train"
 
 
 def rewrite(path: Path, change: Callable[[list[dict[str, Any]]], Any]) -> None:
@@ -363,8 +411,9 @@ DAMAGE = [  # (what to break under the data root, file the error must name, what
     (lambda r: set_sample(r / DATA["C"], punct_labels=["O"]), "mode_C/validation.jsonl",
      "punct_labels must hold one string per token"),
     (lambda r: set_sample(r / DATA["A"], label_mode="B"), "mode_A/validation.jsonl", "label_mode must be A"),
-    (lambda r: append(r / DATA["B"], b"{not json\n"), "mode_B/validation.jsonl", "invalid JSON"),
-    (lambda r: append(r / DATA["B"], b"[1,2]\n"), "mode_B/validation.jsonl", "record must be a JSON object"),
+    (lambda r: append(r / DATA["B"], b"{not json\n"), "mode_B/validation.jsonl", "not valid JSON"),
+    (lambda r: append(r / DATA["B"], b"[" * 50_000 + b"\n"), "mode_B/validation.jsonl", "not valid JSON"),
+    (lambda r: append(r / DATA["B"], b"[1,2]\n"), "mode_B/validation.jsonl", "not a JSON object"),
     (lambda r: rewrite(r / DATA["B"], lambda x: x.append(dict(x[2]))), "mode_B/validation.jsonl",
      "duplicate sample_id"),
     (lambda r: with_token(r / DATA["A"], 1, ""), "mode_A/validation.jsonl", "nonempty list of nonempty strings"),
@@ -380,8 +429,8 @@ DAMAGE = [  # (what to break under the data root, file the error must name, what
     (lambda r: (r / DATA["B"]).write_bytes(b"\xff\xfe\n"), "mode_B/validation.jsonl", "not UTF-8 text"),
     (lambda r: (r / IDS["B"]).unlink(), "validation_mode_B.ids", "No such file"),
     (lambda r: append(r / IDS["A"], b"nope\n"), "mode_A/validation.jsonl", "1 listed ID(s) not found"),
-    (lambda r: append(r / IDS["A"], b"s00\n"), "validation_mode_A.ids", "ID list is empty or has duplicates"),
-    (lambda r: (r / IDS["A"]).write_bytes(b"\n\n"), "validation_mode_A.ids", "ID list is empty or has duplicates"),
+    (lambda r: append(r / IDS["A"], b"s00\n"), "validation_mode_A.ids", "Duplicate ID 's00' found at line"),
+    (lambda r: (r / IDS["A"]).write_bytes(b"\n\n"), "validation_mode_A.ids", "ID list is empty"),
     (lambda r: rewrite(r / MASKS, lambda x: x.pop(2)), "case_joint/validation.jsonl", "1 listed ID(s) not found"),
     (lambda r: rewrite(r / MASKS, lambda x: x[2].update(excluded_positions=[999])), "case_joint/validation.jsonl",
      "excluded_positions must be unique integers"),
@@ -405,7 +454,8 @@ def test_wer_must_be_above_zero_and_at_most_half(sim, root, tmp_path, wer):
 
 
 def run_script(root: Path, out: Path, cwd: Path, **env: str) -> subprocess.CompletedProcess[str]:
-    """The script as a user runs it: a fresh interpreter, no PYTHONPATH."""
+    """The stub as a user runs it: a fresh interpreter, no PYTHONPATH
+    (the installed package is found in site-packages)."""
     environ = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"} | env
     return subprocess.run([sys.executable, str(SCRIPT), *argv_for(root, out)], cwd=cwd, env=environ,
                           capture_output=True, text=True, check=False)
@@ -432,7 +482,7 @@ def test_output_is_byte_identical_under_different_hash_seeds(root, tmp_path):
 
 def test_script_and_tests_have_no_todo_marker_or_bom():
     marker = "TO" + "DO"  # split so this file does not match itself
-    for path in (SCRIPT, MODULE, Path(__file__), Path(__file__).with_name("test_asr_noise.py")):
+    for path in (SCRIPT, CLI_MODULE, MODULE, Path(__file__), Path(__file__).with_name("test_asr_noise.py")):
         data = path.read_bytes()
         assert not data.startswith(b"\xef\xbb\xbf") and marker.encode() not in data
 
@@ -521,7 +571,9 @@ def test_v2_outputs_validate_and_summary_records_shares_and_masks_insertions(sim
     assert summary["edit_model"] == "v2"
     assert summary["vocabulary_source"] == "default_train"
     assert summary["cost_share"] == {"deletion": 0.3, "insertion": 0.15, "substitution": 0.45, "swap": 0.1}
-    assert summary["tokens_after"] == summary["tokens_before"] - summary["edits"]["deletion"] + summary["edits"]["insertion"]
+    assert summary["tokens_after"] == (
+        summary["tokens_before"] - summary["edits"]["deletion"] + summary["edits"]["insertion"]
+    )
     for mode in MODES:
         gold = out / f"mode_{mode}" / "validation.jsonl"
         ids = out / f"validation_mode_{mode}.ids"

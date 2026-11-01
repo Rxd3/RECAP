@@ -1,11 +1,12 @@
 """Regression checks for the Windows and data-policy release audit findings."""
 
 import json
+from pathlib import Path
 
 import pytest
-
-from punct_restore.data import labeling, release, splits, validation
 from test_data_contract import FIXTURE, LS, build
+
+from punct_restore.data import labeling, release, release_outputs, splits, validation
 
 
 @pytest.mark.parametrize("boundary", ["...?", "?...", "...!", "! ...", ". . . ?", ",..."])
@@ -114,6 +115,17 @@ def test_release_id_is_immutable(tmp_path):
     assert (processed / "SHA256SUMS").read_bytes() == checksum_before
 
 
+def test_an_unapproved_projection_stops_the_build_with_a_value_error_before_any_output(tmp_path):
+    unapproved = tmp_path / "label_sets.yaml"
+    text = Path(labeling.LABEL_SETS_PATH).read_text(encoding="utf-8")
+    unapproved.write_text(text.replace("approved: true", "approved: false"), encoding="utf-8")
+    with pytest.raises(ValueError, match="not approved"):
+        sources = release.ReleaseSources(str(tmp_path / "raw"), str(tmp_path / "processed"), str(tmp_path / "splits"),
+                                         "fixture", label_sets_path=str(unapproved))
+        release.build_release_from(sources, log=lambda _: None)
+    assert not (tmp_path / "processed").exists() and not (tmp_path / "splits").exists()
+
+
 def test_raw_mismatch_stops_build_before_outputs(tmp_path):
     build(tmp_path, "first")
     source = tmp_path / "raw/train/text/aaaaaaaaaaa-0.txt"
@@ -139,14 +151,26 @@ def test_joint_targets_do_not_silently_truncate():
 
 
 def test_truncated_view_cannot_publish_a_release(tmp_path, monkeypatch):
-    original_write = release.write_lines
+    original_write = release_outputs.write_lines
 
     def truncate_one_view(path, lines):
         if str(path).replace("\\", "/").endswith("mode_B/train.jsonl"):
             lines = list(lines)[:-1]
         original_write(path, lines)
 
-    monkeypatch.setattr(release, "write_lines", truncate_one_view)
+    monkeypatch.setattr(release_outputs, "write_lines", truncate_one_view)
     with pytest.raises(ValueError, match="release validation failed"):
         build(tmp_path, "truncated-view")
     assert not (tmp_path / "truncated-view/processed/fixture/release_manifest.json").exists()
+
+
+def test_code_fingerprint_hashes_the_data_package_sources():
+    """The fingerprint covers exactly the .py files next to release.py (the folder is derived from REPO_ROOT)."""
+    import hashlib
+    from pathlib import Path
+
+    folder = Path(release.__file__).resolve().parent
+    digest = hashlib.sha256()
+    for path in sorted(folder.glob("*.py"), key=lambda p: p.name):
+        digest.update(path.name.encode() + b"\0" + path.read_bytes())
+    assert len(list(folder.glob("*.py"))) > 1 and release.code_fingerprint() == digest.hexdigest()

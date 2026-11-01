@@ -1,4 +1,4 @@
-"""Tests for scripts/find_gold_noise.py on a tiny generated data root: no real data.
+"""Tests for punct_restore.cli.find_gold_noise on a tiny generated data root: no real data.
 
 The fixture has three videos in validation, one in test, one in test_amb and one in the default-train list. The
 expected numbers in the tests below were counted by hand from ``VALIDATION`` / ``TEST`` / ``TRAIN``.
@@ -21,7 +21,8 @@ import pytest
 from test_gold_noise import make_record
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "scripts" / "find_gold_noise.py"
+SCRIPT = ROOT / "scripts" / "find_gold_noise.py"  # the stub: subprocess runs
+CLI_MODULE = ROOT / "src" / "punct_restore" / "cli" / "find_gold_noise.py"  # the code: in-process loads
 RELEASE = "sponspeech-m1-v2"
 SRT = "Well. 506 00:18:45,000 -- 00:18:44,999 Oh no."
 
@@ -77,7 +78,7 @@ def build_root(base: Path) -> Path:
 @pytest.fixture(scope="module")
 def mod() -> Iterator[ModuleType]:
     name = "find_gold_noise_under_test"
-    spec = importlib.util.spec_from_file_location(name, SCRIPT)
+    spec = importlib.util.spec_from_file_location(name, CLI_MODULE)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module
@@ -226,7 +227,17 @@ def test_invalid_json_names_file_and_line(mod: ModuleType, root: Path, tmp_path:
     path = root / "processed" / RELEASE / "mode_B" / "test.jsonl"
     path.write_text(path.read_text(encoding="utf-8") + "{broken\n", encoding="utf-8", newline="\n")
     err = refused(mod, capsys, argv_for(root, tmp_path / "out"), tmp_path)
-    assert "test.jsonl line 4" in err and "invalid JSON" in err       # record, blank, record, then the bad line
+    assert "test.jsonl line 4: not valid JSON" in err                  # record, blank, record, then the bad line
+
+
+@pytest.mark.parametrize(("bad_line", "reason"), [("[" * 50_000, "not valid JSON"), ("[1, 2]", "not a JSON object")])
+def test_a_line_that_is_nested_too_deeply_or_not_an_object_names_file_and_line(
+        mod: ModuleType, root: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str], bad_line: str,
+        reason: str) -> None:
+    path = root / "processed" / RELEASE / "mode_B" / "test.jsonl"
+    path.write_text(path.read_text(encoding="utf-8") + bad_line + "\n", encoding="utf-8", newline="\n")
+    err = refused(mod, capsys, argv_for(root, tmp_path / "out"), tmp_path)
+    assert f"test.jsonl line 4: {reason}" in err
 
 
 def test_record_without_normalized_text_names_file_and_line(mod: ModuleType, root: Path, tmp_path: Path,
@@ -259,7 +270,7 @@ def test_duplicate_ids_in_a_list_are_refused(mod: ModuleType, root: Path, tmp_pa
                                              capsys: pytest.CaptureFixture[str]) -> None:
     write_ids(root / "splits" / RELEASE / "primary_eval" / "test_mode_B.ids", ["tst-0", "tst-0"])
     err = refused(mod, capsys, argv_for(root, tmp_path / "out"), tmp_path)
-    assert "test_mode_B.ids" in err and "duplicate" in err
+    assert "test_mode_B.ids" in err and "Duplicate ID 'tst-0'" in err
 
 
 def test_non_utf8_id_list_is_refused(mod: ModuleType, root: Path, tmp_path: Path,
@@ -277,7 +288,7 @@ def test_a_failed_final_rename_leaves_no_out_and_no_temporary_folder(
     def deny(src: object, dst: object) -> None:
         raise PermissionError(13, "Permission denied", str(out))
 
-    monkeypatch.setattr(mod.os, "replace", deny)
+    monkeypatch.setattr(os, "replace", deny)
     err = refused(mod, capsys, argv_for(root, out), tmp_path)
     assert err == "error: out: Permission denied\n"
     assert sorted(p.name for p in tmp_path.iterdir()) == ["data"]
@@ -291,14 +302,14 @@ def test_data_root_that_is_a_file_is_refused_before_scoring(mod: ModuleType, tmp
                                                             capsys: pytest.CaptureFixture[str]) -> None:
     (tmp_path / "notes.txt").write_text("x", encoding="utf-8")
     err = refused(mod, capsys, argv_for(tmp_path / "notes.txt", tmp_path / "out"), tmp_path)
-    assert err == "error: data root notes.txt is not a folder\n"
+    assert err == "error: notes.txt: is a file, not a folder\n"
     assert sorted(p.name for p in tmp_path.iterdir()) == ["notes.txt"]
 
 
 def test_data_root_that_is_missing_is_refused_before_scoring(mod: ModuleType, tmp_path: Path,
                                                              capsys: pytest.CaptureFixture[str]) -> None:
     err = refused(mod, capsys, argv_for(tmp_path / "nowhere", tmp_path / "out"), tmp_path)
-    assert err == "error: data root nowhere is not a folder\n"
+    assert err == "error: nowhere: data root not found\n"
     assert list(tmp_path.iterdir()) == []
 
 
@@ -306,14 +317,14 @@ def test_out_whose_parent_is_a_file_is_refused_before_scoring(mod: ModuleType, r
                                                               capsys: pytest.CaptureFixture[str]) -> None:
     (tmp_path / "blocker").write_text("x", encoding="utf-8")
     err = refused(mod, capsys, argv_for(root, tmp_path / "blocker" / "out"), tmp_path)
-    assert err == "error: output parent blocker is not a folder\n"
+    assert err == "error: blocker: is a file, not a folder\n"
     assert nothing_else_in(tmp_path, "blocker")
 
 
 def test_out_whose_parent_is_missing_is_refused_and_not_created(mod: ModuleType, root: Path, tmp_path: Path,
                                                                 capsys: pytest.CaptureFixture[str]) -> None:
     err = refused(mod, capsys, argv_for(root, tmp_path / "later" / "out"), tmp_path)
-    assert err == "error: output parent later is not a folder\n"
+    assert err == "error: later: output parent not found\n"
     assert nothing_else_in(tmp_path)
 
 
@@ -348,7 +359,7 @@ def test_a_denied_rename_of_the_temporary_folder_still_says_permission_denied(
     def deny(src: object, dst: object) -> None:
         raise PermissionError(13, "Permission denied", str(src), None, str(dst))
 
-    monkeypatch.setattr(mod.os, "replace", deny)
+    monkeypatch.setattr(os, "replace", deny)
     err = refused(mod, capsys, argv_for(root, tmp_path / "out"), tmp_path)
     assert err.endswith(": Permission denied\n") and "folder" not in err
     assert nothing_else_in(tmp_path)
@@ -386,7 +397,7 @@ def test_usage_errors_exit_2(mod: ModuleType, root: Path, tmp_path: Path, extra:
 # --- as a user runs it -----------------------------------------------------------------------------------------------
 
 def run_script(root: Path, out: Path, cwd: Path) -> subprocess.CompletedProcess[str]:
-    """The script in a fresh interpreter without PYTHONPATH."""
+    """The stub in a fresh interpreter without PYTHONPATH (the installed package is found in site-packages)."""
     environ = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
     return subprocess.run([sys.executable, str(SCRIPT), *argv_for(root, out)], cwd=cwd, env=environ,
                           capture_output=True, text=True, check=False)
@@ -403,6 +414,6 @@ def test_runs_as_a_subprocess_without_pythonpath(root: Path, tmp_path: Path) -> 
 
 def test_the_script_and_module_have_no_marker_or_bom() -> None:
     marker = "TO" + "DO"                                     # split so this file does not match itself
-    for path in (SCRIPT, ROOT / "src" / "punct_restore" / "data" / "gold_noise.py"):
+    for path in (SCRIPT, CLI_MODULE, ROOT / "src" / "punct_restore" / "data" / "gold_noise.py"):
         raw = path.read_bytes()
         assert not raw.startswith(b"\xef\xbb\xbf") and marker not in raw.decode("utf-8")

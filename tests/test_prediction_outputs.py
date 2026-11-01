@@ -1,7 +1,7 @@
 """Safe output handling of the prediction CLIs: path collisions, partial output, stdout encoding.
 
-Covers src/punct_restore/prediction_io.py and its two users, scripts/train_crf.py predict and
-scripts/tune_threshold.py predict/tune.
+Covers src/punct_restore/prediction_io.py and its two users, punct_restore.cli.train_crf predict and
+punct_restore.cli.tune_threshold predict/tune.
 """
 
 from __future__ import annotations
@@ -19,10 +19,12 @@ from typing import Any
 import pytest
 
 from punct_restore import prediction_io
+from punct_restore.cli import train_crf, tune_threshold
 from punct_restore.evaluation.inputs import Vocab, load_bundle, sha256_file
 from punct_restore.evaluation.manifest import check_manifest
+from punct_restore.models import crf_training
 from punct_restore.models.crf import CRFModel
-from scripts import train_crf, tune_threshold
+from punct_restore.paths import REPO_ROOT
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "train_crf.py"
 PREDICTION = {"sample_id": "s1", "model_name": "m", "label_mode": "A", "predicted_labels": ["O"]}
@@ -102,7 +104,7 @@ def test_crf_predict_refuses_output_equal_to_manifest(
     same = tmp_path / "x.json"
     assert train_crf.main(_crf_argv(env, same, same)) == 1
     line = _one_error_line(capsys.readouterr().err)
-    assert line.startswith("Error: ") and "--output" in line and "--manifest-out" in line
+    assert line.startswith("error: ") and "--output" in line and "--manifest-out" in line
     assert not same.exists()
 
 
@@ -117,7 +119,7 @@ def test_crf_predict_never_overwrites_its_inputs_even_with_overwrite(
     man = target if slot == "manifest" else tmp_path / "p.man.json"
     assert train_crf.main([*_crf_argv(env, out, man), "--overwrite"]) == 1
     assert target.read_bytes() == before
-    assert _one_error_line(capsys.readouterr().err).startswith("Error: ")
+    assert _one_error_line(capsys.readouterr().err).startswith("error: ")
     assert not [p for p in (tmp_path / "p.jsonl", tmp_path / "p.man.json") if p.exists()]
 
 
@@ -139,7 +141,7 @@ def test_crf_train_never_lets_one_output_overwrite_another_or_an_input(
             "--overwrite"]
     assert train_crf.main(argv) == 1
     line = _one_error_line(capsys.readouterr().err)
-    assert line.startswith("Error: ") and "same file" in line
+    assert line.startswith("error: ") and "same file" in line
     assert (target.read_bytes() if target.exists() else None) == before
 
 
@@ -163,8 +165,7 @@ def test_crf_train_never_overwrites_the_label_config(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     config = tmp_path / "label_sets.yaml"
-    config.write_bytes(Path(train_crf.__file__).resolve().parents[1].joinpath(
-        "configs", "label_sets.yaml").read_bytes())
+    config.write_bytes(REPO_ROOT.joinpath("configs", "label_sets.yaml").read_bytes())
     before = config.read_bytes()
     argv = [*_train_argv(tmp_path, config, tmp_path / "m.json"),
             "--config-path", str(config), "--overwrite"]
@@ -259,7 +260,7 @@ def test_crf_refuses_an_output_that_is_a_folder_even_with_overwrite(
     argv = _train_argv(tmp_path, out, man) if command == "train" else _crf_argv(env, out, man)
     assert train_crf.main([*argv, "--overwrite"]) == 1
     line = _one_error_line(capsys.readouterr().err)
-    assert line.startswith("Error: ") and "taken is a folder, not a file" in line
+    assert line.startswith("error: ") and "taken is a folder, not a file" in line
     assert folder.is_dir() and not list(folder.iterdir())
     assert not other.exists() and not other.with_suffix(".man.json").exists()
 
@@ -332,7 +333,7 @@ def test_crf_predict_prints_success_lines_only_after_both_files_are_written(
     assert train_crf.main(_crf_argv(env, out, man)) == 1
     captured = capsys.readouterr()
     assert "Predictions exported" not in captured.out and "Manifest written" not in captured.out
-    assert _one_error_line(captured.err).startswith("Error: Could not write prediction outputs")
+    assert _one_error_line(captured.err) == "error: could not write prediction outputs: disk full"
     assert not out.exists() and not man.exists()
 
 
@@ -430,7 +431,7 @@ def test_crf_predict_reports_an_unencodable_sample_id_as_one_line_and_leaves_no_
             "--output", str(out), "--manifest-out", str(man)]
     assert train_crf.main(argv) == 1
     captured = capsys.readouterr()
-    assert _one_error_line(captured.err).startswith("Error: Could not write prediction outputs: ")
+    assert _one_error_line(captured.err).startswith("error: could not write prediction outputs: ")
     assert "Predictions exported" not in captured.out
     assert not out.exists() and not man.exists()
 
@@ -508,16 +509,16 @@ def test_git_status_porcelain_decodes_utf8_without_failing_on_bad_bytes(
         stdout = b"\xff M x.py\n".decode(kwargs["encoding"], kwargs["errors"])
         return subprocess.CompletedProcess(args, 0, stdout=stdout, stderr="")
 
-    monkeypatch.setattr(train_crf.subprocess, "run", fake_run)
-    assert train_crf.git_status_porcelain() == "� M x.py\n"
+    monkeypatch.setattr(crf_training.subprocess, "run", fake_run)
+    assert crf_training.git_status_porcelain() == "� M x.py\n"
     assert seen["encoding"] == "utf-8" and seen["errors"] == "replace"
     assert "text" not in seen
 
 
 def test_git_status_porcelain_never_returns_none(monkeypatch: pytest.MonkeyPatch) -> None:
     empty = subprocess.CompletedProcess(["git"], 0, stdout=None, stderr=None)
-    monkeypatch.setattr(train_crf.subprocess, "run", lambda *_a, **_k: empty)
-    assert train_crf.git_status_porcelain() == "unknown"
+    monkeypatch.setattr(crf_training.subprocess, "run", lambda *_a, **_k: empty)
+    assert crf_training.git_status_porcelain() == "unknown"
 
 
 # ---------------------------------------------------------------- prediction_io helpers
@@ -576,12 +577,18 @@ _ONE = '{"sample_id": "s", "tokens": ["a"]}'
 @pytest.mark.parametrize(
     ("lines", "message"),
     [
-        (["{not json"], "Corrupt JSON at line 1"),
-        (["[1]"], "is not a JSON object"),
-        (['{"tokens": ["a"]}'], "missing or empty sample_id"),
-        (['{"sample_id": "s", "tokens": []}'], "Invalid tokens at line 1"),
-        (['{"sample_id": "s", "tokens": ["a", " "]}'], "Tokens contain invalid elements"),
-        ([_ONE, _ONE], "Duplicate sample_id 's' encountered at line 2"),
+        (["{not json"], r"^in\.jsonl line 1: not valid JSON$"),
+        (["[" * 100_000], r"^in\.jsonl line 1: not valid JSON$"),  # RecursionError in json, not a JSON error
+        (["[1]"], r"^in\.jsonl line 1: not a JSON object$"),
+        (['{"tokens": ["a"]}'], r"^in\.jsonl line 1: sample_id must be a nonempty string$"),
+        (['{"sample_id": "s", "tokens": []}'], r"^in\.jsonl line 1: tokens of 's' must be a nonempty list$"),
+        (['{"sample_id": "s", "tokens": "a b"}'], r"^in\.jsonl line 1: tokens of 's' must be a nonempty list$"),
+        (['{"sample_id": "s", "tokens": ["a", " "]}'],
+         r"^in\.jsonl line 1: tokens of 's' must be nonempty, non-whitespace strings$"),
+        *(([json.dumps({"sample_id": "s", "tokens": ["a", token]})],
+           r"^in\.jsonl line 1: tokens of 's' must be nonempty, non-whitespace strings$")
+          for token in (None, 1, {}, ["a"])),
+        ([_ONE, _ONE], r"^in\.jsonl line 2: duplicate sample_id 's'$"),
     ],
 )
 def test_read_observations_rejects_bad_records(
@@ -593,11 +600,18 @@ def test_read_observations_rejects_bad_records(
         prediction_io.read_observations(path, None)
 
 
+def test_read_observations_names_an_input_that_is_not_utf8(tmp_path: Path) -> None:
+    path = tmp_path / "in.jsonl"
+    path.write_bytes(_ONE.encode() + b"\n\xe9\xff\n")  # a good line first: the failure comes mid-file
+    with pytest.raises(ValueError, match=r"^in\.jsonl: not valid UTF-8$"):
+        prediction_io.read_observations(path, None)
+
+
 def test_read_observations_skips_blank_lines_and_reports_a_missing_file(tmp_path: Path) -> None:
     path = tmp_path / "in.jsonl"
     path.write_text("\n" + _ONE + "\n\n", encoding="utf-8")
     assert prediction_io.read_observations(path, None) == [{"sample_id": "s", "tokens": ["a"]}]
-    with pytest.raises(FileNotFoundError, match="Input JSONL not found"):
+    with pytest.raises(FileNotFoundError, match="^ghost.jsonl: input JSONL not found$"):
         prediction_io.read_observations(tmp_path / "ghost.jsonl", None)
 
 
@@ -605,24 +619,42 @@ def test_read_observations_reports_ids_missing_from_the_input(tmp_path: Path) ->
     path, ids = tmp_path / "in.jsonl", tmp_path / "x.ids"
     path.write_text(_ONE + "\n", encoding="utf-8")
     ids.write_text("s\nt\n", encoding="utf-8")
-    with pytest.raises(ValueError, match="Missing 1 selected IDs"):
+    with pytest.raises(ValueError, match=r"^in\.jsonl: missing 1 selected IDs\. Examples: \['t'\]$"):
         prediction_io.read_observations(path, ids)
 
 
-def test_read_frozen_ids_skips_blanks_and_rejects_missing_empty_and_duplicate_lists(
+def test_select_observations_takes_the_ids_already_read_and_keeps_input_file_order(tmp_path: Path) -> None:
+    path = tmp_path / "in.jsonl"
+    rows = [_ONE, '{"sample_id": "t", "tokens": ["b"]}', '{"sample_id": "u", "tokens": ["c"]}']
+    path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    assert prediction_io.select_observations(path, ["u", "s"]) == [
+        {"sample_id": "s", "tokens": ["a"]}, {"sample_id": "u", "tokens": ["c"]}]
+    assert [row["sample_id"] for row in prediction_io.select_observations(path, None)] == ["s", "t", "u"]
+
+
+def test_select_observations_names_the_input_for_a_missing_id_and_never_reads_an_id_file(tmp_path: Path) -> None:
+    path = tmp_path / "in.jsonl"
+    path.write_text(_ONE + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match=r"^in\.jsonl: missing 1 selected IDs\. Examples: \['t'\]$"):
+        prediction_io.select_observations(path, ["s", "t"])
+    with pytest.raises(FileNotFoundError, match=r"^ghost\.jsonl: input JSONL not found$"):
+        prediction_io.select_observations(tmp_path / "ghost.jsonl", ["s"])
+
+
+def test_read_ids_skips_blanks_and_rejects_missing_empty_and_duplicate_lists(
     tmp_path: Path,
 ) -> None:
     ids = tmp_path / "x.ids"
     ids.write_text("a\n\nb\n", encoding="utf-8")
-    assert prediction_io.read_frozen_ids(ids) == ["a", "b"]
+    assert prediction_io.read_ids(ids) == ["a", "b"]
     ids.write_text("a\na\n", encoding="utf-8")
     with pytest.raises(ValueError, match="Duplicate ID 'a' found at line 2"):
-        prediction_io.read_frozen_ids(ids)
+        prediction_io.read_ids(ids)
     ids.write_text("\n", encoding="utf-8")
     with pytest.raises(ValueError, match="empty"):
-        prediction_io.read_frozen_ids(ids)
-    with pytest.raises(FileNotFoundError, match="Frozen ID list not found"):
-        prediction_io.read_frozen_ids(tmp_path / "ghost.ids")
+        prediction_io.read_ids(ids)
+    with pytest.raises(FileNotFoundError):
+        prediction_io.read_ids(tmp_path / "ghost.ids")
 
 
 # ---------------------------------------------------------------- path errors stay one line
@@ -638,7 +670,7 @@ def test_crf_train_output_without_a_file_name_is_one_error_line(
     assert "--manifest-out" not in argv
     assert train_crf.main(argv) == 1
     line = _one_error_line(capsys.readouterr().err)
-    assert line.startswith("Error: ") and "--output" in line
+    assert line.startswith("error: ") and "--output" in line
 
 
 def _lock(monkeypatch: pytest.MonkeyPatch, locked: Path) -> None:
@@ -687,7 +719,7 @@ def test_crf_predict_reports_an_unreadable_model_folder_in_one_line(
     argv[argv.index("--model") + 1] = str(locked / "m.joblib")
     assert train_crf.main(argv) == 1
     line = _one_error_line(capsys.readouterr().err)
-    assert line.startswith("Error: cannot check m.joblib") and "not found" not in line
+    assert line == "error: m.joblib: Permission denied"
 
 
 @pytest.mark.parametrize("flag", ["--model", "--input"])

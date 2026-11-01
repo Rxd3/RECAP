@@ -5,15 +5,25 @@ main(argv) runs in-process through the `cli` fixture; cases come from cli_analys
 
 from __future__ import annotations
 
+import errno
 import json
+import os
 from collections.abc import Callable
 from pathlib import Path
 from types import ModuleType
 from typing import Any
 
 import pytest
-from cli_analysis_cases import (MANIFEST_NAME, assert_nothing_written, assert_one_line, build_case, bundle_of,
-                                read_json, valid_manifest, write_manifest)
+from cli_analysis_cases import (
+    MANIFEST_NAME,
+    assert_nothing_written,
+    assert_one_line,
+    build_case,
+    bundle_of,
+    read_json,
+    valid_manifest,
+    write_manifest,
+)
 from eval_fixtures import Case, assert_one_error_line, cli_argv, run_cli
 
 from punct_restore.evaluation import BootstrapSpec, evaluate, to_markdown
@@ -143,7 +153,7 @@ def test_score_manifest_missing_file(cli: ModuleType, capsys: pytest.CaptureFixt
     code, _, err = run_cli(cli, capsys, cli_argv("score", grouped_case, out, "--manifest", str(missing)))
 
     assert code == 1
-    assert err == f"error: file or folder not found: {missing}\n"
+    assert err == f"error: nope.json: {os.strerror(errno.ENOENT)}\n"
     assert_nothing_written(out)
 
 

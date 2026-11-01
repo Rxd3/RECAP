@@ -36,7 +36,7 @@ RAW/sponspeech_text/              train/ dev/ test-amb/ test/ (text/*.txt, utt2s
 3. **Recreate the transcripts** (no audio):
 
    ```bash
-   python scripts/prepare_data.py extract --raw-root data/raw/sponspeech-gcs-generation-1716975130398953
+   recap prepare-data extract --raw-root data/raw/sponspeech-gcs-generation-1716975130398953
    ```
 
    This downloads only the pinned byte ranges of the official archive (about 97 MB: the first 20 MiB plus the four
@@ -48,11 +48,14 @@ RAW/sponspeech_text/              train/ dev/ test-amb/ test/ (text/*.txt, utt2s
 4. **Build.**
 
    ```bash
-   python scripts/prepare_data.py build --raw-root data/raw/sponspeech-gcs-generation-1716975130398953 \
+   recap prepare-data build --raw-root data/raw/sponspeech-gcs-generation-1716975130398953 \
      --release-id sponspeech-m1-v2
    ```
 
-   Both provenance files are required. `MANIFEST.sha256` is checked before and after the build. The title snapshot
+   Both provenance files are required: without one, `build` stops with, for example,
+   `error: MANIFEST.sha256: not found; copy it from the release's provenance package`, and without the
+   extracted text with `error: sponspeech_text: folder not found in the raw root; run recap prepare-data extract first`.
+   `MANIFEST.sha256` is checked before and after the build. The title snapshot
    flags `tts_source` (9 "Wikipedia audio article" videos, 425 records: 405 train, 20 validation); those records are
    unresolved, so without the snapshot the default training and primary evaluation ID lists and all checksums differ.
 5. **Verify.** `python -m pytest`, then check the build against the published checksums:

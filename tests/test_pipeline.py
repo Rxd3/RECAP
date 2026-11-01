@@ -12,6 +12,7 @@ from typing import Any
 import pytest
 
 from punct_restore import pipeline
+from punct_restore.cli import run_demo
 from punct_restore.data import labeling
 from punct_restore.data.labeling import load_label_sets
 from punct_restore.models.crf import CRFModel
@@ -22,7 +23,6 @@ from punct_restore.pipeline import (
     clean_tokens,
     reconstruct,
 )
-from scripts import run_demo
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -68,6 +68,25 @@ def test_cleans_punctuation_and_case() -> None:
 
 def test_clean_tokens_drops_punctuation_only_tokens() -> None:
     assert clean_tokens(["Hello", "-", "...", "World!"]) == ["hello", "world"]
+
+
+NOT_TEXT = [pytest.param(None, id="null"), pytest.param(1, id="number"), pytest.param({}, id="object"),
+            pytest.param(["x"], id="list")]
+
+
+@pytest.mark.parametrize("bad", NOT_TEXT)
+def test_clean_tokens_refuses_a_token_that_is_not_text_in_one_line(bad: object) -> None:
+    with pytest.raises(ValueError, match=r"^tokens must be strings, got ") as caught:
+        clean_tokens(["a", bad])  # type: ignore[list-item]
+    assert "\n" not in str(caught.value)
+
+
+@pytest.mark.parametrize("bad", NOT_TEXT)
+def test_reconstruct_refuses_a_token_or_a_label_that_is_not_text_in_one_line(bad: object) -> None:
+    with pytest.raises(ValueError, match=r"^tokens must be strings, got "):
+        reconstruct(["a", bad], ["O", "O"])  # type: ignore[list-item]
+    with pytest.raises(ValueError, match=r"^labels must be strings, got "):
+        reconstruct(["a", "b"], ["O", bad])  # type: ignore[list-item]
 
 
 def test_clean_tokens_returns_new_list() -> None:

@@ -1,4 +1,4 @@
-"""Tests for scripts/reporting/asr_noise_table.py using synthetic score fixtures only (no real data).
+"""Tests for punct_restore.reporting.asr_noise_table using synthetic score fixtures only (no real data).
 
 The numbers asserted here are worked out by hand from the formulas in asr_noise_table_fixtures.py (see the
 comments), so a wrong mean, drop or v2 - v1 difference fails a test. Findings that must follow the data are in
@@ -7,6 +7,7 @@ test_asr_noise_findings.py.
 
 from __future__ import annotations
 
+import errno
 import json
 import os
 import subprocess
@@ -17,7 +18,6 @@ from typing import Any
 
 import pytest
 from asr_noise_table_fixtures import (
-    SCRIPTS,
     patch_json,
     report,
     row,
@@ -41,7 +41,7 @@ def asr_scores(tmp_path: Path) -> Path:
 def test_asr_noise_table_end_to_end(
     asr_scores: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    from scripts.reporting import asr_noise_table
+    from punct_restore.reporting import asr_noise_table
 
     json_out = tmp_path / "summary.json"
     md_out = tmp_path / "ASR_NOISE_V2.md"
@@ -134,9 +134,7 @@ def test_means_are_exact_and_rounded_once_at_display(asr_scores: Path, tmp_path:
 
 
 def test_half_up_ties_round_away_from_zero_at_display() -> None:
-    import asr_noise_stats
-
-    from scripts.reporting import asr_noise_table
+    from punct_restore.reporting import asr_noise_stats, asr_noise_table
 
     assert asr_noise_stats.signed_pts(Decimal("0.00005")) == "+0.01"
     assert asr_noise_stats.signed_pts(Decimal("-0.00005")) == f"{MINUS}0.01"
@@ -149,7 +147,7 @@ def test_half_up_ties_round_away_from_zero_at_display() -> None:
 
 
 def test_compute_seed_stats_reports_range_min_max_and_drop() -> None:
-    from scripts.reporting import asr_noise_table
+    from punct_restore.reporting import asr_noise_table
 
     stats = asr_noise_table.compute_seed_stats(0.5, {2026: 0.40, 2027: 0.42, 2028: 0.47})
     assert (stats.min, stats.max, stats.min_pct, stats.max_pct) == (0.40, 0.47, "40.00", "47.00")
@@ -201,7 +199,7 @@ def test_a_failed_second_write_leaves_neither_output(
     race: str, asr_scores: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Another process creates one output after the up-front check: no half-finished pair stays behind."""
-    from scripts.reporting import asr_noise_table
+    from punct_restore.reporting import asr_noise_table
 
     json_out, md_out = tmp_path / "s.json", tmp_path / "r.md"
     racer = json_out if race == "json" else md_out
@@ -219,10 +217,37 @@ def test_a_failed_second_write_leaves_neither_output(
     assert [p for p in (json_out, md_out) if p != racer and p.exists()] == []
 
 
+def test_a_failed_cleanup_does_not_replace_the_error_that_caused_it(
+    asr_scores: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The second write fails and the first output cannot be removed: the user still hears about the second file."""
+    from punct_restore.reporting import asr_noise_table
+
+    json_out, md_out = tmp_path / "s.json", tmp_path / "r.md"
+    real_render, real_unlink = asr_noise_table.render_markdown, Path.unlink
+
+    def render_then_race(summary: dict[str, Any]) -> str:
+        text = real_render(summary)
+        md_out.write_text("keep", encoding="utf-8")
+        return text
+
+    def unlink_refused(self: Path, missing_ok: bool = False) -> None:
+        if self == json_out:
+            raise PermissionError(errno.EACCES, "Permission denied", str(self))
+        real_unlink(self, missing_ok=missing_ok)
+
+    monkeypatch.setattr(asr_noise_table, "render_markdown", render_then_race)
+    monkeypatch.setattr(Path, "unlink", unlink_refused)
+    assert run_main(asr_scores, json_out, md_out) == 1
+    err = capsys.readouterr().err
+    assert_one_error_line(err, md_out.name)
+    assert json_out.name not in err and "denied" not in err
+
+
 def test_a_write_that_fails_halfway_leaves_neither_output(
     asr_scores: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from scripts.reporting import asr_noise_table
+    from punct_restore.reporting import asr_noise_table
 
     monkeypatch.setattr(asr_noise_table, "render_markdown", lambda summary: "bad \ud800 text")  # cannot be UTF-8
     json_out, md_out = tmp_path / "s.json", tmp_path / "r.md"
@@ -332,7 +357,7 @@ def test_summaries_that_disagree_across_seeds_are_rejected(
 
 
 def test_asr_noise_table_usage_error_exits_with_2() -> None:
-    from scripts.reporting import asr_noise_table
+    from punct_restore.reporting import asr_noise_table
 
     with pytest.raises(SystemExit) as raised:
         asr_noise_table.main([])
@@ -393,12 +418,12 @@ def test_asr_noise_table_rejects_wrong_vocabulary_source(
     assert_one_error_line(capsys.readouterr().err, "summary.json", "default_train")
 
 
-def test_asr_noise_table_runs_as_script_on_cp1252_console(asr_scores: Path, tmp_path: Path) -> None:
+def test_asr_noise_table_runs_as_a_module_on_cp1252_console(asr_scores: Path, tmp_path: Path) -> None:
     json_out = tmp_path / "Ωsummary.json"
     md_out = tmp_path / "Ωreport.md"
     env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"} | {"PYTHONIOENCODING": "cp1252"}
     done = subprocess.run(
-        [sys.executable, str(SCRIPTS / "asr_noise_table.py"), "--scores-root", str(asr_scores),
+        [sys.executable, "-m", "punct_restore.reporting.asr_noise_table", "--scores-root", str(asr_scores),
          "--json-out", str(json_out), "--out", str(md_out)],
         env=env, capture_output=True, check=False, timeout=60,
     )

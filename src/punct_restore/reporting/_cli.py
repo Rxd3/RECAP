@@ -10,9 +10,12 @@ import sys
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "src"))
-from punct_restore.prediction_io import check_new_output_paths
+from punct_restore.prediction_io import (
+    check_new_output_paths,
+    one_line_error,
+    reconfigure_stdout,
+    write_new_file,
+)
 
 
 def check_out(out: Path, inputs: Mapping[str, Path | None] | None = None) -> None:
@@ -28,8 +31,7 @@ def check_out(out: Path, inputs: Mapping[str, Path | None] | None = None) -> Non
 
 def write_new_text(out: Path, text: str) -> None:
     """Create ``out`` holding ``text`` as UTF-8 with the platform newline; an existing file is never replaced."""
-    with open(out, "x", encoding="utf-8") as handle:
-        handle.write(text)
+    write_new_file(out, text, newline=None)
 
 
 def name_only(text: str, path: Path) -> str:
@@ -45,13 +47,6 @@ def _fail(message: str) -> int:
     return 1
 
 
-def _show_unprintable_as_escapes() -> None:
-    """Let print() survive a console that cannot encode a character (a non-ASCII ``--out`` on cp1252)."""
-    reconfigure = getattr(sys.stdout, "reconfigure", None)
-    if reconfigure is not None:
-        reconfigure(errors="backslashreplace")
-
-
 def run(task: Callable[[], None], *, json_errors: bool = True) -> int:
     """Run ``task``; a missing file or malformed input becomes ``error: <message>`` and exit code 1.
 
@@ -59,17 +54,14 @@ def run(task: Callable[[], None], *, json_errors: bool = True) -> int:
     JSON inputs, so ``KeyError``/``TypeError``/``ArithmeticError`` are reported as bad input; pass
     ``json_errors=False`` when the task also runs model code, where those errors are bugs and propagate.
     """
-    _show_unprintable_as_escapes()
+    reconfigure_stdout()  # a non-ASCII ``--out`` on a cp1252 console must not crash print()
     try:
         task()
     except OSError as exc:
-        reason = exc.strerror or "a file could not be read or written"  # str(exc) may hold a whole path
-        name = Path(str(exc.filename)).name if exc.filename else ""
-        if name and Path(str(exc.filename)).is_dir():  # Windows reports opening a folder as permission denied
-            reason = "is a folder, not a file"
-        return _fail(f"{name}: {reason}" if name else reason)
+        # a message-only OSError may quote a whole path: only a system reason is safe to show
+        return _fail(one_line_error(exc) if exc.strerror else "a file could not be read or written")
     except ValueError as exc:
-        return _fail(str(exc))
+        return _fail(one_line_error(exc))
     except KeyError as exc:
         if not json_errors:
             raise

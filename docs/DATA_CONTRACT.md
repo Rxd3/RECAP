@@ -94,7 +94,8 @@ with casing to form a 24-class target; do not store an independent, diverging
 The mapping treats colon/dash as internal boundaries and exclamation/semicolon
 as stronger boundaries. It is a modeling simplification, not a linguistic
 equivalence. The team lead approved it on 2026-10-28 (D5, policy `m1-v1`;
-`approved: true` in `label_sets.yaml`). Canonical modes A and C use it. A release
+`approved: true` in `label_sets.yaml`; without it the release build stops with a `ValueError`, which
+`recap prepare-data` prints as one `error:` line with exit 1). Canonical modes A and C use it. A release
 may also carry a separately versioned *native* four-class view of the source
 (`benchmark_native/`, `metadata.annotation_view: "native"`) for comparison with
 the original benchmark; its scores are never compared with canonical scores as
@@ -122,7 +123,14 @@ explicit decision and a new version, not hidden resplitting.
 For SponSpeech (D6) the overlap unit is the source video ID. `dev` becomes
 `validation`; the second test set test-amb keeps `split: "test"`, records its
 origin in `metadata.source_split` and is written to its own file, never merged
-with `test`. Leakage-controlled validation/test ID lists, frozen before model
+with `test`. **ID lists.** An `.ids` list holds one `sample_id` per line. Its IDs must be unique, and the list must
+not be empty. A `recap` command that is given a list with a duplicate ID or with no ID refuses it with
+one `error:` line and exit 1. `train-hmm` and the HMM study also refuse blank lines and IDs with
+surrounding whitespace. For compatibility, the library function `punct_restore.data.read_ids` keeps the
+lenient behaviour of `main` at `72ebfd1`: blank lines are skipped, duplicates are kept, and an empty
+list reads as `[]`.
+
+Leakage-controlled validation/test ID lists, frozen before model
 selection, are the primary evaluation sets; the full official splits are
 supplementary.
 

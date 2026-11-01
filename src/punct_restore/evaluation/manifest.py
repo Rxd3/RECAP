@@ -31,7 +31,7 @@ def _load(path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
     """The manifest and its checked input identity."""
     try:
         manifest = json.loads(path.read_text(encoding="utf-8-sig"))
-    except (UnicodeDecodeError, ValueError) as exc:
+    except (UnicodeDecodeError, ValueError, RecursionError) as exc:  # RecursionError: nested too deeply
         raise EvaluationInputError(f"{path.name}: not a JSON manifest") from exc
     if not isinstance(manifest, dict):
         raise EvaluationInputError(f"{path.name}: manifest must be a JSON object")
@@ -55,12 +55,12 @@ def check_manifest(manifest_path: str | Path, bundle: Bundle, vocab: Vocab) -> N
         "model_name": bundle.model_name,
         "label_mode": bundle.label_mode,
         "ordered_labels": list(vocab.labels(bundle.label_mode)),
-        "predictions_sha256": bundle.inputs["predictions"]["sha256"],
+        "predictions_sha256": bundle.identity("predictions")["sha256"],
     }
     for field, value in expected.items():
         if manifest[field] != value:
             raise EvaluationInputError(
                 f"{path.name}: {field} is {manifest[field]!r}, expected {value!r}")
-    if input_identity["sha256"] != bundle.inputs["gold"]["sha256"]:
+    if input_identity["sha256"] != bundle.identity("gold")["sha256"]:
         raise EvaluationInputError(
             f"{path.name}: predictions were made from a different input file than the gold file")

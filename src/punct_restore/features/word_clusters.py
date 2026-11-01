@@ -52,7 +52,12 @@ class ClusterMap:
 # ---------------------------------------------------------------- induction
 
 def _require_int(name: str, value: object, minimum: int, maximum: int | None = None) -> None:
-    if isinstance(value, bool) or not isinstance(value, int) or value < minimum or (maximum is not None and value > maximum):
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, int)
+        or value < minimum
+        or (maximum is not None and value > maximum)
+    ):
         bound = f">= {minimum}" if maximum is None else f"in {minimum}..{maximum}"
         raise ValueError(f"{name} must be an integer {bound}")
 
@@ -178,10 +183,10 @@ def map_to_json(cluster_map: ClusterMap) -> str:
     return json.dumps(payload, sort_keys=True, indent=1) + "\n"
 
 
-# A malformed map file raises ValueError, not TypeError, by the loader's contract (hence the TRY004 waivers).
+# A malformed map file raises ValueError, not TypeError, by the loader's contract.
 def _check_fields(payload: object) -> dict:
     if not isinstance(payload, dict):
-        raise ValueError("expected a JSON object")  # noqa: TRY004
+        raise ValueError("expected a JSON object")
     expected = {"format_version", "clusters", *_INT_FIELDS, *_STR_FIELDS}
     if missing := sorted(expected - payload.keys()):
         raise ValueError(f"missing field(s): {', '.join(missing)}")
@@ -194,16 +199,16 @@ def _check_fields(payload: object) -> dict:
         _require_int(field, payload[field], minimum)
     for field in _STR_FIELDS:
         if not isinstance(payload[field], str):
-            raise ValueError(f"{field} must be a string")  # noqa: TRY004
+            raise ValueError(f"{field} must be a string")
     return payload
 
 
 def _check_clusters(clusters: object, k: int, vocabulary_size: int) -> dict[str, int]:
     if not isinstance(clusters, dict):
-        raise ValueError("clusters must be an object of word -> cluster id")  # noqa: TRY004
+        raise ValueError("clusters must be an object of word -> cluster id")
     for cluster in clusters.values():
         if isinstance(cluster, bool) or not isinstance(cluster, int):
-            raise ValueError("clusters must map each word to an integer cluster id")  # noqa: TRY004
+            raise ValueError("clusters must map each word to an integer cluster id")
         if not 0 <= cluster < k:
             raise ValueError(f"a cluster id is outside 0..{k - 1}")
     if vocabulary_size != len(clusters):
@@ -225,8 +230,8 @@ def load_cluster_map(path: str | Path) -> ClusterMap:
         raise ValueError(f"{path.name}: not valid UTF-8") from exc
     try:
         payload = json.loads(text)
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"{path.name}: invalid JSON ({exc.msg})") from exc
+    except (json.JSONDecodeError, RecursionError) as exc:  # RecursionError: nested too deeply
+        raise ValueError(f"{path.name}: invalid JSON ({getattr(exc, 'msg', 'nested too deeply')})") from exc
     try:
         payload = _check_fields(payload)
         clusters = _check_clusters(payload["clusters"], payload["k"], payload["vocabulary_size"])

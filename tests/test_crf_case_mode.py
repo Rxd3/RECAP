@@ -84,8 +84,14 @@ def test_fit_does_not_mutate_the_records(mode_c_records):
         pytest.param(lambda r: r.update(case_labels=["LOWER"] * 9), "case_labels length", id="long"),
         pytest.param(lambda r: r.update(case_labels=["LOWER", "MIXED", "LOWER", "LOWER"]), "unknown case_labels",
                      id="unknown"),
-        pytest.param(lambda r: r.update(case_labels=["LOWER", 1, "LOWER", "LOWER"]), "unknown case_labels",
-                     id="non-string"),
+        pytest.param(lambda r: r.update(case_labels=["LOWER", 1, "LOWER", "LOWER"]),
+                     "case_labels must be a list of strings", id="number"),
+        pytest.param(lambda r: r.update(case_labels=["LOWER", {"a": 1}, "LOWER", "LOWER"]),
+                     "case_labels must be a list of strings", id="dict"),
+        pytest.param(lambda r: r.update(case_labels=["LOWER", ["LOWER"], "LOWER", "LOWER"]),
+                     "case_labels must be a list of strings", id="list"),
+        pytest.param(lambda r: r.update(case_labels=["LOWER", None, "LOWER", "LOWER"]),
+                     "case_labels must be a list of strings", id="null"),
     ],
 )
 def test_bad_case_labels_are_a_value_error(mode_c_records, edit, message):
@@ -110,7 +116,7 @@ def test_load_rejects_an_artifact_with_an_unknown_label_mode(mode_c_records, tmp
     CRFModel(label_mode="CASE", max_iterations=5).fit(mode_c_records).save_model(path)
     bundle = joblib.load(path)
     joblib.dump({**bundle, "label_mode": bad_mode}, path)
-    with pytest.raises(ValueError, match="Invalid label_mode in artifact"):
+    with pytest.raises(ValueError, match="^case.joblib: invalid label_mode in artifact"):
         CRFModel.load_model(path)
 
 

@@ -22,25 +22,38 @@ Artifact: versioned JSON (``format_version`` 1, ``model_family`` "hidden_event_l
 
 from __future__ import annotations
 
-import contextlib
 import json
 import math
 from collections import Counter
-from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
 from typing import Any
 
 from punct_restore.data.labeling import load_label_sets
+from punct_restore.file_io import read_json, write_new_file
+from punct_restore.models.hidden_event_lm_viterbi import Back, History, LogProb, viterbi
 from punct_restore.models.ngram_lm import (
-    Context,
     NgramLM,
     count_ngrams,
     counts_from_payload,
     counts_to_payload,
 )
 from punct_restore.models.truecaser import UnigramTruecaser
+
+__all__ = [
+    "BOS_TOKEN",
+    "EOS_TOKEN",
+    "FORMAT_VERSION",
+    "MODEL_FAMILY",
+    "UNK_TOKEN",
+    "Back",
+    "HiddenEventLM",
+    "History",
+    "LogProb",
+    "UnigramTruecaser",
+]
 
 FORMAT_VERSION = 1
 MODEL_FAMILY = "hidden_event_lm"
@@ -50,9 +63,6 @@ _MODES = ("A", "B", "C")
 _NO_EVENT = "O"
 _CONFIG_KEYS = ("label_mode", "order", "discount", "min_count", "model_name")
 _SUMMARY_KEYS = ("num_sequences", "num_tokens", "vocabulary_size")
-
-History = tuple[int, ...]
-LogProb = Callable[[int, History], float]
 
 
 @dataclass(frozen=True)
@@ -89,7 +99,7 @@ def _check_config(label_mode: Any, order: Any, discount: Any, min_count: Any, mo
 
 def _claim_sample_id(record: Any, seen: set[str]) -> str:
     if not isinstance(record, Mapping):
-        raise ValueError("each record must be a mapping")  # noqa: TRY004 - callers catch ValueError only
+        raise ValueError("each record must be a mapping")
     sample_id = record.get("sample_id")
     if not isinstance(sample_id, str) or not sample_id.strip():
         raise ValueError("sample_id must be a nonempty string")
@@ -116,82 +126,10 @@ def _check_tokens(value: Any, where: str) -> list[str]:
 def _check_labels(value: Any, length: int, allowed: Sequence[str], field: str, where: str) -> list[str]:
     if not isinstance(value, list) or len(value) != length:
         raise ValueError(f"{where}: {field} must be a list with one label per token")
-    unknown = next((label for label in value if label not in allowed), None)
-    if unknown is not None:
-        raise ValueError(f"{where}: unknown {field} label {unknown!r}")
+    for label in value:
+        if not isinstance(label, str) or label not in allowed:  # a null label must not read as "found"
+            raise ValueError(f"{where}: unknown {field} label {label!r}")
     return value
-
-
-# ------------------------------------------------------------------ exact Viterbi over the hidden choices
-
-
-Back = dict[History, tuple[History, int]]  # new history -> (history it came from, choice made)
-
-
-def _merge(
-    best: dict[History, float], back: Back, states: dict[History, float], token: int, logprob: LogProb,
-    span: int, choice: int,
-) -> None:
-    """Emit ``token`` from every state into ``best``/``back``; only a strictly better path replaces a stored one."""
-    for history, score in states.items():
-        new = (history + (token,))[-span:]
-        total = score + logprob(token, history)
-        if new not in best or total > best[new]:
-            best[new], back[new] = total, (history, choice)
-
-
-def _emit(states: dict[History, float], token: int, logprob: LogProb, span: int) -> tuple[dict[History, float], Back]:
-    """Emit ``token`` from every state; paths that end in the same history merge, the best one is kept."""
-    best: dict[History, float] = {}
-    back: Back = {}
-    _merge(best, back, states, token, logprob, span, 0)
-    return best, back
-
-
-def _choose(
-    states: dict[History, float], events: Sequence[int], logprob: LogProb, span: int
-) -> tuple[dict[History, float], Back]:
-    """Choose no event (choice 0) or one event (choice i for events[i - 1]) after a word.
-
-    "No event" is inserted first and events follow in vocabulary order, so ties prefer no event, then the
-    earlier event.
-    """
-    best: dict[History, float] = dict(states)
-    back: Back = {history: (history, 0) for history in states}
-    for choice, event in enumerate(events, 1):
-        _merge(best, back, states, event, logprob, span, choice)
-    return best, back
-
-
-def _viterbi(lm: NgramLM, words: Sequence[int], events: Sequence[int]) -> list[int]:
-    """Best choice per word (0 = no event, i = events[i - 1]) under the exact order-n model, ``</s>`` included."""
-    span = lm.order - 1
-    contexts: dict[History, tuple[Context, ...]] = {}
-    memo: dict[tuple[int, History], float] = {}
-
-    def logprob(token: int, history: History) -> float:
-        value = memo.get((token, history))
-        if value is None:
-            context = contexts.get(history)
-            if context is None:
-                context = contexts[history] = lm.contexts(history)
-            value = memo[(token, history)] = math.log(lm.prob(token, context))
-        return value
-
-    states: dict[History, float] = {(_BOS_ID,) * span: 0.0}
-    trail: list[tuple[Back, Back]] = []
-    for word in words:
-        states, emitted = _emit(states, word, logprob, span)
-        states, chosen = _choose(states, events, logprob, span)
-        trail.append((emitted, chosen))
-    states, ended = _emit(states, _EOS_ID, logprob, span)
-    state = ended[max(states, key=states.__getitem__)][0]
-    choices = [0] * len(words)
-    for index in range(len(words) - 1, -1, -1):
-        emitted, chosen = trail[index]
-        state, choices[index] = chosen[state]
-        state = emitted[state][0]
-    return choices
 
 
 # ------------------------------------------------------------------ the model
@@ -326,7 +264,7 @@ class HiddenEventLM:
 
     def _token_id(self, fitted: _Fitted, token: Any) -> int:
         if not isinstance(token, str):
-            raise ValueError("tokens must be strings")  # noqa: TRY004 - ValueError by contract
+            raise ValueError("tokens must be strings")
         special = self._special.get(token)
         return special if special is not None else fitted.word_ids.get(token.lower(), _UNK_ID)
 
@@ -344,7 +282,7 @@ class HiddenEventLM:
         fitted = self._require_fitted()
         words = _check_tokens(tokens, "tokens")
         ids = [fitted.word_ids.get(word.lower(), _UNK_ID) for word in words]
-        choices = _viterbi(fitted.lm, ids, self._event_ids)
+        choices = viterbi(fitted.lm, ids, self._event_ids, bos_id=_BOS_ID, eos_id=_EOS_ID)
         punctuation = [_NO_EVENT if choice == 0 else self._events[choice - 1] for choice in choices]
         if fitted.truecaser is None:
             return punctuation
@@ -386,27 +324,22 @@ class HiddenEventLM:
         text = json.dumps(payload, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
         destination = Path(path)
         destination.parent.mkdir(parents=True, exist_ok=True)
-        handle = destination.open("x", encoding="utf-8", newline="\n")  # FileExistsError leaves the old file alone
-        try:
-            with handle:
-                handle.write(text + "\n")
-        except BaseException:
-            with contextlib.suppress(OSError):  # best effort; the write error is the one that gets raised
-                destination.unlink(missing_ok=True)
-            raise
+        write_new_file(destination, text + "\n")  # FileExistsError leaves the old file alone
 
     @classmethod
     def load_model(cls, path: str | Path) -> HiddenEventLM:
-        """Read an artifact written by ``save_model``; ValueError (one line) if it is malformed."""
+        """Read an artifact written by ``save_model``; ValueError (one line naming the file) if it is malformed."""
+        payload = read_json(Path(path))  # names the file for bytes that are not UTF-8 or not JSON
         try:
-            return cls._from_payload(json.loads(Path(path).read_text(encoding="utf-8")))
-        except (ValueError, RecursionError, OverflowError) as exc:  # OverflowError: a backstop for huge numbers
-            raise ValueError(f"invalid hidden-event LM artifact: {' '.join(str(exc).splitlines())}") from exc
+            return cls._from_payload(payload)
+        except (ValueError, OverflowError) as exc:  # OverflowError: a backstop for huge numbers
+            name = Path(path).name
+            raise ValueError(f"{name}: invalid hidden-event LM artifact: {' '.join(str(exc).splitlines())}") from exc
 
     @classmethod
     def _from_payload(cls, payload: object) -> HiddenEventLM:
         if not isinstance(payload, dict):
-            raise ValueError("the file does not hold a JSON object")  # noqa: TRY004 - load_model reports ValueError
+            raise ValueError("the file does not hold a JSON object")
         if type(payload.get("format_version")) is not int or payload["format_version"] != FORMAT_VERSION:
             raise ValueError("unsupported format_version")
         if payload.get("model_family") != MODEL_FAMILY:

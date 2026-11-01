@@ -8,7 +8,7 @@ from types import ModuleType
 
 import pytest
 from cli_analysis_cases import build_case
-from eval_fixtures import SCRIPT_PATH, Case
+from eval_fixtures import MODULE_PATH, Case
 
 from punct_restore.evaluation import load_vocab
 from punct_restore.evaluation.inputs import Vocab
@@ -22,8 +22,8 @@ def vocab() -> Vocab:
 
 @pytest.fixture(scope="session")
 def cli() -> ModuleType:
-    """scripts/evaluate_models.py imported as a module, so tests can call main(argv) in-process."""
-    spec = importlib.util.spec_from_file_location("evaluate_models_under_test", SCRIPT_PATH)
+    """punct_restore.cli.evaluate_models loaded fresh from its file, so tests can call main(argv) in-process."""
+    spec = importlib.util.spec_from_file_location("evaluate_models_under_test", MODULE_PATH)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

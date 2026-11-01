@@ -10,19 +10,24 @@ from __future__ import annotations
 import json
 import math
 from collections import Counter
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
+
+from punct_restore.file_io import write_new_file
+
+from .hmm_distributions import HMMDistributions
+from .hmm_validation import positive_integer as _positive_integer
+from .hmm_validation import read_artifact, validate_counts
+from .hmm_validation import validated_tokens as _tokens
+
+__all__ = ["HMMModel"]
 
 _STANDARD = ("O", "COMMA", "PERIOD", "QUESTION")
 _EXTENDED = _STANDARD + ("EXCLAMATION", "COLON", "SEMICOLON", "DASH")
 _CASING = ("LOWER", "FIRST_UPPER", "ALL_UPPER")
 _FORMAT_VERSION = 1
-
-
-def _positive_integer(value: Any) -> bool:
-    return type(value) is int and value > 0
 
 
 def _json_metadata(value: Mapping[str, Any] | None) -> dict[str, Any]:
@@ -34,15 +39,8 @@ def _json_metadata(value: Mapping[str, Any] | None) -> dict[str, Any]:
         raise ValueError("metadata must contain finite JSON-serializable values") from exc
 
 
-def _tokens(value: Any) -> list[str]:
-    if not isinstance(value, (list, tuple)) or not value:
-        raise ValueError("tokens must be a nonempty list or tuple")
-    if any(not isinstance(token, str) or not token.strip() for token in value):
-        raise ValueError("each token must be a nonempty, non-whitespace string")
-    return list(value)
-
-
 def _observation(record: Any, seen_ids: set[str]) -> tuple[str, list[str]]:
+    """Validate the observable fields of one record; seen_ids is only read, the caller remembers the ID."""
     if not isinstance(record, Mapping):
         raise ValueError("each record must be a mapping")
     if type(record.get("schema_version")) is not int or record["schema_version"] != 1:
@@ -52,12 +50,10 @@ def _observation(record: Any, seen_ids: set[str]) -> tuple[str, list[str]]:
         raise ValueError("sample_id must be a nonempty string")
     if sample_id in seen_ids:
         raise ValueError(f"duplicate sample_id: {sample_id}")
-    tokens = _tokens(record.get("tokens"))
-    seen_ids.add(sample_id)
-    return sample_id, tokens
+    return sample_id, _tokens(record.get("tokens"))
 
 
-@dataclass
+@dataclass(frozen=True)
 class _Counts:
     start: list[int]
     transition: list[list[int]]
@@ -67,6 +63,39 @@ class _Counts:
     unknown: list[int]
     vocabulary: list[str]
     num_sequences: int
+
+
+def _count_sequences(
+    sequences: Iterable[tuple[list[str], list[int]]], k: int, min_token_count: int
+) -> _Counts:
+    """Count k-state (tokens, states) sequences; words seen fewer than min_token_count times fold into unknown."""
+    start, end, state = [0] * k, [0] * k, [0] * k
+    transition = [[0] * k for _ in range(k)]
+    raw_emissions: list[Counter[str]] = [Counter() for _ in range(k)]
+    word_frequency: Counter[str] = Counter()
+    num_sequences = 0
+    for tokens, states in sequences:
+        start[states[0]] += 1
+        end[states[-1]] += 1
+        for position, (word, current) in enumerate(zip(tokens, states, strict=True)):
+            state[current] += 1
+            raw_emissions[current][word] += 1
+            word_frequency[word] += 1
+            if position:
+                transition[states[position - 1]][current] += 1
+        num_sequences += 1
+    vocabulary = sorted(word for word, frequency in word_frequency.items() if frequency >= min_token_count)
+    kept = set(vocabulary)
+    return _Counts(
+        start=start,
+        transition=transition,
+        end=end,
+        state=state,
+        emissions=[{word: n for word, n in emissions.items() if word in kept} for emissions in raw_emissions],
+        unknown=[sum(n for word, n in emissions.items() if word not in kept) for emissions in raw_emissions],
+        vocabulary=vocabulary,
+        num_sequences=num_sequences,
+    )
 
 
 class HMMModel:
@@ -139,6 +168,15 @@ class HMMModel:
             "unknown_training_tokens": sum(counts.unknown),
         }
 
+    @property
+    def distributions(self) -> HMMDistributions:
+        """A read-only copy of the log-probability tables, for checks; never the model's own tables."""
+        self._require_fitted()
+        return HMMDistributions.copy_of(
+            self._log_start, self._log_transition, self._log_end, self._vocabulary,
+            self._log_emissions, self._log_default, self._log_unknown,
+        )
+
     def fit(
         self,
         training_records: Iterable[Mapping[str, Any]],
@@ -147,72 +185,52 @@ class HMMModel:
     ) -> HMMModel:
         """Fit annotated train records; a failed refit preserves old state."""
         provenance = _json_metadata(metadata)
-        k = len(self.labels)
-        counts = _Counts(
-            start=[0] * k,
-            transition=[[0] * k for _ in range(k)],
-            end=[0] * k,
-            state=[0] * k,
-            emissions=[{} for _ in range(k)],
-            unknown=[0] * k,
-            vocabulary=[],
-            num_sequences=0,
+        counts = _count_sequences(
+            self._train_sequences(training_records), len(self.labels), self._min_token_count
         )
-        word_frequency: Counter[str] = Counter()
-        raw_emissions: list[Counter[str]] = [Counter() for _ in range(k)]
+        if not counts.num_sequences:
+            raise ValueError("training_records must contain at least one nonempty train sequence")
+        self._install(counts, provenance)
+        return self
+
+    def _train_sequences(
+        self, training_records: Iterable[Mapping[str, Any]]
+    ) -> Iterator[tuple[list[str], list[int]]]:
+        """Validate the train records one by one, in order, and yield each one's tokens and state indices."""
         seen_ids: set[str] = set()
         for record in training_records:
             sample_id, tokens = _observation(record, seen_ids)
-            if record.get("split") != "train":
-                raise ValueError(f"{sample_id}: fit accepts only split=train records")
-            if record.get("label_mode") != self.label_mode:
-                raise ValueError(
-                    f"{sample_id}: label_mode does not match model; no implicit collapse"
-                )
-            if not isinstance(record.get("source"), str) or not record["source"].strip():
-                raise ValueError(f"{sample_id}: source must be a nonempty string")
-            punct, casing = record.get("punct_labels"), record.get("case_labels")
-            if not isinstance(punct, list) or not isinstance(casing, list):
-                raise ValueError(f"{sample_id}: punct_labels and case_labels must be lists")
-            if len(punct) != len(tokens) or len(casing) != len(tokens):
-                raise ValueError(f"{sample_id}: token and label lengths must match")
-            punctuation = _EXTENDED if self.label_mode == "B" else _STANDARD
-            if any(label not in punctuation for label in punct):
-                raise ValueError(
-                    f"{sample_id}: invalid punctuation label for mode {self.label_mode}"
-                )
-            if any(label not in _CASING for label in casing):
-                raise ValueError(f"{sample_id}: invalid casing label")
-            targets = (
-                [f"{p}|{c}" for p, c in zip(punct, casing, strict=True)]
-                if self.label_mode == "C"
-                else punct
+            seen_ids.add(sample_id)
+            yield tokens, self._record_states(record, sample_id, tokens)
+
+    def _record_states(self, record: Mapping[str, Any], sample_id: str, tokens: list[str]) -> list[int]:
+        """Validate one train record and return its state indices."""
+        if record.get("split") != "train":
+            raise ValueError(f"{sample_id}: fit accepts only split=train records")
+        if record.get("label_mode") != self.label_mode:
+            raise ValueError(
+                f"{sample_id}: label_mode does not match model; no implicit collapse"
             )
-            states = [self._label_index[label] for label in targets]
-            counts.start[states[0]] += 1
-            counts.end[states[-1]] += 1
-            for position, (word, state) in enumerate(zip(tokens, states, strict=True)):
-                counts.state[state] += 1
-                raw_emissions[state][word] += 1
-                word_frequency[word] += 1
-                if position:
-                    counts.transition[states[position - 1]][state] += 1
-            counts.num_sequences += 1
-        if not counts.num_sequences:
-            raise ValueError("training_records must contain at least one nonempty train sequence")
-        counts.vocabulary = sorted(
-            word for word, frequency in word_frequency.items() if frequency >= self._min_token_count
+        if not isinstance(record.get("source"), str) or not record["source"].strip():
+            raise ValueError(f"{sample_id}: source must be a nonempty string")
+        punct, casing = record.get("punct_labels"), record.get("case_labels")
+        if not isinstance(punct, list) or not isinstance(casing, list):
+            raise ValueError(f"{sample_id}: punct_labels and case_labels must be lists")
+        if len(punct) != len(tokens) or len(casing) != len(tokens):
+            raise ValueError(f"{sample_id}: token and label lengths must match")
+        punctuation = _EXTENDED if self.label_mode == "B" else _STANDARD
+        if any(label not in punctuation for label in punct):
+            raise ValueError(
+                f"{sample_id}: invalid punctuation label for mode {self.label_mode}"
+            )
+        if any(label not in _CASING for label in casing):
+            raise ValueError(f"{sample_id}: invalid casing label")
+        targets = (
+            [f"{p}|{c}" for p, c in zip(punct, casing, strict=True)]
+            if self.label_mode == "C"
+            else punct
         )
-        vocabulary = set(counts.vocabulary)
-        for state, emissions in enumerate(raw_emissions):
-            counts.emissions[state] = {
-                word: count for word, count in emissions.items() if word in vocabulary
-            }
-            counts.unknown[state] = sum(
-                count for word, count in emissions.items() if word not in vocabulary
-            )
-        self._install(counts, provenance)
-        return self
+        return [self._label_index[label] for label in targets]
 
     def _require_fitted(self) -> _Counts:
         if self._counts is None:
@@ -315,9 +333,11 @@ class HMMModel:
         into output or consulted when decoding. No caller records are mutated.
         """
         self._require_fitted()
-        predictions, seen_ids = [], set()
+        predictions: list[dict[str, Any]] = []
+        seen_ids: set[str] = set()
         for record in records:
             sample_id, tokens = _observation(record, seen_ids)
+            seen_ids.add(sample_id)
             predictions.append(
                 {
                     "sample_id": sample_id,
@@ -329,7 +349,7 @@ class HMMModel:
         return predictions
 
     def save_model(self, path: str | Path) -> None:
-        """Write versioned JSON; refuse to overwrite an existing file."""
+        """Write versioned JSON; refuse to overwrite an existing file, and remove a file whose write failed."""
         counts = self._require_fitted()
         payload = {
             "format_version": _FORMAT_VERSION,
@@ -346,14 +366,19 @@ class HMMModel:
         serialized = json.dumps(payload, ensure_ascii=False, allow_nan=False, sort_keys=True)
         destination = Path(path)
         destination.parent.mkdir(parents=True, exist_ok=True)
-        with destination.open("x", encoding="utf-8", newline="\n") as handle:
-            handle.write(serialized + "\n")
+        write_new_file(destination, serialized + "\n")
 
     @classmethod
     def load_model(cls, path: str | Path) -> HMMModel:
-        """Validate saved counts and rebuild probabilities without pickle."""
+        """Validate saved counts and rebuild probabilities without pickle.
+
+        Raises:
+            OSError: If the file cannot be read.
+            ValueError: One line that starts with the file name: not valid UTF-8 or JSON (also one nested too
+                deeply), the wrong shape, or counts that do not add up.
+        """
+        payload = read_artifact(Path(path))
         try:
-            payload = json.loads(Path(path).read_text(encoding="utf-8"))
             if (
                 type(payload["format_version"]) is not int
                 or payload["format_version"] != _FORMAT_VERSION
@@ -365,57 +390,10 @@ class HMMModel:
             model._validate_counts(counts)
             model._install(counts, _json_metadata(payload["metadata"]))
             return model
-        except (KeyError, TypeError, ValueError, OverflowError) as exc:
-            raise ValueError(f"invalid HMM artifact: {exc}") from exc
+        except ValueError as exc:
+            raise ValueError(f"{Path(path).name}: invalid HMM artifact: {exc}") from exc
+        except OverflowError as exc:  # a count or a smoothing value too large for a float
+            raise ValueError(f"{Path(path).name}: invalid HMM artifact: a number is out of range") from exc
 
     def _validate_counts(self, counts: _Counts) -> None:
-        k = len(self.labels)
-
-        def vector(value: Any) -> bool:
-            return (
-                isinstance(value, list)
-                and len(value) == k
-                and all(type(item) is int and item >= 0 for item in value)
-            )
-
-        if not all(
-            vector(value) for value in [counts.start, counts.end, counts.state, counts.unknown]
-        ):
-            raise ValueError("count vectors must contain K nonnegative integers")
-        if (
-            not isinstance(counts.transition, list)
-            or len(counts.transition) != k
-            or not all(vector(row) for row in counts.transition)
-        ):
-            raise ValueError("transition counts must be a K-by-K integer matrix")
-        if not _positive_integer(counts.num_sequences):
-            raise ValueError("num_sequences must be a positive integer")
-        if sum(counts.start) != counts.num_sequences or sum(counts.end) != counts.num_sequences:
-            raise ValueError("start/end counts disagree with num_sequences")
-        if sum(counts.state) < counts.num_sequences:
-            raise ValueError("too few tokens for the sequence count")
-        if not isinstance(counts.vocabulary, list):
-            raise ValueError("vocabulary must be a list")
-        if counts.vocabulary:
-            _tokens(counts.vocabulary)
-        if len(set(counts.vocabulary)) != len(counts.vocabulary):
-            raise ValueError("duplicate vocabulary entry")
-        vocabulary = set(counts.vocabulary)
-        if not isinstance(counts.emissions, list) or len(counts.emissions) != k:
-            raise ValueError("one sparse emission table is required per state")
-        for state in range(k):
-            emission = counts.emissions[state]
-            if not isinstance(emission, dict) or not set(emission) <= vocabulary:
-                raise ValueError("emission keys must belong to the vocabulary")
-            if not all(_positive_integer(count) for count in emission.values()):
-                raise ValueError("sparse emission counts must be positive integers")
-            if sum(emission.values()) + counts.unknown[state] != counts.state[state]:
-                raise ValueError("emission totals disagree with state counts")
-            if sum(counts.transition[state]) + counts.end[state] != counts.state[state]:
-                raise ValueError("outgoing transitions/end counts disagree with state counts")
-            incoming = sum(row[state] for row in counts.transition) + counts.start[state]
-            if incoming != counts.state[state]:
-                raise ValueError("incoming transitions/start counts disagree with state counts")
-        for word in vocabulary:
-            if sum(table.get(word, 0) for table in counts.emissions) < self._min_token_count:
-                raise ValueError("retained vocabulary violates min_token_count")
+        validate_counts(counts, len(self.labels), self._min_token_count)

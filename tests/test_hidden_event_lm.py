@@ -12,6 +12,7 @@ from typing import Any, Self
 
 import pytest
 
+from punct_restore import file_io
 from punct_restore.models.hidden_event_lm import HiddenEventLM, UnigramTruecaser
 
 ARTIFACT_ERROR = "invalid hidden-event LM artifact"
@@ -314,7 +315,7 @@ def test_predict_returns_contract_records_in_input_order_and_ignores_gold() -> N
     assert [row["sample_id"] for row in out] == ["z", "a"]
     assert out[0] == {"sample_id": "z", "model_name": "my_h", "label_mode": "A",
                       "predicted_labels": ["O", "O", "PERIOD"]}
-    assert all(len(row["predicted_labels"]) == n for row, n in zip(out, (3, 1)))
+    assert all(len(row["predicted_labels"]) == n for row, n in zip(out, (3, 1), strict=False))
 
 
 def test_predict_of_nothing_is_empty_and_an_unfitted_model_refuses() -> None:
@@ -407,6 +408,36 @@ def test_bad_mode_c_records_name_the_sample(changes, fragment) -> None:
     assert "'c'" in str(error.value) and "\n" not in str(error.value)
 
 
+NON_TEXT_LABELS = [pytest.param(None, id="null"), pytest.param(1, id="number"), pytest.param({}, id="object"),
+                   pytest.param(["O"], id="list")]
+
+
+@pytest.mark.parametrize("label", NON_TEXT_LABELS)
+@pytest.mark.parametrize("field", ["punct_labels", "case_labels"])
+def test_a_label_that_is_not_text_names_the_sample_in_every_mode_that_reads_it(field: str, label: object) -> None:
+    """`None` used to look "not found" to the membership check and reached the event table as a KeyError."""
+    good = rec("c", ["a", "b"], ["O", "PERIOD"], ["LOWER", "LOWER"], mode="C")
+    row = {**good, field: [label, good[field][1]]}
+    with pytest.raises(ValueError, match=rf"^'c': unknown {field} label") as error:
+        HiddenEventLM("C").fit([row])
+    assert "\n" not in str(error.value)
+
+
+@pytest.mark.parametrize("label", NON_TEXT_LABELS)
+def test_a_punctuation_label_that_is_not_text_is_refused_in_mode_a(label: object) -> None:
+    with pytest.raises(ValueError, match=r"^'bad': unknown punct_labels label"):
+        HiddenEventLM("A").fit([_bad(punct_labels=["O", label])])
+
+
+@pytest.mark.parametrize("token", [None, 1, {}, ["a"]], ids=["null", "number", "object", "list"])
+def test_a_truecaser_given_a_token_that_is_not_text_refuses_it_in_one_line(token: object) -> None:
+    with pytest.raises(ValueError, match="tokens must be") as fit_error:
+        UnigramTruecaser.fit([([token], ["LOWER"])])
+    with pytest.raises(ValueError, match="tokens must be") as predict_error:
+        UnigramTruecaser({"a": [1, 0, 0]}).predict([token], ["O"])  # type: ignore[list-item]
+    assert "\n" not in str(fit_error.value) + str(predict_error.value)
+
+
 def test_a_sample_id_with_a_newline_stays_on_one_line() -> None:
     with pytest.raises(ValueError) as error:
         HiddenEventLM("A").fit([_bad(sample_id="x\ny", split="test")])
@@ -460,6 +491,14 @@ def test_refitting_the_same_records_writes_the_same_bytes(tmp_path: Path) -> Non
     assert (tmp_path / "one.json").read_bytes() == (tmp_path / "two.json").read_bytes()
 
 
+def test_the_artifact_is_compact_json_utf8_with_one_lf_at_the_end(tmp_path: Path) -> None:
+    _fitted("B").save_model(tmp_path / "m.json")
+    raw = (tmp_path / "m.json").read_bytes()
+    text = raw.decode("utf-8")
+    assert raw.endswith(b"}\n") and raw.count(b"\n") == 1 and b"\r" not in raw
+    assert text == json.dumps(json.loads(text), ensure_ascii=False, separators=(",", ":")) + "\n"
+
+
 def test_the_artifact_names_its_family_and_version(tmp_path: Path) -> None:
     _fitted("A").save_model(tmp_path / "m.json")
     payload = json.loads((tmp_path / "m.json").read_text(encoding="utf-8"))
@@ -500,14 +539,12 @@ class _FullDiskHandle:
 def test_a_failed_save_removes_the_partial_file_so_a_retry_succeeds(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     model, path = _fitted("A"), tmp_path / "model.json"
-    real_open = Path.open
 
-    def full_disk_open(self: Path, mode: str = "r", *args: Any, **kwargs: Any) -> Any:
-        handle = real_open(self, mode, *args, **kwargs)
-        return _FullDiskHandle(handle) if mode == "x" else handle
+    def full_disk_open(file: Path, mode: str = "r", *args: Any, **kwargs: Any) -> Any:
+        return _FullDiskHandle(open(file, mode, *args, **kwargs))  # the one shared writer calls open()
 
     with monkeypatch.context() as patch:
-        patch.setattr(Path, "open", full_disk_open)
+        patch.setattr(file_io, "open", full_disk_open, raising=False)
         with pytest.raises(OSError, match="No space left"):
             model.save_model(path)
     assert not path.exists()
@@ -604,10 +641,33 @@ def test_a_tampered_mode_c_truecaser_is_a_value_error(tmp_path: Path, how: str) 
         HiddenEventLM.load_model(bad)
 
 
-@pytest.mark.parametrize("content", [b"", b"{not json", b"[1, 2]", b"\xff\xfe\x00", b'{"format_version": 1}'])
-def test_corrupt_artifact_bytes_are_a_one_line_value_error(tmp_path: Path, content: bytes) -> None:
+@pytest.mark.parametrize(
+    ("content", "message"),
+    [
+        (b"", r"^bad\.json: not valid JSON$"),
+        (b"{not json", r"^bad\.json: not valid JSON$"),
+        (b"[" * 100_000, r"^bad\.json: not valid JSON$"),
+        (b"\xff\xfe\x00", r"^bad\.json: not valid UTF-8$"),
+        (b"[1, 2]", rf"^bad\.json: {ARTIFACT_ERROR}: "),
+        (b'{"format_version": 1}', rf"^bad\.json: {ARTIFACT_ERROR}: "),
+    ],
+)
+def test_corrupt_artifact_bytes_are_one_named_line_without_python_text(
+        tmp_path: Path, content: bytes, message: str) -> None:
     bad = tmp_path / "bad.json"
     bad.write_bytes(content)
-    with pytest.raises(ValueError, match=ARTIFACT_ERROR) as error:
+    with pytest.raises(ValueError, match=message) as error:
         HiddenEventLM.load_model(bad)
-    assert "\n" not in str(error.value)
+    assert "\n" not in str(error.value) and "codec" not in str(error.value) and "Expecting" not in str(error.value)
+
+
+@pytest.mark.parametrize("content", [b"{not json", b"\xff\xfe\x00", b"[1, 2]", b"[" * 100_000])
+def test_the_artifact_error_starts_with_the_file_name_and_shows_no_folder(tmp_path: Path, content: bytes) -> None:
+    folder = tmp_path / "secretfolder"
+    folder.mkdir()
+    bad = folder / "bad.json"
+    bad.write_bytes(content)
+    with pytest.raises(ValueError) as error:
+        HiddenEventLM.load_model(bad)
+    assert str(error.value).startswith("bad.json: ")  # the exact wording per kind is pinned above
+    assert "secretfolder" not in str(error.value)

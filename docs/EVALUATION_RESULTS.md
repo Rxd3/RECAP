@@ -16,10 +16,10 @@ Every number below comes from an evaluator JSON file in [`results/scores/`](../r
 - **HMM:** Raşit's tuned bundle `hmm-sponspeech-v2-20261029` (PR #4):
   - selected settings A/B smoothing 0.01, cutoff 1; C smoothing 0.01, cutoff 2;
   - settings chosen on validation.
-- **Shortcut baseline:** `evaluate_models.py baseline`. It predicts O everywhere except the last token, which gets QUESTION after a wh-word or auxiliary first word and PERIOD otherwise. In mode C it puts FIRST_UPPER on the first word.
+- **Shortcut baseline:** `recap evaluate-models baseline`. It predicts O everywhere except the last token, which gets QUESTION after a wh-word or auxiliary first word and PERIOD otherwise. In mode C it puts FIRST_UPPER on the first word.
 
 **Scoring:**
-- `scripts/evaluate_models.py` at `9155a7e`;
+- `recap evaluate-models`, then `scripts/evaluate_models.py` at `9155a7e`;
 - CIs are a grouped bootstrap over videos (`metadata.group_id`), 1,000 resamples, seed 2026, 95% percentile intervals, not adjusted for multiple comparisons;
 - the HMM's numbers equal those in its own bundle.
 
@@ -244,7 +244,7 @@ Counts of wrong positions per (gold → predicted) pair; share = share of that m
 
 ## 6. Sequence-level errors (mode A, test)
 
-Source: `scripts/reporting/length_position.py` → `results/scores/hmm/length_position_A_test.json`, which
+Source: `recap length-position` → `results/scores/hmm/length_position_A_test.json`, which
 reproduces every number in this section.
 
 Micro F1 (%) over COMMA/PERIOD/QUESTION by utterance length in tokens.
@@ -302,7 +302,7 @@ Hardware: Intel64 Family 6 Model 158 Stepping 10, GenuineIntel, Python 3.13.1, o
   - leftover speaker labels give 144 of the 425 validation COLONs (23 of 166 on test), so COLON scores are an upper bound ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §12);
   - subtitle cue numbers carry gold DASH;
   - one auto-caption-style test video (`JNxcznsrRb8`) lacks commas and sentence ends;
-  - about 1% of source transcripts contain errors (an informal, unmeasured estimate).
+  - the source transcripts themselves can contain errors, at a rate that was not measured.
 - **Channels overlap** across the original splits (149 of 522). Grouping by video does not guarantee independence from training.
 - **Intervals cover test-sample variance only.** There is one deterministic fit per setting.
 - **Runtime** was measured on one laptop CPU, single process. Absolute times will differ on other machines; the ratios are what to compare.
@@ -314,12 +314,12 @@ All commands are run from the repository root with the v2 release in `data/`.
 
 ```bash
 mkdir -p results/tables
-python scripts/evaluate_models.py score --gold data/processed/sponspeech-m1-v2/mode_A/test.jsonl --ids data/splits/sponspeech-m1-v2/primary_eval/test_mode_A.ids --predictions <hmm>/final/mode_A/test/predictions.jsonl --bootstrap 1000 --out results/tables/hmm_A_test.json
+recap evaluate-models score --gold data/processed/sponspeech-m1-v2/mode_A/test.jsonl --ids data/splits/sponspeech-m1-v2/primary_eval/test_mode_A.ids --predictions <hmm>/final/mode_A/test/predictions.jsonl --bootstrap 1000 --out results/tables/hmm_A_test.json
 ```
 
 - **Mode C:** add `--masks data/processed/sponspeech-m1-v2/masks/case_joint/test.jsonl`.
 - **Paired comparisons:** `compare --predictions-a A --predictions-b B --bootstrap 1000`.
 - **Error pairs:** `errors --per-pair 3`.
-- **Timing script:** `scripts/reporting/time_models.py`.
+- **Timing script:** `recap time-models`.
 - **Evaluator outputs behind every number:** `results/scores/hmm/` and `results/scores/leakage/`.
 - **Section 8 ID lists:** the "all utterances" list is every `sample_id` in `mode_A/test.jsonl`. The "excluded" list is that list minus `splits/sponspeech-m1-v2/leakage_controlled/test.ids`. The native rows use `--gold data/processed/sponspeech-m1-v2/benchmark_native/mode_A/test.jsonl`.

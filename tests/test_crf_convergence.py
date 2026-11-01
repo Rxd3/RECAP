@@ -1,4 +1,4 @@
-"""Tests for scripts/reporting/crf_convergence.py: loss trace of saved CRF models (tiny fitted models and fakes)."""
+"""Tests for punct_restore.reporting.crf_convergence: loss trace of saved CRF models (tiny fitted models and fakes)."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from reporting_fixtures import TRAIN, assert_one_error_line, run_main
 
 from punct_restore.evaluation.inputs import sha256_file
 from punct_restore.models.crf import CRFModel
-from scripts.reporting import crf_convergence
+from punct_restore.reporting import crf_convergence
 
 KEYS = ["file", "model_sha256", "model_name", "label_mode", "iterations", "final_loss", "loss_10_before",
         "relative_drop_last_10"]
@@ -173,7 +173,9 @@ def test_a_missing_training_log_is_refused(
 ) -> None:
     joblib.dump({"model_family": "crf", "model_name": "n", "label_mode": "A", "backend_state": state},
                 tmp_path / "nolog.joblib")
-    refuse(capsys, tmp_path / "o.json", tmp_path / "nolog.joblib", needle="nolog.joblib: the model holds no training log")
+    refuse(
+        capsys, tmp_path / "o.json", tmp_path / "nolog.joblib", needle="nolog.joblib: the model holds no training log"
+    )
 
 
 @pytest.mark.parametrize("bad", [None, "1.5", True, float("nan"), float("inf")])

@@ -1,7 +1,7 @@
 """A synthetic ``results/scores`` tree for the ASR noise report tests (no real data), and helpers to bend it.
 
 ``write_asr_scores`` writes the clean, ``v2`` and ``v1`` evaluator and simulator JSON files that
-``scripts/reporting/asr_noise_table.py`` reads. Every number follows a formula (see the module constants), so a
+``punct_restore.reporting.asr_noise_table`` reads. Every number follows a formula (see the module constants), so a
 test can work out the expected table cell by hand. ``set_f1`` and ``patch_json`` change single files afterwards.
 Not a test module: pytest does not collect it.
 """
@@ -10,15 +10,12 @@ from __future__ import annotations
 
 import json
 import re
-import sys
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
 from reporting_fixtures import dump
 
-ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS = ROOT / "scripts" / "reporting"
 MODES = ("A", "B", "C")
 PRIMARY = {"A": "punctuation/all", "B": "punctuation/all", "C": "joint/unmasked"}
 WERS = ("0.05", "0.10", "0.15")
@@ -32,9 +29,6 @@ CLEAN_F1 = {
 DROPS_PER_5PCT = {"hmm": 0.002, "crf_basic": 0.008, "crf_improved": 0.015}
 SEED_OFFSETS = {2026: -0.001, 2027: 0.0, 2028: 0.0015}
 TOKENS = 2000
-
-if str(SCRIPTS) not in sys.path:  # the report modules import each other by plain name
-    sys.path.insert(0, str(SCRIPTS))
 
 
 def score_doc(mode: str, model_name: str, macro_f1: float) -> dict[str, Any]:
@@ -146,7 +140,7 @@ def patch_json(path: Path, **updates: Any) -> None:
 
 
 def run_main(root: Path, json_out: Path, md_out: Path) -> int:
-    from scripts.reporting import asr_noise_table
+    from punct_restore.reporting import asr_noise_table
 
     return asr_noise_table.main(["--scores-root", str(root), "--json-out", str(json_out), "--out", str(md_out)])
 

@@ -32,7 +32,7 @@ follow [DATA_CONTRACT.md](DATA_CONTRACT.md); label vocabularies come from
 | Operation | Behaviour |
 | --- | --- |
 | `CRFModel(*, label_mode="A", algorithm="lbfgs", c1=0.1, c2=0.1, max_iterations=100, all_possible_transitions=True, feature_config=None, feature_extractor=None, model_name=None, config_path=None)` | `model_name` defaults to `crf_<preset>` (`crf_basic`, `crf_improved`). |
-| `fit(training_records, *, label_mode=None, config=None, feature_extractor=None)` | Unique non-empty `sample_id`, non-empty `tokens`, `split` `train` (or absent), labels of token length in the mode vocabulary; mode C also checks `case_labels`. `scripts/train_crf.py` additionally enforces `split` and `label_mode` per record. |
+| `fit(training_records, *, label_mode=None, config=None, feature_extractor=None)` | Unique non-empty `sample_id`, non-empty `tokens`, `split` `train` (or absent), labels of token length in the mode vocabulary; mode C also checks `case_labels`. `recap train-crf` additionally enforces `split` and `label_mode` per record. |
 | `predict(records)` | Same four output fields as the HMM, in input order. |
 | `predict_tokens(tokens, *, sample_id="seq_0")` | Labels for one token list (used by the demo). |
 | `predict_marginals(records)` | One list per record, one dict per token mapping every vocabulary label to its marginal probability (labels unseen in training get 0.0). |
@@ -45,8 +45,8 @@ filler cue; the same `CRFModel` trains every preset.
 
 **CASE helper mode.** `CRFModel(label_mode="CASE")` trains a casing-only CRF whose target is
 `case_labels` (LOWER, FIRST_UPPER, ALL_UPPER); records still need `punct_labels` of token length. It is
-the casing half of the factored pipeline below. It is not a scoring mode: `train_crf.py --mode` and the
-evaluator accept only A, B and C, and `train_crf.py predict` refuses CASE artifacts. The demo loads
+the casing half of the factored pipeline below. It is not a scoring mode: `recap train-crf train --mode` and the
+evaluator accept only A, B and C, and `recap train-crf predict` refuses CASE artifacts. The demo loads
 a CASE artifact but `ModelAdapter` refuses it: `unsupported label mode 'CASE' in model`.
 
 **Threshold decoding.** `decode_with_threshold(marginals, tau, *, priors=None, gamma=0.0)` in
@@ -69,7 +69,7 @@ the HMM and the CRF. Unfitted models raise `RuntimeError`.
 **Factored casing pipeline.** `combine(punct_predictions, case_predictions, *, model_name)` in
 `src/punct_restore/models/factored.py` joins mode A predictions with CASE predictions into mode C labels
 (`PUNCT|CASE`), in the order of the punctuation predictions. Missing or extra IDs, length mismatches,
-wrong modes or unknown labels raise `ValueError`. `scripts/factor_predictions.py` wraps it.
+wrong modes or unknown labels raise `ValueError`. `recap factor-predictions` wraps it.
 
 ## Prediction JSONL
 
@@ -87,13 +87,13 @@ order; the evaluator matches them by `sample_id`, so order does not affect score
 
 ## Prediction manifest
 
-`scripts/train_crf.py predict --manifest-out` and `scripts/tune_threshold.py predict` write
+`recap train-crf predict --manifest-out` and `recap tune-threshold predict` write
 (`src/punct_restore/prediction_io.py`): `model_name`, `label_mode`, `ordered_labels`,
 `predictions_sha256` and `input` {`path`, `sha256`}. The HMM CLIs write a longer
 `predictions.manifest.json` (run ID, model hash, counts, timing, provenance, command) that carries
 the input identity under `inputs.input`.
 
-`scripts/evaluate_models.py score --manifest` checks (`src/punct_restore/evaluation/manifest.py`):
+`recap evaluate-models score --manifest` checks (`src/punct_restore/evaluation/manifest.py`):
 `model_name`, `label_mode` and `ordered_labels` (exact order) equal the scored predictions and the
 mode vocabulary, `predictions_sha256` equals the predictions file, and the input `sha256` (top-level
 `input` or `inputs.input`; both must agree if both exist) equals the gold file's. CRF training
@@ -113,23 +113,24 @@ manifests are separate sidecars, not prediction manifests.
 
   A `model_family` field wins over `model_name`. A family from the other suffix's table (for example
   `"crf"` in a `.json` file) is refused. `.joblib` and `.pkl` files are pickles: load trusted files only.
-- **Order of the checks:** suffix, then folder, then missing file, then reading the file, then the
-  family marker. So a folder without a model suffix gets the suffix error
-  (`unsupported model file: <name> (expected .json, .joblib or .pkl)`), not the folder error.
-- **Loading errors** (one line, file name only):
-  - another suffix: `ValueError` `unsupported model file: <name> (expected .json, .joblib or .pkl)`;
-  - a folder: `IsADirectoryError` `model path is a folder, not a file: <name>`;
-  - a missing file: `FileNotFoundError` `model file not found: <name>`;
-  - a file that cannot be read: `OSError` `cannot read model file <name>: <reason>`;
-  - invalid JSON or a file that does not unpickle: `ValueError` `unsupported model file: <name> (unreadable)`;
-  - no dict, or a missing or unknown family: `ValueError` `unsupported model file: <name> (unknown model family)`.
+- **Order of the checks:** folder, then missing file, then suffix, then reading the file, then the
+  family marker. So a folder gets the folder error whatever its name.
+- **Loading errors** (one line, file name only; the demo prints each as `error: <line>`):
+  - a folder: `IsADirectoryError` `<name>: is a folder, not a file`;
+  - a missing file: `FileNotFoundError` `<name>: model file not found`;
+  - another suffix: `ValueError` `<name>: unsupported model file (expected .json, .joblib or .pkl)`;
+  - a file that cannot be read: `OSError` `<name>: cannot read model file (<reason>)`;
+  - invalid JSON or a file that does not unpickle: `ValueError` `<name>: unsupported model file (unreadable)`;
+  - no dict, or a missing or unknown family: `ValueError` `<name>: unsupported model file (unknown model family)`.
 
   After dispatch, the class loader's own errors pass through unchanged.
 - **Label mode:** `ModelAdapter` accepts models in modes A, B and C only. Any other mode, such as a
   CASE-mode CRF, raises `ValueError` `unsupported label mode '<mode>' in model`.
 - **Input cleaning:** `RestorationPipeline(adapter).process_text(text)` splits on whitespace,
   lowercases each token and strips `,.?!:;-"` from its edges. Internal apostrophes and hyphens stay;
-  empty input raises `ValueError`.
+  empty input raises `ValueError`. This is not the release tokenizer (`data.preprocessing.tokenize`), which
+  also keeps an abbreviation's final period in the word and keeps brackets and quotes out of tokens; inputs
+  such as `(hello)` or `mr.` can give tokens that never occur in training.
 - **Prediction:** `ModelAdapter(model_path)` builds one gold-free record
   (`schema_version` 1, `sample_id`, `tokens`) and checks that the model returns one label per token from
   the mode's vocabulary.
@@ -138,4 +139,4 @@ manifests are separate sidecars, not prediction manifests.
   word, COMMA adds `,`, PERIOD `.`, QUESTION `?`, EXCLAMATION `!`, COLON `:`, SEMICOLON `;` and DASH
   ` -`; O adds nothing. Words are joined by single spaces.
 - **Modes A and B** predict no casing, so their restored text stays lowercase; there is no
-  sentence-initial capitalisation rule. `scripts/run_demo.py` wraps this pipeline.
+  sentence-initial capitalisation rule. `recap run-demo` wraps this pipeline.

@@ -6,7 +6,10 @@ compare_views()    checks that the A/B/C views share IDs, tokens and splits.
 Errors are returned as strings so a release build can count and report them; nothing is repaired.
 """
 import json
+import os
 import re
+from collections.abc import Iterable, Mapping, Sequence
+from typing import Any
 
 SCHEMA_VERSION = 1
 SPLITS = ("train", "validation", "test")
@@ -16,7 +19,7 @@ OPTIONAL = ("metadata",)
 TARGET_MARK_END = re.compile(r"[,?!;:]$")
 
 
-def validate_record(rec, label_sets):
+def validate_record(rec: object, label_sets: Mapping[str, Any]) -> list[str]:
     """List of contract violations for one record (empty list = valid)."""
     if not isinstance(rec, dict):
         return ["record is not a JSON object"]
@@ -26,9 +29,9 @@ def validate_record(rec, label_sets):
         return errors
     if type(rec["schema_version"]) is not int or rec["schema_version"] != SCHEMA_VERSION:
         errors.append(f"unsupported schema_version {rec['schema_version']!r}")
-    for k in ("sample_id", "source"):
-        if not isinstance(rec[k], str) or not rec[k]:
-            errors.append(f"{k} must be a nonempty string")
+    for field in ("sample_id", "source"):
+        if not isinstance(rec[field], str) or not rec[field]:
+            errors.append(f"{field} must be a nonempty string")
     if rec["split"] not in SPLITS:
         errors.append(f"split {rec['split']!r} not in {SPLITS}")
     if rec["label_mode"] not in MODES:
@@ -43,25 +46,26 @@ def validate_record(rec, label_sets):
         labels = rec[field]
         if not isinstance(labels, list) or len(labels) != len(tokens):
             errors.append(f"{field} must have exactly one label per token")
-        elif any(l not in vocab for l in labels):
+        elif any(label not in vocab for label in labels):
             errors.append(f"{field} contains a label outside the {rec['label_mode']} vocabulary")
     if "metadata" in rec and not isinstance(rec["metadata"], dict):
         errors.append("metadata must be an object")
     return errors
 
 
-def check_model_input(tokens):
+def check_model_input(tokens: Iterable[str]) -> list[str]:
     """Member 1 input policy: model tokens are lowercased and carry no trailing target punctuation."""
     errors = []
-    for t in tokens:
-        if t != t.lower():
-            errors.append(f"token {t!r} is not lowercased")
-        if TARGET_MARK_END.search(t) or re.search(r"\s", t):
-            errors.append(f"token {t!r} contains whitespace or a trailing target mark")
+    for token in tokens:
+        if token != token.lower():
+            errors.append(f"token {token!r} is not lowercased")
+        if TARGET_MARK_END.search(token) or re.search(r"\s", token):
+            errors.append(f"token {token!r} contains whitespace or a trailing target mark")
     return errors
 
 
-def validate_file(path, label_sets, split=None, mode=None):
+def validate_file(path: str | os.PathLike[str], label_sets: Mapping[str, Any], split: str | None = None,
+                  mode: str | None = None) -> tuple[int, list[tuple[int, str]]]:
     """(number of valid records, list of (line number, error)) for one release file."""
     seen, errors, ok = set(), [], 0
     with open(path, encoding="utf-8") as f:
@@ -91,9 +95,9 @@ def validate_file(path, label_sets, split=None, mode=None):
     return ok, errors
 
 
-def compare_views(view_a, view_b):
+def compare_views(view_a: Sequence[Mapping[str, Any]], view_b: Sequence[Mapping[str, Any]]) -> list[str]:
     """Differences between two views of the same records (lists of dicts): IDs, order, tokens, split."""
     if [r["sample_id"] for r in view_a] != [r["sample_id"] for r in view_b]:
         return ["sample IDs or their order differ"]
-    return [f"{a['sample_id']}: tokens or split differ" for a, b in zip(view_a, view_b)
+    return [f"{a['sample_id']}: tokens or split differ" for a, b in zip(view_a, view_b, strict=False)
             if a["tokens"] != b["tokens"] or a["split"] != b["split"]]

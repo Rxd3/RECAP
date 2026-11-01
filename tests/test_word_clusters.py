@@ -270,6 +270,7 @@ MALFORMED = {
     "extra field": (_edit(lambda p: p.update(extra=1)), "unexpected"),
     "not an object": ("[1, 2]", "object"),
     "invalid json": ('{"k": ', "JSON"),
+    "nested too deeply": ("[" * 100_000, "invalid JSON"),  # the json module gives up with a RecursionError
     "empty file": ("", "JSON"),
 }
 

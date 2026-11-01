@@ -10,7 +10,7 @@ numbers; nothing else was calculated for this card.
 | Upstream | SponSpeech, Liu & Beigi (2024), [arXiv:2409.11241](https://arxiv.org/abs/2409.11241) |
 | Licence | CC BY-NC 4.0, non-commercial only ([DATA_LICENSE.md](DATA_LICENSE.md)) |
 | Built by | Member 1 (Mutasim); the v2 corrections shipped in [PR #1](https://github.com/Rxd3/RECAP/pull/1) ([DATASET_PLAN.md](DATASET_PLAN.md)) |
-| How to get it | rebuild with `scripts/prepare_data.py`, or download the team archive ([data/README.md](../data/README.md)) |
+| How to get it | rebuild with `recap prepare-data`, or download the team archive ([data/README.md](../data/README.md)) |
 
 ## Source: what upstream SponSpeech ships
 
@@ -148,14 +148,15 @@ records with their masks are in `data/sample/`.
 
 From [EVALUATION_PROTOCOL.md](EVALUATION_PROTOCOL.md), Known gold issues; nothing is relabelled:
 
-- leftover speaker labels (for example `SPEAKER 1:`): the speaker-label rule of `scripts/find_gold_noise.py`
+- leftover speaker labels (for example `SPEAKER 1:`): the speaker-label rule of `recap find-gold-noise`
   flags 134 validation, 22 test and 63 test_amb primary mode B records. Speaker-label COLONs are 144 / 425 (33.88%) of the validation
   COLONs, 23 / 166 on test, 76 / 273 on test_amb and 319 / 3,385 (9.42%) in `default_train`, so COLON scores are
   an upper bound ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §12);
 - subtitle cue numbers appear as tokens with gold DASH;
 - two auto-caption-style videos miss commas and sentence ends in their gold (135 validation and
   46 test records);
-- about 1% of source transcripts contain errors: an informal, unmeasured estimate (no method for it is committed);
+- the source transcripts themselves can contain errors; their rate was not measured (the label audit checks
+  our labels against the upstream text, not the upstream text itself);
 - `QUESTION|ALL_UPPER` has only 18, 9 and 15 primary tokens (validation, test, test_amb).
 
 ## Limitations

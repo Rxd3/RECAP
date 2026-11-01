@@ -12,7 +12,7 @@ The [root README](../README.md) maps every folder, script and guide. By topic:
   (HMM and shortcut), [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) (CRF: test results final,
   validation selection in §5), [ASR_NOISE_V2.md](ASR_NOISE_V2.md) (simulated ASR noise `v2` and seed variance).
 - **Prior work:** [RELATED_WORK.md](RELATED_WORK.md).
-- **Hypotheses as written before the results:** [HYPOTHESES.md](HYPOTHESES.md).
+- **Hypotheses as copied from the team plan (the plan is not in the repo):** [HYPOTHESES.md](HYPOTHESES.md).
 - **Running and presenting:** [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [PRESENTATION_OUTLINE.md](PRESENTATION_OUTLINE.md);
   branch and commit rules are in [CONTRIBUTING.md](../CONTRIBUTING.md).
 

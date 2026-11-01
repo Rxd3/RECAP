@@ -15,7 +15,8 @@ from typing import Any
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCRIPT_PATH = REPO_ROOT / "scripts" / "evaluate_models.py"
+SCRIPT_PATH = REPO_ROOT / "scripts" / "evaluate_models.py"  # the stub: subprocess runs use the entry point
+MODULE_PATH = REPO_ROOT / "src" / "punct_restore" / "cli" / "evaluate_models.py"  # the code: in-process loads
 BOM = b"\xef\xbb\xbf"
 BAD_UTF8_LINE = b"bad \xe9\xff\n"  # 0xE9 starts a 3-byte UTF-8 sequence that 0xFF breaks
 FILE_NAMES = {"gold": "gold.jsonl", "ids": "list.ids", "predictions": "preds.jsonl", "masks": "masks.jsonl"}
@@ -95,7 +96,7 @@ def gold_rows(mode: str) -> list[dict[str, Any]]:
 
 
 def joint(punct: Sequence[str], case: Sequence[str]) -> list[str]:
-    return [f"{p}|{c}" for p, c in zip(punct, case)]
+    return [f"{p}|{c}" for p, c in zip(punct, case, strict=False)]
 
 
 def perfect_preds(mode: str, ids: Sequence[str] = SCORED, model: str = "m") -> list[dict[str, Any]]:

@@ -1,4 +1,4 @@
-"""Tests for scripts/reporting: the shared Markdown helpers, the table builders and time_models.
+"""Tests for punct_restore.reporting: the shared Markdown helpers, the table builders and time_models.
 
 Everything runs on a tiny generated scores tree (tests/reporting_fixtures.py); no real data.
 """
@@ -31,7 +31,7 @@ from reporting_fixtures import (
 
 from punct_restore.models.crf import CRFModel
 from punct_restore.models.hmm import HMMModel
-from scripts.reporting import (
+from punct_restore.reporting import (
     build_ablation_table,
     build_m3_final_sections,
     build_m3_tables,
@@ -478,7 +478,8 @@ def test_scores_root_defaults_to_the_committed_tree(module: ModuleType) -> None:
 
 
 def test_reporting_sources_hold_no_personal_absolute_paths() -> None:
-    for path in (ROOT / "scripts" / "reporting").glob("*.py"):
+    folders = (ROOT / "src" / "punct_restore" / "reporting", ROOT / "scripts" / "reporting")
+    for path in (path for folder in folders for path in folder.glob("*.py")):
         text = path.read_text(encoding="utf-8")
         assert "C:/" not in text and "C:\\" not in text and "Users" not in text, path.name
 
@@ -576,6 +577,21 @@ def test_time_models_reports_malformed_validation_records_by_name(tmp_path: Path
     assert_one_error_line(capsys.readouterr().err, "validation.jsonl")
 
 
+@pytest.mark.parametrize(("content", "message"), [
+    (b"\xff\xfe\n", "error: validation.jsonl: not valid UTF-8\n"),
+    (b'{"sample_id": "v1", "tokens": ["a"]}\n{oops\n', "error: validation.jsonl line 2: not valid JSON\n"),
+    (b"[" * 100_000, "error: validation.jsonl line 1: not valid JSON\n"),
+    (b'["not", "an", "object"]\n', "error: validation.jsonl line 1: not a JSON object\n"),
+])
+def test_time_models_words_a_bad_validation_line_the_way_the_other_commands_do(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], content: bytes, message: str
+) -> None:
+    data = tiny_data_root(tmp_path / "data")
+    (data / "processed" / RELEASE / "mode_A" / "validation.jsonl").write_bytes(content)
+    assert time_models.main(time_argv(tiny_hmm(tmp_path), tmp_path / "t.json", data)) == 1
+    assert capsys.readouterr().err == message
+
+
 @pytest.mark.parametrize("row", ['{"tokens": ["a"]}', '["not", "an", "object"]'])
 def test_time_models_reports_a_validation_record_without_sample_id_by_name(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], row: str
@@ -591,6 +607,13 @@ def test_time_models_reports_ids_that_match_no_record(tmp_path: Path, capsys: py
     (data / "splits" / RELEASE / "primary_eval" / "validation_mode_A.ids").write_text("zzz\n", encoding="utf-8")
     assert time_models.main(time_argv(tiny_hmm(tmp_path), tmp_path / "t.json", data)) == 1
     assert_one_error_line(capsys.readouterr().err, "validation_mode_A.ids")
+
+
+def test_time_models_refuses_an_id_list_that_repeats_an_id(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    data = tiny_data_root(tmp_path / "data")
+    (data / "splits" / RELEASE / "primary_eval" / "validation_mode_A.ids").write_text("v1\nv1\n", encoding="utf-8")
+    assert time_models.main(time_argv(tiny_hmm(tmp_path), tmp_path / "t.json", data)) == 1
+    assert_one_error_line(capsys.readouterr().err, "Duplicate ID 'v1' found at line 2 in validation_mode_A.ids")
 
 
 @pytest.mark.parametrize("extra", [

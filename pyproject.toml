@@ -7,14 +7,17 @@ name = "recap-nlp"
 version = "0.0.1"
 description = "RECAP: Restoring English Casing and Punctuation with sequence labeling"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = ["PyYAML==6.0.3", "sklearn-crfsuite==0.5.0", "python-crfsuite==0.9.12", "joblib==1.6.0", "scikit-learn==1.9.1", "scipy==1.18.1"]
 
 [project.urls]
 Repository = "https://github.com/Rxd3/RECAP"
 
+[project.scripts]
+recap = "punct_restore.cli:main"
+
 [project.optional-dependencies]
-dev = ["pytest==9.2.0"]
+dev = ["pytest==9.2.0", "ruff==0.17.3"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -22,3 +25,14 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# The stub docstring text is fixed by the spec, so long command names push it past 120 characters.
+"scripts/**" = ["E501"]

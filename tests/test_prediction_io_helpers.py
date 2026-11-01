@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import io
 import sys
 from pathlib import Path
@@ -26,12 +27,106 @@ def test_one_line_error_accepts_a_bytes_file_name() -> None:
     assert prediction_io.one_line_error(OSError(2, "No such file", b"dir/x.json")) == "x.json: No such file"
 
 
+def test_one_line_error_says_so_when_the_file_is_a_folder() -> None:
+    exc = IsADirectoryError(errno.EISDIR, "Is a directory", str(Path("some") / "deep" / "x.json"))
+    assert prediction_io.one_line_error(exc) == "x.json: is a folder, not a file"
+
+
+def test_one_line_error_calls_a_folder_opened_as_a_file_a_folder_even_when_windows_says_permission_denied(
+        tmp_path: Path) -> None:
+    folder = tmp_path / "adir"
+    folder.mkdir()
+    exc = PermissionError(errno.EACCES, "Permission denied", str(folder))
+    assert prediction_io.one_line_error(exc) == "adir: is a folder, not a file"
+
+
+def test_one_line_error_keeps_the_system_reason_for_a_two_path_call_such_as_a_rename(tmp_path: Path) -> None:
+    folder = tmp_path / "adir"
+    folder.mkdir()
+    exc = PermissionError(errno.EACCES, "Permission denied", str(folder), None, str(tmp_path / "out"))
+    assert prediction_io.one_line_error(exc) == "adir: Permission denied"
+
+
+def test_one_line_error_keeps_the_system_reason_for_a_file_that_is_not_a_folder(tmp_path: Path) -> None:
+    exc = PermissionError(errno.EACCES, "Permission denied", str(tmp_path / "secret.jsonl"))
+    assert prediction_io.one_line_error(exc) == "secret.jsonl: Permission denied"
+
+
+def test_one_line_error_keeps_the_system_reason_when_the_file_cannot_even_be_looked_at(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A file under a folder that may not be entered: asking whether it is a folder fails the same way."""
+    locked = tmp_path / "locked" / "m.joblib"
+
+    def stat(self: Path, *_args: object, **_kwargs: object) -> None:
+        raise PermissionError(errno.EACCES, "Permission denied", str(self))
+
+    monkeypatch.setattr(Path, "stat", stat)
+    exc = PermissionError(errno.EACCES, "Permission denied", str(locked))
+
+    assert prediction_io.os_error_code(exc) == errno.EACCES
+    assert prediction_io.one_line_error(exc) == "m.joblib: Permission denied"
+
+
+def test_one_line_error_never_shows_a_folder_of_a_missing_file(tmp_path: Path) -> None:
+    exc = FileNotFoundError(errno.ENOENT, "No such file or directory", str(tmp_path / "gone" / "x.json"))
+    assert prediction_io.one_line_error(exc) == "x.json: No such file or directory"
+
+
+def test_one_line_error_with_short_paths_cuts_the_paths_it_is_given_to_their_file_names(tmp_path: Path) -> None:
+    data, ids = tmp_path / "deep" / "data.jsonl", tmp_path / "train.ids"
+    exc = ValueError(f"Corrupt JSON at line 3 in {data}:\n{ids} is empty")
+    line = prediction_io.one_line_error_with_short_paths(exc, data, ids, None)
+    assert line == "Corrupt JSON at line 3 in data.jsonl: train.ids is empty"
+
+
+def test_one_line_error_with_short_paths_leaves_a_path_it_is_not_given_alone(tmp_path: Path) -> None:
+    other = tmp_path / "other.txt"
+    line = prediction_io.one_line_error_with_short_paths(ValueError(f"bad {other}"), tmp_path / "data.jsonl")
+    assert line == f"bad {other}"
+
+
+def test_one_line_error_with_short_paths_without_paths_reads_as_one_line_error(tmp_path: Path) -> None:
+    exc = OSError(28, "No space left on device", str(tmp_path / "out.jsonl"))
+    assert prediction_io.one_line_error_with_short_paths(exc) == prediction_io.one_line_error(exc)
+
+
+def test_one_line_error_takes_the_exception_alone_and_leaves_a_quoted_path_as_main_did(tmp_path: Path) -> None:
+    quoted = ValueError(f"bad {tmp_path / 'data.jsonl'}")
+    assert prediction_io.one_line_error(quoted) == f"bad {tmp_path / 'data.jsonl'}"
+    with pytest.raises(TypeError):
+        prediction_io.one_line_error(quoted, tmp_path / "data.jsonl")  # type: ignore[call-arg]
+
+
+def test_one_line_error_takes_the_text_of_any_other_exception() -> None:
+    assert prediction_io.one_line_error(RecursionError("too\ndeep")) == "too deep"
+
+
 def test_one_line_error_uses_the_reason_alone_when_the_os_error_has_no_file() -> None:
     assert prediction_io.one_line_error(OSError(13, "Permission denied")) == "Permission denied"
 
 
 def test_one_line_error_falls_back_to_the_text_of_an_os_error_without_a_reason() -> None:
     assert prediction_io.one_line_error(OSError("plain\ntext")) == "plain text"
+
+
+# --- os_reason ------------------------------------------------------------------------------------
+
+
+def test_os_reason_is_the_system_text_of_the_error() -> None:
+    assert prediction_io.os_reason(OSError(errno.ENOSPC, "No space left on device", "out.jsonl")) == (
+        "No space left on device")
+
+
+def test_os_reason_says_folder_for_a_folder_opened_as_a_file_even_when_windows_says_permission_denied(
+        tmp_path: Path) -> None:
+    folder = tmp_path / "adir"
+    folder.mkdir()
+    assert prediction_io.os_reason(PermissionError(errno.EACCES, "Permission denied", str(folder))) == (
+        "is a folder, not a file")
+
+
+def test_os_reason_is_none_when_the_error_has_no_system_text() -> None:
+    assert prediction_io.os_reason(OSError("plain")) is None
 
 
 # --- check_script_paths --------------------------------------------------------------------------
@@ -92,6 +187,50 @@ def test_check_script_paths_reports_an_existing_output_before_a_missing_input(tm
         prediction_io.check_script_paths({"--out": out}, {"--gold": tmp_path / "absent.jsonl"})
 
 
+# --- refuse_existing -----------------------------------------------------------------------------
+
+
+def test_refuse_existing_passes_when_no_path_exists_and_skips_none(tmp_path: Path) -> None:
+    prediction_io.refuse_existing(tmp_path / "new.json", None, tmp_path / "also-new.json")
+    prediction_io.refuse_existing()
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("kind", ["file", "folder"])
+def test_refuse_existing_raises_a_file_exists_error_naming_the_path_as_given(tmp_path: Path, kind: str) -> None:
+    taken = tmp_path / "taken"
+    if kind == "file":
+        taken.write_text("keep me", encoding="utf-8")
+    else:
+        taken.mkdir()
+    with pytest.raises(FileExistsError) as caught:
+        prediction_io.refuse_existing(tmp_path / "free.json", taken)
+    assert (caught.value.errno, caught.value.filename) == (errno.EEXIST, str(taken))
+    assert prediction_io.one_line_error(caught.value) == "taken: already exists; refusing to overwrite"
+    assert not (tmp_path / "free.json").exists()
+    if kind == "file":
+        assert taken.read_text(encoding="utf-8") == "keep me"
+
+
+def test_refuse_existing_names_the_first_existing_path(tmp_path: Path) -> None:
+    first, second = tmp_path / "first.json", tmp_path / "second.json"
+    first.write_text("1", encoding="utf-8")
+    second.write_text("2", encoding="utf-8")
+    with pytest.raises(FileExistsError) as caught:
+        prediction_io.refuse_existing(second, first)
+    assert caught.value.filename == str(second)
+
+
+def test_refuse_existing_counts_a_dangling_symlink_as_existing(tmp_path: Path) -> None:
+    link = tmp_path / "link.json"
+    try:
+        link.symlink_to(tmp_path / "nowhere.json")
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks are not available here")
+    with pytest.raises(FileExistsError):
+        prediction_io.refuse_existing(link)
+
+
 # --- read_prediction_lines -----------------------------------------------------------------------
 
 
@@ -123,7 +262,7 @@ def test_read_prediction_lines_is_lazy_so_a_caller_can_stop_at_its_own_error(tmp
     ("text", "message"),
     [
         ("{not json\n", r"^p\.jsonl line 1: not valid JSON$"),
-        ("[" * 5000 + "]" * 5000 + "\n", r"^p\.jsonl line 1: not valid JSON$"),  # RecursionError in json
+        ("[" * 100_000 + "]" * 100_000 + "\n", r"^p\.jsonl line 1: not valid JSON$"),  # RecursionError in json
         ('{"a": 1}\n\n[1, 2]\n', r"^p\.jsonl line 3: not a JSON object$"),
         ("null\n", r"^p\.jsonl line 1: not a JSON object$"),
         ("", r"^p\.jsonl: no predictions found$"),
@@ -168,3 +307,43 @@ def test_reconfigure_stdout_leaves_a_stdout_without_reconfigure_alone(monkeypatc
     prediction_io.reconfigure_stdout()
     print("ok")
     assert buffer.getvalue() == "ok\n"
+
+
+# --- require_file --------------------------------------------------------------------------------
+
+
+def test_require_file_accepts_a_file(tmp_path: Path) -> None:
+    (tmp_path / "x.txt").write_text("x", encoding="utf-8")
+    assert prediction_io.require_file(tmp_path / "x.txt", "widget") is None
+
+
+def test_require_file_says_a_folder_is_a_folder_naming_it_only(tmp_path: Path) -> None:
+    (tmp_path / "adir").mkdir()
+    with pytest.raises(IsADirectoryError) as caught:
+        prediction_io.require_file(tmp_path / "adir", "widget")
+    assert str(caught.value) == "adir: is a folder, not a file"
+
+
+def test_require_file_says_what_is_not_found_naming_the_file_only(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError) as caught:
+        prediction_io.require_file(tmp_path / "deep" / "ghost.txt", "widget")
+    assert str(caught.value) == "ghost.txt: widget not found"
+
+
+def test_read_observations_names_a_missing_input_and_a_folder_by_name_only(tmp_path: Path) -> None:
+    (tmp_path / "adir").mkdir()
+    with pytest.raises(FileNotFoundError) as missing:
+        prediction_io.read_observations(tmp_path / "ghost.jsonl", None)
+    assert str(missing.value) == "ghost.jsonl: input JSONL not found"
+    with pytest.raises(IsADirectoryError) as folder:
+        prediction_io.read_observations(tmp_path / "adir", None)
+    assert str(folder.value) == "adir: is a folder, not a file"
+
+
+def test_read_observations_never_puts_the_folder_in_its_message(tmp_path: Path) -> None:
+    (tmp_path / "in.jsonl").write_text('{"sample_id": "a", "tokens": ["x"]}\n', encoding="utf-8")
+    (tmp_path / "want.ids").write_text("a\nb\n", encoding="utf-8")
+    with pytest.raises(ValueError) as caught:
+        prediction_io.read_observations(tmp_path / "in.jsonl", tmp_path / "want.ids")
+    assert str(caught.value).startswith("in.jsonl: missing 1 selected IDs.")
+    assert str(tmp_path) not in str(caught.value)

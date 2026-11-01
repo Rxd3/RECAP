@@ -3,19 +3,18 @@
 Seed means are kept exact (``Decimal``, from the six-digit scores in the evaluator files) and are rounded once,
 half-up, when a number is displayed: a mean is never rounded to six digits first, so a difference of two means
 cannot pick up a second rounding. Used by asr_noise_table.py, asr_noise_report.py and asr_noise_findings.py, which
-are run from scripts/reporting (the entry script puts that folder and src on sys.path).
+sit beside it in punct_restore.reporting.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 from typing import Any
 
-from build_tables import half_up, pct
-
 from punct_restore.data.asr_noise import V2_WEIGHTS
+from punct_restore.reporting.build_tables import half_up, pct
 
 WERS = ("0.05", "0.10", "0.15")
 SEEDS = (2026, 2027, 2028)
@@ -108,8 +107,7 @@ def cell_mean(cell: Mapping[str, Any]) -> Decimal:
 
 def signed_pts(value: Decimal | float) -> str:
     """``value`` (a fraction) as percentage points: rounded once, half-up, with a sign and U+2212 for minus."""
-    exact = value if isinstance(value, Decimal) else dec(value)
-    points = (exact * 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    points = Decimal(pct(value))
     return f"{MINUS if points < 0 else '+'}{abs(points)}"  # a rounded -0.00 is not negative: it prints +0.00
 
 

@@ -1,4 +1,4 @@
-"""Command line tests for scripts/evaluate_models.py (spec section 8; RUN.json and RUN.md from section 7).
+"""Command line tests for punct_restore.cli.evaluate_models (spec section 8; RUN.json and RUN.md from section 7).
 
 main(argv) runs in-process through the `cli` fixture; only the exit-code and encoding tests start a subprocess.
 Tests marked EXPECTED TO FAIL document known defects of the current code and must not be weakened.
@@ -18,11 +18,27 @@ from types import ModuleType
 from typing import Any, NoReturn
 
 import pytest
-from eval_fixtures import (SCORED, SCRIPT_PATH, Case, all_masks, gold_rows, perfect_preds, pred_row, valid_case,
-                           write_case, write_jsonl)
+from eval_fixtures import (
+    SCORED,
+    SCRIPT_PATH,
+    Case,
+    all_masks,
+    gold_rows,
+    perfect_preds,
+    pred_row,
+    valid_case,
+    write_case,
+    write_jsonl,
+)
 
-from punct_restore.evaluation import (evaluate, load_bundle, load_scored_gold, load_vocab, shortcut_predictions,
-                                      to_markdown)
+from punct_restore.evaluation import (
+    evaluate,
+    load_bundle,
+    load_scored_gold,
+    load_vocab,
+    shortcut_predictions,
+    to_markdown,
+)
 
 OUT_NAMES = {"score": "RUN.json", "baseline": "base.jsonl"}
 NON_ASCII_MODEL = "模型"
@@ -198,7 +214,7 @@ def test_cli_missing_file_exit_1(cli, capsys, tmp_path, flag):
     out = tmp_path / "RUN.json"
     code, _, err = run(cli, capsys, score_argv(replace(case, **{flag: missing}), out))
     assert code == 1
-    assert err == f"error: file or folder not found: {missing}\n"
+    assert err == f"error: missing.jsonl: {os.strerror(errno.ENOENT)}\n"
     assert_not_created(*output_paths("score", out))
 
 
@@ -209,7 +225,7 @@ def test_cli_input_is_folder_exit_1(cli, capsys, tmp_path, flag):
     out = tmp_path / "RUN.json"
     code, _, err = run(cli, capsys, score_argv(replace(case, **{flag: folder}), out))
     assert code == 1
-    assert err == f"error: is a folder, not a file: {folder}\n"
+    assert err == "error: adir: is a folder, not a file\n"
     assert_not_created(*output_paths("score", out))
 
 
@@ -218,12 +234,12 @@ def os_error_cases(folder: Path) -> dict[str, tuple[OSError, str]]:
     """Name -> (error raised by the loader, exact stderr expected)."""
     return {
         "eacces": (PermissionError(errno.EACCES, "Permission denied", "secret.jsonl"),
-                   "error: permission denied: secret.jsonl\n"),
+                   "error: secret.jsonl: Permission denied\n"),
         "eperm": (PermissionError(errno.EPERM, "Permission denied", "secret.jsonl"),
-                  "error: permission denied: secret.jsonl\n"),
+                  "error: secret.jsonl: Permission denied\n"),
         "eacces_on_folder": (PermissionError(errno.EACCES, "Permission denied", str(folder)),
-                             f"error: is a folder, not a file: {folder}\n"),
-        "eio_with_path": (OSError(errno.EIO, "I/O error", "x.jsonl"), "error: cannot access x.jsonl: I/O error\n"),
+                             "error: adir: is a folder, not a file\n"),
+        "eio_with_path": (OSError(errno.EIO, "I/O error", "x.jsonl"), "error: x.jsonl: I/O error\n"),
     }
 
 
@@ -239,13 +255,12 @@ def test_cli_os_errors_exit_1(cli, capsys, monkeypatch, tmp_path, name):
     assert_not_created(*output_paths("score", out))
 
 
-def test_cli_os_error_without_filename_says_unknown_path(cli, capsys, monkeypatch, tmp_path):
+def test_cli_os_error_without_filename_is_just_the_reason(cli, capsys, monkeypatch, tmp_path):
     case = valid_case(tmp_path, "A")
     monkeypatch.setattr(cli, "load_bundle", raising(OSError(errno.EIO, "I/O error")))
     code, _, err = run(cli, capsys, score_argv(case, tmp_path / "RUN.json"))
     assert code == 1
-    assert_one_error_line(err)
-    assert "(unknown path)" in err
+    assert err == "error: I/O error\n"
 
 
 def test_cli_baseline_os_error_exit_1(cli, capsys, monkeypatch, tmp_path):
@@ -255,7 +270,7 @@ def test_cli_baseline_os_error_exit_1(cli, capsys, monkeypatch, tmp_path):
     out = tmp_path / "base.jsonl"
     code, _, err = run(cli, capsys, baseline_argv(case, out))
     assert code == 1
-    assert err == "error: permission denied: secret.jsonl\n"
+    assert err == "error: secret.jsonl: Permission denied\n"
     assert_not_created(out)
 
 
@@ -280,7 +295,7 @@ def test_cli_missing_out_folder(cli, capsys, tmp_path, command):
     out = tmp_path / "missing" / OUT_NAMES[command]
     code, _, err = run(cli, capsys, command_argv(command, case, out))
     assert code == 1
-    assert err == f"error: file or folder not found: {out}\n"
+    assert err == f"error: {out.name}: {os.strerror(errno.ENOENT)}\n"
     assert not (tmp_path / "missing").exists()
 
 
@@ -294,7 +309,7 @@ def test_cli_refuses_overwrite(cli, capsys, tmp_path, command, existing_name):
     existing.write_text("keep", encoding="utf-8")
     code, _, err = run(cli, capsys, command_argv(command, case, out))
     assert code == 1
-    assert err == f"error: {existing} already exists; refusing to overwrite\n"
+    assert err == f"error: {existing.name}: already exists; refusing to overwrite\n"
     assert existing.read_text(encoding="utf-8") == "keep"
     assert_not_created(*(path for path in output_paths(command, out) if path != existing))
 

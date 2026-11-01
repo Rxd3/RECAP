@@ -18,53 +18,29 @@ from __future__ import annotations
 
 import copy
 import math
-import os
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from pathlib import Path
-import platform
-import sys
-from typing import Any, Callable, Iterable, Mapping, Sequence
+from typing import Any, cast
 
-import joblib
 import sklearn_crfsuite
 
-from punct_restore.data.labeling import join_labels, load_label_sets
-from punct_restore.features.crf_features import (
-    FeatureConfig,
-    extract_sequence_features,
+from punct_restore.features.crf_features import FeatureConfig, extract_sequence_features
+from punct_restore.models.crf_io import load_fitted, write_model
+from punct_restore.models.crf_modes import (
+    LABEL_MODES,
+    SCORING_MODES,
+    get_mode_vocabulary,
+    require_scoring_mode,
 )
+from punct_restore.models.crf_records import prediction_features, validate_training_records
 
-CASING_VOCABULARY: tuple[str, ...] = ("LOWER", "FIRST_UPPER", "ALL_UPPER")
+__all__ = ["CRFModel", "SCORING_MODES", "get_mode_vocabulary", "require_scoring_mode"]
 
-MODEL_SCHEMA_VERSION = 1
-SCORING_MODES: tuple[str, ...] = ("A", "B", "C")
-LABEL_MODES: tuple[str, ...] = (*SCORING_MODES, "CASE")
-
-
-def require_scoring_mode(label_mode: str) -> None:
-    """Raise ValueError unless label_mode is a scoring mode; the casing helper 'CASE' is not one."""
-    if label_mode not in SCORING_MODES:
-        raise ValueError(f"Unsupported label_mode: {label_mode!r}. Must be 'A', 'B' or 'C' (a scoring mode).")
-
-
-def get_mode_vocabulary(label_mode: str, *, config_path: str | Path | None = None) -> list[str]:
-    """Retrieve the authoritative ordered label vocabulary for a given mode from configs/label_sets.yaml.
-
-    Args:
-        label_mode: 'A', 'B', 'C', or the casing helper mode 'CASE'.
-        config_path: Optional path to label_sets.yaml (defaults to repository configuration).
-
-    Returns:
-        List of valid label strings in configuration order.
-
-    Raises:
-        ValueError: If label_mode is unsupported or configuration structure is invalid.
-        FileNotFoundError: If configuration file does not exist.
-    """
-    if label_mode not in LABEL_MODES:
-        raise ValueError(f"Unsupported label_mode: {label_mode!r}. Must be 'A', 'B', 'C', or 'CASE'.")
-
-    label_sets = load_label_sets(str(config_path)) if config_path is not None else load_label_sets()
-    return list(label_sets["casing" if label_mode == "CASE" else label_mode])
+# old import path kept (restructure spec §2)
+from punct_restore.data.labeling import join_labels as join_labels
+from punct_restore.data.labeling import load_label_sets as load_label_sets
+from punct_restore.models.crf_io import MODEL_SCHEMA_VERSION as MODEL_SCHEMA_VERSION
+from punct_restore.models.crf_modes import CASING_VOCABULARY as CASING_VOCABULARY
 
 
 class CRFModel:
@@ -130,6 +106,11 @@ class CRFModel:
         """Return True if model parameters have been estimated from training data."""
         return self._is_fitted
 
+    @property
+    def training_log(self) -> Any:
+        """The optimizer's log of the last fit (``iterations`` and ``lines``); None before a fit."""
+        return getattr(self._backend, "training_log_", None)
+
     @staticmethod
     def _validate_init_params(
         label_mode: str,
@@ -149,138 +130,20 @@ class CRFModel:
         if not isinstance(max_iterations, int) or max_iterations <= 0:
             raise ValueError(f"max_iterations must be a positive integer, got {max_iterations!r}")
 
-    @staticmethod
-    def _checked_case_labels(
-        rec: Mapping[str, Any], where: str, sample_id: str, seq_len: int
-    ) -> list[str]:
-        """Return the record's case_labels as a new list after checking length and vocabulary."""
-        case_labels = rec.get("case_labels")
-        if not isinstance(case_labels, list) or len(case_labels) != seq_len:
-            raise ValueError(
-                f"{where} ({sample_id}): case_labels length ({len(case_labels) if isinstance(case_labels, list) else None}) "
-                f"does not match tokens length ({seq_len})."
-            )
-        unknown_cases = [c for c in case_labels if c not in CASING_VOCABULARY]
-        if unknown_cases:
-            raise ValueError(f"{where} ({sample_id}): unknown case_labels {unknown_cases!r}.")
-        return list(case_labels)
-
-    def _target_sequence(
-        self, rec: Mapping[str, Any], where: str, sample_id: str, seq_len: int
-    ) -> list[str]:
-        """Derive the per-token training targets of the active label mode from one record."""
-        punct_labels = rec.get("punct_labels")
-        if not isinstance(punct_labels, list) or len(punct_labels) != seq_len:
-            raise ValueError(
-                f"{where} ({sample_id}): punct_labels length ({len(punct_labels) if isinstance(punct_labels, list) else None}) "
-                f"does not match tokens length ({seq_len})."
-            )
-        vocab_set = set(self.vocabulary)
-
-        if self.label_mode in ("A", "B"):
-            unknown_labels = [lbl for lbl in punct_labels if lbl not in vocab_set]
-            if unknown_labels:
-                raise ValueError(
-                    f"{where} ({sample_id}): unknown punct_labels {unknown_labels!r} "
-                    f"for Mode {self.label_mode}."
-                )
-            return list(punct_labels)
-
-        if self.label_mode == "CASE":
-            return self._checked_case_labels(rec, where, sample_id, seq_len)
-
-        if self.label_mode == "C":
-            case_labels = self._checked_case_labels(rec, where, sample_id, seq_len)
-            try:
-                target_sequence = join_labels(punct_labels, case_labels, separator="|")
-            except Exception as e:
-                raise ValueError(f"{where} ({sample_id}): failed to derive Mode C targets: {e}") from e
-            unknown_joint = [lbl for lbl in target_sequence if lbl not in vocab_set]
-            if unknown_joint:
-                raise ValueError(
-                    f"{where} ({sample_id}): derived joint labels {unknown_joint!r} "
-                    f"outside Mode C vocabulary."
-                )
-            return target_sequence
-
-        raise ValueError(f"Unsupported label_mode: {self.label_mode}")
-
-    @staticmethod
-    def _checked_training_record(rec: Any, where: str, seen_ids: set[str]) -> tuple[str, list[str]]:
-        """sample_id (recorded in ``seen_ids``) and tokens of one training record; leakage-safe split check."""
-        if not isinstance(rec, Mapping):
-            raise TypeError(f"{where} must be a Mapping, got {type(rec).__name__}")
-        sample_id = rec.get("sample_id")
-        if not isinstance(sample_id, str) or not sample_id.strip():
-            raise ValueError(f"{where}: sample_id must be a non-empty string.")
-        if sample_id in seen_ids:
-            raise ValueError(f"{where}: duplicate sample_id {sample_id!r} detected.")
-        seen_ids.add(sample_id)
-        split = rec.get("split")  # prevent training on non-train data (leakage prevention)
-        if split is not None and split != "train":
-            raise ValueError(
-                f"{where} ({sample_id}): cannot train on record with split={split!r}. "
-                "Training data must have split='train'."
-            )
-        tokens = rec.get("tokens")
-        if not isinstance(tokens, list) or len(tokens) == 0:
-            raise ValueError(f"{where} ({sample_id}): tokens must be a non-empty list.")
-        if any(not isinstance(t, str) or not t.strip() for t in tokens):
-            raise ValueError(f"{where} ({sample_id}): tokens must contain non-empty strings.")
-        return sample_id, tokens
-
     def _validate_training_records(
         self, records: Sequence[Mapping[str, Any]]
     ) -> tuple[list[list[dict[str, Any]]], list[list[str]]]:
         """Validate input training records against schema and extract features and targets."""
-        if not isinstance(records, Sequence) or isinstance(records, (str, bytes)):
-            raise TypeError(f"training_records must be a Sequence, got {type(records).__name__}")
-        if len(records) == 0:
-            raise ValueError("training_records sequence cannot be empty.")
+        return validate_training_records(
+            records,
+            label_mode=self.label_mode,
+            vocabulary=self.vocabulary,
+            feature_extractor=self._feature_extractor,
+            feature_config=self.feature_config,
+        )
 
-        seen_ids: set[str] = set()
-        X: list[list[dict[str, Any]]] = []
-        y: list[list[str]] = []
-
-        for idx, rec in enumerate(records):
-            where = f"Record at index {idx}"
-            sample_id, tokens = self._checked_training_record(rec, where, seen_ids)
-            seq_len = len(tokens)
-            target_sequence = self._target_sequence(rec, where, sample_id, seq_len)
-
-            # Extract features strictly using observable tokens (gold leakage prevention)
-            features = self._feature_extractor(tokens, config=self.feature_config)
-            if len(features) != seq_len:
-                raise ValueError(
-                    f"{where} ({sample_id}): feature extractor returned {len(features)} dicts "
-                    f"for {seq_len} tokens."
-                )
-
-            X.append(features)
-            y.append(target_sequence)
-
-        return X, y
-
-    def fit(
-        self,
-        training_records: Sequence[Mapping[str, Any]],
-        *,
-        label_mode: str | None = None,
-        config: Mapping[str, Any] | None = None,
-        feature_extractor: Callable[..., list[dict[str, Any]]] | None = None,
-    ) -> CRFModel:
-        """Train the CRF model on annotated sequence records.
-
-        Args:
-            training_records: Sequence of validated training records.
-            label_mode: Optional label mode override ('A', 'B', 'C', or 'CASE').
-            config: Optional hyperparameters/feature configuration overrides.
-            feature_extractor: Optional callable for feature extraction.
-
-        Returns:
-            The fitted CRFModel instance.
-        """
-        # Apply runtime overrides if provided
+    def _apply_fit_overrides(self, label_mode: str | None, config: Mapping[str, Any] | None) -> None:
+        """Apply the runtime label_mode and config overrides given to fit()."""
         if label_mode is not None:
             if label_mode not in LABEL_MODES:
                 raise ValueError(f"Invalid label_mode: {label_mode!r}")
@@ -304,6 +167,43 @@ class CRFModel:
                 self.model_name = f"crf_{self.feature_config.preset}"
             self._validate_init_params(self.label_mode, self.algorithm, self.c1, self.c2, self.max_iterations)
 
+    def _record_training_metadata(
+        self, X: list[list[dict[str, Any]]], y: list[list[str]], config: Mapping[str, Any] | None
+    ) -> None:
+        """Record training provenance (counts, observed labels, feature preset) after a fit."""
+        unique_targets = sorted({lbl for seq in y for lbl in seq})
+        self._training_metadata = {
+            "num_sequences": len(X),
+            "num_tokens": sum(len(seq) for seq in X),
+            "observed_labels": unique_targets,
+            "label_mode": self.label_mode,
+            "feature_preset": self.feature_config.preset,
+            "feature_version": self.feature_config.version,
+        }
+        if config is not None and "provenance" in config and isinstance(config["provenance"], Mapping):
+            self._training_metadata["provenance"] = dict(config["provenance"])
+
+    def fit(
+        self,
+        training_records: Sequence[Mapping[str, Any]],
+        *,
+        label_mode: str | None = None,
+        config: Mapping[str, Any] | None = None,
+        feature_extractor: Callable[..., list[dict[str, Any]]] | None = None,
+    ) -> CRFModel:
+        """Train the CRF model on annotated sequence records.
+
+        Args:
+            training_records: Sequence of validated training records.
+            label_mode: Optional label mode override ('A', 'B', 'C', or 'CASE').
+            config: Optional hyperparameters/feature configuration overrides.
+            feature_extractor: Optional callable for feature extraction.
+
+        Returns:
+            The fitted CRFModel instance.
+        """
+        self._apply_fit_overrides(label_mode, config)
+
         if feature_extractor is not None:
             self._feature_extractor = feature_extractor
 
@@ -325,17 +225,7 @@ class CRFModel:
         self._is_fitted = True
 
         # Record training provenance
-        unique_targets = sorted({lbl for seq in y for lbl in seq})
-        self._training_metadata = {
-            "num_sequences": len(X),
-            "num_tokens": sum(len(seq) for seq in X),
-            "observed_labels": unique_targets,
-            "label_mode": self.label_mode,
-            "feature_preset": self.feature_config.preset,
-            "feature_version": self.feature_config.version,
-        }
-        if config is not None and "provenance" in config and isinstance(config["provenance"], Mapping):
-            self._training_metadata["provenance"] = dict(config["provenance"])
+        self._record_training_metadata(X, y, config)
 
         return self
 
@@ -353,34 +243,9 @@ class CRFModel:
         Returns:
             (sample ids, token lengths, feature sequences); all empty for empty records.
         """
-        if not isinstance(records, Sequence) or isinstance(records, (str, bytes)):
-            raise TypeError(f"records must be a Sequence, got {type(records).__name__}")
-
-        X: list[list[dict[str, Any]]] = []
-        sample_ids: list[str] = []
-        token_lengths: list[int] = []
-
-        for idx, rec in enumerate(records):
-            where = f"Prediction record at index {idx}"
-            if not isinstance(rec, Mapping):
-                raise TypeError(f"{where} must be a Mapping, got {type(rec).__name__}")
-
-            sample_id = rec.get("sample_id")
-            if not isinstance(sample_id, str) or not sample_id.strip():
-                raise ValueError(f"{where}: sample_id must be a non-empty string.")
-
-            tokens = rec.get("tokens")
-            if not isinstance(tokens, list) or len(tokens) == 0:
-                raise ValueError(f"{where} ({sample_id}): tokens must be a non-empty list.")
-            if any(not isinstance(t, str) or not t.strip() for t in tokens):
-                raise ValueError(f"{where} ({sample_id}): tokens must contain non-empty strings.")
-
-            features = self._feature_extractor(tokens, config=self.feature_config)
-            X.append(features)
-            sample_ids.append(sample_id)
-            token_lengths.append(len(tokens))
-
-        return sample_ids, token_lengths, X
+        return prediction_features(
+            records, feature_extractor=self._feature_extractor, feature_config=self.feature_config
+        )
 
     def predict(self, records: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
         """Predict labels for gold-free input observation records.
@@ -489,37 +354,7 @@ class CRFModel:
         Args:
             path: Target file path (.joblib or .pkl).
         """
-        if not self._is_fitted or self._backend is None:
-            raise RuntimeError("Cannot save an unfitted CRFModel.")
-
-        save_path = Path(path)
-        save_path.parent.mkdir(parents=True, exist_ok=True)
-
-        bundle: dict[str, Any] = {
-            "schema_version": MODEL_SCHEMA_VERSION,
-            "model_family": "crf",
-            "model_name": self.model_name,
-            "label_mode": self.label_mode,
-            "vocabulary": list(self.vocabulary),
-            "hyperparameters": {
-                "algorithm": self.algorithm,
-                "c1": self.c1,
-                "c2": self.c2,
-                "max_iterations": self.max_iterations,
-                "all_possible_transitions": self.all_possible_transitions,
-            },
-            "feature_config": self.feature_config.to_dict(),
-            "training_metadata": copy.deepcopy(self._training_metadata),
-            "environment": {
-                "python_version": sys.version,
-                "platform": platform.platform(),
-                "sklearn_crfsuite": getattr(sklearn_crfsuite, "__version__", "unknown"),
-                "joblib": getattr(joblib, "__version__", "unknown"),
-            },
-            "backend_state": self._backend,
-        }
-
-        joblib.dump(bundle, save_path)
+        write_model(self, path)
 
     @classmethod
     def load_model(cls, path: str | Path) -> CRFModel:
@@ -535,59 +370,29 @@ class CRFModel:
             FileNotFoundError: If the artifact path does not exist.
             ValueError: If artifact schema, model family, or metadata is corrupted/incompatible.
         """
-        load_path = Path(path)
-        if not load_path.is_file():
-            raise FileNotFoundError(f"Model artifact not found at {load_path}")
+        return load_fitted(cls, path)
 
-        try:
-            bundle = joblib.load(load_path)
-        except Exception as e:
-            raise ValueError(f"Corrupt or unreadable model artifact at {load_path}: {e}") from e
+    def _to_bundle(self) -> dict[str, Any]:
+        """The private state a saved artifact keeps beside the public settings; the counterpart of ``_from_bundle``."""
+        if not self._is_fitted or self._backend is None:
+            raise RuntimeError("Cannot save an unfitted CRFModel.")
+        return {"training_metadata": copy.deepcopy(self._training_metadata), "backend_state": self._backend}
 
-        if not isinstance(bundle, dict):
-            raise ValueError(f"Corrupt artifact: expected dict root, got {type(bundle).__name__}")
-
-        schema_ver = bundle.get("schema_version")
-        if schema_ver != MODEL_SCHEMA_VERSION:
-            raise ValueError(f"Unsupported model schema_version: {schema_ver!r}")
-
-        family = bundle.get("model_family")
-        if family != "crf":
-            raise ValueError(f"Incompatible model family: {family!r}, expected 'crf'")
-
-        label_mode = bundle.get("label_mode")
-        if label_mode not in LABEL_MODES:
-            raise ValueError(f"Invalid label_mode in artifact: {label_mode!r}")
-
+    @classmethod
+    def _from_bundle(cls, bundle: Mapping[str, Any]) -> CRFModel:
+        """A fitted model rebuilt from the bundle of a saved artifact (a bundle checked by ``read_bundle``)."""
         hp = bundle.get("hyperparameters", {})
-        feat_dict = bundle.get("feature_config", {})
-        backend_state = bundle.get("backend_state")
-
-        if backend_state is None:
-            raise ValueError("Corrupt artifact: missing backend_state.")
-
-        # Reconstruct model instance
-        feature_config = FeatureConfig.from_dict(feat_dict)
         model = cls(
-            label_mode=label_mode,
+            label_mode=cast(str, bundle.get("label_mode")),  # read_bundle checked it
             algorithm=hp.get("algorithm", "lbfgs"),
             c1=hp.get("c1", 0.1),
             c2=hp.get("c2", 0.1),
             max_iterations=hp.get("max_iterations", 100),
             all_possible_transitions=hp.get("all_possible_transitions", True),
-            feature_config=feature_config,
+            feature_config=FeatureConfig.from_dict(bundle.get("feature_config", {})),
             model_name=bundle.get("model_name"),
         )
-
-        model._backend = backend_state
+        model._backend = bundle.get("backend_state")
         model._is_fitted = True
         model._training_metadata = bundle.get("training_metadata", {})
-
-        # Verify restored vocabulary
-        restored_vocab = bundle.get("vocabulary")
-        if restored_vocab != model.vocabulary:
-            raise ValueError(
-                f"Artifact vocabulary {restored_vocab} does not match expected {model.vocabulary}"
-            )
-
         return model

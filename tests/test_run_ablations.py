@@ -1,11 +1,8 @@
-"""Tests for scripts/run_ablations.py: seeded-sample CRF feature ablations (validation only)."""
+"""Tests for punct_restore.cli.run_ablations: seeded-sample CRF feature ablations (validation only)."""
 
 from __future__ import annotations
 
-import builtins
-import fnmatch
 import hashlib
-import io
 import json
 import os
 import random
@@ -17,107 +14,22 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from run_ablations_fixtures import (
+    _SEQUENCES,
+    RELEASE,
+    TRAIN_IDS,
+    VAL_IDS,
+    _argv,
+    build_root,
+    forbid_test_files,
+)
 
+from punct_restore.cli import run_ablations
 from punct_restore.features.crf_features import FeatureConfig
 from punct_restore.features.word_clusters import ClusterMap, map_to_json
-from scripts import run_ablations
 
 ROOT = Path(__file__).resolve().parents[1]
-RELEASE = "rel"
 CLUSTERS_VARIANT = "improved_plus_clusters"
-
-_SEQUENCES: dict[str, tuple[list[str], list[str]]] = {
-    "t1": (["hello", "everyone", "welcome", "to", "the", "show"], ["O", "O", "O", "O", "O", "PERIOD"]),
-    "t2": (["did", "you", "see", "it"], ["O", "O", "O", "QUESTION"]),
-    "t3": (["well", "um", "i", "mean", "it", "works"], ["COMMA", "O", "O", "COMMA", "O", "PERIOD"]),
-    "t4": (["yes", "we", "can", "go"], ["COMMA", "O", "O", "PERIOD"]),
-    "t5": (["what", "is", "this"], ["O", "O", "QUESTION"]),
-    "t6": (["thank", "you", "very", "much"], ["O", "O", "O", "PERIOD"]),
-    "v1": (["so", "you", "know", "it", "works"], ["O", "COMMA", "O", "O", "PERIOD"]),
-    "v2": (["are", "you", "ready"], ["O", "O", "QUESTION"]),
-    "v3": (["we", "are", "done", "here"], ["O", "O", "O", "PERIOD"]),
-}
-TRAIN_IDS = ["t1", "t2", "t3", "t4", "t5", "t6"]
-VAL_IDS = ["v1", "v2", "v3"]
-
-
-def _row(sample_id: str, split: str, mode: str = "A") -> dict[str, Any]:
-    tokens, punct = _SEQUENCES[sample_id]
-    case = ["FIRST_UPPER"] + ["LOWER"] * (len(tokens) - 1) if mode == "C" else ["LOWER"] * len(tokens)
-    return {
-        "sample_id": sample_id,
-        "split": split,
-        "label_mode": mode,
-        "tokens": tokens,
-        "punct_labels": punct,
-        "case_labels": case,
-    }
-
-
-def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8", newline="\n")
-
-
-def _write_ids(path: Path, ids: list[str]) -> None:
-    """Write an ID file as bytes with CRLF line endings and a trailing blank line."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(b"\r\n".join(i.encode() for i in ids) + b"\r\n\r\n")
-
-
-def build_root(
-    tmp_path: Path,
-    *,
-    train_listed: list[str] = TRAIN_IDS,
-    train_present: list[str] = TRAIN_IDS,
-    val_listed: list[str] = VAL_IDS,
-    val_present: list[str] = VAL_IDS,
-    mode: str = "A",
-) -> Path:
-    """Tiny data root for release 'rel' and one mode, including test files that must never be opened."""
-    root = tmp_path / "data"
-    proc = root / "processed" / RELEASE / f"mode_{mode}"
-    splits = root / "splits" / RELEASE
-    _write_jsonl(proc / "train.jsonl", [_row(i, "train", mode) for i in train_present])
-    _write_jsonl(proc / "validation.jsonl", [_row(i, "validation", mode) for i in val_present])
-    _write_jsonl(proc / "test.jsonl", [_row(i, "test", mode) for i in VAL_IDS])
-    _write_ids(splits / "default_train" / f"mode_{mode}.ids", train_listed)
-    _write_ids(splits / "primary_eval" / f"validation_mode_{mode}.ids", val_listed)
-    _write_ids(splits / "primary_eval" / f"test_mode_{mode}.ids", VAL_IDS)
-    _write_ids(splits / "primary_eval" / f"test_amb_mode_{mode}.ids", VAL_IDS)
-    return root
-
-
-def _argv(root: Path, out: Path, *extra: str, mode: str = "A") -> list[str]:
-    return ["--mode", mode, "--out", str(out), "--data-root", str(root), "--release", RELEASE, *extra]
-
-
-def _forbidden(path: object) -> bool:
-    if not isinstance(path, (str, os.PathLike)):
-        return False
-    name = os.path.basename(os.fsdecode(path))
-    return (
-        name == "test.jsonl"
-        or name.startswith("test_amb")
-        or fnmatch.fnmatch(name, "test_mode_*.ids")
-        or fnmatch.fnmatch(name, "test_amb_mode_*.ids")
-    )
-
-
-def forbid_test_files(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Fail loudly if anything opens a held-out test file (by basename, not by 'test' substring).
-
-    Install it after the data root is built: building the fixture itself writes those files.
-    """
-    real_open = io.open
-
-    def guarded(file: Any, *args: Any, **kwargs: Any) -> Any:
-        if _forbidden(file):
-            raise AssertionError(f"test data must never be opened: {os.path.basename(os.fsdecode(file))}")
-        return real_open(file, *args, **kwargs)
-
-    monkeypatch.setattr(builtins, "open", guarded)
-    monkeypatch.setattr(io, "open", guarded)
 
 
 def test_variants_are_the_thirteen_expected_names_in_order():
@@ -266,152 +178,20 @@ def test_non_positive_sample_is_an_argparse_error(tmp_path, sample):
     assert exc.value.code == 2
 
 
-def test_existing_output_dir_fails_before_training(tmp_path, monkeypatch, capsys):
-    root = build_root(tmp_path)
-    out = tmp_path / "out"
-    (out / "mode_A").mkdir(parents=True)
-
-    def boom(**_: Any) -> None:
-        raise AssertionError("trained although the output directory exists")
-
-    monkeypatch.setattr(run_ablations, "CRFModel", boom)
-    code = run_ablations.main(_argv(root, out, "--sample", "3"))
-
-    err = capsys.readouterr().err
-    assert code == 1
-    assert len(err.splitlines()) == 1 and err.startswith("error: ")
-    assert str(tmp_path) not in err
-    assert list((out / "mode_A").iterdir()) == []
-
-
-def test_output_dir_created_while_loading_still_fails_before_training(tmp_path, monkeypatch, capsys):
-    root = build_root(tmp_path)
-    out = tmp_path / "out"
-    real_load_inputs = run_ablations.load_inputs
-
-    def load_then_lose_the_race(args: Any) -> Any:
-        loaded = real_load_inputs(args)
-        (out / "mode_A").mkdir(parents=True)  # another run claims the folder meanwhile
-        return loaded
-
-    def boom(**_: Any) -> None:
-        raise AssertionError("trained although the output directory exists")
-
-    monkeypatch.setattr(run_ablations, "load_inputs", load_then_lose_the_race)
-    monkeypatch.setattr(run_ablations, "CRFModel", boom)
-
-    assert run_ablations.main(_argv(root, out, "--sample", "3")) == 1
-    assert capsys.readouterr().err.splitlines() == [
-        "error: mode_A already exists under --out; remove it or pick another --out"
-    ]
-
-
-def test_existing_output_dir_fails_before_any_input_is_read(tmp_path, capsys):
-    root = build_root(tmp_path)
-    (root / "processed" / RELEASE / "mode_A" / "train.jsonl").unlink()
-    out = tmp_path / "out"
-    (out / "mode_A").mkdir(parents=True)
-
-    code = run_ablations.main(_argv(root, out, "--sample", "3"))
-
-    assert code == 1
-    assert capsys.readouterr().err.splitlines() == [
-        "error: mode_A already exists under --out; remove it or pick another --out"
-    ]
-
-
-def test_sample_larger_than_train_ids_is_an_error(tmp_path, capsys):
-    root = build_root(tmp_path)
-    out = tmp_path / "out"
-    code = run_ablations.main(_argv(root, out, "--sample", "7"))
-    err = capsys.readouterr().err
-    assert code == 1
-    assert len(err.splitlines()) == 1 and err.startswith("error: ")
-    assert not out.exists()
-
-
-def test_validation_id_missing_from_jsonl_is_an_error(tmp_path, capsys):
-    root = build_root(tmp_path, val_listed=VAL_IDS + ["v9"])
-    out = tmp_path / "out"
-    code = run_ablations.main(_argv(root, out, "--sample", "3"))
-    err = capsys.readouterr().err
-    assert code == 1
-    assert len(err.splitlines()) == 1 and "validation.jsonl" in err
-    assert str(tmp_path) not in err
-    assert not out.exists()
-
-
-def test_train_id_missing_from_jsonl_is_an_error(tmp_path, capsys):
-    root = build_root(tmp_path, train_present=TRAIN_IDS[:-1])
-    code = run_ablations.main(_argv(root, tmp_path / "out", "--sample", "6"))
-    err = capsys.readouterr().err
-    assert code == 1
-    assert len(err.splitlines()) == 1 and "train.jsonl" in err
-
-
-def test_missing_input_file_is_one_friendly_line(tmp_path, capsys):
-    root = build_root(tmp_path)
-    (root / "splits" / RELEASE / "default_train" / "mode_A.ids").unlink()
-    code = run_ablations.main(_argv(root, tmp_path / "out", "--sample", "3"))
-    err = capsys.readouterr().err
-    assert code == 1
-    assert len(err.splitlines()) == 1 and err.startswith("error: ")
-    assert "mode_A.ids" in err
-    assert str(tmp_path) not in err
-
-
-def test_malformed_jsonl_is_one_friendly_line(tmp_path, capsys):
-    root = build_root(tmp_path)
-    proc = root / "processed" / RELEASE / "mode_A"
-    (proc / "validation.jsonl").write_text('{"sample_id": "v1"\n', encoding="utf-8")
-    code = run_ablations.main(_argv(root, tmp_path / "out", "--sample", "3"))
-    err = capsys.readouterr().err
-    assert code == 1
-    assert len(err.splitlines()) == 1 and "validation.jsonl" in err
-    assert str(tmp_path) not in err
-
-
-def test_jsonl_row_without_sample_id_is_an_error(tmp_path, capsys):
-    root = build_root(tmp_path)
-    proc = root / "processed" / RELEASE / "mode_A"
-    (proc / "train.jsonl").write_text('{"tokens": ["a"]}\n', encoding="utf-8")
-    code = run_ablations.main(_argv(root, tmp_path / "out", "--sample", "3"))
-    err = capsys.readouterr().err
-    assert code == 1
-    assert len(err.splitlines()) == 1 and "train.jsonl" in err
-
-
-@pytest.mark.parametrize("bad_id", [123, "", None, ["a"], True])
-def test_jsonl_sample_id_must_be_a_non_empty_string(tmp_path, capsys, bad_id):
-    root = build_root(tmp_path)
-    proc = root / "processed" / RELEASE / "mode_A"
-    _write_jsonl(proc / "train.jsonl", [{"sample_id": bad_id}])
-    code = run_ablations.main(_argv(root, tmp_path / "out", "--sample", "3"))
-    assert code == 1
-    assert capsys.readouterr().err.splitlines() == [
-        "error: train.jsonl line 1: sample_id must be a non-empty string"
-    ]
-
-
-@pytest.mark.parametrize(("repeated", "line"), [("v1", 4), ("v9", 5)])  # selected / unselected ID
-def test_jsonl_duplicate_sample_id_is_an_error(tmp_path, capsys, repeated, line):
-    root = build_root(tmp_path)
-    extra = {"sample_id": repeated, "tokens": ["a"]}
-    rows = [_row(i, "validation") for i in VAL_IDS] + [extra]
-    if repeated == "v9":  # not in the ID file: still checked, the first copy sits on line 1
-        rows.insert(0, extra)
-    _write_jsonl(root / "processed" / RELEASE / "mode_A" / "validation.jsonl", rows)
-    code = run_ablations.main(_argv(root, tmp_path / "out", "--sample", "3"))
-    assert code == 1
-    assert capsys.readouterr().err.splitlines() == [
-        f"error: validation.jsonl line {line}: duplicate sample_id {repeated!r}"
-    ]
+def test_help_says_what_mode_does_and_that_the_cluster_variant_needs_a_cluster_map(capsys):
+    with pytest.raises(SystemExit) as exit_info:
+        run_ablations.parse_args(["--help"])
+    assert exit_info.value.code == 0
+    text = " ".join(capsys.readouterr().out.split())
+    assert "label mode to train and predict" in text
+    assert f"{CLUSTERS_VARIANT} runs only with --cluster-map" in text
 
 
 def test_script_runs_standalone_and_has_no_personal_paths():
-    script = ROOT / "scripts" / "run_ablations.py"
+    stub = ROOT / "scripts" / "run_ablations.py"
+    module = ROOT / "src" / "punct_restore" / "cli" / "run_ablations.py"
     result = subprocess.run(
-        [sys.executable, str(script), "--help"],
+        [sys.executable, str(stub), "--help"],
         capture_output=True,
         text=True,
         check=False,
@@ -421,8 +201,8 @@ def test_script_runs_standalone_and_has_no_personal_paths():
     assert "--data-root" in result.stdout and "--release" in result.stdout
     assert "--cluster-map" in result.stdout
     assert "--code" not in result.stdout
-    source = script.read_text(encoding="utf-8")
-    assert not re.search(r"[A-Za-z]:[/\\]", source)
+    sources = [path.read_text(encoding="utf-8") for path in (stub, module)]
+    assert not any(re.search(r"[A-Za-z]:[/\\]", source) for source in sources)
 
 
 # --- mode C only variants: case_improved (CASE CRF) and factored (mode A CRF + CASE -> joint labels) -------------
@@ -492,10 +272,13 @@ def test_mode_c_runs_improved_case_improved_and_factored_with_consistent_files(t
     assert {lbl for r in rows["case_improved/validation.jsonl"] for lbl in r["predicted_labels"]} <= CASING
     assert {lbl for r in rows["factored/punct_A.jsonl"] for lbl in r["predicted_labels"]} <= A_LABELS
     for joint, punct, case in zip(
-        rows["factored/validation.jsonl"], rows["factored/punct_A.jsonl"], rows["case_improved/validation.jsonl"]
+        rows["factored/validation.jsonl"],
+        rows["factored/punct_A.jsonl"],
+        rows["case_improved/validation.jsonl"],
+        strict=False,
     ):
         assert joint["predicted_labels"] == [
-            f"{p}|{c}" for p, c in zip(punct["predicted_labels"], case["predicted_labels"])
+            f"{p}|{c}" for p, c in zip(punct["predicted_labels"], case["predicted_labels"], strict=False)
         ]
 
 
@@ -752,7 +535,7 @@ def test_cluster_map_load_failure_is_one_friendly_line(tmp_path, capsys, monkeyp
 
     err = capsys.readouterr().err
     assert code == 1
-    assert err.splitlines() == ["error: No such file or directory: missing_map.json"]
+    assert err.splitlines() == ["error: missing_map.json: No such file or directory"]
     assert str(tmp_path) not in err
 
 

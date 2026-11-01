@@ -12,7 +12,7 @@ import statistics
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from .inputs import Aligned, EvaluationInputError
 from .metrics import class_counts, confusion, macro_f1_from_counts
@@ -44,7 +44,7 @@ def group_order(records: Sequence[Aligned]) -> tuple[str, ...]:
     if missing is not None:
         raise EvaluationInputError(
             f"bootstrap needs metadata.group_id on every scored record; {missing!r} has none")
-    return tuple(dict.fromkeys(record.group_id for record in records))
+    return tuple(dict.fromkeys(record.group_id for record in records if record.group_id is not None))
 
 
 def group_counts(records: Sequence[Aligned], spec: BlockSpec,
@@ -53,13 +53,12 @@ def group_counts(records: Sequence[Aligned], spec: BlockSpec,
     indices = [spec.labels.index(label) for label in spec.macro_over]
     by_group: dict[str, list[Aligned]] = {group: [] for group in groups}
     for record in records:
-        by_group[record.group_id].append(record)
-    counts = []
+        by_group[cast(str, record.group_id)].append(record)  # group_order checked that every record has one
+    counts: list[Counts] = []
     for group in groups:
-        tp, support, predicted = class_counts(confusion(block_pairs(by_group[group], spec),
-                                                        spec.labels))
-        counts.append(tuple(tuple(vector[i] for i in indices)
-                            for vector in (tp, support, predicted)))
+        per_class = class_counts(confusion(block_pairs(by_group[group], spec), spec.labels))
+        tp, support, predicted = (tuple(vector[i] for i in indices) for vector in per_class)
+        counts.append((tp, support, predicted))
     return tuple(counts)
 
 
@@ -77,7 +76,7 @@ def resampled_macro_f1(counts: Sequence[Counts], weights: Sequence[Counter[int]]
     for drawn in weights:
         totals = [[0] * width for _ in range(3)]
         for group, times in drawn.items():
-            for total, vector in zip(totals, counts[group]):
+            for total, vector in zip(totals, counts[group], strict=False):
                 for i in range(width):
                     total[i] += times * vector[i]
         values.append(macro_f1_from_counts(*totals))
@@ -119,7 +118,7 @@ def paired_differences(records_a: Sequence[Aligned], records_b: Sequence[Aligned
     for spec in specs:
         a = resampled_macro_f1(group_counts(records_a, spec, groups), weights)
         b = resampled_macro_f1(group_counts(records_b, spec, groups), weights)
-        differences = [y - x for x, y in zip(a, b)]
+        differences = [y - x for x, y in zip(a, b, strict=False)]
         share = sum(d > 0 for d in differences) / len(differences)
         result[spec.name] = {**_ci(*interval(differences), bootstrap, len(groups)),
                              "share_b_better": share}
