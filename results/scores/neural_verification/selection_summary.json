@@ -1,0 +1,252 @@
+{
+  "schema": "recap-neural-selection-summary-v1",
+  "source_ref": "64fa17e8c92289d14b7f6a07fc1f1b703365c6c9",
+  "source_path": "experiments/NEURAL_NOTES.md",
+  "mode_C": "omitted before neural training by scope change",
+  "runs": [
+    {
+      "run": "bert_tagger_A",
+      "mode": "A",
+      "pretrained": "bert-base-uncased",
+      "pretrained_revision": "86b5e0934494bd15c9632b12f734a8a67f723594",
+      "learning_rate": 2e-05,
+      "epoch": 3,
+      "validation_primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.767223
+      },
+      "selected_training_seconds": 3844.965311600012,
+      "search_training_seconds": 7502.887609300029,
+      "validation_runtime": {
+        "batch_size": 4,
+        "median_ms_per_utterance": 1.8462865419157557,
+        "ms_per_utterance_passes": [
+          1.8462865419157557,
+          1.826662065868296,
+          1.8484608333337038
+        ],
+        "scope": "tokenization + inference/generation + alignment; excludes model/data loading",
+        "timed_passes": 3,
+        "warmup_passes": 1
+      },
+      "validation_diagnostics": {
+        "cutoff_share": 0.0,
+        "cutoff_words": 0,
+        "words": 618771
+      },
+      "frozen_at": "2026-10-30T19:28:20.090879+00:00",
+      "artifact_metadata_sha256": "b73b68007f8289d5e75cd9b0df47c47416f8fbca000a277402ece18e7b1bd705",
+      "candidate_grid": [
+        {
+          "learning_rate": 2e-05,
+          "epoch": 1,
+          "validation_macro_f1": 0.758433
+        },
+        {
+          "learning_rate": 2e-05,
+          "epoch": 2,
+          "validation_macro_f1": 0.765072
+        },
+        {
+          "learning_rate": 2e-05,
+          "epoch": 3,
+          "validation_macro_f1": 0.767223
+        },
+        {
+          "learning_rate": 5e-05,
+          "epoch": 1,
+          "validation_macro_f1": 0.741213
+        },
+        {
+          "learning_rate": 5e-05,
+          "epoch": 2,
+          "validation_macro_f1": 0.75644
+        },
+        {
+          "learning_rate": 5e-05,
+          "epoch": 3,
+          "validation_macro_f1": 0.757819
+        }
+      ],
+      "validation_evidence": "Drive predictions independently rescored",
+      "selection_sha256": "ad10a5a8757af5cbcf27f3b4650cd286c6dcc89eb0a6a812b5b7ae51dff89509",
+      "drive_artifact_metadata_match": true
+    },
+    {
+      "run": "t5_seq2seq_A",
+      "mode": "A",
+      "pretrained": "google/flan-t5-base",
+      "pretrained_revision": "7bcac572ce56db69c1ea7c8af255c5d7c9672fc2",
+      "learning_rate": 0.0001,
+      "epoch": 3,
+      "validation_primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.771668
+      },
+      "selected_training_seconds": 12416.112056499987,
+      "search_training_seconds": 12416.112056499987,
+      "validation_runtime": {
+        "batch_size": 4,
+        "median_ms_per_utterance": 154.69562298902295,
+        "ms_per_utterance_passes": [
+          154.69765630738462,
+          154.69562298902295,
+          154.692661042914
+        ],
+        "scope": "tokenization + inference/generation + alignment; excludes model/data loading",
+        "timed_passes": 3,
+        "warmup_passes": 1
+      },
+      "validation_diagnostics": {
+        "unaligned_share": 0.0005155380585062972,
+        "unaligned_words": 319,
+        "words": 618771
+      },
+      "frozen_at": "2026-10-31T01:37:23.760379+00:00",
+      "artifact_metadata_sha256": "7caf8f79b2f663e7940ecff9b83d18d8ce1e2df0ae2c3a804ed18f8db25f008e",
+      "candidate_grid": [
+        {
+          "learning_rate": 0.0001,
+          "epoch": 1,
+          "validation_macro_f1": 0.765599
+        },
+        {
+          "learning_rate": 0.0001,
+          "epoch": 2,
+          "validation_macro_f1": 0.770863
+        },
+        {
+          "learning_rate": 0.0001,
+          "epoch": 3,
+          "validation_macro_f1": 0.771668
+        }
+      ],
+      "validation_evidence": "Drive predictions independently rescored",
+      "selection_sha256": "685af13f18a6d81c1bc3e24909326b436b604eb9b727dd42b6a9328163254714",
+      "drive_artifact_metadata_match": true
+    },
+    {
+      "run": "bert_tagger_B",
+      "mode": "B",
+      "pretrained": "bert-base-uncased",
+      "pretrained_revision": "86b5e0934494bd15c9632b12f734a8a67f723594",
+      "learning_rate": 5e-05,
+      "epoch": 3,
+      "validation_primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.423853
+      },
+      "selected_training_seconds": 3610.704499100015,
+      "search_training_seconds": 7311.009299700003,
+      "validation_runtime": {
+        "batch_size": 4,
+        "median_ms_per_utterance": 1.7876131586826216,
+        "ms_per_utterance_passes": [
+          1.7876131586826216,
+          1.7704260179640756,
+          1.8001921407184438
+        ],
+        "scope": "tokenization + inference/generation + alignment; excludes model/data loading",
+        "timed_passes": 3,
+        "warmup_passes": 1
+      },
+      "validation_diagnostics": {
+        "cutoff_share": 0.0,
+        "cutoff_words": 0,
+        "words": 618771
+      },
+      "frozen_at": "2026-10-31T08:01:56.797529+00:00",
+      "artifact_metadata_sha256": "e483259bb562de69beaee902461a72e7b4ec2ec4b903dcc4b17d351e56a07336",
+      "candidate_grid": [
+        {
+          "learning_rate": 2e-05,
+          "epoch": 1,
+          "validation_macro_f1": 0.379986
+        },
+        {
+          "learning_rate": 2e-05,
+          "epoch": 2,
+          "validation_macro_f1": 0.412494
+        },
+        {
+          "learning_rate": 2e-05,
+          "epoch": 3,
+          "validation_macro_f1": 0.422351
+        },
+        {
+          "learning_rate": 5e-05,
+          "epoch": 1,
+          "validation_macro_f1": 0.394124
+        },
+        {
+          "learning_rate": 5e-05,
+          "epoch": 2,
+          "validation_macro_f1": 0.399796
+        },
+        {
+          "learning_rate": 5e-05,
+          "epoch": 3,
+          "validation_macro_f1": 0.423853
+        }
+      ],
+      "validation_evidence": "Drive predictions independently rescored",
+      "selection_sha256": "7151798dd340e155f4fa746f89042b829e4c3b34d5aeaba6f1b28604f671c4ad",
+      "drive_artifact_metadata_match": true
+    },
+    {
+      "run": "t5_seq2seq_B",
+      "mode": "B",
+      "pretrained": "google/flan-t5-base",
+      "pretrained_revision": "7bcac572ce56db69c1ea7c8af255c5d7c9672fc2",
+      "learning_rate": 0.0001,
+      "epoch": 2,
+      "validation_primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.388096
+      },
+      "selected_training_seconds": 8136.712221399997,
+      "search_training_seconds": 12243.806532599992,
+      "validation_runtime": {
+        "batch_size": 4,
+        "median_ms_per_utterance": 191.93460800399293,
+        "ms_per_utterance_passes": [
+          194.48831525449046,
+          191.93460800399293,
+          179.17326387724532
+        ],
+        "scope": "tokenization + inference/generation + alignment; excludes model/data loading",
+        "timed_passes": 3,
+        "warmup_passes": 1
+      },
+      "validation_diagnostics": {
+        "unaligned_share": 0.0004702870690449294,
+        "unaligned_words": 291,
+        "words": 618771
+      },
+      "frozen_at": "2026-10-31T14:11:29.662297+00:00",
+      "artifact_metadata_sha256": "7bdb0f4270e43c24428db2bdba84a9ec67a71542e663dd390720a2e61de7d678",
+      "candidate_grid": [
+        {
+          "learning_rate": 0.0001,
+          "epoch": 1,
+          "validation_macro_f1": 0.360556
+        },
+        {
+          "learning_rate": 0.0001,
+          "epoch": 2,
+          "validation_macro_f1": 0.388096
+        },
+        {
+          "learning_rate": 0.0001,
+          "epoch": 3,
+          "validation_macro_f1": 0.380203
+        }
+      ],
+      "validation_evidence": "Committed frozen selection; prediction file unavailable in public packet"
+    }
+  ]
+}

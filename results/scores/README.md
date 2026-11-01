@@ -31,6 +31,7 @@ All files were written by `scripts/evaluate_models.py` (`score`, `compare`, `err
 | `question2/` | Improved CRF with vs without the question-lookback features on validation (50k sample), with QUESTION per-class intervals |
 | `factored/` | Mode C joint improved CRF vs the factored pipeline (mode A punctuation + CASE casing) on validation (50k sample) |
 | `neural/` | Member 2's fine-tuned BERT and FLAN-T5 (modes A and B): scores on validation, test and test_amb and paired comparisons against the improved CRF, τ × γ and the HMM, with per-class intervals |
+| `neural_verification/` | Independent arithmetic/input-hash audit of 41 reports and 24 neural comparisons; exact official bootstrap re-scoring of three shared validation files; the four frozen neural selections with source commit, candidate grids and runtime records |
 | `clusters/` | Improved CRF with vs without the data-driven word-cluster features on validation (50k sample), K = 100 and 300 (`compare_<mode>_k<K>.json`), with the K choice and its caveat in `clusters_summary.json` |
 | `ablations/mode_<M>/` | One-feature-group-removed ablations on validation (50k-sequence training sample) |
 | `filler/mode_<M>/` | Improved CRF with and without the filler-word cue on validation (same sample) |

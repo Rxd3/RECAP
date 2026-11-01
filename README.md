@@ -118,6 +118,9 @@ differs: [RELATED_WORK.md](docs/RELATED_WORK.md).
 
 ## Key findings
 
+The consolidated [final report](docs/FINAL_REPORT.md) includes the neural comparison,
+selected settings, runtime, independent result checks and reproduction limits.
+
 Every number names its split.
 - **Primary metric:** macro F1 % over the non-O punctuation classes (A, B), or over all 12 joint classes on unmasked positions (C).
 - **Intervals:** 95%, grouped bootstrap by video, 1,000 resamples.

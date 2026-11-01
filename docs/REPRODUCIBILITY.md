@@ -429,3 +429,52 @@ tau files were regenerated with it and gave the same τ, γ and grid scores.
 
 A saved model does not prove its own training provenance; never update a checksum to hide a
 mismatch.
+
+## Neural result verification and shared files
+
+The exploratory BERT/FLAN-T5 A/B results are in
+[EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md), section 15, and the consolidated
+[final report](FINAL_REPORT.md). Four complete frozen selection/runtime records are committed
+at [64fa17e](https://github.com/Rxd3/RECAP/blob/64fa17e8c92289d14b7f6a07fc1f1b703365c6c9/experiments/NEURAL_NOTES.md),
+on the neural implementation branch. The compact
+[selection summary](../results/scores/neural_verification/selection_summary.json) keeps the
+selected settings, complete LR/epoch grids, artifact identities, runtime and diagnostics.
+Use the producing neural implementation commit and its documented environment to load neural
+artifacts; the classical submission branch does not include those optional runners.
+
+The public team Drive [`Models/`](https://drive.google.com/drive/folders/13bjpo8GLVOwTJFJoOsG97O_wSyVF5rsN)
+contains two interim neural archives:
+
+| Archive | Available content | Verification on 2026-11-01 |
+|---|---|---|
+| `RECAP-completed-validation-results.zip` | BERT A/B and FLAN-T5 A validation prediction/manifest pairs, PROGRESS.md and SHA256SUMS | 588,758 bytes; SHA-256 `ef89cdd777c22c2dfab6368f4406d6dc5f289087aca3c4f675c8b5ddda252cbe`; CRC and all entry hashes pass |
+| `RECAP-completed-models-BERT-A-B-T5-A.zip` | Selected weights/tokenizers, selection/training records and validation files for those same three runs | 1,884,252,319 bytes; archive index read using HTTP ranges; 39 retrieved metadata, tokenizer and validation entries match SHA256SUMS; tensor weights were not downloaded/rehashed |
+
+Three shared validation predictions were rescored with the unchanged official evaluator,
+including bootstrap 1000 and seed 2026. Every block, count and interval matches the committed
+neural score reports exactly. Example, after extracting the validation archive and preparing
+the v2 data release:
+
+```powershell
+$neuralPredictions = "path/to/extracted/validation-archive"
+New-Item -ItemType Directory -Force tmp/neural-recheck | Out-Null
+python scripts/evaluate_models.py score `
+  --gold data/processed/sponspeech-m1-v2/mode_A/validation.jsonl `
+  --ids data/splits/sponspeech-m1-v2/primary_eval/validation_mode_A.ids `
+  --predictions "$neuralPredictions/bert_tagger_A/validation.jsonl" `
+  --manifest "$neuralPredictions/bert_tagger_A/validation.manifest.json" `
+  --bootstrap 1000 --seed 2026 --out tmp/neural-recheck/bert_A_validation.json
+```
+
+Use new output names when repeating a check. Re-scoring the saved prediction file does not
+repeat model inference. Substitute `bert_tagger_B` and mode B for BERT B, or `t5_seq2seq_A`
+for FLAN-T5 A.
+
+The inspected public archives do not contain FLAN-T5 B validation predictions, neural held-out
+prediction/manifest pairs, exclusive inference receipts, FLAN-T5 B weights, or the final
+12-pair A/B prediction handoff. The audit checks all eight committed neural held-out reports
+against their confusion matrices, correct gold supports/video counts and release input hashes,
+and all 24 paired comparisons against their score/prediction identities. It cannot independently
+repeat held-out bootstrap resampling or receipt checks from the missing files. FLAN-T5 B's
+validation score is retained from its committed frozen selection. Full evidence and limits:
+[verification.json](../results/scores/neural_verification/verification.json).

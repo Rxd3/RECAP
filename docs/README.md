@@ -2,6 +2,9 @@
 
 The [root README](../README.md) maps every folder, script and guide. By topic:
 
+- **Submission report:** [FINAL_REPORT.md](FINAL_REPORT.md), a consolidated account of the task,
+  methods, final results, neural selection/runtime records, verification and limitations.
+
 - **Scope and design:** [PROJECT_SCOPE.md](PROJECT_SCOPE.md), [ARCHITECTURE.md](ARCHITECTURE.md),
   [DECISIONS.md](DECISIONS.md).
 - **Data and preprocessing:** [DATASET_CARD.md](DATASET_CARD.md), [DATASET_PLAN.md](DATASET_PLAN.md), [DATA_CONTRACT.md](DATA_CONTRACT.md),
