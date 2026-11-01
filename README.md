@@ -160,7 +160,7 @@ the shortcut, hidden-event LM and threshold columns are our additions):
 
 - **The filler-word cue** leaves macro F1 unchanged on validation, but raises comma F1 slightly: +0.21 (B) and +0.25 (C), with both intervals excluding 0.
 - **Training on the 8-class labels barely changes the 4-class task.** Mode B models projected to mode A differ from their mode A twins by under 0.3 points on validation (HMM +0.10, CRF basic −0.24, CRF improved +0.25) ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §11).
-- **Leakage inflates lexical models.** On test utterances from videos in the training set, the improved CRF scores 67.09 against 49.50 on the leak-free test, while the HMM scores 33.54 against 34.74. The two sets are different videos (35 and 153), and no interval was computed for either difference or for the CRF − HMM contrast, so the gap is descriptive. See [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §8.
+- **The CRF scores much higher on utterances from training videos; the HMM does not** (descriptive). On test utterances from videos in the training set, the improved CRF scores 67.09 against 49.50 on the leak-free test, while the HMM scores 33.54 against 34.74. The two sets are different videos (35 and 153), and no interval was computed for either difference or for the CRF − HMM contrast, so the gap is descriptive. See [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §8.
 - **Joint vs punctuation-only (H1, validation, same 19,936 evaluation IDs):** every joint model gains
   on non-final positions (HMM +8.69, CRF basic +1.59, CRF improved +1.16; all intervals exclude 0), but
   PERIOD F1 does not rise consistently, so H1 as stated is not supported. A controlled check retrains the
