@@ -37,6 +37,14 @@ from .crf_lexicons import (
 
 __all__ = ["FeatureConfig", "extract_sequence_features"]
 
+# old import path kept (restructure spec §2)
+from .crf_lexicons import FILLER_BIGRAMS as FILLER_BIGRAMS
+from .crf_lexicons import FILLERS as FILLERS
+from .crf_lexicons import LOOKBACK_WINDOW as LOOKBACK_WINDOW
+from .crf_lexicons import TAG_CUE_PRONOUNS as TAG_CUE_PRONOUNS
+from .crf_lexicons import TAG_CUE_WORDS as TAG_CUE_WORDS
+from .crf_lexicons import UNKNOWN_CLUSTER_LABEL as UNKNOWN_CLUSTER_LABEL
+
 _Feats = dict[str, str | int | float | bool]
 
 

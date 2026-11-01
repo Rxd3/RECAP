@@ -49,6 +49,18 @@ from .release_stats import StatsInputs, build_stats, pairwise_overlap
 
 __all__ = ["ReleaseSources", "build_release", "load_records", "read_ids"]
 
+# old import path kept (restructure spec §2)
+from ..hashing import sha256_file as sha256_file
+from .release_constants import JSON as JSON
+from .release_constants import RELEASE_FILES as RELEASE_FILES
+from .release_constants import SOURCE_REFERENCE as SOURCE_REFERENCE
+from .release_constants import UNRESOLVED_CASE as UNRESOLVED_CASE
+from .release_manifest import describe_files as describe_files
+from .release_outputs import write_lines as write_lines
+from .release_stats import label_distribution as label_distribution
+from .release_stats import length_stats as length_stats
+from .release_stats import mode_labels as mode_labels
+
 
 def code_fingerprint() -> str:
     """SHA-256 over this package's source files, recorded in the manifest."""

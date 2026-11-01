@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import platform
 import subprocess
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -16,6 +17,13 @@ from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_records import SelectedRecords
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import parse_json_object, read_ids, write_new_file
+
+# isort: split
+# old import path kept (restructure spec §2)
+from punct_restore.data.labeling import load_label_sets as load_label_sets
+from punct_restore.data.validation import check_model_input as check_model_input
+from punct_restore.data.validation import validate_record as validate_record
+from punct_restore.models.hmm_records import read_jsonl as read_jsonl
 
 
 def portable_path(path: Path) -> str:
@@ -39,6 +47,45 @@ def code_identity(root: Path = ROOT) -> dict[str, Any]:
         return {"commit": git("rev-parse", "HEAD"), "dirty": bool(git("status", "--porcelain"))}
     except (OSError, subprocess.CalledProcessError):
         return {"commit": None, "dirty": None}
+
+
+def sha256(path: Path) -> str:
+    """Hex SHA-256 of a file: main's name for `hashing.sha256_file` (old import path kept, restructure spec §2)."""
+    return sha256_file(path)
+
+
+def read_id_selection(path: Path) -> tuple[str, ...]:
+    """The IDs of a selection file as a tuple; blank lines, padded IDs, duplicates and an empty list are refused.
+
+    Main's reader (old import path kept, restructure spec §2), now `prediction_io.read_ids` in strict mode.
+    """
+    return tuple(read_ids(path, strict=True))
+
+
+def selected_records(
+    path: Path,
+    ids: tuple[str, ...] | None,
+    *,
+    training_mode: str | None = None,
+    policy_version: str | None = None,
+    source_revision: str | None = None,
+    counts: dict[str, int] | None = None,
+) -> Iterator[dict[str, Any]]:
+    """Main's generator over `SelectedRecords` (old import path kept, restructure spec §2).
+
+    The old API's contract, and the one place an argument is deliberately changed: a caller-supplied `counts` dict is
+    filled in place. Its three keys are reset when the first row is asked for and hold the totals of everything the
+    file held once the iteration has finished (`SelectedRecords` only knows them then, so they are not live). If the
+    iteration stops early or raises, the counts stay at zero, where main kept partial totals.
+    """
+    selection = SelectedRecords(
+        path, ids, training_mode=training_mode, policy_version=policy_version, source_revision=source_revision
+    )
+    if counts is not None:
+        counts.update(input_records=0, selected_records=0, selected_tokens=0)
+    yield from selection
+    if counts is not None:
+        counts.update(selection.counts)
 
 
 def read_json_object(path: Path) -> dict[str, Any]:

@@ -24,10 +24,7 @@ from typing import Any
 
 import sklearn_crfsuite
 
-from punct_restore.features.crf_features import (
-    FeatureConfig,
-    extract_sequence_features,
-)
+from punct_restore.features.crf_features import FeatureConfig, extract_sequence_features
 from punct_restore.models.crf_io import read_bundle, restore_model, write_model
 from punct_restore.models.crf_modes import (
     LABEL_MODES,
@@ -38,6 +35,12 @@ from punct_restore.models.crf_modes import (
 from punct_restore.models.crf_records import prediction_features, validate_training_records
 
 __all__ = ["CRFModel", "SCORING_MODES", "get_mode_vocabulary", "require_scoring_mode"]
+
+# old import path kept (restructure spec §2)
+from punct_restore.data.labeling import join_labels as join_labels
+from punct_restore.data.labeling import load_label_sets as load_label_sets
+from punct_restore.models.crf_io import MODEL_SCHEMA_VERSION as MODEL_SCHEMA_VERSION
+from punct_restore.models.crf_modes import CASING_VOCABULARY as CASING_VOCABULARY
 
 
 class CRFModel:

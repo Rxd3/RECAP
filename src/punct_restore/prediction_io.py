@@ -54,6 +54,20 @@ def read_ids(path: str | os.PathLike[str], *, strict: bool = False, allow_empty:
     return ids
 
 
+def read_frozen_ids(ids_path: Path) -> list[str]:
+    """The IDs of a frozen ID list, as main's reader gave them (old import path kept, restructure spec §2).
+
+    Blank lines are skipped and each ID is stripped, as `read_ids` does by default.
+
+    Raises:
+        FileNotFoundError: If the ID file does not exist (a folder counts as missing).
+        ValueError: If the ID list is empty or contains duplicate IDs.
+    """
+    if not ids_path.is_file():
+        raise FileNotFoundError(f"Frozen ID list not found: {ids_path.name}")
+    return read_ids(ids_path)
+
+
 def parse_json_object(line: str, where: str) -> dict[str, Any]:
     """The JSON object on ``line``; ``where`` (file name and line number) starts the one-line ValueError."""
     try:
