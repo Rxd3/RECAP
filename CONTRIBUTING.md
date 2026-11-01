@@ -38,8 +38,9 @@ python -m pytest -q
 ruff check src scripts tests
 ```
 
-The CI workflow `.github/workflows/ci.yml` runs the same two checks on Python 3.12 for every push and
-pull request.
+The CI workflow `.github/workflows/ci.yml` runs the same two checks on Python 3.12 and 3.13 for every
+push and pull request, after `pip install -e ".[dev]" -c requirements-lock.txt` (the lock file's pins as
+constraints).
 
 - **One branch per member:** work on your `feat/m<N>-...` branch (owners and branches are in
   [TEAM_TASKS.md](TEAM_TASKS.md)), not on `main`.
