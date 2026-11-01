@@ -408,6 +408,36 @@ def test_bad_mode_c_records_name_the_sample(changes, fragment) -> None:
     assert "'c'" in str(error.value) and "\n" not in str(error.value)
 
 
+NON_TEXT_LABELS = [pytest.param(None, id="null"), pytest.param(1, id="number"), pytest.param({}, id="object"),
+                   pytest.param(["O"], id="list")]
+
+
+@pytest.mark.parametrize("label", NON_TEXT_LABELS)
+@pytest.mark.parametrize("field", ["punct_labels", "case_labels"])
+def test_a_label_that_is_not_text_names_the_sample_in_every_mode_that_reads_it(field: str, label: object) -> None:
+    """`None` used to look "not found" to the membership check and reached the event table as a KeyError."""
+    good = rec("c", ["a", "b"], ["O", "PERIOD"], ["LOWER", "LOWER"], mode="C")
+    row = {**good, field: [label, good[field][1]]}
+    with pytest.raises(ValueError, match=rf"^'c': unknown {field} label") as error:
+        HiddenEventLM("C").fit([row])
+    assert "\n" not in str(error.value)
+
+
+@pytest.mark.parametrize("label", NON_TEXT_LABELS)
+def test_a_punctuation_label_that_is_not_text_is_refused_in_mode_a(label: object) -> None:
+    with pytest.raises(ValueError, match=r"^'bad': unknown punct_labels label"):
+        HiddenEventLM("A").fit([_bad(punct_labels=["O", label])])
+
+
+@pytest.mark.parametrize("token", [None, 1, {}, ["a"]], ids=["null", "number", "object", "list"])
+def test_a_truecaser_given_a_token_that_is_not_text_refuses_it_in_one_line(token: object) -> None:
+    with pytest.raises(ValueError, match="tokens must be") as fit_error:
+        UnigramTruecaser.fit([([token], ["LOWER"])])
+    with pytest.raises(ValueError, match="tokens must be") as predict_error:
+        UnigramTruecaser({"a": [1, 0, 0]}).predict([token], ["O"])  # type: ignore[list-item]
+    assert "\n" not in str(fit_error.value) + str(predict_error.value)
+
+
 def test_a_sample_id_with_a_newline_stays_on_one_line() -> None:
     with pytest.raises(ValueError) as error:
         HiddenEventLM("A").fit([_bad(sample_id="x\ny", split="test")])

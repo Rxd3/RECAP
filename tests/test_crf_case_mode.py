@@ -116,7 +116,7 @@ def test_load_rejects_an_artifact_with_an_unknown_label_mode(mode_c_records, tmp
     CRFModel(label_mode="CASE", max_iterations=5).fit(mode_c_records).save_model(path)
     bundle = joblib.load(path)
     joblib.dump({**bundle, "label_mode": bad_mode}, path)
-    with pytest.raises(ValueError, match="Invalid label_mode in artifact"):
+    with pytest.raises(ValueError, match="^case.joblib: invalid label_mode in artifact"):
         CRFModel.load_model(path)
 
 

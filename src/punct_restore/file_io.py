@@ -1,5 +1,5 @@
-"""File-level helpers shared by the commands: the create-new writers for a file and a folder, the JSONL and JSON
-readers, the shape check of a parsed file, and the checks that a path is a file or does not exist yet.
+"""File-level helpers shared by the commands: the create-new writers for a file and a folder, the JSONL, JSON and
+YAML readers, the shape check of a parsed file, and the checks that a path is a file or a folder or does not exist yet.
 
 Every error names a file by its name only (never the folder it sits in), so a command can print it as one line.
 """
@@ -29,6 +29,21 @@ def require_file(path: str | os.PathLike[str], what: str) -> None:
     if path.is_dir():
         raise IsADirectoryError(f"{name}: is a folder, not a file")
     if not path.is_file():
+        raise FileNotFoundError(f"{name}: {what} not found")
+
+
+def require_folder(path: str | os.PathLike[str], what: str) -> None:
+    """Raise unless ``path`` is a folder, in one line that names it by name only (the parent is never shown).
+
+    Raises:
+        NotADirectoryError: ``<name>: is a file, not a folder`` for a file.
+        FileNotFoundError: ``<name>: <what> not found`` for anything else that is not a folder.
+    """
+    path = Path(path)
+    name = Path(os.path.abspath(path)).name or str(path)
+    if path.is_file():
+        raise NotADirectoryError(f"{name}: is a file, not a folder")
+    if not path.is_dir():
         raise FileNotFoundError(f"{name}: {what} not found")
 
 
@@ -127,6 +142,24 @@ def read_json(path: Path) -> Any:
         return json.loads(text)
     except (ValueError, RecursionError) as exc:  # JSONDecodeError and the digit limit are ValueErrors
         raise ValueError(f"{path.name}: not valid JSON") from exc
+
+
+def read_yaml(path: str | os.PathLike[str]) -> Any:
+    """The parsed YAML of `path`, whatever it holds (a mapping, a list, a number or nothing at all).
+
+    Raises:
+        OSError: If the file cannot be read.
+        ValueError: One line that names the file only (a YAML error mark shows the whole path):
+            `<file name>: not valid UTF-8` or `<file name>: not valid YAML` (also for a document nested too deeply).
+    """
+    import yaml  # PyYAML is a declared runtime dependency of RECAP; imported here so file_io loads without it
+    try:
+        with open(path, encoding="utf-8") as handle:
+            return yaml.safe_load(handle)
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"{os.path.basename(path)}: not valid UTF-8") from exc
+    except (yaml.YAMLError, RecursionError) as exc:  # RecursionError: nested too deeply
+        raise ValueError(f"{os.path.basename(path)}: not valid YAML") from exc
 
 
 _KIND_NAMES = {str: "nonempty text", list: "a JSON list", float: "a number", int: "a whole number"}

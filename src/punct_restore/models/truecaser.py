@@ -11,6 +11,13 @@ from punct_restore.data.labeling import load_label_sets
 _TERMINALS = frozenset({"PERIOD", "QUESTION", "EXCLAMATION"})
 
 
+def _lower(token: object) -> str:
+    """The lowercase form of a token; ValueError (one line) for anything that is not text."""
+    if not isinstance(token, str):
+        raise ValueError(f"tokens must be strings, got {token!r}")
+    return token.lower()
+
+
 @cache
 def _default_casing() -> tuple[str, ...]:
     """The casing labels in vocabulary order, read from configs/label_sets.yaml."""
@@ -44,7 +51,7 @@ class UnigramTruecaser:
             for token, label in zip(tokens, case_labels, strict=True):
                 if label not in labels:
                     raise ValueError(f"unknown casing label {label!r}")
-                counts.setdefault(token.lower(), [0] * len(labels))[labels.index(label)] += 1
+                counts.setdefault(_lower(token), [0] * len(labels))[labels.index(label)] += 1
         return cls(counts, labels)
 
     def predict(self, tokens: Sequence[str], punctuation: Sequence[str]) -> list[str]:
@@ -52,7 +59,7 @@ class UnigramTruecaser:
         labels: list[str] = []
         starts_sentence = True
         for token, punct in zip(tokens, punctuation, strict=True):
-            best = self._best.get(token.lower())
+            best = self._best.get(_lower(token))
             labels.append(best if best is not None else ("FIRST_UPPER" if starts_sentence else "LOWER"))
             starts_sentence = punct in _TERMINALS
         return labels

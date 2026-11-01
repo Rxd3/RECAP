@@ -75,8 +75,32 @@ def test_load_model_still_rejects_an_artifact_whose_vocabulary_does_not_match_it
     bundle = _saved_bundle(fitted, tmp_path / "m.joblib")
     joblib.dump({**bundle, "vocabulary": ["O", "COMMA"]}, tmp_path / "tampered.joblib")
 
-    with pytest.raises(ValueError, match="does not match expected"):
+    with pytest.raises(ValueError, match="^tampered.joblib: artifact vocabulary .* does not match expected"):
         CRFModel.load_model(tmp_path / "tampered.joblib")
+
+
+@pytest.mark.parametrize(("change", "reason"), [
+    ({"schema_version": 99}, "unsupported model schema_version 99"),
+    ({"model_family": "hmm"}, "incompatible model family 'hmm', expected 'crf'"),
+    ({"label_mode": "D"}, "invalid label_mode in artifact: 'D'"),
+    ({"backend_state": None}, "corrupt artifact: missing backend_state"),
+], ids=["schema", "family", "label-mode", "backend"])
+def test_load_model_starts_every_refusal_with_the_artifact_file_name(
+        fitted: CRFModel, tmp_path: Path, change: dict, reason: str) -> None:
+    bundle = _saved_bundle(fitted, tmp_path / "m.joblib")
+    joblib.dump({**bundle, **change}, tmp_path / "tampered.joblib")
+
+    with pytest.raises(ValueError) as caught:
+        CRFModel.load_model(tmp_path / "tampered.joblib")
+
+    assert str(caught.value) == f"tampered.joblib: {reason}"
+
+
+def test_load_model_names_an_artifact_that_is_not_a_dict(tmp_path: Path) -> None:
+    joblib.dump([1, 2], tmp_path / "list.joblib")
+
+    with pytest.raises(ValueError, match=r"^list\.joblib: corrupt artifact: expected dict root, got list$"):
+        CRFModel.load_model(tmp_path / "list.joblib")
 
 
 # --- _to_bundle ---------------------------------------------------------------------------------------------

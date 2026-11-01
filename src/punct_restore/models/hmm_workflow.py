@@ -13,12 +13,13 @@ from time import perf_counter
 from typing import Any
 
 from punct_restore.evaluation.inputs import file_identity_with
+from punct_restore.file_io import write_new_file
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_records import SelectedRecords
 from punct_restore.models.hmm_release import checked_release_file, read_release_manifest
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import read_ids, write_new_file
+from punct_restore.prediction_io import read_ids
 
 # isort: split
 # old import path kept (restructure spec §2)

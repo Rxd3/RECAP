@@ -10,7 +10,7 @@ from typing import Any
 
 import yaml
 
-from punct_restore.data.labeling import read_yaml
+from punct_restore.file_io import read_yaml
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm_experiment_commands import Study, execute, score, train_command
 from punct_restore.models.hmm_experiment_identity import check_evaluator, implementation

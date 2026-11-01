@@ -310,10 +310,10 @@ class GapClassifier:
         except OSError:
             raise  # permission and I/O errors are not a corrupt artifact
         except Exception as exc:  # any unpickling failure means a corrupt or foreign file
-            raise ValueError(f"Corrupt or unreadable model artifact: {source.name}") from exc
+            raise ValueError(f"{source.name}: corrupt or unreadable model artifact") from exc
         problem = _bundle_problem(bundle)
         if problem is not None:
-            raise ValueError(f"Corrupt model artifact {source.name}: {problem}")
+            raise ValueError(f"{source.name}: corrupt model artifact: {problem}")
         hyper = bundle["hyperparameters"]
         model = cls(
             bundle["label_mode"],

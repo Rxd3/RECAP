@@ -16,7 +16,6 @@ file, and the tau file that ``predict`` reads back. Nothing here prints.
 
 from __future__ import annotations
 
-import json
 import math
 import tempfile
 from collections import Counter
@@ -25,7 +24,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TypeGuard
 
-from punct_restore.file_io import iter_jsonl, require_file
+from punct_restore.file_io import iter_jsonl, read_object, require_file
 from punct_restore.hashing import sha256_file
 from punct_restore.prediction_io import parse_sample_record, read_ids, write_predictions_jsonl
 
@@ -33,8 +32,8 @@ NO_PUNCT = "O"
 
 
 def is_o_label(label: str) -> bool:
-    """True for the no-punctuation label of every mode: ``O`` or a joint ``O|<CASE>``."""
-    return label == NO_PUNCT or label.startswith(f"{NO_PUNCT}|")
+    """True for the no-punctuation label of every mode: ``O`` or a joint ``O|<CASE>`` (never for a non-string)."""
+    return isinstance(label, str) and (label == NO_PUNCT or label.startswith(f"{NO_PUNCT}|"))
 
 
 def _is_finite_number(value: object) -> TypeGuard[float]:
@@ -102,6 +101,9 @@ def _decode_token(
 ) -> str:
     if not probs:
         raise ValueError(f"token {index} has no label probabilities")
+    for label in probs:
+        if not isinstance(label, str):
+            raise ValueError(f"token {index} has a label that is not text: {label!r}")
     o_labels = [label for label in probs if is_o_label(label)]
     if not o_labels:
         raise ValueError(f"token {index} has no O label to compare against")
@@ -140,10 +142,10 @@ def decode_with_threshold(
     return [_decode_token(probs, index, tau, shifts) for index, probs in enumerate(marginals)]
 
 
-def _label_list(record: Mapping[str, Any], key: str) -> list[str]:
+def _label_list(record: Mapping[str, Any], key: str, where: str = "a record") -> list[str]:
     labels = record.get(key)
     if not isinstance(labels, list) or not all(isinstance(label, str) for label in labels):
-        raise ValueError(f"a record has no {key} list of strings")
+        raise ValueError(f"{where}: {key} must be a list of strings")
     return labels
 
 
@@ -157,6 +159,22 @@ def _gold_labels(record: Mapping[str, Any], joint: bool) -> list[str]:
     return [f"{p}|{c}" for p, c in zip(punct, case, strict=True)]
 
 
+def _count_labels(records: Iterable[Mapping[str, Any]], joint: bool) -> Counter[str]:
+    counts: Counter[str] = Counter()
+    for record in records:
+        counts.update(_gold_labels(record, joint))
+    return counts
+
+
+def _priors_of(counts: Counter[str], labels: Sequence[str], source: str = "") -> dict[str, float]:
+    """The add-one priors of the non-O ``labels``; ``source`` (a file name) starts the message of a bad count."""
+    outside = sorted(counts.keys() - set(labels))
+    if outside:
+        raise ValueError(f"{source + ': ' if source else ''}gold label {outside[0]!r} is outside the mode's label set")
+    denominator = sum(counts.values()) + len(labels)
+    return {label: (counts[label] + 1) / denominator for label in labels if not is_o_label(label)}
+
+
 def label_priors(records: Iterable[Mapping[str, Any]], labels: Sequence[str]) -> dict[str, float]:
     """Add-one-smoothed gold frequency of every non-O label: ``(count + 1) / (tokens + K)``.
 
@@ -168,14 +186,7 @@ def label_priors(records: Iterable[Mapping[str, Any]], labels: Sequence[str]) ->
         ValueError: a record lacks its label lists, they differ in length, or a gold label is
             outside ``labels``.
     """
-    joint = any("|" in label for label in labels)
-    counts: Counter[str] = Counter()
-    for record in records:
-        counts.update(_gold_labels(record, joint))
-    if not counts.keys() <= set(labels):
-        raise ValueError("gold labels outside the mode's label set")
-    denominator = sum(counts.values()) + len(labels)
-    return {label: (counts[label] + 1) / denominator for label in labels if not is_o_label(label)}
+    return _priors_of(_count_labels(records, any("|" in label for label in labels)), labels)
 
 
 # --- the (tau, gamma) grid -------------------------------------------------------------------------------------------
@@ -265,6 +276,15 @@ def tau_result(
 # --- the label priors of the training file ---------------------------------------------------------------------------
 
 
+def _check_train_labels(record: Mapping[str, Any], mode: str, where: str) -> None:
+    """Raise ValueError (leading with ``where``, ``<file> line N``) unless the labels the priors read fit the tokens."""
+    tokens = record.get("tokens")
+    for key in ("punct_labels", "case_labels") if mode == "C" else ("punct_labels",):
+        labels = _label_list(record, key, where)
+        if not isinstance(tokens, list) or len(labels) != len(tokens):
+            raise ValueError(f"{where}: {key} must hold one label per token")
+
+
 def stream_train_labels(train_path: Path, ids: Sequence[str], mode: str) -> Iterator[dict[str, Any]]:
     """Yield the gold label lists of the listed records, one line at a time; all IDs must be found."""
     wanted, found = set(ids), set()
@@ -277,16 +297,18 @@ def stream_train_labels(train_path: Path, ids: Sequence[str], mode: str) -> Iter
         if record.get("label_mode") != mode:
             raise ValueError(f"{where}: a listed record is not label mode {mode}")
         found.add(record["sample_id"])
+        _check_train_labels(record, mode, where)
         yield {key: record.get(key) for key in ("punct_labels", "case_labels")}
     if len(found) < len(wanted):
-        raise ValueError(f"{len(wanted) - len(found)} listed ID(s) are missing from {train_path.name}")
+        raise ValueError(f"{train_path.name}: {len(wanted) - len(found)} listed ID(s) are missing")
 
 
 def train_priors(train: Path, train_ids: Path, mode: str, vocabulary: Sequence[str]) -> dict[str, float]:
     """Add-one label priors of ``mode`` (over ``vocabulary``) from the training records that ``train_ids`` lists."""
     require_file(train, "training file")
     ids = read_ids(train_ids)
-    return label_priors(stream_train_labels(train, ids, mode), vocabulary)
+    counts = _count_labels(stream_train_labels(train, ids, mode), joint=any("|" in label for label in vocabulary))
+    return _priors_of(counts, vocabulary, train.name)
 
 
 # --- the tau file that predict reads ---------------------------------------------------------------------------------
@@ -314,22 +336,21 @@ def _gamma_settings(data: Mapping[str, Any]) -> tuple[float, dict[str, float] | 
 
 
 def read_tau_file(path: Path, model_path: Path) -> TauSettings:
-    """Tau, gamma and priors from a ``tune`` result, provided it was tuned for exactly this model file."""
+    """Tau, gamma and priors from a ``tune`` result, provided it was tuned for exactly this model file.
+
+    Raises:
+        OSError: ``<name>: tau file not found`` (``FileNotFoundError``), a folder, or a file that cannot be read.
+        ValueError: One line that starts with the file name: not UTF-8, not JSON, not a JSON object, a missing or
+            wrong ``tau``, ``gamma``, ``priors`` or ``model_sha256``, or ``tuned for a different model``.
+    """
     require_file(path, "tau file")
+    data = read_object(path, {"tau": object, "model_sha256": str})
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"tau file {path.name} is not valid UTF-8") from exc
-    except (json.JSONDecodeError, RecursionError) as exc:  # RecursionError: nested too deeply
-        raise ValueError(f"tau file {path.name} is not valid JSON") from exc
-    if not isinstance(data, dict) or not isinstance(data.get("model_sha256"), str):
-        raise ValueError(f"tau file {path.name} must be a JSON object with a tau and a model_sha256 string")
-    try:
-        check_tau(data.get("tau"))
+        check_tau(data["tau"])
         gamma, priors = _gamma_settings(data)
     except ValueError as exc:
-        raise ValueError(f"tau file {path.name}: {exc}") from exc
+        raise ValueError(f"{path.name}: {exc}") from exc
     if data["model_sha256"] != sha256_file(model_path):
-        raise ValueError("tau file was tuned for a different model")
+        raise ValueError(f"{path.name}: tuned for a different model")
     # + 0.0: a tau of -0.0 must not name the model "_tau-0"
     return TauSettings(float(data["tau"]) + 0.0, gamma, priors)

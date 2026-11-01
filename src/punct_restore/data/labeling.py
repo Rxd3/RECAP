@@ -20,6 +20,7 @@ import re
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
+from ..file_io import read_yaml as read_yaml  # old import path kept: the one YAML reader is in file_io
 from ..file_io import require_object
 from ..paths import REPO_ROOT
 from .preprocessing import ABBREVIATIONS, TITLES, Token
@@ -36,37 +37,19 @@ _LABEL_SCHEMA = {
 }
 
 
-def read_yaml(path: str | os.PathLike[str]) -> Any:
-    """The parsed YAML of `path`, whatever it holds (a mapping, a list, a number or nothing at all).
-
-    Raises:
-        OSError: If the file cannot be read.
-        ValueError: One line that names the file only (a YAML error mark shows the whole path):
-            `<file name>: not valid UTF-8` or `<file name>: not valid YAML` (also for a document nested too deeply).
-    """
-    import yaml  # PyYAML is a declared runtime dependency of RECAP
-    try:
-        with open(path, encoding="utf-8") as f:
-            return yaml.safe_load(f)
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"{os.path.basename(path)}: not valid UTF-8") from exc
-    except (yaml.YAMLError, RecursionError) as exc:  # RecursionError: nested too deeply
-        raise ValueError(f"{os.path.basename(path)}: not valid YAML") from exc
-
-
 def read_label_config(path: str | os.PathLike[str] = LABEL_SETS_PATH) -> dict[str, Any]:
     """The raw label configuration mapping; a ValueError names the file (not UTF-8, not YAML, not a mapping)."""
     return require_object(os.path.basename(path), read_yaml(path), {})
 
 
-def load_label_sets(path: str | os.PathLike[str] = LABEL_SETS_PATH) -> dict[str, Any]:
-    """Read configs/label_sets.yaml (the vocabulary source of truth) and check its 4/8/12 structure.
+def label_sets_from_config(config: Mapping[str, Any], file_name: str) -> dict[str, Any]:
+    """The label sets of an already parsed label configuration, after checking its 4/8/12 structure.
 
-    Raises ValueError("<file name>: <what is wrong>") for a file that is not valid UTF-8 or YAML, or that parses but
-    lacks a key or has a value of the wrong type (`file_io.require_object` words it).
+    `file_name` is the name of the file `config` was read from; it starts the ValueError that
+    `file_io.require_object` raises for a missing key or a value of the wrong kind, and the one for a vocabulary
+    that is not the agreed 4/8/12 structure (`<file name>: does not have the agreed 4/8/12 structure`).
     """
-    file_name = os.path.basename(path)
-    cfg = require_object(file_name, read_label_config(path), _LABEL_SCHEMA)
+    cfg = require_object(file_name, config, _LABEL_SCHEMA)
     std, ext, case = cfg["punctuation"]["standard"], cfg["punctuation"]["extended"], cfg["casing"]
     separator, joint_listed = cfg["modes"]["C"]["separator"], cfg["modes"]["C"]["labels"]
     projection = cfg["extended_to_standard"]
@@ -75,6 +58,15 @@ def load_label_sets(path: str | os.PathLike[str] = LABEL_SETS_PATH) -> dict[str,
         raise ValueError(f"{file_name}: does not have the agreed 4/8/12 structure")
     return {"A": list(std), "B": list(ext), "C": joint, "casing": list(case), "separator": separator,
             "projection": projection}
+
+
+def load_label_sets(path: str | os.PathLike[str] = LABEL_SETS_PATH) -> dict[str, Any]:
+    """Read configs/label_sets.yaml (the vocabulary source of truth) and check its 4/8/12 structure.
+
+    Raises ValueError("<file name>: <what is wrong>") for a file that is not valid UTF-8 or YAML, or that parses but
+    lacks a key or has a value of the wrong type (`file_io.require_object` words it).
+    """
+    return label_sets_from_config(read_label_config(path), os.path.basename(path))
 
 
 # --- Punctuation ---------------------------------------------------------------------------------------------------

@@ -49,7 +49,7 @@ def now() -> str:
 def _check_modes_and_search(config: dict[str, Any]) -> None:
     """The protocol rules for the modes and the selection settings (the shape of the config is already checked)."""
     if config["schema_version"] != 1 or not config["modes"]:
-        raise ValueError("invalid experiment schema/modes")
+        raise ValueError("schema_version must be 1 and modes must not be empty")
     if len(set(config["modes"])) != len(config["modes"]) or set(config["modes"]) - set("ABC"):
         raise ValueError("modes must be unique members of A/B/C")
     search = config["search"]
@@ -78,15 +78,8 @@ def _check_search_values(values: list[Any], kind: type) -> None:
             raise ValueError("smoothing/cutoffs must be positive; cutoffs must be integers")
 
 
-def validate_config(config: Any, source: str = "config") -> dict[str, Any]:
-    """Reject any experiment config that is not the frozen validation-only protocol.
-
-    `source` names the file the config came from. The shape comes first: a config that is not an object, or lacks
-    a key a later step indexes, or holds a value of another kind (a mode that is no text, a search value that is
-    no number) is a ValueError of one line, `<source>: invalid experiment config: <what is wrong>`, that names
-    the key. Only then are the protocol rules checked.
-    """
-    require_object(f"{source}: invalid experiment config", config, _CONFIG_SCHEMA)
+def _check_rules(config: dict[str, Any]) -> None:
+    """The protocol rules for the whole config (its shape is already checked); a ValueError says which one fails."""
     _check_modes_and_search(config)
     search = config["search"]
     _check_search_values(search["smoothing"], float)
@@ -96,6 +89,22 @@ def validate_config(config: Any, source: str = "config") -> dict[str, Any]:
         raise ValueError("runtime measurement requires warmup and repetitions")
     if runtime["model_threads"] != 1 or config["evaluation"]["zero_division"] != 0:
         raise ValueError("this implementation uses one model thread and zero_division=0")
+
+
+def validate_config(config: Any, source: str = "config") -> dict[str, Any]:
+    """Reject any experiment config that is not the frozen validation-only protocol.
+
+    `source` names the file the config came from. The shape comes first: a config that is not an object, or lacks
+    a key a later step indexes, or holds a value of another kind (a mode that is no text, a search value that is
+    no number) is a ValueError of one line, `<source>: invalid experiment config: <what is wrong>`, that names
+    the key. Only then are the protocol rules checked; a rule that fails is a ValueError of the same form.
+    """
+    where = f"{source}: invalid experiment config"
+    require_object(where, config, _CONFIG_SCHEMA)
+    try:
+        _check_rules(config)
+    except ValueError as exc:
+        raise ValueError(f"{where}: {exc}") from exc
     return config
 
 

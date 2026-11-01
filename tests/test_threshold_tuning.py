@@ -123,7 +123,7 @@ def test_stream_train_labels_yields_the_label_lists_of_the_listed_records_only_i
 
 @pytest.mark.parametrize(
     ("rows", "message"),
-    [([_row("a", ["O"])], r"^1 listed ID\(s\) are missing from train\.jsonl$"),
+    [([_row("a", ["O"])], r"^train\.jsonl: 1 listed ID\(s\) are missing$"),
      ([_row("a", ["O"]), _row("b", ["O"]), _row("b", ["O"])],
       r"^train\.jsonl line 3: a listed sample_id appears twice$"),
      ([_row("a", ["O"]), _row("b", ["O"], "B")],
@@ -134,6 +134,36 @@ def test_stream_train_labels_refuses_a_listed_id_that_is_missing_repeated_or_of_
         tmp_path: Path, rows: list[dict[str, Any]], message: str) -> None:
     with pytest.raises(ValueError, match=message):
         list(stream_train_labels(_train_file(tmp_path, rows), ["a", "b"], "A"))
+
+
+@pytest.mark.parametrize(
+    ("change", "mode", "message"),
+    [({"punct_labels": None}, "A", "punct_labels must be a list of strings"),
+     ({"punct_labels": ["O", 1]}, "A", "punct_labels must be a list of strings"),
+     ({"punct_labels": [{}, "O"]}, "A", "punct_labels must be a list of strings"),
+     ({"punct_labels": ["O"]}, "A", "punct_labels must hold one label per token"),
+     ({"punct_labels": []}, "A", "punct_labels must hold one label per token"),
+     ({"case_labels": [None, "LOWER"]}, "C", "case_labels must be a list of strings"),
+     ({"case_labels": ["LOWER"]}, "C", "case_labels must hold one label per token")],
+    ids=["null", "number", "object", "short", "empty", "case-null", "case-short"],
+)
+def test_stream_train_labels_names_the_file_and_line_of_labels_that_are_not_one_string_per_token(
+        tmp_path: Path, change: dict[str, Any], mode: str, message: str) -> None:
+    rows = [_row("a", ["O", "COMMA"], mode), {**_row("b", ["O", "O"], mode), **change}]
+    with pytest.raises(ValueError, match=rf"^train\.jsonl line 2: {message}$"):
+        list(stream_train_labels(_train_file(tmp_path, rows), ["a", "b"], mode))
+
+
+def test_stream_train_labels_does_not_read_the_case_labels_of_a_mode_that_has_no_use_for_them(tmp_path: Path) -> None:
+    rows = [{**_row("a", ["O", "COMMA"]), "case_labels": None}]
+    assert [row["punct_labels"] for row in stream_train_labels(_train_file(tmp_path, rows), ["a"], "A")] == [
+        ["O", "COMMA"]]
+
+
+def test_train_priors_names_the_training_file_for_a_gold_label_outside_the_mode(tmp_path: Path) -> None:
+    train = _train_file(tmp_path, [_row("a", ["O", "DASH"])])
+    with pytest.raises(ValueError, match=r"^train\.jsonl: gold label 'DASH' is outside the mode's label set$"):
+        train_priors(train, _ids(tmp_path, "a"), "A", ["O", "COMMA"])
 
 
 def test_train_priors_are_the_add_one_frequencies_of_the_listed_records(tmp_path: Path) -> None:
@@ -197,9 +227,9 @@ def test_read_tau_file_turns_a_negative_zero_tau_into_zero_so_the_model_is_not_n
 
 @pytest.mark.parametrize(
     ("fields", "message"),
-    [({"gamma": 0.5}, r"^tau file tau\.json: priors must be a mapping"),
-     ({"tau": 1.5}, r"^tau file tau\.json: tau must be a number between 0 and 1"),
-     ({"model_sha256": "0" * 64}, r"^tau file was tuned for a different model$")],
+    [({"gamma": 0.5}, r"^tau\.json: priors must be a mapping"),
+     ({"tau": 1.5}, r"^tau\.json: tau must be a number between 0 and 1"),
+     ({"model_sha256": "0" * 64}, r"^tau\.json: tuned for a different model$")],
     ids=["gamma-without-priors", "tau-out-of-range", "other-model"],
 )
 def test_read_tau_file_refuses_a_file_that_cannot_decode_with_this_model(
@@ -210,10 +240,13 @@ def test_read_tau_file_refuses_a_file_that_cannot_decode_with_this_model(
 
 @pytest.mark.parametrize(
     ("content", "message"),
-    [(b"\xff", r"^tau file tau\.json is not valid UTF-8$"),
-     (b"{", r"^tau file tau\.json is not valid JSON$"),
-     (b"[1]", r"^tau file tau\.json must be a JSON object with a tau and a model_sha256 string$")],
-    ids=["not-utf8", "not-json", "not-an-object"],
+    [(b"\xff", r"^tau\.json: not valid UTF-8$"),
+     (b"{", r"^tau\.json: not valid JSON$"),
+     (b"[1]", r"^tau\.json: not a JSON object$"),
+     (b'{"model_sha256": "x"}', r"^tau\.json: missing tau$"),
+     (b'{"tau": 0.5}', r"^tau\.json: missing model_sha256$"),
+     (b'{"tau": 0.5, "model_sha256": 7}', r"^tau\.json: model_sha256 is not nonempty text$")],
+    ids=["not-utf8", "not-json", "not-an-object", "no-tau", "no-model-hash", "model-hash-not-text"],
 )
 def test_read_tau_file_names_a_file_that_is_not_a_json_object(tmp_path: Path, content: bytes, message: str) -> None:
     path = tmp_path / "tau.json"

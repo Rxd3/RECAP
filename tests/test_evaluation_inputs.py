@@ -5,7 +5,6 @@ from __future__ import annotations
 import dataclasses
 import functools
 import hashlib
-import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
@@ -141,14 +140,45 @@ def test_load_vocab_bad_structure_rejected(tmp_path: Path, build: Callable[[dict
     assert "bad.yaml" in _error(load_vocab, bad)
 
 
+LOAD_VOCAB_REASONS = {
+    "casing_key_missing": ("casing", "bad.yaml: missing casing"),
+    "joint_labels_missing": ("joint", "bad.yaml: missing modes.C.labels"),
+    "casing_is_text": ("casing_text", "bad.yaml: casing is not a JSON list"),
+    "whole_file_is_a_list": ("list", "bad.yaml: not a JSON object"),
+    "empty_file": ("empty", "bad.yaml: not a JSON object"),
+    "invalid_yaml": ("syntax", "bad.yaml: not valid YAML"),
+}
+
+
+def _vocab_config_text(kind: str) -> str:
+    cfg = yaml.safe_load(LABEL_SETS_PATH.read_text(encoding="utf-8"))
+    if kind == "casing":
+        del cfg["casing"]
+    elif kind == "joint":
+        del cfg["modes"]["C"]["labels"]
+    elif kind == "casing_text":
+        cfg["casing"] = "LOWER"
+    elif kind == "list":
+        return yaml.safe_dump([1, 2])
+    elif kind == "empty":
+        return ""
+    else:
+        return "punctuation: [O, COMMA"
+    return yaml.safe_dump(cfg)
+
+
+@pytest.mark.parametrize(("kind", "message"), LOAD_VOCAB_REASONS.values(), ids=LOAD_VOCAB_REASONS.keys())
+def test_load_vocab_says_what_is_wrong_in_the_words_of_the_shared_readers(tmp_path: Path, kind: str, message: str
+                                                                          ) -> None:
+    """One YAML reader and one shape check (file_io): the same one line, naming the file and the key, as every other."""
+    bad = tmp_path / "bad.yaml"
+    bad.write_text(_vocab_config_text(kind), encoding="utf-8")
+    assert _error(load_vocab, bad) == message
+
+
 def test_load_vocab_missing_file_propagates_oserror(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         load_vocab(tmp_path / "nope.yaml")
-
-
-def test_load_vocab_without_pyyaml_is_a_friendly_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setitem(sys.modules, "yaml", None)
-    assert "PyYAML" in _error(load_vocab)
 
 
 def _bom_crlf_copy(case: Case, folder: Path) -> Case:

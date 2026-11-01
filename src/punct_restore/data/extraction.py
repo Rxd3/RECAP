@@ -23,7 +23,7 @@ from collections.abc import Callable, Iterator, Mapping
 from pathlib import Path
 from typing import Any
 
-from ..prediction_io import require_file
+from ..file_io import require_file
 from ..progress import Log, discard_log
 from .preprocessing import parse_manifest_line, verify_raw_manifest
 
@@ -217,9 +217,9 @@ def verify_extraction(raw_root: str | os.PathLike[str],
                       manifest_path: str | os.PathLike[str]) -> tuple[list[str], list[str]]:
     """Compare <raw_root>/sponspeech_text with the raw manifest: (missing or different paths, extra paths)."""
     base = os.path.dirname(os.path.abspath(manifest_path))
-    if os.path.abspath(base) != os.path.abspath(raw_root):
-        raise ValueError("MANIFEST.sha256 must be placed directly in raw_root (its paths start with sponspeech_text/)")
     name = os.path.basename(manifest_path)
+    if os.path.abspath(base) != os.path.abspath(raw_root):
+        raise ValueError(f"{name}: must be placed directly in raw_root (its paths start with sponspeech_text/)")
     try:
         with open(manifest_path, encoding="utf-8") as f:
             listed = {parse_manifest_line(line, number, name)[1] for number, line in enumerate(f, 1)}

@@ -23,8 +23,8 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
+from punct_restore.file_io import write_new_file
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import write_new_file
 from punct_restore.reporting._cli import check_out, run
 from punct_restore.reporting.asr_noise_report import render_markdown
 from punct_restore.reporting.asr_noise_stats import (

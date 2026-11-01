@@ -323,6 +323,35 @@ def test_masks_follow_the_mode_c_input_whatever_the_order_of_the_inputs(sim, cap
     assert [m["sample_id"] for m in masks] == [r["sample_id"] for r in read_rows(out / "mode_C" / "validation.jsonl")]
 
 
+def test_a_data_file_that_starts_with_a_byte_order_mark_reads_like_one_without(sim, capsys, root, tmp_path):
+    produce(sim, capsys, root, tmp_path / "plain")
+    path = root / DATA["B"]
+    path.write_bytes(b"\xef\xbb\xbf" + path.read_bytes())
+    produce(sim, capsys, root, tmp_path / "bom")
+    assert tree(tmp_path / "bom") == tree(tmp_path / "plain")
+
+
+def test_blank_lines_before_and_inside_a_data_file_are_counted_in_the_line_number(sim, capsys, root, tmp_path):
+    path = root / DATA["A"]
+    path.write_bytes(b"\n\n" + path.read_bytes() + b"\n{not json\n")
+    code, _, err = run(sim, capsys, argv_for(root, tmp_path / "out"))
+    rows = len(path.read_bytes().splitlines())
+    assert code == 1 and err == f"error: mode_A/validation.jsonl line {rows}: not valid JSON\n"
+
+
+def test_every_data_and_mask_file_is_read_through_the_shared_jsonl_reader(sim, capsys, root, tmp_path, monkeypatch):
+    read: list[str] = []
+    shared_reader = sim.iter_jsonl
+
+    def recording_reader(path, parse):
+        read.append(Path(path).name)
+        return shared_reader(path, parse)
+
+    monkeypatch.setattr(sim, "iter_jsonl", recording_reader)
+    produce(sim, capsys, root, tmp_path / "out")
+    assert read and set(read) == {"validation.jsonl"}  # the three data files and the masks all carry that name
+
+
 def test_summary_cost_is_computed_from_the_cost_table(sim, monkeypatch):
     monkeypatch.setattr(sim, "COST", {**sim.COST, "swap": 3})
     args = argparse.Namespace(release="r", split="validation", wer=0.5, seed=1, edit_model="v1")

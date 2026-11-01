@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -77,10 +78,15 @@ def implementation() -> dict[str, str]:
 
 
 def check_evaluator(root: Path, expected_commit: str) -> dict[str, Any]:
-    """Require a clean evaluator checkout at the pinned commit; return its commit and the hashes of its files."""
+    """Require a clean evaluator checkout at the pinned commit; return its commit and the hashes of its files.
+
+    The ValueError for a checkout that is not, `<folder name>: evaluator checkout must be clean at the pinned commit
+    <first 12 characters>`, names the folder by its own name only.
+    """
     identity = code_identity(root)
     if identity != {"commit": expected_commit, "dirty": False}:
-        raise ValueError("evaluator checkout must be clean at the pinned Member 5 commit")
+        name = Path(os.path.abspath(root)).name or str(root)
+        raise ValueError(f"{name}: evaluator checkout must be clean at the pinned commit {expected_commit[:12]}")
     names = sorted(
         p.relative_to(root).as_posix() for p in (root / "src/punct_restore/evaluation").glob("*.py")
     )

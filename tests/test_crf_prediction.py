@@ -172,7 +172,7 @@ def test_an_id_missing_from_the_input_is_one_line_naming_the_file_only(tmp_path:
     with pytest.raises(PredictionFailed) as caught:
         read_input_records(source, ids)
 
-    assert str(caught.value).startswith("Missing 1 selected IDs from input file eval.jsonl")
+    assert str(caught.value).startswith("eval.jsonl: missing 1 selected IDs.")
     assert str(tmp_path) not in str(caught.value)
 
 

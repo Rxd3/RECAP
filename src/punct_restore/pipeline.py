@@ -20,13 +20,13 @@ from typing import Any
 import joblib
 
 from punct_restore.data.labeling import LABEL_SETS_PATH, load_label_sets
+from punct_restore.file_io import require_file
 from punct_restore.models.crf import CRFModel
 from punct_restore.models.gap_classifier import MODEL_FAMILY as GAP_CLASSIFIER_FAMILY
 from punct_restore.models.gap_classifier import GapClassifier
 from punct_restore.models.hidden_event_lm import MODEL_FAMILY as HIDDEN_EVENT_LM_FAMILY
 from punct_restore.models.hidden_event_lm import HiddenEventLM
 from punct_restore.models.hmm import HMMModel
-from punct_restore.prediction_io import require_file
 
 STRIP_CHARS = ',.?!:;-"'
 PUNCT_MAP = {
@@ -93,8 +93,16 @@ def load_model(path: Path) -> HMMModel | CRFModel | HiddenEventLM | GapClassifie
     return loader.load_model(path)
 
 
+def _require_text(items: Sequence[object], what: str) -> None:
+    """Raise a one-line ValueError for the first item that is not a string."""
+    for item in items:
+        if not isinstance(item, str):
+            raise ValueError(f"{what} must be strings, got {item!r}")
+
+
 def clean_tokens(tokens: Sequence[str]) -> list[str]:
     """Lowercase, strip edge punctuation and drop tokens that end up empty."""
+    _require_text(tokens, "tokens")
     cleaned = [token for token in (t.lower().strip(STRIP_CHARS) for t in tokens) if token]
     if not cleaned:
         raise ValueError("empty input")
@@ -119,6 +127,8 @@ def reconstruct(tokens: Sequence[str], labels: Sequence[str]) -> str:
     """Apply one label per token and join the words with single spaces."""
     if len(tokens) != len(labels):
         raise ValueError(f"{len(labels)} labels for {len(tokens)} tokens")
+    _require_text(tokens, "tokens")
+    _require_text(labels, "labels")
     words = []
     for token, label in zip(tokens, labels, strict=True):
         punct, case = _split_label(label)

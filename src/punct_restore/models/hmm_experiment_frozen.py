@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from punct_restore.file_io import read_json, read_object, require_object
+from punct_restore.file_io import read_object, require_object
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm_experiment_identity import check_evaluator, implementation
 from punct_restore.models.hmm_experiment_protocol import choose, validate_config
@@ -105,10 +105,8 @@ def verified_frozen_selection(run: Path, evaluator: Path) -> tuple[dict[str, Any
     or a validation report) is a ValueError that starts with its file name, and the plan and the selection hold
     every key the held-out steps read; a missing key anywhere else is a bug and propagates.
     """
-    plan = read_json(run / "plan.json")
-    selection = read_json(run / "selection.json")
-    require_object("plan.json", plan, _PLAN)
-    require_object("selection.json", selection, _SELECTION)
+    plan = read_object(run / "plan.json", _PLAN)
+    selection = read_object(run / "selection.json", _SELECTION)
     config = validate_config(plan["config"], "plan.json")
     _check_gate(run, selection, config)
     if implementation() != plan["implementation"]:

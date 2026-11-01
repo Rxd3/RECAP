@@ -18,6 +18,7 @@ import sys
 
 from punct_restore.data import extraction
 from punct_restore.data.release import ReleaseSources, build_release_from
+from punct_restore.file_io import require_folder
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import one_line_error
 
@@ -34,17 +35,8 @@ def run_extract(args: argparse.Namespace) -> None:
     print("extraction matches MANIFEST.sha256")
 
 
-def _require_raw_root(raw_root: str) -> None:
-    """Raise a one-line ValueError unless ``raw_root`` is an existing folder (named by its own name only)."""
-    name = os.path.basename(os.path.abspath(raw_root)) or raw_root
-    if os.path.isfile(raw_root):
-        raise ValueError(f"{name}: is a file, not a folder")
-    if not os.path.isdir(raw_root):
-        raise ValueError(f"{name}: folder not found")
-
-
 def run_build(args: argparse.Namespace) -> None:
-    _require_raw_root(args.raw_root)
+    require_folder(args.raw_root, "folder")
     manifest = os.path.join(args.raw_root, "MANIFEST.sha256")
     titles = os.path.join(args.raw_root, "video_metadata_oembed.jsonl")
     for path in (manifest, titles):

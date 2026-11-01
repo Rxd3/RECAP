@@ -54,7 +54,6 @@ REAL_ROOT = Path(__file__).resolve().parents[1]
 CANDIDATES = ["s1-c1", "s0.1-c1", "s1-c2", "s0.1-c2"]  # cutoff is the outer loop, smoothing the inner one
 EVALUATOR_FILES = ["src/punct_restore/evaluation/metrics.py", "scripts/evaluate_models.py", "configs/label_sets.yaml"]
 DIRTY = "commit reviewed code/config before starting an official search"
-EVALUATOR_REFUSED = "evaluator checkout must be clean at the pinned Member 5 commit"
 RUN_EXISTS = "run directory exists; choose a new experiment ID"
 
 
@@ -111,6 +110,12 @@ def _refuse_matching(study: Study, pattern: str, evaluator: Path | None = None) 
         tune(study.config_path, evaluator or study.evaluator, study.run)
     assert not study.run.exists()
     assert list((study.root / "artifacts").rglob("*")) == []
+
+
+def _evaluator_refused(study: Study, evaluator: Path | None = None) -> str:
+    """The refusal of an evaluator folder: its name and the first 12 characters of the commit the config pins."""
+    pinned = yaml.safe_load(study.config_path.read_text(encoding="utf-8"))["evaluation"]["repository_commit"]
+    return f"{(evaluator or study.evaluator).name}: evaluator checkout must be clean at the pinned commit {pinned[:12]}"
 
 
 def _refuse(study: Study, message: str, evaluator: Path | None = None) -> None:
@@ -257,17 +262,20 @@ def test_tune_refuses_a_config_without_a_search_section(fresh: Study) -> None:
 
 def test_tune_refuses_a_config_that_selects_on_test(fresh: Study) -> None:
     _edit_config(fresh, lambda c: {**c, "search": {**c["search"], "selection_split": "test"}})
-    _refuse(fresh, "settings must be selected on validation; training stays train-only")
+    _refuse(
+        fresh,
+        "hmm_unit.yaml: invalid experiment config: settings must be selected on validation; training stays train-only",
+    )
 
 
 def test_tune_refuses_an_evaluator_pinned_to_another_commit(fresh: Study) -> None:
     _edit_config(fresh, lambda c: {**c, "evaluation": {**c["evaluation"], "repository_commit": "f" * 40}})
-    _refuse(fresh, EVALUATOR_REFUSED)
+    _refuse(fresh, _evaluator_refused(fresh))
 
 
 def test_tune_refuses_an_evaluator_checkout_with_uncommitted_files(fresh: Study) -> None:
     write_text(fresh.evaluator / "untracked.txt", "not committed\n")
-    _refuse(fresh, EVALUATOR_REFUSED)
+    _refuse(fresh, _evaluator_refused(fresh))
 
 
 def test_tune_refuses_an_evaluator_folder_that_is_not_a_git_checkout(
@@ -276,7 +284,7 @@ def test_tune_refuses_an_evaluator_folder_that_is_not_a_git_checkout(
     plain = tmp_path / "not-a-checkout"
     plain.mkdir()
     monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path))  # never find a repository above the test folder
-    _refuse(fresh, EVALUATOR_REFUSED, evaluator=plain)
+    _refuse(fresh, _evaluator_refused(fresh, plain), evaluator=plain)
 
 
 def test_tune_refuses_a_release_with_another_id(fresh: Study) -> None:

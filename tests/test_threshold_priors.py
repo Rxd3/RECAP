@@ -396,7 +396,7 @@ def test_tune_train_file_errors_are_one_friendly_line(
         "bad_json": ("\n{oops\n", "train.jsonl line 2"),
         "not_object": ("[1]\n", "train.jsonl line 1"),
         "no_id": (_lines([{"tokens": ["a"]}]), "train.jsonl line 1"),
-        "missing": (_lines(rows[:5]), "1 listed ID(s) are missing from train.jsonl"),
+        "missing": (_lines(rows[:5]), "train.jsonl: 1 listed ID(s) are missing"),
         "duplicate": (_lines([*rows, rows[0]]), "train.jsonl line 7"),
         "wrong_mode": (_lines([*rows[:5], {**rows[5], "label_mode": "C"}]), "train.jsonl line 6"),
         "no_labels": (_lines([*rows[:5], {"sample_id": "train5", "label_mode": "A"}]), "punct_labels"),
@@ -497,7 +497,7 @@ def test_predict_rejects_a_bad_gamma_in_the_tau_file(
     code, out, man = _predict(mode_a, tau_file, tmp_path)
     assert code == 1 and not out.exists() and not man.exists()
     err = capsys.readouterr().err
-    assert err.startswith("error: ") and len(err.splitlines()) == 1 and "tau file" in err and "gamma" in err
+    assert err.startswith("error: ") and len(err.splitlines()) == 1 and "tau.json: " in err and "gamma" in err
 
 
 @pytest.mark.parametrize(

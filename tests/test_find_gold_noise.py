@@ -302,14 +302,14 @@ def test_data_root_that_is_a_file_is_refused_before_scoring(mod: ModuleType, tmp
                                                             capsys: pytest.CaptureFixture[str]) -> None:
     (tmp_path / "notes.txt").write_text("x", encoding="utf-8")
     err = refused(mod, capsys, argv_for(tmp_path / "notes.txt", tmp_path / "out"), tmp_path)
-    assert err == "error: data root notes.txt is not a folder\n"
+    assert err == "error: notes.txt: is a file, not a folder\n"
     assert sorted(p.name for p in tmp_path.iterdir()) == ["notes.txt"]
 
 
 def test_data_root_that_is_missing_is_refused_before_scoring(mod: ModuleType, tmp_path: Path,
                                                              capsys: pytest.CaptureFixture[str]) -> None:
     err = refused(mod, capsys, argv_for(tmp_path / "nowhere", tmp_path / "out"), tmp_path)
-    assert err == "error: data root nowhere is not a folder\n"
+    assert err == "error: nowhere: data root not found\n"
     assert list(tmp_path.iterdir()) == []
 
 
@@ -317,14 +317,14 @@ def test_out_whose_parent_is_a_file_is_refused_before_scoring(mod: ModuleType, r
                                                               capsys: pytest.CaptureFixture[str]) -> None:
     (tmp_path / "blocker").write_text("x", encoding="utf-8")
     err = refused(mod, capsys, argv_for(root, tmp_path / "blocker" / "out"), tmp_path)
-    assert err == "error: output parent blocker is not a folder\n"
+    assert err == "error: blocker: is a file, not a folder\n"
     assert nothing_else_in(tmp_path, "blocker")
 
 
 def test_out_whose_parent_is_missing_is_refused_and_not_created(mod: ModuleType, root: Path, tmp_path: Path,
                                                                 capsys: pytest.CaptureFixture[str]) -> None:
     err = refused(mod, capsys, argv_for(root, tmp_path / "later" / "out"), tmp_path)
-    assert err == "error: output parent later is not a folder\n"
+    assert err == "error: later: output parent not found\n"
     assert nothing_else_in(tmp_path)
 
 

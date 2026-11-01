@@ -171,28 +171,12 @@ def test_a_wrong_structure_names_the_given_file_not_the_default_one(tmp_path: Pa
     assert str(problem.value) == "c1.yaml: does not have the agreed 4/8/12 structure"
 
 
-@pytest.mark.parametrize(("text", "value"), [("", None), ("[1, 2]\n", [1, 2]), ("a: 1\n", {"a": 1}), ("null\n", None)])
-def test_read_yaml_gives_whatever_the_file_holds(tmp_path: Path, text: str, value: object) -> None:
-    """The reader does not look at the shape: that is for the caller's schema (the label config, an experiment)."""
-    path = tmp_path / "any.yaml"
-    path.write_text(text, encoding="utf-8")
-    assert labeling.read_yaml(path) == value
-
-
-@pytest.mark.parametrize(
-    ("raw", "reason"),
-    [
-        (b"a: [unclosed", "not valid YAML"),
-        (b"a: " + b"[" * 100_000, "not valid YAML"),
-        (b"a: \xe9\xff", "not valid UTF-8"),
-    ],
-    ids=["syntax", "nested", "not-utf8"],
-)
-def test_read_yaml_names_the_file_only_and_gives_no_parser_text(tmp_path: Path, raw: bytes, reason: str) -> None:
-    folder = tmp_path / "secretfolder"
-    folder.mkdir()
-    path = folder / "broken.yaml"
-    path.write_bytes(raw)
+def test_label_sets_from_config_builds_the_sets_of_a_parsed_mapping_and_names_the_given_file() -> None:
+    """The parsed-mapping form is what load_label_sets does after reading; train-hmm checks more on the same one."""
+    assert labeling.label_sets_from_config(_config(), "x.yaml") == labeling.load_label_sets()
     with pytest.raises(ValueError) as problem:
-        labeling.read_yaml(path)
-    assert str(problem.value) == f"broken.yaml: {reason}"
+        labeling.label_sets_from_config(_with(_config(), ["LOWER"], "casing"), "x.yaml")
+    assert str(problem.value) == "x.yaml: does not have the agreed 4/8/12 structure"
+    with pytest.raises(ValueError) as missing:
+        labeling.label_sets_from_config(_without(_config(), "casing"), "x.yaml")
+    assert str(missing.value) == "x.yaml: missing casing"

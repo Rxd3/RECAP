@@ -32,7 +32,7 @@ from pathlib import Path
 from typing import Any
 
 from punct_restore.data.labeling import load_label_sets
-from punct_restore.file_io import read_json
+from punct_restore.file_io import read_json, write_new_file
 from punct_restore.models.hidden_event_lm_viterbi import Back, History, LogProb, viterbi
 from punct_restore.models.ngram_lm import (
     NgramLM,
@@ -41,7 +41,6 @@ from punct_restore.models.ngram_lm import (
     counts_to_payload,
 )
 from punct_restore.models.truecaser import UnigramTruecaser
-from punct_restore.prediction_io import write_new_file
 
 __all__ = [
     "BOS_TOKEN",
@@ -127,9 +126,9 @@ def _check_tokens(value: Any, where: str) -> list[str]:
 def _check_labels(value: Any, length: int, allowed: Sequence[str], field: str, where: str) -> list[str]:
     if not isinstance(value, list) or len(value) != length:
         raise ValueError(f"{where}: {field} must be a list with one label per token")
-    unknown = next((label for label in value if label not in allowed), None)
-    if unknown is not None:
-        raise ValueError(f"{where}: unknown {field} label {unknown!r}")
+    for label in value:
+        if not isinstance(label, str) or label not in allowed:  # a null label must not read as "found"
+            raise ValueError(f"{where}: unknown {field} label {label!r}")
     return value
 
 

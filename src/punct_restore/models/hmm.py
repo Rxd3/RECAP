@@ -15,7 +15,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-from punct_restore.prediction_io import write_new_file
+from punct_restore.file_io import write_new_file
 
 from .hmm_distributions import HMMDistributions
 from .hmm_validation import positive_integer as _positive_integer

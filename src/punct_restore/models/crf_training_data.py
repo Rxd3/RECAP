@@ -13,41 +13,34 @@ from punct_restore.file_io import iter_jsonl, require_file
 from punct_restore.prediction_io import parse_sample_record, read_ids
 
 
-def _check_selected_record(rec: dict[str, Any], sample_id: str, expected_mode: str) -> None:
-    """Raise ValueError unless a selected record is a train record of the expected mode with aligned labels."""
+def _check_selected_record(rec: dict[str, Any], sample_id: str, expected_mode: str, where: str) -> None:
+    """Raise ValueError unless a selected record is a train record of the expected mode with aligned labels.
+
+    ``where`` is ``<file name> line N``, the start of every message.
+    """
     # Strict split validation: cannot train on non-train splits
     split = rec.get("split")
     if split != "train":
         raise ValueError(
-            f"Selected record {sample_id!r} has split={split!r}, expected 'train'. "
-            "Non-train records cannot enter training."
+            f"{where}: {sample_id!r} has split {split!r}, expected 'train'. Non-train records cannot enter training."
         )
 
     # Label mode validation
     mode = rec.get("label_mode")
     if mode != expected_mode:
-        raise ValueError(
-            f"Selected record {sample_id!r} has label_mode={mode!r}, expected {expected_mode!r}."
-        )
+        raise ValueError(f"{where}: {sample_id!r} has label_mode {mode!r}, expected {expected_mode!r}")
 
     # Token & label alignment validation
     tokens = rec.get("tokens")
     if not isinstance(tokens, list) or not tokens:
-        raise ValueError(f"Selected record {sample_id!r} has empty or non-list tokens")
+        raise ValueError(f"{where}: {sample_id!r} has empty or non-list tokens")
 
-    punct_labels = rec.get("punct_labels")
-    if not isinstance(punct_labels, list) or len(punct_labels) != len(tokens):
-        raise ValueError(
-            f"Selected record {sample_id!r} has mismatched punct_labels length "
-            f"({len(punct_labels) if isinstance(punct_labels, list) else None} vs {len(tokens)})"
-        )
-
-    if expected_mode == "C":
-        case_labels = rec.get("case_labels")
-        if not isinstance(case_labels, list) or len(case_labels) != len(tokens):
+    for field in ("punct_labels", "case_labels") if expected_mode == "C" else ("punct_labels",):
+        labels = rec.get(field)
+        if not isinstance(labels, list) or len(labels) != len(tokens):
             raise ValueError(
-                f"Selected record {sample_id!r} has mismatched case_labels length "
-                f"({len(case_labels) if isinstance(case_labels, list) else None} vs {len(tokens)})"
+                f"{where}: {sample_id!r} has mismatched {field} length "
+                f"({len(labels) if isinstance(labels, list) else None} vs {len(tokens)})"
             )
 
 
@@ -60,13 +53,14 @@ def _scan_selected_records(
     selected_records: list[dict[str, Any]] = []
     found_ids: set[str] = set()
 
-    for _, rec in iter_jsonl(input_path, parse_sample_record):
+    for number, rec in iter_jsonl(input_path, parse_sample_record):
         sample_id = rec["sample_id"]
         if sample_id in target_id_set:  # selected
+            where = f"{input_path.name} line {number}"
             if sample_id in found_ids:
-                raise ValueError(f"Duplicate sample_id {sample_id!r} encountered in source file {input_path.name}")
+                raise ValueError(f"{where}: duplicate sample_id {sample_id!r}")
             found_ids.add(sample_id)
-            _check_selected_record(rec, sample_id, expected_mode)
+            _check_selected_record(rec, sample_id, expected_mode, where)
             selected_records.append(rec)
 
     return selected_records, found_ids
@@ -99,13 +93,13 @@ def load_and_filter_training_records(
     if missing_ids:
         sample_missing = sorted(missing_ids)[:5]
         raise ValueError(
-            f"Missing {len(missing_ids)} selected IDs from input file {input_path.name}. "
-            f"Examples: {sample_missing}"
+            f"{input_path.name}: missing {len(missing_ids)} selected IDs. Examples: {sample_missing}"
         )
 
     if len(selected_records) != len(frozen_ids):
         raise ValueError(
-            f"Selected record count ({len(selected_records)}) does not match ID-list cardinality ({len(frozen_ids)})"
+            f"{input_path.name}: selected record count ({len(selected_records)}) "
+            f"does not match ID-list cardinality ({len(frozen_ids)})"
         )
 
     return selected_records, frozen_ids

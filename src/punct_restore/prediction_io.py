@@ -70,7 +70,7 @@ def read_frozen_ids(ids_path: Path) -> list[str]:
         ValueError: If the ID list is empty or contains duplicate IDs.
     """
     if not ids_path.is_file():
-        raise FileNotFoundError(f"Frozen ID list not found: {ids_path.name}")
+        raise FileNotFoundError(f"Frozen ID list not found: {ids_path.name}")  # main's wording (old library name)
     return read_ids(ids_path)
 
 
@@ -94,14 +94,14 @@ def parse_sample_record(line: str, where: str) -> dict[str, Any]:
     return record
 
 
-def _gold_free_observation(rec: Mapping[str, Any], line_num: int) -> dict[str, Any]:
-    """Keep only sample_id and validated observable tokens (strictly gold-free)."""
+def _gold_free_observation(rec: Mapping[str, Any], where: str) -> dict[str, Any]:
+    """Keep only sample_id and validated observable tokens (strictly gold-free); ``where`` is ``<file> line N``."""
     s_id = rec["sample_id"]
     tokens = rec.get("tokens")
     if not tokens or not isinstance(tokens, list):
-        raise ValueError(f"Invalid tokens at line {line_num} for ID {s_id!r}")
+        raise ValueError(f"{where}: tokens of {s_id!r} must be a nonempty list")
     if any(not isinstance(t, str) or not t.strip() for t in tokens):
-        raise ValueError(f"Tokens contain invalid elements at line {line_num} for ID {s_id!r}")
+        raise ValueError(f"{where}: tokens of {s_id!r} must be nonempty, non-whitespace strings")
     return {"sample_id": s_id, "tokens": list(tokens)}
 
 
@@ -116,32 +116,46 @@ def read_observations(input_path: Path, ids_path: Path | None) -> list[dict[str,
         ValueError: On corrupt, duplicate or invalid records (a bad line reads ``<file> line N: <reason>``, a file
             that is not UTF-8 ``<file>: not valid UTF-8``), or IDs missing from the input.
     """
-    require_file(input_path, "input JSONL")
-    target_ids = read_ids(ids_path) if ids_path is not None else None
-    target_set = set(target_ids) if target_ids is not None else None
+    require_file(input_path, "input JSONL")  # before the ID list is read: a missing input is named first
+    return select_observations(input_path, read_ids(ids_path) if ids_path is not None else None)
 
+
+def select_observations(input_path: Path, ids: Sequence[str] | None) -> list[dict[str, Any]]:
+    """``read_observations`` for an ID list that is already read (``None``: keep every record).
+
+    Raises:
+        FileNotFoundError: If the input JSONL does not exist.
+        IsADirectoryError: If the input JSONL is a folder.
+        ValueError: As ``read_observations``; the message starts with the input's file name.
+    """
+    require_file(input_path, "input JSONL")
+    wanted = set(ids) if ids is not None else None
     observations: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
     for line_num, rec in iter_jsonl(input_path, parse_sample_record):
         s_id = rec["sample_id"]
+        where = f"{input_path.name} line {line_num}"
         if s_id in seen_ids:
-            raise ValueError(f"Duplicate sample_id {s_id!r} encountered at line {line_num}")
+            raise ValueError(f"{where}: duplicate sample_id {s_id!r}")
         seen_ids.add(s_id)
-        if target_set is None or s_id in target_set:
-            observations.append(_gold_free_observation(rec, line_num))
-
-    if target_ids is not None:
-        missing_ids = set(target_ids) - {o["sample_id"] for o in observations}
-        if missing_ids:
-            raise ValueError(
-                f"Missing {len(missing_ids)} selected IDs from input file {input_path.name}. "
-                f"Examples: {sorted(missing_ids)[:5]}"
-            )
-        if len(observations) != len(target_ids):
-            raise ValueError(
-                f"Found {len(observations)} matching records, expected {len(target_ids)} from ID list."
-            )
+        if wanted is None or s_id in wanted:
+            observations.append(_gold_free_observation(rec, where))
+    if ids is not None:
+        _require_all_found(input_path, ids, observations)
     return observations
+
+
+def _require_all_found(input_path: Path, ids: Sequence[str], observations: Sequence[Mapping[str, Any]]) -> None:
+    """Raise ValueError (leading with the input's name) unless the observations are exactly the listed IDs."""
+    missing_ids = set(ids) - {o["sample_id"] for o in observations}
+    if missing_ids:
+        raise ValueError(
+            f"{input_path.name}: missing {len(missing_ids)} selected IDs. Examples: {sorted(missing_ids)[:5]}"
+        )
+    if len(observations) != len(ids):
+        raise ValueError(
+            f"{input_path.name}: found {len(observations)} matching records, expected {len(ids)} from the ID list"
+        )
 
 
 def write_predictions_jsonl(predictions: Sequence[Mapping[str, Any]], path: Path) -> None:

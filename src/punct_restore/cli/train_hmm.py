@@ -11,7 +11,8 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any, NamedTuple
 
-from punct_restore.data.labeling import load_label_sets, read_label_config
+from punct_restore.data.labeling import label_sets_from_config, read_label_config
+from punct_restore.file_io import require_object
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_records import SelectedRecords
@@ -28,19 +29,19 @@ from punct_restore.prediction_io import one_line_error, read_ids
 
 
 def load_labels(path: Path, mode: str) -> list[str]:
-    """The ordered labels of ``mode``: the shared loader plus the HMM's own checks (schema version 1, the `|` joint
-    separator, num_classes); a ValueError names the file."""
-    labels = load_label_sets(path)[mode]
+    """The ordered labels of ``mode``: the shared label sets of the configuration, which is read once, plus the HMM's
+    own checks (schema version 1, the `|` joint separator, num_classes); a ValueError names the file."""
     config = read_label_config(path)
-    modes = config.get("modes")
-    mode_config = modes.get(mode) if isinstance(modes, dict) else None
-    if type(config.get("schema_version")) is not int or config["schema_version"] != 1:
+    sets = label_sets_from_config(config, path.name)
+    labels = sets[mode]
+    wanted = {"schema_version": object, "modes": {mode: {"num_classes": int}}}
+    checked = require_object(path.name, config, wanted)
+    version = checked["schema_version"]
+    if type(version) is not int or version != 1:
         raise ValueError(f"{path.name}: unsupported label configuration version")
-    if not isinstance(mode_config, dict):
-        raise ValueError(f"{path.name}: missing modes.{mode}")
-    if mode == "C" and mode_config.get("separator") != "|":
+    if mode == "C" and sets["separator"] != "|":
         raise ValueError(f"{path.name}: joint labels must use the | separator")
-    if mode_config.get("num_classes") != len(labels):
+    if checked["modes"][mode]["num_classes"] != len(labels):
         raise ValueError(f"{path.name}: num_classes does not match label vocabulary")
     return labels
 

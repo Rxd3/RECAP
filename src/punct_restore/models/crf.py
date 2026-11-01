@@ -25,7 +25,7 @@ from typing import Any, cast
 import sklearn_crfsuite
 
 from punct_restore.features.crf_features import FeatureConfig, extract_sequence_features
-from punct_restore.models.crf_io import read_bundle, restore_model, write_model
+from punct_restore.models.crf_io import load_fitted, write_model
 from punct_restore.models.crf_modes import (
     LABEL_MODES,
     SCORING_MODES,
@@ -370,7 +370,7 @@ class CRFModel:
             FileNotFoundError: If the artifact path does not exist.
             ValueError: If artifact schema, model family, or metadata is corrupted/incompatible.
         """
-        return restore_model(cls, read_bundle(path))
+        return load_fitted(cls, path)
 
     def _to_bundle(self) -> dict[str, Any]:
         """The private state a saved artifact keeps beside the public settings; the counterpart of ``_from_bundle``."""

@@ -48,7 +48,7 @@ from punct_restore.data.asr_noise import (
     remap_positions,
     train_vocabulary,
 )
-from punct_restore.file_io import write_new_folder
+from punct_restore.file_io import iter_jsonl, write_new_folder
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import (
     one_line_error,
@@ -59,7 +59,7 @@ from punct_restore.prediction_io import (
 )
 
 MODES = ("A", "B", "C")
-DEFAULT_EDIT_MODEL = "v1"  # the --edit-model default; a namespace built without the option means this model
+DEFAULT_EDIT_MODEL = "v1"  # the --edit-model default
 
 
 class InputError(ValueError):
@@ -71,14 +71,16 @@ def _display_name(path: Path) -> str:
     return "/".join(part for part in (path.parent.name, path.name) if part)
 
 
+def _line_text(line: str, _where: str) -> str:
+    """The line itself; ``scan`` parses it, because its messages name the folder too (``mode_A/validation.jsonl``)."""
+    return line.removeprefix("\ufeff")  # a byte order mark on the first line is not part of the JSON
+
+
 def _lines(path: Path) -> Iterator[tuple[int, str]]:
     """(line number, text) of the non-blank lines of a UTF-8 file; problems name the file."""
     try:
-        with path.open(encoding="utf-8-sig") as handle:
-            for number, line in enumerate(handle, 1):
-                if line.strip():
-                    yield number, line
-    except UnicodeDecodeError:
+        yield from iter_jsonl(path, _line_text)
+    except ValueError:  # the only one iter_jsonl raises here: the bytes are not UTF-8 (``_line_text`` cannot fail)
         raise InputError(f"{_display_name(path)}: not UTF-8 text") from None
     except OSError as exc:  # os_reason words a folder alike on Windows (EACCES) and POSIX (EISDIR)
         raise InputError(f"{_display_name(path)}: {os_reason(exc) or 'cannot be read'}") from None
@@ -189,7 +191,7 @@ def summarize(args: argparse.Namespace, inputs: Sequence[ModeInput], tokens: Map
         "cost_share": {kind: part / (cost or 1) for kind, part in spent.items()},  # all 0 when no edits
         "achieved_wer": cost / before,
     }
-    if edit_model != "v1":
+    if edit_model != DEFAULT_EDIT_MODEL:
         summary["edit_model"] = edit_model
         summary["vocabulary_source"] = "default_train"
     return summary

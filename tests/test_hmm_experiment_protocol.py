@@ -37,7 +37,7 @@ def test_a_config_without_the_evaluator_commit_is_refused_naming_the_nested_key(
         validate_config(broken, "x.yaml")
 
 
-@pytest.mark.parametrize("value", ["", None, 5, ["x"]], ids=["empty", "null", "number", "list"])
+@pytest.mark.parametrize("value", ["", "  ", None, 5, ["x"]], ids=["empty", "blank", "null", "number", "list"])
 @pytest.mark.parametrize("key", TEXT_KEYS)
 def test_a_text_key_that_is_not_nonempty_text_is_refused(key: str, value: Any) -> None:
     """A validator that only checks the key is present accepts an empty YAML value (null) or a number."""
@@ -126,7 +126,9 @@ def test_a_list_that_is_no_list_is_refused_by_name(path: str, value: Any) -> Non
     assert str(problem.value) == f"{PREFIX}{path} is not a JSON list"
 
 
-@pytest.mark.parametrize("item", [["A"], {}, None, 1, ""], ids=["list", "object", "null", "number", "empty"])
+@pytest.mark.parametrize(
+    "item", [["A"], {}, None, 1, "", "  "], ids=["list", "object", "null", "number", "empty", "blank"]
+)
 def test_a_mode_that_is_not_text_is_refused_naming_its_place(item: Any) -> None:
     """`[["A"]]` reached `set(modes)` and died with 'unhashable type: list'."""
     with pytest.raises(ValueError) as problem:
@@ -167,8 +169,9 @@ def test_a_config_object_with_no_key_is_refused_naming_the_first_key() -> None:
 def test_a_mode_without_a_selection_block_is_a_protocol_error_not_a_key_error() -> None:
     content = config()
     del content["search"]["selection_blocks"]["B"]
-    with pytest.raises(ValueError, match="^mode B: wrong primary selection block$"):
+    with pytest.raises(ValueError) as problem:
         validate_config(content, "x.yaml")
+    assert str(problem.value) == f"{PREFIX}mode B: wrong primary selection block"
 
 
 def test_the_shape_is_checked_before_the_protocol() -> None:
@@ -179,3 +182,45 @@ def test_the_shape_is_checked_before_the_protocol() -> None:
     with pytest.raises(ValueError) as problem:
         validate_config(content, "x.yaml")
     assert str(problem.value) == f"{PREFIX}missing runtime"
+
+
+# ---- the protocol rules: the same one-line form as the shape errors, starting with the file name ----
+
+RULE_CASES = [
+    ("schema_version", 2, "schema_version must be 1 and modes must not be empty"),
+    ("modes", [], "schema_version must be 1 and modes must not be empty"),
+    ("modes", ["A", "A"], "modes must be unique members of A/B/C"),
+    ("modes", ["A", "D"], "modes must be unique members of A/B/C"),
+    ("search.selection_split", "test", "settings must be selected on validation; training stays train-only"),
+    ("search.retrain_on_validation", True, "settings must be selected on validation; training stays train-only"),
+    ("search.metric", "accuracy", "selection must use the shared scorer's six-decimal primary macro F1"),
+    ("search.score_precision", 4, "selection must use the shared scorer's six-decimal primary macro F1"),
+    ("search.tie_break", ["test_score"], "unsupported tie-break policy"),
+    ("evaluation.test_sets", ["test"], "report test and test_amb separately"),
+    ("search.selection_blocks", {"A": "punctuation/all", "B": "punctuation/all", "C": "punctuation/all"},
+     "mode C: wrong primary selection block"),
+    ("search.smoothing", [], "search values must be nonempty and unique"),
+    ("search.smoothing", [0.1, 0.1], "search values must be nonempty and unique"),
+    ("search.smoothing", [-0.1], "smoothing/cutoffs must be positive; cutoffs must be integers"),
+    ("search.smoothing", [0.0], "smoothing/cutoffs must be positive; cutoffs must be integers"),
+    ("search.smoothing", [float("inf")], "smoothing/cutoffs must be positive; cutoffs must be integers"),
+    ("search.min_token_count", [1.5], "smoothing/cutoffs must be positive; cutoffs must be integers"),
+    ("search.min_token_count", [0], "smoothing/cutoffs must be positive; cutoffs must be integers"),
+    ("runtime.repetitions", 1, "runtime measurement requires warmup and repetitions"),
+    ("runtime.warmup_sequences", 0, "runtime measurement requires warmup and repetitions"),
+    ("runtime.model_threads", 2, "this implementation uses one model thread and zero_division=0"),
+    ("evaluation.zero_division", 1, "this implementation uses one model thread and zero_division=0"),
+]
+
+
+@pytest.mark.parametrize(("path", "value", "reason"), RULE_CASES, ids=[f"{p}={v}" for p, v, _ in RULE_CASES])
+def test_a_protocol_rule_error_starts_with_the_file_name_like_a_shape_error(path: str, value: Any, reason: str) -> None:
+    with pytest.raises(ValueError) as problem:
+        validate_config(damaged(path, value), "x.yaml")
+    assert str(problem.value) == f"{PREFIX}{reason}"
+
+
+def test_a_protocol_rule_error_names_the_default_source_when_none_is_given() -> None:
+    with pytest.raises(ValueError) as problem:
+        validate_config(damaged("modes", ["A", "A"]))
+    assert str(problem.value) == "config: invalid experiment config: modes must be unique members of A/B/C"

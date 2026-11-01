@@ -15,6 +15,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any, cast
 
+from ..file_io import read_yaml, require_object
 from ..hashing import sha256_file
 from ..paths import REPO_ROOT as ROOT
 from .metrics import join_joint
@@ -78,22 +79,32 @@ class Bundle:
         return recorded
 
 
+# What label_sets.yaml must hold for load_vocab to build the vocabularies (see file_io.require_object).
+_VOCAB_SCHEMA = {
+    "punctuation": {"standard": list[str], "extended": list[str]},
+    "casing": list[str],
+    "modes": {"C": {"labels": list[str]}},
+}
+
+
 def load_vocab(path: str | Path = LABEL_SETS_PATH) -> Vocab:
-    """Ordered vocabularies from configs/label_sets.yaml (agreed 4/8/3/12 structure)."""
+    """Ordered vocabularies from configs/label_sets.yaml (agreed 4/8/3/12 structure).
+
+    Raises:
+        OSError: If the file cannot be read.
+        EvaluationInputError: One line that starts with the file name: not valid UTF-8 or YAML, a key that is
+            missing or of the wrong kind (`file_io.read_yaml` and `file_io.require_object` word these), or
+            vocabularies that are not the agreed structure.
+    """
     name = Path(path).name
     try:
-        import yaml  # PyYAML is a declared runtime dependency (pyproject)
-    except ModuleNotFoundError as exc:
-        raise EvaluationInputError('PyYAML is required: python -m pip install -e ".[dev]"') from exc
-    try:
-        with open(path, encoding="utf-8") as handle:
-            config = yaml.safe_load(handle)
-        standard = tuple(config["punctuation"]["standard"])
-        extended = tuple(config["punctuation"]["extended"])
-        casing = tuple(config["casing"])
-        joint = tuple(config["modes"]["C"]["labels"])
-    except (KeyError, TypeError, UnicodeDecodeError, yaml.YAMLError) as exc:
-        raise EvaluationInputError(f"{name}: not a valid label configuration") from exc
+        config = require_object(name, read_yaml(path), _VOCAB_SCHEMA)
+    except ValueError as exc:
+        raise EvaluationInputError(str(exc)) from exc
+    standard = tuple(config["punctuation"]["standard"])
+    extended = tuple(config["punctuation"]["extended"])
+    casing = tuple(config["casing"])
+    joint = tuple(config["modes"]["C"]["labels"])
     expected = tuple(join_joint(p, c) for p in standard for c in casing)
     sizes = (len(standard), len(extended), len(casing))
     if (sizes != (4, 8, 3) or standard[0] != NO_PUNCT or extended[:4] != standard

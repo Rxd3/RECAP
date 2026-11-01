@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import yaml
 from hmm_study_fixtures import (
     MODES,
     PROCESSED,
@@ -35,7 +36,6 @@ SPLITS = ("validation", "test", "test_amb")
 COMPLETE = "Final predictions, shared scores and runtime measurements complete."
 FROZEN_ON_VALIDATION = "all mode selections must freeze on validation before test access"
 EVIDENCE_DIFFERS = "candidate model/report differs from frozen validation evidence"
-EVALUATOR_UNPINNED = "evaluator checkout must be clean at the pinned Member 5 commit"
 PLAN_MISMATCH = "selection does not match its frozen plan"
 INCONSISTENT_WINNER = "winner is inconsistent with the validation search"
 
@@ -114,6 +114,12 @@ def _edit_mode(study: Study, mode: str, change: Callable[[Json], Json]) -> None:
     _edit_selection(study, lambda s: {**s, "mode_selection_sha256": {**s["mode_selection_sha256"], mode: digest}})
 
 
+def _evaluator_unpinned(study: Study) -> str:
+    """The refusal of the evaluator folder: its name and the first 12 characters of the commit the plan pins."""
+    pinned = yaml.safe_load(study.config_path.read_text(encoding="utf-8"))["evaluation"]["repository_commit"]
+    return f"{study.evaluator.name}: evaluator checkout must be clean at the pinned commit {pinned[:12]}"
+
+
 def _assert_refused(study: Study, message: str) -> None:
     """The gate raises exactly `message` and writes nothing into the run."""
     before = _snapshot(study.run)
@@ -189,7 +195,7 @@ SHAPE_CASES = [
     ),
     pytest.param(
         lambda s: _edit_plan(s, lambda p: {**p, "config": {**p["config"], "modes": []}}),
-        "invalid experiment schema/modes",
+        "plan.json: invalid experiment config: schema_version must be 1 and modes must not be empty",
         id="plan-config-no-modes",
     ),
 ]
@@ -269,7 +275,7 @@ EVALUATOR_CASES = [
 def test_gate_refuses_an_evaluator_that_is_not_clean_at_the_pinned_commit(study: Study, mutate: Mutation) -> None:
     mutate(study)
 
-    _assert_refused(study, EVALUATOR_UNPINNED)
+    _assert_refused(study, _evaluator_unpinned(study))
 
 
 # ---- the gate: per-mode evidence ----

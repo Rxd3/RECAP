@@ -301,7 +301,7 @@ def test_predict_input_problems_name_the_files_by_file_name_only(
     write_id_file(ids, ["e1", "nope"])
     assert train_crf.main([*argv, "--ids", str(ids)]) == 1
     line = _only_line(capsys.readouterr().err, tmp_path)
-    assert line.startswith("error: Missing 1 selected IDs from input file eval.jsonl")
+    assert line.startswith("error: eval.jsonl: missing 1 selected IDs.")
 
 
 # --- inspect -----------------------------------------------------------------------------------------------

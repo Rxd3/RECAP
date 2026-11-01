@@ -12,13 +12,13 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
+from punct_restore.file_io import require_file
 from punct_restore.models.crf import CRFModel, require_scoring_mode
 from punct_restore.prediction_io import (
     check_new_output_paths,
     one_line_error,
     one_line_error_with_short_paths,
     read_observations,
-    require_file,
     write_prediction_outputs,
 )
 

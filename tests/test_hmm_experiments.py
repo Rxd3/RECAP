@@ -180,8 +180,17 @@ def test_check_evaluator_still_hashes_scripts_evaluate_models_in_the_pinned_chec
 def test_check_evaluator_rejects_a_dirty_or_unpinned_checkout(tmp_path, monkeypatch):
     """The patched identity must be the one check_evaluator reads: a different commit is refused."""
     monkeypatch.setattr(hmm_experiment_identity, "code_identity", lambda _root: {"commit": "other", "dirty": False})
-    with pytest.raises(ValueError, match="clean at the pinned"):
+    with pytest.raises(ValueError) as caught:
         check_evaluator(tmp_path, "pinned")
+    assert str(caught.value) == f"{tmp_path.name}: evaluator checkout must be clean at the pinned commit pinned"
+
+
+def test_the_evaluator_refusal_names_the_folder_and_a_short_commit_but_no_path_and_no_member(tmp_path, monkeypatch):
+    checkout = tmp_path / "shared-evaluator"
+    monkeypatch.setattr(hmm_experiment_identity, "code_identity", lambda _root: {"commit": "other", "dirty": True})
+    with pytest.raises(ValueError) as caught:
+        check_evaluator(checkout, "0123456789abcdef0123456789abcdef01234567")
+    assert str(caught.value) == "shared-evaluator: evaluator checkout must be clean at the pinned commit 0123456789ab"
 
 
 def test_selection_uses_only_validation_score_and_predeclared_tie_break():
@@ -233,7 +242,9 @@ def test_experiment_rejects_invalid_or_test_driven_protocols(bad):
 
 
 def test_finalize_cannot_touch_test_data_before_global_selection_exists(tmp_path, monkeypatch):
-    (tmp_path / "plan.json").write_text(json.dumps({"config": config()}))
+    plan = {"config": config(), "implementation": {}, "evaluator": {}, "code": {},
+            "tuning_inputs": {"release_manifest": {}}}
+    (tmp_path / "plan.json").write_text(json.dumps(plan))  # a plan of the right shape: only selection.json is missing
     called = []
     monkeypatch.setattr(hmm_experiment_finalize, "authenticate", lambda *args: called.append(args))
     with pytest.raises(FileNotFoundError):

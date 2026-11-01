@@ -17,11 +17,14 @@ from typing import Any
 import pytest
 
 from punct_restore import file_io, prediction_io
+from punct_restore.data import labeling
 from punct_restore.file_io import (
     iter_jsonl,
     read_json,
     read_json_object,
     read_object,
+    read_yaml,
+    require_folder,
     require_object,
     write_new_folder,
 )
@@ -210,10 +213,10 @@ def test_the_prefix_places_an_element_of_a_list_in_the_message() -> None:
         require_object("f.json", {"model": ""}, {"model": str}, "candidates.0")
 
 
-NOT_TEXT = [{}, ["O"], 1, None, True, ""]
+NOT_TEXT = [{}, ["O"], 1, None, True, "", "   "]
 
 
-@pytest.mark.parametrize("item", NOT_TEXT, ids=["object", "list", "number", "null", "bool", "empty"])
+@pytest.mark.parametrize("item", NOT_TEXT, ids=["object", "list", "number", "null", "bool", "empty", "blank"])
 def test_a_list_of_text_names_the_first_item_that_is_not_nonempty_text(item: Any) -> None:
     """A check that only asks for a list lets `[{}]` reach code that uses the items as dict keys."""
     with pytest.raises(ValueError, match=r"^f.json: a.xs.1 is not nonempty text$"):
@@ -274,10 +277,74 @@ def test_read_json_object_is_read_object_with_no_required_key(tmp_path: Path) ->
     assert str(one.value) == str(other.value) == "a.json: not a JSON object"
 
 
+# ---------------------------------------------------------------- read_yaml
+@pytest.mark.parametrize(("text", "value"), [("", None), ("[1, 2]\n", [1, 2]), ("a: 1\n", {"a": 1}), ("null\n", None)])
+def test_read_yaml_gives_whatever_the_file_holds(tmp_path: Path, text: str, value: object) -> None:
+    """The reader does not look at the shape: that is for the caller's schema (the label config, an experiment)."""
+    assert read_yaml(_write(tmp_path / "any.yaml", text)) == value
+
+
+@pytest.mark.parametrize(
+    ("raw", "reason"),
+    [
+        (b"a: [unclosed", "not valid YAML"),
+        (b"a: " + b"[" * 100_000, "not valid YAML"),
+        (b"a: \xe9\xff", "not valid UTF-8"),
+    ],
+    ids=["syntax", "nested", "not-utf8"],
+)
+def test_read_yaml_names_the_file_only_and_gives_no_parser_text(tmp_path: Path, raw: bytes, reason: str) -> None:
+    folder = tmp_path / "secretfolder"
+    folder.mkdir()
+    with pytest.raises(ValueError) as problem:
+        read_yaml(_write(folder / "broken.yaml", raw))
+    assert str(problem.value) == f"broken.yaml: {reason}"
+
+
+def test_read_yaml_of_a_missing_file_is_an_oserror(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        read_yaml(tmp_path / "nope.yaml")
+
+
+# ---------------------------------------------------------------- require_folder
+def test_require_folder_accepts_a_folder(tmp_path: Path) -> None:
+    assert require_folder(tmp_path, "data root") is None
+
+
+def test_require_folder_names_a_missing_folder_by_its_name_only(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError) as caught:
+        require_folder(tmp_path / "deep" / "nowhere", "folder")
+    assert str(caught.value) == "nowhere: folder not found"
+
+
+def test_require_folder_says_what_the_missing_folder_was_for(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError) as caught:
+        require_folder(tmp_path / "nowhere", "data root")
+    assert str(caught.value) == "nowhere: data root not found"
+
+
+def test_require_folder_says_so_for_a_file_and_is_not_a_not_found_error(tmp_path: Path) -> None:
+    path = _write(tmp_path / "notes.txt", "x")
+    with pytest.raises(NotADirectoryError) as caught:
+        require_folder(path, "folder")
+    assert str(caught.value) == "notes.txt: is a file, not a folder"
+
+
+def test_require_folder_gives_a_relative_path_its_own_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(FileNotFoundError) as caught:
+        require_folder(Path("missing"), "folder")
+    assert str(caught.value) == "missing: folder not found"
+
+
 # ---------------------------------------------------------------- old names
 @pytest.mark.parametrize("name", ["write_new_file", "refuse_existing", "require_file"])
 def test_prediction_io_still_exports_the_helpers_that_moved_to_file_io(name: str) -> None:
     assert getattr(prediction_io, name) is getattr(file_io, name)
+
+
+def test_labeling_still_exports_read_yaml_and_it_is_the_one_yaml_reader() -> None:
+    assert labeling.read_yaml is file_io.read_yaml
 
 
 def test_the_json_readers_are_importable_where_they_were_and_are_the_one_reader() -> None:

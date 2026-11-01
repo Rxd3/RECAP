@@ -21,16 +21,15 @@ from collections.abc import Container
 from pathlib import Path
 from typing import Any
 
-from punct_restore.file_io import iter_jsonl, require_file
+from punct_restore.file_io import iter_jsonl, refuse_existing, require_file
 from punct_restore.models.hidden_event_lm import HiddenEventLM
 from punct_restore.prediction_io import (
     check_new_output_paths,
     one_line_error_with_short_paths,
     parse_sample_record,
     read_ids,
-    read_observations,
     reconfigure_stdout,
-    refuse_existing,
+    select_observations,
     write_prediction_outputs,
 )
 
@@ -91,7 +90,7 @@ def read_training_records(input_path: Path, ids_path: Path, mode: str) -> list[d
             kept[record["sample_id"]] = record
     missing = [sample_id for sample_id in ids if sample_id not in kept]
     if missing:
-        raise ValueError(f"{len(missing)} listed ID(s) are missing from {input_path.name}, first {missing[0]!r}")
+        raise ValueError(f"{input_path.name}: {len(missing)} listed ID(s) are missing, first {missing[0]!r}")
     return list(kept.values())
 
 
@@ -103,21 +102,15 @@ def _cmd_train(args: argparse.Namespace) -> str:
     model = HiddenEventLM(
         args.mode, order=args.order, discount=args.discount, min_count=args.min_count, model_name=args.model_name
     )
-    model.fit(read_training_records(input_path, ids_path, args.mode))
+    records = read_training_records(input_path, ids_path, args.mode)
+    try:
+        model.fit(records)
+    except ValueError as exc:  # a record the model refuses: its message names the sample, this adds the file
+        raise ValueError(f"{input_path.name}: {exc}") from exc
     model.save_model(output)
     summary = model.training_summary
     return (f"trained mode {args.mode} order {args.order}: {summary['num_sequences']} sequences, "
             f"{summary['num_tokens']} tokens, {summary['vocabulary_size']} word types -> {output.name}")
-
-
-def _read_named(input_path: Path, ids_path: Path | None) -> list[dict]:
-    """``read_observations`` with the input file named in a JSON error, as train does."""
-    try:
-        return read_observations(input_path, ids_path)
-    except ValueError as exc:
-        if input_path.name in str(exc):  # read_observations already names the file (a full path is shortened later)
-            raise
-        raise ValueError(f"{input_path.name}: {exc}") from exc
 
 
 def _cmd_predict(args: argparse.Namespace) -> str:
@@ -129,10 +122,8 @@ def _cmd_predict(args: argparse.Namespace) -> str:
     refuse_existing(output, manifest)
     _require_files(("model artifact", model_path), ("input JSONL", input_path), ("ID list", ids_path))
     model = HiddenEventLM.load_model(model_path)
-    if ids_path is not None:
-        read_ids(ids_path)  # read_observations reads the list again; here its errors do not get the input's name
-    observations = _read_named(input_path, ids_path)
-    predictions = model.predict(observations)
+    ids = read_ids(ids_path) if ids_path is not None else None  # read once: its errors name the list, not the input
+    predictions = model.predict(select_observations(input_path, ids))
     refuse_existing(output, manifest)  # decoding is long: an output may have appeared since the first check
     write_prediction_outputs(predictions, output, manifest, input_path=input_path, model_name=model.model_name,
                              label_mode=model.label_mode, ordered_labels=model.vocabulary)

@@ -35,7 +35,7 @@ from punct_restore.data.gold_noise import (
     speaker_label_colons,
     validate_record,
 )
-from punct_restore.file_io import iter_jsonl, write_new_folder
+from punct_restore.file_io import iter_jsonl, require_folder, write_new_folder
 from punct_restore.hashing import sha256_file
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import one_line_error, parse_json_object, read_ids
@@ -136,10 +136,8 @@ def process_split(root: Path, release: str, mode: str, split: str) -> dict[str, 
 
 def check_folders(data_root: Path, out: Path) -> None:
     """Refuse a data root that is not a folder, or an ``out`` whose parent is not an existing folder."""
-    if not data_root.is_dir():
-        raise ValueError(f"data root {data_root.name} is not a folder")
-    if not out.parent.is_dir():
-        raise ValueError(f"output parent {out.parent.name} is not a folder")
+    require_folder(data_root, "data root")
+    require_folder(out.parent, "output parent")
 
 
 def build(data_root: Path, release: str, mode: str, out: Path) -> list[str]:

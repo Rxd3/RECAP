@@ -581,9 +581,14 @@ _ONE = '{"sample_id": "s", "tokens": ["a"]}'
         (["[" * 100_000], r"^in\.jsonl line 1: not valid JSON$"),  # RecursionError in json, not a JSON error
         (["[1]"], r"^in\.jsonl line 1: not a JSON object$"),
         (['{"tokens": ["a"]}'], r"^in\.jsonl line 1: sample_id must be a nonempty string$"),
-        (['{"sample_id": "s", "tokens": []}'], "Invalid tokens at line 1"),
-        (['{"sample_id": "s", "tokens": ["a", " "]}'], "Tokens contain invalid elements"),
-        ([_ONE, _ONE], "Duplicate sample_id 's' encountered at line 2"),
+        (['{"sample_id": "s", "tokens": []}'], r"^in\.jsonl line 1: tokens of 's' must be a nonempty list$"),
+        (['{"sample_id": "s", "tokens": "a b"}'], r"^in\.jsonl line 1: tokens of 's' must be a nonempty list$"),
+        (['{"sample_id": "s", "tokens": ["a", " "]}'],
+         r"^in\.jsonl line 1: tokens of 's' must be nonempty, non-whitespace strings$"),
+        *(([json.dumps({"sample_id": "s", "tokens": ["a", token]})],
+           r"^in\.jsonl line 1: tokens of 's' must be nonempty, non-whitespace strings$")
+          for token in (None, 1, {}, ["a"])),
+        ([_ONE, _ONE], r"^in\.jsonl line 2: duplicate sample_id 's'$"),
     ],
 )
 def test_read_observations_rejects_bad_records(
@@ -614,8 +619,26 @@ def test_read_observations_reports_ids_missing_from_the_input(tmp_path: Path) ->
     path, ids = tmp_path / "in.jsonl", tmp_path / "x.ids"
     path.write_text(_ONE + "\n", encoding="utf-8")
     ids.write_text("s\nt\n", encoding="utf-8")
-    with pytest.raises(ValueError, match="Missing 1 selected IDs"):
+    with pytest.raises(ValueError, match=r"^in\.jsonl: missing 1 selected IDs\. Examples: \['t'\]$"):
         prediction_io.read_observations(path, ids)
+
+
+def test_select_observations_takes_the_ids_already_read_and_keeps_input_file_order(tmp_path: Path) -> None:
+    path = tmp_path / "in.jsonl"
+    rows = [_ONE, '{"sample_id": "t", "tokens": ["b"]}', '{"sample_id": "u", "tokens": ["c"]}']
+    path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    assert prediction_io.select_observations(path, ["u", "s"]) == [
+        {"sample_id": "s", "tokens": ["a"]}, {"sample_id": "u", "tokens": ["c"]}]
+    assert [row["sample_id"] for row in prediction_io.select_observations(path, None)] == ["s", "t", "u"]
+
+
+def test_select_observations_names_the_input_for_a_missing_id_and_never_reads_an_id_file(tmp_path: Path) -> None:
+    path = tmp_path / "in.jsonl"
+    path.write_text(_ONE + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match=r"^in\.jsonl: missing 1 selected IDs\. Examples: \['t'\]$"):
+        prediction_io.select_observations(path, ["s", "t"])
+    with pytest.raises(FileNotFoundError, match=r"^ghost\.jsonl: input JSONL not found$"):
+        prediction_io.select_observations(tmp_path / "ghost.jsonl", ["s"])
 
 
 def test_read_ids_skips_blanks_and_rejects_missing_empty_and_duplicate_lists(

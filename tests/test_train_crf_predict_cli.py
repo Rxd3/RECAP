@@ -214,7 +214,7 @@ class TestCRFPredictCLI:
         ])
         assert ret == 1
         captured = capsys.readouterr()
-        assert "Missing 1 selected IDs" in captured.err
+        assert "missing 1 selected IDs" in captured.err
 
     def test_predict_non_overwriting_protection(
         self, tmp_path: Path, trained_model_artifact: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
@@ -357,7 +357,7 @@ class TestPredictManifestAndProvenance:
         assert [o["sample_id"] for o in observations] == ["gold_a", "gold_b"]
         assert all(set(o) == {"sample_id", "tokens"} for o in observations)
         write_id_file(ids, ["gold_a", "ghost"])
-        with pytest.raises(ValueError, match="Missing 1 selected IDs"):
+        with pytest.raises(ValueError, match="gold.jsonl: missing 1 selected IDs"):
             read_observations(gold, ids)
 
     def test_write_predictions_jsonl_uses_platform_newline(self, tmp_path: Path) -> None:
