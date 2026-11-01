@@ -11,14 +11,20 @@ for the math. Training implementation commit:
 Use CPython 3.13.5 with [requirements-hmm.txt](../requirements-hmm.txt).
 The estimator otherwise uses the standard library. No GPU or pretrained weights
 are required. Data setup and licensing: [data/README.md](../data/README.md).
-Run from the repository root. On Linux/macOS use `tmp/hmm-env/bin/python`.
+Run from the repository root. On Linux/macOS use `tmp/hmm-env/bin/python` and `tmp/hmm-env/bin/recap`.
 
 ```powershell
 python -m venv tmp/hmm-env
 tmp/hmm-env/Scripts/python.exe -m pip install -r requirements-hmm.txt
+tmp/hmm-env/Scripts/python.exe -m pip install --no-deps -e .
 git fetch origin feat/m5-evaluation
 git worktree add --detach tmp/member2-evaluation-3044a58 3044a58e777200bcac64e6e3364922404be359bf
 ```
+
+The editable install without dependencies adds the `recap` command (and makes the `scripts/` stubs
+work) without the CRF packages; the HMM commands need only the standard library and PyYAML.
+An HMM study whose `plan.json` was written before the restructure (2026-11-01) must be finalized on
+`main` at `72ebfd1`: the list of hashed HMM source files changed when the code moved into the package.
 
 Member 5's evaluator is pinned in a separate checkout. It is used directly,
 without replacing it or merging its branch. A/B select non-O punctuation macro F1;
@@ -32,9 +38,9 @@ smoothing 0.01/0.1/1.0 and rare-word cutoff 1/2/5, in A/B/C. Ties in the scorer'
 six-decimal validation score prefer lower cutoff, then lower smoothing.
 
 ```powershell
-tmp/hmm-env/Scripts/python.exe scripts/run_hmm_experiments.py tune --config configs/hmm_sponspeech_v2.yaml --output-dir experiments/runs/hmm-sponspeech-v2-20261029 --evaluator-root tmp/member2-evaluation-3044a58
-tmp/hmm-env/Scripts/python.exe scripts/run_hmm_experiments.py finalize --run-dir experiments/runs/hmm-sponspeech-v2-20261029 --evaluator-root tmp/member2-evaluation-3044a58
-tmp/hmm-env/Scripts/python.exe scripts/verify_hmm_experiments.py --run-dir experiments/runs/hmm-sponspeech-v2-20261029 --evaluator-root tmp/member2-evaluation-3044a58 --output-dir experiments/runs/hmm-sponspeech-v2-20261029/verification
+tmp/hmm-env/Scripts/recap.exe run-hmm-experiments tune --config configs/hmm_sponspeech_v2.yaml --output-dir experiments/runs/hmm-sponspeech-v2-20261029 --evaluator-root tmp/member2-evaluation-3044a58
+tmp/hmm-env/Scripts/recap.exe run-hmm-experiments finalize --run-dir experiments/runs/hmm-sponspeech-v2-20261029 --evaluator-root tmp/member2-evaluation-3044a58
+tmp/hmm-env/Scripts/recap.exe verify-hmm-experiments --run-dir experiments/runs/hmm-sponspeech-v2-20261029 --evaluator-root tmp/member2-evaluation-3044a58 --output-dir experiments/runs/hmm-sponspeech-v2-20261029/verification
 ```
 
 Tuning opens train/validation records only. All mode selections freeze before test
@@ -65,14 +71,14 @@ completed study or use its test outcomes to retune settings.
 ## Saved-model use and handoff
 
 Training requires `--train-ids`; `--release-manifest` verifies official release
-inputs. `predict_hmm.py` loads an artifact without training. Use `--all-records`
+inputs. `recap predict-hmm` loads an artifact without training. Use `--all-records`
 or an explicit `--ids` selection, and `--selection-record` to bind the artifact
 to its frozen winner. Inspect each script's `--help`.
 
 Package a verified run after committing the packaging code and report:
 
 ```powershell
-tmp/hmm-env/Scripts/python.exe scripts/package_hmm_handoff.py --run-dir experiments/runs/hmm-sponspeech-v2-20261029 --evaluator-root tmp/member2-evaluation-3044a58 --output-dir artifacts/hmm/hmm-sponspeech-v2-20261029
+tmp/hmm-env/Scripts/recap.exe package-hmm-handoff --run-dir experiments/runs/hmm-sponspeech-v2-20261029 --evaluator-root tmp/member2-evaluation-3044a58 --output-dir artifacts/hmm/hmm-sponspeech-v2-20261029
 ```
 
 The command requires matching independent verification and checks frozen model,
@@ -85,7 +91,7 @@ Member 1 release. The handoff's `HANDOFF.md` explains use by Members 3, 5 and 6.
 
 The repository is public; local packaging does not publish model files. The ZIP
 is on the team Drive (`Models/hmm-sponspeech-v2-20261029.zip`). Consumer acknowledgments
-are not recorded; the demo (`scripts/run_demo.py`) loads a selected HMM JSON.
+are not recorded; the demo (`recap run-demo`) loads a selected HMM JSON.
 
 Give Members 3, 5 and 6 selected models, configurations/selections, prediction
 JSONL/sidecars, reports, timing/environment, verification evidence, license and

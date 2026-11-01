@@ -9,8 +9,9 @@ Use [TEAM_TASKS.md](TEAM_TASKS.md) to find owners and reviewers.
 2. Check `git status`, switch to your branch, then merge updated `main` regularly.
 3. Edit primarily your assigned files. Discuss shared interfaces before coding
    and ask affected owners to review coordinated changes.
-4. Keep logic in `src/punct_restore/` and scripts thin. Put adjustable
-   settings in `configs/` and use repository-relative paths.
+4. Keep logic in `src/punct_restore/`. A new command is a module in `src/punct_restore/cli/` (or
+   `src/punct_restore/reporting/`) with a docstring and `main(argv)`, listed in `COMMANDS`; `scripts/`
+   holds only 3-line stubs. Put adjustable settings in `configs/` and use repository-relative paths.
 5. Add small meaningful tests with actual behavior. Tests must not download data,
    contact live APIs, require pretrained weights or need a GPU.
 6. Inspect `git diff`, stage named files, inspect `git diff --cached`, then commit.
@@ -26,12 +27,17 @@ Follow the README environment setup. The completed HMM study pins PyYAML in
 dependencies with a clear reason and a compatible tested environment in
 implementation PRs.
 
-The whole suite runs with pytest from the repository root, on small fixtures only.
-It must pass before you open a pull request and again before it is merged:
+The whole suite runs with pytest from the repository root, on small fixtures only, and the code must
+pass the linter (ruff 0.17.3 from the `dev` extra; settings in `pyproject.toml`). Both must pass before
+you open a pull request and again before it is merged:
 
 ```powershell
 python -m pytest -q
+ruff check src scripts tests
 ```
+
+The CI workflow `.github/workflows/ci.yml` runs the same two checks on Python 3.12 for every push and
+pull request.
 
 - **One branch per member:** work on your `feat/m<N>-...` branch (owners and branches are in
   [TEAM_TASKS.md](TEAM_TASKS.md)), not on `main`.

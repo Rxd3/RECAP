@@ -173,7 +173,7 @@ dataset is distributed separately. The ZIP is on the team Drive
   documentation and packaging commits keep all six frozen implementation files byte-identical, and the
   study's `verification/verification.json` reports PASS.
 - **Use:** load a selected model with `HMMModel.load_model(path)` and pass gold-free records
-  (`sample_id`, `tokens`) to `predict`; `scripts/run_demo.py --model-path <model>.json` does this for raw text.
+  (`sample_id`, `tokens`) to `predict`; `recap run-demo --model-path <model>.json` does this for raw text.
 
 Selected model SHA-256 values:
 

@@ -70,7 +70,7 @@ in [DATASET_PLAN.md](DATASET_PLAN.md).
 
 ## Gold-noise rules (2026-10-30)
 
-`scripts/find_gold_noise.py` (rules in `src/punct_restore/data/gold_noise.py`) flags three known sources of
+`recap find-gold-noise` (rules in `src/punct_restore/data/gold_noise.py`) flags three known sources of
 noise on the primary mode B lists:
 - leftover speaker labels (a name before ':' at the utterance start, after a sentence end or after a turn dash; after ', ' only a name that is a label in at least 3 records of the same video; a numbered role such as 'SPEAKER 2:' anywhere);
 - subtitle cue residue (block number and timestamp in the original text);
