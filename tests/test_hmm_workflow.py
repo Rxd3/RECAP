@@ -16,7 +16,7 @@ from punct_restore.models.hmm_records import SelectedRecords
 from punct_restore.models.hmm_workflow import (
     ReleaseInputs,
     file_identity,
-    verify_training_release,
+    verify_release_inputs,
     write_json,
     write_predictions_file,
 )
@@ -200,7 +200,7 @@ def test_release_identity_and_checksum_failures_stop_training(tmp_path, bad):
         opts["label_config"] = tmp_path / "unmatched.yaml"
         opts["label_config"].write_text("not-the-release-config")
     with pytest.raises(ValueError):
-        verify_training_release(processed / "release_manifest.json", ReleaseInputs(**opts))
+        verify_release_inputs(processed / "release_manifest.json", ReleaseInputs(**opts))
 
 
 def test_old_cli_without_training_selection_fails_instead_of_training_everything(tmp_path):
@@ -229,11 +229,11 @@ def test_write_json_leaves_no_half_written_file_when_the_value_is_not_valid_json
 
 
 def _refused_split_manifest(tmp_path, content):
-    """verify_training_release's ValueError text when the release's split checksum file is replaced by `content`."""
+    """verify_release_inputs's ValueError text when the release's split checksum file is replaced by `content`."""
     _, processed, _, _, opts = release_args(tmp_path)
     opts["split_manifest"].write_bytes(content(opts["split_manifest"].read_bytes()))
     with pytest.raises(ValueError) as refused:
-        verify_training_release(processed / "release_manifest.json", ReleaseInputs(**opts))
+        verify_release_inputs(processed / "release_manifest.json", ReleaseInputs(**opts))
     return str(refused.value)
 
 

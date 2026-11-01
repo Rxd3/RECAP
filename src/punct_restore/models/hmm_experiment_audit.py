@@ -82,18 +82,18 @@ def assert_block(actual: Mapping[str, Any], expected: Mapping[str, Any]) -> None
 
 def probability_checks(model: HMMModel) -> None:
     """Require every start, transition and emission distribution of the model to sum to one."""
-    assert_close(sum(math.exp(v) for v in model._log_start), 1.0)
+    tables = model.distributions
+    assert_close(sum(math.exp(v) for v in tables.log_start), 1.0)
     for state in range(len(model.labels)):
         assert_close(
-            sum(math.exp(v) for v in model._log_transition[state])
-            + math.exp(model._log_end[state]),
+            sum(math.exp(v) for v in tables.log_transition[state]) + math.exp(tables.log_end[state]),
             1.0,
         )
-        missing = len(model._vocabulary) - len(model._log_emissions[state])
+        missing = len(tables.vocabulary) - len(tables.log_emissions[state])
         assert_close(
-            sum(math.exp(v) for v in model._log_emissions[state].values())
-            + missing * math.exp(model._log_default[state])
-            + math.exp(model._log_unknown[state]),
+            sum(math.exp(v) for v in tables.log_emissions[state].values())
+            + missing * math.exp(tables.log_default[state])
+            + math.exp(tables.log_unknown[state]),
             1.0,
         )
 

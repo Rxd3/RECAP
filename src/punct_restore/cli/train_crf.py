@@ -45,7 +45,12 @@ from punct_restore.models.crf_training import (
     process_memory,
 )
 from punct_restore.models.crf_training_data import load_and_filter_training_records
-from punct_restore.prediction_io import check_new_output_paths, one_line_error, reconfigure_stdout
+from punct_restore.prediction_io import (
+    check_new_output_paths,
+    one_line_error,
+    one_line_error_naming,
+    reconfigure_stdout,
+)
 
 __all__ = ["main"]
 
@@ -94,7 +99,7 @@ def _load_records(input_path: Path, ids_path: Path, mode: str) -> tuple[list[dic
     try:
         records, frozen_ids = load_and_filter_training_records(input_path, ids_path, mode)
     except (OSError, ValueError) as e:  # a missing or unreadable file, or a record that breaks the frozen-data rules
-        raise TrainingFailed(one_line_error(e, input_path, ids_path)) from e
+        raise TrainingFailed(one_line_error_naming(e, input_path, ids_path)) from e
 
     total_tokens = sum(len(r["tokens"]) for r in records)
     print(
@@ -138,7 +143,7 @@ def _configure_model(args: argparse.Namespace, mode: str) -> tuple[CRFModel, Fea
             config_path=args.config_path,
         )
     except (OSError, ValueError) as e:  # a bad hyperparameter, or a --config-path file that cannot be read
-        raise TrainingFailed(one_line_error(e, args.config_path)) from e
+        raise TrainingFailed(one_line_error_naming(e, args.config_path)) from e
     return model, feature_config
 
 

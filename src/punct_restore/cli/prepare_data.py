@@ -17,7 +17,7 @@ import os
 import sys
 
 from punct_restore.data import extraction
-from punct_restore.data.release import ReleaseSources, build_release
+from punct_restore.data.release import ReleaseSources, build_release_from
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import one_line_error
 
@@ -47,7 +47,7 @@ def run_build(args: argparse.Namespace) -> None:
     sources = ReleaseSources(raw_dir=raw_dir,
                              processed_dir=args.processed_dir, splits_dir=args.splits_dir,
                              release_id=args.release_id, raw_manifest=manifest, titles_path=titles)
-    result = build_release(sources, log=print)
+    result = build_release_from(sources, log=print)
     print(json.dumps(result["records"]))
 
 

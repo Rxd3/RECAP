@@ -12,11 +12,11 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any
 
-from punct_restore.data.preprocessing import parse_manifest_line
 from punct_restore.evaluation.inputs import file_identity_with
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_records import SelectedRecords
+from punct_restore.models.hmm_release import checked_release_file, read_release_manifest
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import read_ids, write_new_file
 
@@ -27,6 +27,9 @@ from punct_restore.data.validation import check_model_input as check_model_input
 from punct_restore.data.validation import validate_record as validate_record
 from punct_restore.file_io import read_json_object as read_json_object
 from punct_restore.models.hmm_records import read_jsonl as read_jsonl
+from punct_restore.models.hmm_release import ReleaseInputs as ReleaseInputs
+from punct_restore.models.hmm_release import verify_release_inputs as verify_release_inputs
+from punct_restore.models.hmm_release import verify_training_release as verify_training_release
 
 
 def portable_path(path: Path) -> str:
@@ -90,127 +93,6 @@ def selected_records(
     yield from selection
     if counts is not None:
         counts.update(selection.counts)
-
-
-def checked_release_file(
-    path: Path, root: Path, entries: dict[str, Any], *, expected: str | None = None
-) -> str:
-    try:
-        relative = path.resolve().relative_to(root.resolve()).as_posix()
-    except ValueError as exc:
-        raise ValueError(
-            f"{path.name}: file must be inside its declared release directory"
-        ) from exc
-    if relative not in entries or (expected is not None and relative != expected):
-        raise ValueError(f"{relative}: not the expected release file {expected or ''}")
-    entry = entries[relative]
-    if path.stat().st_size != entry["bytes"] or sha256_file(path) != entry["sha256"]:
-        raise ValueError(f"{relative}: release checksum mismatch")
-    return relative
-
-
-def _check_split_manifest(split_manifest: Path, manifest: dict[str, Any]) -> None:
-    """Authenticate the supplied split checksum index against the release manifest.
-
-    Raises:
-        ValueError: One line that starts with the file name: not valid UTF-8, or a line that is not
-            ``<sha256>  <path>``; or the index does not match the release.
-    """
-    try:
-        lines = split_manifest.read_text(encoding="utf-8").splitlines()
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"{split_manifest.name}: not valid UTF-8") from exc
-    expected_sums = {name: entry["sha256"] for name, entry in manifest["split_files"].items()}
-    actual_sums = {}
-    for number, line in enumerate(lines, 1):
-        digest, name = parse_manifest_line(line, number, split_manifest.name)
-        if name in actual_sums:
-            raise ValueError("duplicate path in split checksum manifest")
-        actual_sums[name] = digest
-    if actual_sums != expected_sums:
-        raise ValueError("split checksum manifest does not match release")
-
-
-def _check_prediction_files(
-    manifest: dict[str, Any],
-    processed: Path,
-    splits: Path,
-    mode: str,
-    prediction: Path,
-    prediction_ids: Path | None,
-) -> None:
-    """Check the prediction input (and its ID selection) against the release."""
-    relative = checked_release_file(prediction, processed, manifest["files"])
-    if not relative.startswith(f"mode_{mode}/"):
-        raise ValueError("prediction input mode does not match model")
-    if prediction_ids is not None:
-        name = Path(relative).stem
-        checked_release_file(
-            prediction_ids,
-            splits,
-            manifest["split_files"],
-            expected=f"primary_eval/{name}_mode_{mode}.ids",
-        )
-
-
-@dataclass(frozen=True)
-class ReleaseInputs:
-    """The files and identities a training command was given, to be checked against the data release."""
-
-    train: Path
-    train_ids: Path
-    split_manifest: Path
-    label_config: Path
-    mode: str
-    release_id: str
-    policy_version: str
-    prediction: Path | None = None
-    prediction_ids: Path | None = None
-
-
-_MANIFEST_TEXT_FIELDS = ("release_id", "policy_version", "label_sets_sha256")
-_MANIFEST_FILE_TABLES = ("files", "split_files")
-
-
-def read_release_manifest(path: Path) -> dict[str, Any]:
-    """A release manifest with the fields the HMM commands read; a wrong shape is a ValueError naming the file."""
-    manifest = read_json_object(path)
-    for field in _MANIFEST_TEXT_FIELDS:
-        if not isinstance(manifest.get(field), str):
-            raise ValueError(f"{path.name}: release manifest has no text field {field}")
-    for table in _MANIFEST_FILE_TABLES:
-        entries = manifest.get(table)
-        if not isinstance(entries, dict) or not all(
-            isinstance(entry, dict) and isinstance(entry.get("sha256"), str) and isinstance(entry.get("bytes"), int)
-            for entry in entries.values()
-        ):
-            raise ValueError(f"{path.name}: release manifest {table} must map names to sha256 and bytes")
-    source = manifest.get("source")
-    if not isinstance(source, dict) or not isinstance(source.get("revision"), str):
-        raise ValueError(f"{path.name}: release manifest has no source revision")
-    return manifest
-
-
-def verify_training_release(manifest_path: Path, inputs: ReleaseInputs) -> dict[str, Any]:
-    """Check the command's inputs against the release manifest; return the manifest."""
-    manifest = read_release_manifest(manifest_path)
-    if (
-        manifest.get("schema_version") != 1
-        or manifest.get("release_id") != inputs.release_id
-        or manifest.get("policy_version") != inputs.policy_version
-    ):
-        raise ValueError("release identity/schema/policy does not match command")
-    if sha256_file(inputs.label_config) != manifest["label_sets_sha256"]:
-        raise ValueError("label configuration does not match the data release")
-    processed, splits, mode = manifest_path.parent, inputs.split_manifest.parent, inputs.mode
-    checked_release_file(inputs.train, processed, manifest["files"], expected=f"mode_{mode}/train.jsonl")
-    checked_release_file(
-        inputs.train_ids, splits, manifest["split_files"], expected=f"default_train/mode_{mode}.ids"
-    )
-    _check_split_manifest(inputs.split_manifest, manifest)
-    if inputs.prediction is not None:
-        _check_prediction_files(manifest, processed, splits, mode, inputs.prediction, inputs.prediction_ids)
-    return manifest
 
 
 def write_json(path: Path, value: Any) -> None:
@@ -346,7 +228,7 @@ def _input_identities(model_path: Path, input_path: Path, options: PredictionOpt
     return inputs
 
 
-def predict_run(
+def predict_run_with(
     model_path: Path, input_path: Path, output_dir: Path, options: PredictionOptions | None = None
 ) -> dict[str, Any]:
     """Load an artifact and export predictions without refitting or reading gold fields."""
@@ -391,3 +273,20 @@ def predict_run(
     manifest = _run_manifest(facts)
     write_json(output_dir / "predictions.manifest.json", manifest)
     return manifest
+
+
+def predict_run(
+    model_path: Path,
+    input_path: Path,
+    output_dir: Path,
+    *,
+    ids_path: Path | None = None,
+    release_manifest: Path | None = None,
+    selection_record: Path | None = None,
+    command: list[str] | None = None,
+) -> dict[str, Any]:
+    """Main's call signature of `predict_run_with` (old import path and signature kept, restructure spec §2)."""
+    options = PredictionOptions(
+        ids_path=ids_path, release_manifest=release_manifest, selection_record=selection_record, command=command
+    )
+    return predict_run_with(model_path, input_path, output_dir, options)

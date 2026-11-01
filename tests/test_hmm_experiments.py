@@ -1,23 +1,27 @@
 """Independent workflow gates and inference/metric checks on tiny fixtures."""
 
 import json
+import os
+import subprocess
 import sys
 from copy import deepcopy
+from dataclasses import replace
+from types import SimpleNamespace
 
 import pytest
 import yaml
-from import_closure import import_closure
 from test_hmm_cli import ROOT, jsonl, setup_run
 from test_hmm_workflow import run
 
 from punct_restore.hashing import sha256_file
 from punct_restore.models import hmm_experiment_audit as audit
 from punct_restore.models import hmm_experiment_finalize, hmm_experiment_identity
+from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_experiment_commands import HmmCommandFailed, execute
 from punct_restore.models.hmm_experiment_finalize import finalize
 from punct_restore.models.hmm_experiment_identity import SOURCE_FILES, check_evaluator, implementation
 from punct_restore.models.hmm_experiment_protocol import choose, validate_config
-from punct_restore.models.hmm_workflow import PredictionOptions, predict_run
+from punct_restore.models.hmm_workflow import PredictionOptions, predict_run, predict_run_with
 
 HMM_COMMANDS = ("train_hmm", "predict_hmm", "run_hmm_experiments", "verify_hmm_experiments")
 
@@ -26,32 +30,49 @@ def config():
     return yaml.safe_load((ROOT / "configs/hmm_sponspeech_v2.yaml").read_text())
 
 
-def test_source_files_list_each_hmm_command_as_module_then_stub():
-    """The hashed code names the study's modules, the shared code they use, then each command's file and its stub."""
-    models = ("hmm", "hmm_validation", "hmm_records", "hmm_workflow", "hmm_experiment_protocol",
+def test_source_files_list_the_hmm_modules_then_the_shared_code_then_each_command_as_module_then_stub():
+    """The hashed code names the study's own modules, the shared code they load (sorted), then each command and stub."""
+    models = ("hmm", "hmm_distributions", "hmm_validation", "hmm_records", "hmm_workflow", "hmm_release",
+              "hmm_experiment_protocol",
               "hmm_experiment_commands", "hmm_experiment_runtime", "hmm_experiment_audit",
               "hmm_experiment_identity", "hmm_experiment_tune", "hmm_experiment_frozen",
               "hmm_experiment_finalize", "hmm_experiment_verify")
-    expected = [f"src/punct_restore/models/{name}.py" for name in models]
-    shared = ("data/labeling", "data/preprocessing", "data/validation", "evaluation/inputs", "evaluation/metrics",
-              "file_io", "hashing", "paths", "prediction_io", "progress")  # what the study's modules import, sorted
-    expected += [f"src/punct_restore/{name}.py" for name in shared]
+    own = [f"src/punct_restore/models/{name}.py" for name in models]
+    commands = []
     for command in HMM_COMMANDS:
-        expected += [f"src/punct_restore/cli/{command}.py", f"scripts/{command}.py"]
-    assert list(SOURCE_FILES) == expected
-    assert [name for name in expected if not (ROOT / name).is_file()] == []
-    assert list(implementation()) == expected
+        commands += [f"src/punct_restore/cli/{command}.py", f"scripts/{command}.py"]
+    names = list(SOURCE_FILES)
+    shared = names[len(own):-len(commands)]
+    assert names[:len(own)] == own and names[-len(commands):] == commands
+    assert shared == sorted(shared) and all(name.startswith("src/punct_restore/") for name in shared)
+    assert [name for name in names if not (ROOT / name).is_file()] == []
+    assert list(implementation()) == names
 
 
-def test_source_files_are_exactly_what_the_hmm_study_imports_inside_the_package():
-    """A file the study imports (directly or not) decides its results, so a change to it must change the record."""
-    package = ROOT / "src"
-    roots = [package / "punct_restore/cli" / f"{command}.py" for command in HMM_COMMANDS]
-    roots += sorted((package / "punct_restore/models").glob("hmm*.py"))
-    imported = {path.relative_to(ROOT).as_posix() for path in import_closure(roots, package, "punct_restore")}
+CLOSURE_SCRIPT = """
+import sys
+from pathlib import Path
+
+import punct_restore.cli.predict_hmm, punct_restore.cli.run_hmm_experiments
+import punct_restore.cli.train_hmm, punct_restore.cli.verify_hmm_experiments
+
+root = Path(sys.argv[1])
+files = (getattr(m, "__file__", None) for name, m in sys.modules.items() if name.split(".")[0] == "punct_restore")
+print("\\n".join(sorted(Path(file).resolve().relative_to(root).as_posix() for file in files if file)))
+"""
+
+
+def test_source_files_are_exactly_the_modules_the_four_hmm_commands_load():
+    """A file the study loads decides its results, so a change to it must change the record: package inits included."""
+    env = {**os.environ, "PYTHONPATH": str(ROOT / "src")}  # the worktree's code, not an editable install elsewhere
+    done = subprocess.run([sys.executable, "-c", CLOSURE_SCRIPT, str(ROOT.resolve())],
+                          env=env, capture_output=True, text=True, check=False)
+    assert done.returncode == 0, done.stderr
+    loaded = set(done.stdout.split())
     listed = {name for name in SOURCE_FILES if name.startswith("src/")}
-    assert sorted(imported - listed) == [], "imported by the study but not hashed"
-    assert sorted(listed - imported) == [], "hashed but not imported by the study"
+    assert "src/punct_restore/data/__init__.py" in loaded  # the scan sees the package inits the commands run first
+    assert sorted(loaded - listed) == [], "loaded by the study but not hashed"
+    assert sorted(listed - loaded) == [], "hashed but not loaded by the study"
 
 
 def test_the_module_that_computes_the_implementation_record_is_itself_hashed():
@@ -217,8 +238,28 @@ def test_artifact_cannot_be_substituted_for_another_frozen_winner(tmp_path):
     )
     out = tmp_path / "prediction-output"
     with pytest.raises(ValueError, match="frozen selection"):
-        predict_run(trained / "model.json", prediction, out, PredictionOptions(selection_record=selection))
+        predict_run_with(trained / "model.json", prediction, out, PredictionOptions(selection_record=selection))
     assert not out.exists()
+
+
+def _fitted_model():
+    labels = ["O", "COMMA", "PERIOD", "QUESTION"]
+    train = {"schema_version": 1, "sample_id": "t", "source": "unit", "split": "train", "label_mode": "A",
+             "tokens": ["a", "b"], "punct_labels": ["O", "PERIOD"], "case_labels": ["LOWER", "LOWER"]}
+    return HMMModel(label_mode="A", labels=labels, min_token_count=1).fit([train])
+
+
+def test_the_probability_check_reads_only_the_public_distributions_of_the_model():
+    """A stand-in that offers `labels` and `distributions` alone is enough: no private field is read."""
+    model = _fitted_model()
+    audit.probability_checks(SimpleNamespace(labels=model.labels, distributions=model.distributions))
+
+
+def test_the_probability_check_rejects_a_distribution_that_does_not_sum_to_one():
+    model = _fitted_model()
+    broken = replace(model.distributions, log_start=(0.0, 0.0, 0.0, 0.0))
+    with pytest.raises(ValueError, match="metric mismatch"):
+        audit.probability_checks(SimpleNamespace(labels=model.labels, distributions=broken))
 
 
 def test_metric_checker_rejects_a_green_looking_incorrect_report():

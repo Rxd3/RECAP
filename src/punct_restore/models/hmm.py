@@ -17,6 +17,7 @@ from typing import Any
 
 from punct_restore.prediction_io import write_new_file
 
+from .hmm_distributions import HMMDistributions
 from .hmm_validation import positive_integer as _positive_integer
 from .hmm_validation import validate_counts
 from .hmm_validation import validated_tokens as _tokens
@@ -166,6 +167,15 @@ class HMMModel:
             "vocabulary_size": len(counts.vocabulary),
             "unknown_training_tokens": sum(counts.unknown),
         }
+
+    @property
+    def distributions(self) -> HMMDistributions:
+        """A read-only copy of the log-probability tables, for checks; never the model's own tables."""
+        self._require_fitted()
+        return HMMDistributions.copy_of(
+            self._log_start, self._log_transition, self._log_end, self._vocabulary,
+            self._log_emissions, self._log_default, self._log_unknown,
+        )
 
     def fit(
         self,

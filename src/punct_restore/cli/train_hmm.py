@@ -20,7 +20,7 @@ from punct_restore.models.hmm_workflow import (
     code_identity,
     file_identity,
     portable_path,
-    verify_training_release,
+    verify_release_inputs,
     write_predictions_file,
 )
 from punct_restore.paths import REPO_ROOT as ROOT
@@ -112,7 +112,7 @@ def _verify_release(args: argparse.Namespace) -> dict[str, Any] | None:
         raise ValueError(
             "this release uses one policy version for preprocessing/tokens/labels"
         )
-    return verify_training_release(
+    return verify_release_inputs(
         args.release_manifest,
         ReleaseInputs(
             train=args.train,

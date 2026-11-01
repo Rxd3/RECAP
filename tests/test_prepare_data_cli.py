@@ -155,12 +155,12 @@ def test_build_hands_one_release_sources_and_its_progress_lines_to_the_user(
     (tmp_path / "sponspeech_text").mkdir()
     received: list[ReleaseSources] = []
 
-    def build_release(sources: ReleaseSources, *, log: Callable[[str], None]) -> dict:
+    def build_release_from(sources: ReleaseSources, *, log: Callable[[str], None]) -> dict:
         received.append(sources)
         log("loaded train=4")
         return {"records": {"source": 9, "released_per_view": 8, "rejected": 1}}
 
-    monkeypatch.setattr(prepare_data, "build_release", build_release)
+    monkeypatch.setattr(prepare_data, "build_release_from", build_release_from)
     argv = ["build", "--raw-root", str(tmp_path), "--release-id", "r1", "--processed-dir", str(tmp_path / "p"),
             "--splits-dir", str(tmp_path / "s")]
     assert prepare_data.main(argv) == 0

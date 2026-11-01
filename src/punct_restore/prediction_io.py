@@ -328,7 +328,7 @@ def os_reason(exc: OSError) -> str | None:
     return OS_REASONS[errno.EISDIR] if os_error_code(exc) == errno.EISDIR else exc.strerror
 
 
-def one_line_error(exc: BaseException, *paths: str | os.PathLike[str] | None) -> str:
+def one_line_error_naming(exc: BaseException, *paths: str | os.PathLike[str] | None) -> str:
     """The message on one line, without the ``error: `` prefix.
 
     An OSError reads ``<file name>: <reason>`` (its own text carries the full path, which is never shown);
@@ -343,6 +343,14 @@ def one_line_error(exc: BaseException, *paths: str | os.PathLike[str] | None) ->
     for path in filter(None, paths):
         text = text.replace(str(Path(path)), Path(path).name)
     return " ".join(text.splitlines())
+
+
+def one_line_error(exc: BaseException) -> str:
+    """The message on one line, as main's ``one_line_error(exc)`` gave it (old call form kept, spec section 2).
+
+    A path quoted in the text of a non-OS error stays; ``one_line_error_naming`` also cuts the paths it is given.
+    """
+    return one_line_error_naming(exc)
 
 
 def reconfigure_stdout() -> None:

@@ -1,5 +1,6 @@
 """Member 2's HMM tests: synthetic fixtures only, never research results."""
 
+import gc
 import json
 import math
 from copy import deepcopy
@@ -377,3 +378,53 @@ def test_the_saved_bytes_are_sorted_json_with_one_final_line_feed(fitted, tmp_pa
     raw = path.read_bytes()
     expected = json.dumps(json.loads(raw), ensure_ascii=False, allow_nan=False, sort_keys=True) + "\n"
     assert raw == expected.encode("utf-8") and b"\r" not in raw
+
+
+def test_distributions_are_the_log_tables_of_the_fixture_by_hand(fitted):
+    # smoothing 1, K=4: states O/COMMA/PERIOD/QUESTION hold 2/1/2/1 tokens, the vocabulary is {a, b, c}.
+    tables = fitted.distributions
+    assert tables.log_start == pytest.approx([math.log(n / 7) for n in (3, 1, 1, 2)])
+    assert tables.log_transition[0] == pytest.approx([math.log(n / 7) for n in (1, 2, 2, 1)])
+    assert tables.log_transition[1] == pytest.approx([math.log(n / 6) for n in (1, 1, 2, 1)])
+    assert tables.log_end == pytest.approx([math.log(n / d) for n, d in ((1, 7), (1, 6), (3, 7), (2, 6))])
+    assert tables.vocabulary == {"a", "b", "c"}
+    assert dict(tables.log_emissions[0]) == pytest.approx({"a": math.log(3 / 6)})
+    assert tables.log_default == pytest.approx([math.log(1 / n) for n in (6, 5, 6, 5)])
+    assert tables.log_unknown == pytest.approx(tables.log_default)  # nothing was folded into the unknown bucket
+
+
+def test_the_distributions_reproduce_sequence_log_probability(fitted):
+    tables, index = fitted.distributions, {label: n for n, label in enumerate(fitted.labels)}
+    words, states = ["a", "a", "new"], ["O", "COMMA", "PERIOD"]
+    score = tables.log_start[index[states[0]]] + tables.log_end[index[states[-1]]]
+    for position, (word, state) in enumerate(zip(words, states, strict=True)):
+        table = tables.log_emissions[index[state]]
+        score += table.get(word, tables.log_default[index[state]]) if word in tables.vocabulary else (
+            tables.log_unknown[index[state]])
+        if position:
+            score += tables.log_transition[index[states[position - 1]]][index[state]]
+    assert score == pytest.approx(fitted.sequence_log_probability(words, states))
+
+
+def test_the_distributions_of_an_unfitted_model_are_refused():
+    with pytest.raises(RuntimeError, match="not fitted"):
+        _ = HMMModel(label_mode="A", labels=labels()).distributions
+
+
+def test_the_distributions_cannot_be_changed_and_hold_no_live_table_of_the_model(fitted):
+    words, states = ["a", "b"], ["O", "PERIOD"]
+    before, tables = fitted.sequence_log_probability(words, states), fitted.distributions
+    with pytest.raises(AttributeError):
+        tables.log_start = ()
+    with pytest.raises(TypeError):
+        tables.log_start[0] = 0.0
+    with pytest.raises(TypeError):
+        tables.log_transition[0][0] = 0.0
+    with pytest.raises(TypeError):
+        tables.log_emissions[0]["a"] = 0.0
+    with pytest.raises(AttributeError):
+        tables.vocabulary.add("x")
+    # Even the dict under a read-only emission table is a copy: writing to it does not reach the model.
+    gc.get_referents(tables.log_emissions[0])[0]["a"] = 0.0
+    assert fitted.sequence_log_probability(words, states) == before
+    assert fitted.distributions.log_emissions[0]["a"] == pytest.approx(math.log(3 / 6))

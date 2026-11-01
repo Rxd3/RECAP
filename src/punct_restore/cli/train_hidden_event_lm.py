@@ -25,7 +25,7 @@ from punct_restore.file_io import iter_jsonl
 from punct_restore.models.hidden_event_lm import HiddenEventLM
 from punct_restore.prediction_io import (
     check_new_output_paths,
-    one_line_error,
+    one_line_error_naming,
     parse_sample_record,
     read_ids,
     read_observations,
@@ -138,7 +138,7 @@ def _cmd_predict(args: argparse.Namespace) -> str:
 
 def _one_line(exc: ValueError | OSError, args: argparse.Namespace) -> str:
     """The message on one line, with files named by name only (an OSError reports just its file's name)."""
-    return one_line_error(exc, *(getattr(args, option, None) for option in PATH_OPTIONS))
+    return one_line_error_naming(exc, *(getattr(args, option, None) for option in PATH_OPTIONS))
 
 
 def _build_parser() -> argparse.ArgumentParser:

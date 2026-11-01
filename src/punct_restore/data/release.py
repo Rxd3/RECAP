@@ -47,7 +47,7 @@ from .release_outputs import (
 )
 from .release_stats import StatsInputs, build_stats, pairwise_overlap
 
-__all__ = ["ReleaseSources", "build_release", "load_records", "read_ids"]
+__all__ = ["ReleaseSources", "build_release", "build_release_from", "load_records", "read_ids"]
 
 # old import path kept (restructure spec §2)
 from ..hashing import sha256_file as sha256_file
@@ -156,10 +156,12 @@ def load_records(path: str | os.PathLike[str], label_sets: Mapping[str, Any] | N
 def read_ids(path: str | os.PathLike[str]) -> list[str]:
     """Sample IDs from an .ids list (e.g. default_train/mode_A.ids or primary_eval/test_mode_A.ids), in file order.
 
-    This is prediction_io.read_ids (blank lines skipped, a BOM dropped, ValueError for a repeated ID or bytes that
-    are not UTF-8), except that a list without IDs reads as [].
+    Exactly main 72ebfd1's reader (old name kept, restructure spec section 2): each line stripped, blank lines
+    skipped, a repeated ID kept, a leading BOM left on the first ID, a list without IDs read as []. Bytes that are not
+    UTF-8 raise UnicodeDecodeError. The commands refuse such lists with `prediction_io.read_ids` instead.
     """
-    return prediction_io.read_ids(path, allow_empty=True)
+    with open(path, encoding="utf-8") as f:
+        return [line.strip() for line in f if line.strip()]
 
 
 def _title_entry(line: str, where: str) -> tuple[str, str] | None:
@@ -264,7 +266,7 @@ def _log_checks(checks: Mapping[str, Any], log: Log) -> None:
         + f" file_errors={len(checks['file_errors'])} view_mismatches={len(checks['view_mismatches'])}")
 
 
-def build_release(sources: ReleaseSources, *, log: Log = discard_log) -> dict[str, Any]:
+def build_release_from(sources: ReleaseSources, *, log: Log = discard_log) -> dict[str, Any]:
     """Build the release; returns the manifest dict. `log` gets one line per step (the default says nothing)."""
     titles, label_sets, out, split_out = _preflight(sources)
     utterances, contexts = _load_sources(sources.raw_dir, titles, log)
@@ -304,3 +306,15 @@ def build_release(sources: ReleaseSources, *, log: Log = discard_log) -> dict[st
     write_checksums((out, split_out))
     _log_checks(stats["checks"], log)
     return manifest
+
+
+def build_release(raw_dir: str, processed_dir: str, splits_dir: str, release_id: str, *,
+                  label_sets_path: str = labeling.LABEL_SETS_PATH, raw_manifest: str | None = None,
+                  titles_path: str | None = None, log: Log = discard_log) -> dict[str, Any]:
+    """`build_release_from` with the call form of main 72ebfd1 (old name kept, restructure spec section 2).
+
+    Returns the manifest dict. Main printed its progress by default; `log` now says nothing unless given one.
+    """
+    sources = ReleaseSources(raw_dir, processed_dir, splits_dir, release_id, label_sets_path=label_sets_path,
+                             raw_manifest=raw_manifest, titles_path=titles_path)
+    return build_release_from(sources, log=log)

@@ -31,7 +31,7 @@ COMMANDS = {
     "train": (train_hmm, "_run", None),
     "verify": (verify_hmm_experiments, "verify", RUN_ARGV),
     "package": (package_hmm_handoff, "package", RUN_ARGV),
-    "predict": (predict_hmm, "predict_run",
+    "predict": (predict_hmm, "predict_run_with",
                 ["--model", "m.json", "--input", "in.jsonl", "--output-dir", "out", "--all-records"]),
 }
 

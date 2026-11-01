@@ -100,11 +100,6 @@ def test_read_ids_accepts_a_str_path_as_the_documented_data_api_does(tmp_path: P
     assert data.read_ids(str(_ids(tmp_path, b"a\nb\n"))) == ["a", "b"]
 
 
-def test_data_read_ids_is_the_shared_reader_so_it_refuses_duplicates_too(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="Duplicate ID 'a'"):
-        data.read_ids(_ids(tmp_path, b"a\na\n"))
-
-
 # --- parse_json_object / parse_sample_record -----------------------------------------------------
 
 
