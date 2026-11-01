@@ -99,7 +99,7 @@ def _check_config(label_mode: Any, order: Any, discount: Any, min_count: Any, mo
 
 def _claim_sample_id(record: Any, seen: set[str]) -> str:
     if not isinstance(record, Mapping):
-        raise ValueError("each record must be a mapping")  # noqa: TRY004 - callers catch ValueError only
+        raise ValueError("each record must be a mapping")
     sample_id = record.get("sample_id")
     if not isinstance(sample_id, str) or not sample_id.strip():
         raise ValueError("sample_id must be a nonempty string")
@@ -264,7 +264,7 @@ class HiddenEventLM:
 
     def _token_id(self, fitted: _Fitted, token: Any) -> int:
         if not isinstance(token, str):
-            raise ValueError("tokens must be strings")  # noqa: TRY004 - ValueError by contract
+            raise ValueError("tokens must be strings")
         special = self._special.get(token)
         return special if special is not None else fitted.word_ids.get(token.lower(), _UNK_ID)
 
@@ -344,7 +344,7 @@ class HiddenEventLM:
     @classmethod
     def _from_payload(cls, payload: object) -> HiddenEventLM:
         if not isinstance(payload, dict):
-            raise ValueError("the file does not hold a JSON object")  # noqa: TRY004 - load_model reports ValueError
+            raise ValueError("the file does not hold a JSON object")
         if type(payload.get("format_version")) is not int or payload["format_version"] != FORMAT_VERSION:
             raise ValueError("unsupported format_version")
         if payload.get("model_family") != MODEL_FAMILY:

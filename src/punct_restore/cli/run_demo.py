@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import argparse
 import sys
-from collections.abc import Sequence
 from pathlib import Path
 
 from punct_restore.pipeline import ModelAdapter, RestorationPipeline
@@ -36,7 +35,7 @@ def _interactive(pipeline: RestorationPipeline) -> None:
             print(f"error: {one_line_error(exc)}", file=sys.stderr)
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     reconfigure_stdout()  # a cp1252 console must not crash on characters outside its code page
     parser = argparse.ArgumentParser(prog="recap run-demo", description="RECAP punctuation and casing restoration demo")
     parser.add_argument("--model-path", type=Path, required=True, help="trained model (.json, .joblib or .pkl)")

@@ -1,6 +1,7 @@
 """Size and nesting limits for shipped code (src/ and scripts/): short functions, short files, shallow nesting.
 
-Function length is `end_lineno - lineno + 1` of the `def` (docstring and body included, decorators not).
+Function length runs from the first decorator (or the `def`) to the last line: decorators, docstring and body all
+count (spec section 5).
 Nesting is the number of `if/for/while/with/try/match` blocks around a statement inside one function: a statement
 directly in the function body is depth 0, `elif` and `else` stay at the depth of their `if`, and a nested function
 starts again at 0 (it is checked on its own).
@@ -59,8 +60,13 @@ def _depth(statements: list[ast.stmt], level: int = 0) -> int:
     return deepest
 
 
+def _first_line(node: ast.FunctionDef | ast.AsyncFunctionDef) -> int:
+    return min([node.lineno, *(decorator.lineno for decorator in node.decorator_list)])
+
+
 def function_lengths(source: str) -> list[tuple[int, str, int]]:
-    return [(node.lineno, node.name, node.end_lineno - node.lineno + 1) for node in _functions(ast.parse(source))]
+    tree = ast.parse(source)
+    return [(node.lineno, node.name, node.end_lineno - _first_line(node) + 1) for node in _functions(tree)]
 
 
 def function_nesting(source: str) -> list[tuple[int, str, int]]:
@@ -105,7 +111,8 @@ def _nested(levels: int, header: str = "if x:") -> str:
 def test_the_checker_flags_a_long_function() -> None:
     assert function_lengths(_function_of(MAX_FUNCTION_LINES)) == [(1, "f", 50)]
     assert function_lengths(_function_of(MAX_FUNCTION_LINES + 1)) == [(1, "f", 51)]
-    assert function_lengths("@decorator\ndef f():\n    pass\n") == [(2, "f", 2)]
+    assert function_lengths("@decorator\ndef f():\n    pass\n") == [(2, "f", 3)]
+    assert function_lengths("@a\n@b(\n    1,\n)\ndef f():\n    pass\n") == [(5, "f", 6)]
 
 
 def test_the_checker_flags_deep_nesting() -> None:

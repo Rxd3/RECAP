@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import math
 from collections import Counter
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from punct_restore.data.labeling import load_label_sets
 from punct_restore.hashing import sha256_file
+from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_experiment_protocol import read_json
 from punct_restore.models.hmm_records import read_jsonl
 from punct_restore.paths import REPO_ROOT as ROOT
@@ -22,7 +24,9 @@ def assert_close(value: float, expected: float) -> None:
         raise ValueError(f"independent metric mismatch: {value} != {expected}")
 
 
-def independent_scores(pairs, labels, macro_over):
+def independent_scores(
+    pairs: Iterable[tuple[str, str]], labels: Sequence[str], macro_over: Sequence[str]
+) -> dict[str, Any]:
     """Compute P/R/F1 directly from counts, independently of the Member 5 formulas."""
     counts = Counter(pairs)
     matrix = [[counts[g, p] for p in labels] for g in labels]
@@ -56,7 +60,7 @@ def independent_scores(pairs, labels, macro_over):
     }
 
 
-def assert_block(actual, expected):
+def assert_block(actual: Mapping[str, Any], expected: Mapping[str, Any]) -> None:
     """Require a recounted metric block to match the shared scorer's block."""
     if (
         actual["confusion"] != expected["confusion"]
@@ -76,7 +80,7 @@ def assert_block(actual, expected):
                 assert_close(actual["per_class"][label][key], value)
 
 
-def probability_checks(model):
+def probability_checks(model: HMMModel) -> None:
     """Require every start, transition and emission distribution of the model to sum to one."""
     assert_close(sum(math.exp(v) for v in model._log_start), 1.0)
     for state in range(len(model.labels)):
@@ -184,7 +188,7 @@ class _PairSpec:
 
 def _collect_pairs(
     gold: list[dict[str, Any]], wanted: set[str], lookup: dict[str, dict[str, Any]], spec: _PairSpec
-) -> tuple[dict[str, list], int, list[dict[str, Any]]]:
+) -> tuple[dict[str, list[tuple[str, str]]], int, list[dict[str, Any]]]:
     """Per-block (gold, predicted) pairs over the scored IDs, with the token count and error samples."""
     mode, masks = spec.mode, spec.masks
     pairs = {name: [] for name in spec.block_names}
@@ -220,7 +224,7 @@ def _collect_pairs(
 
 def _check_counts_and_blocks(
     report: dict[str, Any],
-    pairs: dict[str, list],
+    pairs: dict[str, list[tuple[str, str]]],
     wanted: set[str],
     selected_tokens: int,
     pred_ids: list[str],

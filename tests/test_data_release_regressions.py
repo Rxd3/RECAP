@@ -120,8 +120,9 @@ def test_an_unapproved_projection_stops_the_build_with_a_value_error_before_any_
     text = Path(labeling.LABEL_SETS_PATH).read_text(encoding="utf-8")
     unapproved.write_text(text.replace("approved: true", "approved: false"), encoding="utf-8")
     with pytest.raises(ValueError, match="not approved"):
-        release.build_release(str(tmp_path / "raw"), str(tmp_path / "processed"), str(tmp_path / "splits"), "fixture",
-                              label_sets_path=str(unapproved), log=lambda _: None)
+        sources = release.ReleaseSources(str(tmp_path / "raw"), str(tmp_path / "processed"), str(tmp_path / "splits"),
+                                         "fixture", label_sets_path=str(unapproved))
+        release.build_release(sources, log=lambda _: None)
     assert not (tmp_path / "processed").exists() and not (tmp_path / "splits").exists()
 
 

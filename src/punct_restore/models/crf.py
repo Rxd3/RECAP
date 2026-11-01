@@ -16,6 +16,7 @@ Adheres strictly to the shared model contract (docs/MODEL_CONTRACT.md):
 
 from __future__ import annotations
 
+import copy
 import math
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from pathlib import Path
@@ -367,6 +368,12 @@ class CRFModel:
             ValueError: If artifact schema, model family, or metadata is corrupted/incompatible.
         """
         return restore_model(cls, read_bundle(path))
+
+    def _to_bundle(self) -> dict[str, Any]:
+        """The private state a saved artifact keeps beside the public settings; the counterpart of ``_from_bundle``."""
+        if not self._is_fitted or self._backend is None:
+            raise RuntimeError("Cannot save an unfitted CRFModel.")
+        return {"training_metadata": copy.deepcopy(self._training_metadata), "backend_state": self._backend}
 
     @classmethod
     def _from_bundle(cls, bundle: Mapping[str, Any]) -> CRFModel:

@@ -3,7 +3,7 @@ import json
 import os
 import platform
 import shutil
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -12,7 +12,8 @@ from . import extraction, preprocessing, splits, validation
 from .release_constants import RELEASE_FILES, SOURCE_REFERENCE
 
 
-def describe_files(folder, skip=("release_manifest.json", "SHA256SUMS")):
+def describe_files(folder: str | os.PathLike[str],
+                   skip: Collection[str] = ("release_manifest.json", "SHA256SUMS")) -> dict[str, dict[str, str | int]]:
     """{relative path: {sha256, bytes, lines}} for every file below `folder`."""
     out = {}
     for d, _, fs in os.walk(folder):

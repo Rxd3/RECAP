@@ -321,10 +321,18 @@ OS_REASONS: Mapping[int | None, str] = {errno.EEXIST: "already exists; refusing 
                                          errno.EPERM: "permission denied"}
 
 
+def _is_folder(name: str | bytes) -> bool:
+    """Whether ``name`` is a folder; False when it cannot even be looked at (a folder above it may not be entered)."""
+    try:
+        return Path(os.fsdecode(name)).is_dir()
+    except OSError:
+        return False
+
+
 def os_error_code(exc: OSError) -> int | None:
     """The errno of ``exc``; EISDIR when Windows reports opening a single folder as permission denied."""
     single_file = bool(exc.filename) and exc.filename2 is None  # a two-path call (a rename) keeps its own reason
-    if exc.errno in (errno.EACCES, errno.EPERM) and single_file and Path(os.fsdecode(exc.filename)).is_dir():
+    if exc.errno in (errno.EACCES, errno.EPERM) and single_file and _is_folder(exc.filename):
         return errno.EISDIR
     return exc.errno
 

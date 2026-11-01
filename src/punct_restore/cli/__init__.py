@@ -61,7 +61,7 @@ def dispatch(argv: list[str], commands: Mapping[str, str]) -> int:
         return 0
     name = argv[0]
     if name not in commands:
-        print(f"recap: unknown command {name!r}; run recap --help for the list", file=sys.stderr)
+        print(f"error: unknown command {name!r}; run recap --help for the list", file=sys.stderr)
         return 2
     module = importlib.import_module(commands[name])
     return module.main(argv[1:])

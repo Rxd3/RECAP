@@ -50,6 +50,18 @@ def test_no_todo_markers_in_src_scripts_or_tests() -> None:
     assert hits == []
 
 
+def test_no_stale_noqa_for_the_rule_that_is_not_enabled() -> None:
+    """TRY004 is not an enabled rule, so a `noqa` for it suppresses nothing and only misleads."""
+    stale = "noqa: " + "TRY004"  # split so this file does not match itself
+    hits = [
+        f"{_relative(path)}:{number}"
+        for path in _python_files()
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1)
+        if stale in line
+    ]
+    assert hits == []
+
+
 def test_no_file_edits_sys_path() -> None:
     hits = [
         f"{_relative(path)}:{number}"

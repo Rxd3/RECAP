@@ -6,8 +6,8 @@ loading versioned releases). Policies D1-D6 are recorded in docs/DECISIONS.md; u
 """
 
 from .labeling import join_labels, load_label_sets
-from .release import build_release, load_records, read_ids
+from .release import ReleaseSources, build_release, load_records, read_ids
 from .validation import validate_file, validate_record
 
-__all__ = ["build_release", "join_labels", "load_label_sets", "load_records", "read_ids", "validate_file",
-           "validate_record"]
+__all__ = ["ReleaseSources", "build_release", "join_labels", "load_label_sets", "load_records", "read_ids",
+           "validate_file", "validate_record"]

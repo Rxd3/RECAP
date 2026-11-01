@@ -17,24 +17,56 @@ is flagged for review.
 import itertools
 import os
 import re
+from collections.abc import Iterable, Mapping, Sequence
+from typing import Any
 
 from ..paths import REPO_ROOT
-from .preprocessing import ABBREVIATIONS, TITLES
+from .preprocessing import ABBREVIATIONS, TITLES, Token
 
 LABEL_SETS_PATH = os.path.join(REPO_ROOT, "configs", "label_sets.yaml")
 
 
-def load_label_sets(path=LABEL_SETS_PATH):
-    """Read configs/label_sets.yaml (the vocabulary source of truth) and check its 4/8/12 structure."""
+_KIND_NAMES = {dict: "mapping", list: "list", str: "string"}
+
+
+def _field(config: Mapping[str, Any], dotted: str, kind: type, file_name: str) -> Any:
+    """The entry at `dotted` ('modes.C.labels') of the parsed YAML, which must be a `kind`; else a ValueError."""
+    keys = dotted.split(".")
+    node: Any = config
+    for depth, key in enumerate(keys):
+        path = ".".join(keys[:depth + 1])
+        if key not in node:
+            raise ValueError(f"{file_name}: missing {path}")
+        node = node[key]
+        wanted = kind if depth == len(keys) - 1 else dict
+        if not isinstance(node, wanted):
+            raise ValueError(f"{file_name}: {path} must be a {_KIND_NAMES[wanted]}")
+    return node
+
+
+def load_label_sets(path: str | os.PathLike[str] = LABEL_SETS_PATH) -> dict[str, Any]:
+    """Read configs/label_sets.yaml (the vocabulary source of truth) and check its 4/8/12 structure.
+
+    Raises ValueError("<file name>: <what is wrong>") for a file that parses but lacks a key or has a value of the
+    wrong type.
+    """
     import yaml  # PyYAML is a declared runtime dependency of RECAP
     with open(path, encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
-    std, ext, case = cfg["punctuation"]["standard"], cfg["punctuation"]["extended"], cfg["casing"]
-    joint = [f"{p}{cfg['modes']['C']['separator']}{c}" for p, c in itertools.product(std, case)]
-    if (len(std), len(ext), len(case)) != (4, 8, 3) or ext[:4] != std or cfg["modes"]["C"]["labels"] != joint:
+    file_name = os.path.basename(path)
+    if not isinstance(cfg, dict):
+        raise ValueError(f"{file_name}: the top level must be a mapping")
+    std = _field(cfg, "punctuation.standard", list, file_name)
+    ext = _field(cfg, "punctuation.extended", list, file_name)
+    case = _field(cfg, "casing", list, file_name)
+    separator = _field(cfg, "modes.C.separator", str, file_name)
+    joint_listed = _field(cfg, "modes.C.labels", list, file_name)
+    projection = _field(cfg, "extended_to_standard", dict, file_name)
+    joint = [f"{p}{separator}{c}" for p, c in itertools.product(std, case)]
+    if (len(std), len(ext), len(case)) != (4, 8, 3) or ext[:4] != std or joint_listed != joint:
         raise ValueError("configs/label_sets.yaml does not have the agreed 4/8/12 structure")
-    return {"A": list(std), "B": list(ext), "C": joint, "casing": list(case),
-            "separator": cfg["modes"]["C"]["separator"], "projection": cfg["extended_to_standard"]}
+    return {"A": list(std), "B": list(ext), "C": joint, "casing": list(case), "separator": separator,
+            "projection": projection}
 
 
 # --- Punctuation ---------------------------------------------------------------------------------------------------
@@ -53,7 +85,7 @@ STANDARD_MARKS = {"?": "QUESTION", ".": "PERIOD", "!": "PERIOD", ";": "PERIOD", 
 STANDARD_PRECEDENCE = ("QUESTION", "PERIOD", "COMMA")
 
 
-def gap_label(gap, is_last, scheme):
+def gap_label(gap: str, is_last: bool, scheme: str) -> tuple[str, list[str]]:
     """Label for one gap under scheme 'extended' (mode B) or 'native' (SponSpeech four-class view), plus flags."""
     marks, precedence = (
         (EXTENDED_MARKS, EXTENDED_PRECEDENCE) if scheme == "extended" else (STANDARD_MARKS, STANDARD_PRECEDENCE)
@@ -86,7 +118,7 @@ def gap_label(gap, is_last, scheme):
     return next((p for p in precedence if p in found), "O"), flags
 
 
-def punctuation_labels(tokens, scheme):
+def punctuation_labels(tokens: Sequence[Token], scheme: str) -> tuple[list[str], list[list[str]]]:
     """One punctuation label per token, plus per-token flags."""
     labels, token_flags = [], []
     n = len(tokens)
@@ -110,7 +142,8 @@ def punctuation_labels(tokens, scheme):
     return labels, token_flags
 
 
-def project_extended_to_standard(labels, label_sets, allow_unapproved=False):
+def project_extended_to_standard(labels: Iterable[str], label_sets: Mapping[str, Any],
+                                 allow_unapproved: bool = False) -> list[str]:
     """Map B labels to canonical A with the configs/label_sets.yaml mapping (refused if it is not approved)."""
     proj = label_sets["projection"]
     if not proj.get("approved") and not allow_unapproved:
@@ -120,7 +153,7 @@ def project_extended_to_standard(labels, label_sets, allow_unapproved=False):
 
 # --- Casing --------------------------------------------------------------------------------------------------------
 
-def case_category(surface):
+def case_category(surface: str) -> str:
     """Descriptive casing category of an original-case word, kept for audits and statistics."""
     letters = [c for c in surface if c.isalpha()]
     if not letters:
@@ -136,7 +169,7 @@ def case_category(surface):
     return "mixed"                                     # 'NetApp', 'iPhone', 'McDonald'
 
 
-def case_label(surface):
+def case_label(surface: str) -> tuple[str, bool]:
     """(case label, approximated) under the approved D4 precedence, applied in this exact order:
     1. no cased letters (numbers) -> LOWER;  2. a single uppercase letter ('I', 'A') -> FIRST_UPPER;
     3. several cased letters, all uppercase -> ALL_UPPER;  4. otherwise the first cased letter decides:
@@ -154,7 +187,7 @@ def case_label(surface):
     return ("FIRST_UPPER" if letters[0].isupper() else "LOWER"), approximated
 
 
-def casing_labels(tokens, text):
+def casing_labels(tokens: Sequence[Token], text: str) -> tuple[list[str], list[str], list[int], set[str]]:
     """Case labels, per-token categories, masked positions (approximations) and utterance-level casing flags."""
     labels, cats, masked = [], [], []
     for i, t in enumerate(tokens):
@@ -172,7 +205,7 @@ def casing_labels(tokens, text):
     return labels, cats, masked, flags
 
 
-def join_labels(punct_labels, case_labels, separator="|"):
+def join_labels(punct_labels: Iterable[str], case_labels: Iterable[str], separator: str = "|") -> list[str]:
     """Mode C target at load time: 'PERIOD|FIRST_UPPER'. Never stored as a separate gold array."""
     return [f"{p}{separator}{c}" for p, c in zip(punct_labels, case_labels, strict=True)]
 
@@ -183,7 +216,7 @@ STANDARD_MARK_OF = {"O": "", "COMMA": ",", "PERIOD": ".", "QUESTION": "?"}
 ALNUM = re.compile(r"[A-Za-z0-9]")
 
 
-def _read_marks(text):
+def _read_marks(text: str) -> list[tuple[str, str]]:
     """[(word, mark)] from a whitespace reading of the cleaned text (no word regex), standard policy."""
     text = re.sub(r"(?<=[\w\"')])(--+|\.{2,})(?=[\w\"'(])", r" \1 ", text)
     text = re.sub(r"(?<=[A-Za-z])([,;?!])(?=[A-Za-z])", r"\1 ", text)
@@ -233,11 +266,11 @@ def _read_marks(text):
     return out
 
 
-def _signature(pairs):
+def _signature(pairs: Iterable[tuple[str, str]]) -> str:
     return "".join(re.sub(r"[^a-z0-9]", "", w) + m for w, m in pairs)
 
 
-def cross_check_standard(tokens, labels, text):
+def cross_check_standard(tokens: Sequence[Token], labels: Sequence[str], text: str) -> bool:
     """True if an independent reading of the text puts the same standard marks after the same letters/digits."""
     a = _signature((t.text.lower(), STANDARD_MARK_OF[label]) for t, label in zip(tokens, labels, strict=False))
     return a == _signature(_read_marks(text))

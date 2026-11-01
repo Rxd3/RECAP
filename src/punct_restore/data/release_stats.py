@@ -1,31 +1,33 @@
 """Statistics of a data release (owned by Member 1): label and length distributions, overlaps, stats.json content."""
 import collections
 import statistics
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from typing import Any
 
 from . import labeling, splits
 from .release_constants import RELEASE_FILES
 
 
-def label_distribution(label_lists, vocab):
+def label_distribution(label_lists: Sequence[Sequence[str]], vocab: Sequence[str]) -> dict[str, Any]:
     c = collections.Counter(label for labels in label_lists for label in labels)
     n = sum(c.values())
     return {"records": len(label_lists), "tokens": n, "counts": {label: c.get(label, 0) for label in vocab},
             "percent": {label: round(100 * c.get(label, 0) / n, 3) if n else 0.0 for label in vocab}}
 
 
-def length_stats(records):
+def length_stats(records: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     lens = sorted(len(r["tokens"]) for r in records)
     if not lens:
         return {}
 
-    def q(p):
+    def q(p: float) -> int:
         return lens[min(len(lens) - 1, int(p * len(lens)))]
     return {"records": len(lens), "tokens": sum(lens), "min": lens[0], "median": statistics.median(lens),
             "mean": round(statistics.fmean(lens), 2), "p95": q(0.95), "max": lens[-1]}
 
 
-def mode_labels(r, mode):
+def mode_labels(r: Mapping[str, Any], mode: str) -> list[str]:
     return r["ext"] if mode == "B" else r["canonical"]
 
 

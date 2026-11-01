@@ -245,7 +245,7 @@ class TestCRFPredictCLI:
         ])
         assert ret2 == 1
         captured = capsys.readouterr()
-        assert "Output file already exists" in captured.err
+        assert captured.err == "error: predictions.jsonl: output file already exists; use --overwrite to replace\n"
 
         # With --overwrite succeeds
         ret3 = train_crf.main([
@@ -346,7 +346,7 @@ class TestPredictManifestAndProvenance:
         ret = train_crf.main(["predict", "-m", str(model), "-i", str(inp),
                               "-o", str(tmp_path / "p.jsonl"), "--manifest-out", str(man)])
         assert ret == 1
-        assert "Manifest already exists" in capsys.readouterr().err
+        assert capsys.readouterr().err == "error: p.man.json: manifest already exists; use --overwrite to replace\n"
         assert man.read_text(encoding="utf-8") == "keep me"
 
 

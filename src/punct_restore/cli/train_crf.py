@@ -54,6 +54,11 @@ def recorded_command(argv: Sequence[str]) -> list[str]:
     return list(argv)
 
 
+def _error(message: str) -> None:
+    """Write the one user-facing error line (no folder, no stack trace) to stderr."""
+    sys.stderr.write(f"error: {message}\n")
+
+
 def _prepare_train_paths(args: argparse.Namespace) -> tuple[Path, Path, Path, Path] | None:
     """Check the input and output paths; return (input, ids, output, manifest) or None after reporting why not."""
     input_path = Path(args.input)
@@ -70,19 +75,15 @@ def _prepare_train_paths(args: argparse.Namespace) -> tuple[Path, Path, Path, Pa
                                {"--input": input_path, "--ids": ids_path,
                                 "--config-path": Path(args.config_path) if args.config_path else None})
     except ValueError as e:
-        sys.stderr.write(f"Error: {e}\n")
+        _error(str(e))
         return None
 
     # Safety: do not silently overwrite existing files
     if output_path.exists() and not args.overwrite:
-        sys.stderr.write(
-            f"Error: Output artifact already exists at {output_path.name}. Use --overwrite to replace.\n"
-        )
+        _error(f"{output_path.name}: output artifact already exists; use --overwrite to replace")
         return None
     if manifest_path.exists() and not args.overwrite:
-        sys.stderr.write(
-            f"Error: Manifest already exists at {manifest_path.name}. Use --overwrite to replace.\n"
-        )
+        _error(f"{manifest_path.name}: manifest already exists; use --overwrite to replace")
         return None
     return input_path, ids_path, output_path, manifest_path
 
@@ -93,7 +94,7 @@ def _load_records(input_path: Path, ids_path: Path, mode: str) -> tuple[list[dic
     try:
         records, frozen_ids = load_and_filter_training_records(input_path, ids_path, mode)
     except (OSError, ValueError) as e:  # a missing or unreadable file, or a record that breaks the frozen-data rules
-        sys.stderr.write(f"Error loading training data: {one_line_error(e, input_path, ids_path)}\n")
+        _error(one_line_error(e, input_path, ids_path))
         return None
 
     total_tokens = sum(len(r["tokens"]) for r in records)
@@ -138,7 +139,7 @@ def _configure_model(args: argparse.Namespace, mode: str) -> tuple[CRFModel, Fea
             config_path=args.config_path,
         )
     except (OSError, ValueError) as e:  # a bad hyperparameter, or a --config-path file that cannot be read
-        sys.stderr.write(f"Configuration error: {one_line_error(e, args.config_path)}\n")
+        _error(one_line_error(e, args.config_path))
         return None
     return model, feature_config
 
@@ -150,7 +151,7 @@ def _fit_model(model: CRFModel, records: list[dict[str, Any]], provenance: dict[
     try:
         model.fit(records, config={"provenance": provenance})
     except (OSError, ValueError) as e:  # the backend refuses its settings or the records, or has no disk for its files
-        sys.stderr.write(f"Training failed: {one_line_error(e)}\n")
+        _error(f"training failed: {one_line_error(e)}")
         return None
     duration = time.perf_counter() - start_time
     print(f"[RECAP CRF] Training completed in {duration:.2f} seconds.")
@@ -186,7 +187,7 @@ def _save_artifact(model: CRFModel, output_path: Path) -> str | None:
         model.save_model(output_path)
         artifact_hash = sha256_file(output_path)
     except OSError as e:
-        sys.stderr.write(f"Error: could not save the model artifact: {one_line_error(e)}\n")
+        _error(one_line_error(e))
         return None
     print(f"[RECAP CRF] Saved artifact: {output_path} (SHA-256: {artifact_hash})")
     return artifact_hash
@@ -199,7 +200,7 @@ def _write_manifest(sidecar_manifest: Mapping[str, Any], manifest_path: Path) ->
         with open(manifest_path, "w", encoding="utf-8") as f:
             json.dump(sidecar_manifest, f, indent=2, sort_keys=True)
     except OSError as e:
-        sys.stderr.write(f"Error: could not write the manifest: {one_line_error(e)}\n")
+        _error(one_line_error(e))
         return False
     print(f"[RECAP CRF] Saved manifest: {manifest_path}")
     return True
@@ -276,7 +277,7 @@ def cmd_predict(args: argparse.Namespace) -> int:
         print(f"[RECAP CRF] {inference_summary(predictions, time.perf_counter() - start_time)}")
         write_model_predictions(model, predictions, input_path, output_path, manifest_path)
     except PredictionFailed as e:
-        sys.stderr.write(f"{e}\n")
+        _error(str(e))
         return 1
     print(f"[RECAP CRF] Predictions exported to {output_path}")
     if manifest_path is not None:
@@ -288,11 +289,8 @@ def cmd_inspect(args: argparse.Namespace) -> int:
     """Inspect and display metadata of a trained CRF model artifact."""
     try:
         report = inspect_artifact(Path(args.model))
-    except FileNotFoundError as e:
-        sys.stderr.write(f"Error: {e}\n")
-        return 1
-    except ValueError as e:
-        sys.stderr.write(f"{e}\n")
+    except (FileNotFoundError, ValueError) as e:
+        _error(str(e))
         return 1
     for line in report.summary:
         print(line)
@@ -361,14 +359,17 @@ def build_cli_parser() -> argparse.ArgumentParser:
     # Subcommand: train
     p_train = subparsers.add_parser("train", help="Train a CRF model on frozen training records.")
     _add_train_arguments(p_train)
+    p_train.set_defaults(handler=cmd_train)
 
     # Subcommand: predict
     p_pred = subparsers.add_parser("predict", help="Generate predictions using a trained CRF model artifact.")
     _add_predict_arguments(p_pred)
+    p_pred.set_defaults(handler=cmd_predict)
 
     # Subcommand: inspect
     p_insp = subparsers.add_parser("inspect", help="Inspect metadata of a saved model artifact.")
     p_insp.add_argument("--model", "-m", required=True, help="Path to trained model artifact (.joblib).")
+    p_insp.set_defaults(handler=cmd_inspect)
 
     return parser
 
@@ -377,18 +378,8 @@ def main(argv: list[str] | None = None) -> int:
     """Main CLI entry point."""
     # A path the console code page cannot encode must not crash the run after files are written.
     reconfigure_stdout()
-    parser = build_cli_parser()
-    args = parser.parse_args(argv)
-
-    if args.subcommand == "train":
-        return cmd_train(args)
-    if args.subcommand == "predict":
-        return cmd_predict(args)
-    if args.subcommand == "inspect":
-        return cmd_inspect(args)
-
-    parser.print_help()
-    return 1
+    args = build_cli_parser().parse_args(argv)
+    return args.handler(args)  # every subcommand sets its handler, and the subparsers are required
 
 
 if __name__ == "__main__":

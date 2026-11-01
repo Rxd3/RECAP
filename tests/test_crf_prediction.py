@@ -71,33 +71,33 @@ def test_a_missing_model_or_input_is_named_by_file_name_only(paths: _Paths) -> N
     paths.model.unlink()
     with pytest.raises(PredictionFailed) as caught:
         paths.check()
-    assert str(caught.value) == "Error: Model artifact not found at m.joblib"
+    assert str(caught.value) == "m.joblib: model artifact not found"
 
     paths.model.write_bytes(b"model")
     paths.input.unlink()
     with pytest.raises(PredictionFailed) as caught:
         paths.check()
-    assert str(caught.value) == "Error: Input JSONL not found at in.jsonl"
+    assert str(caught.value) == "in.jsonl: input JSONL not found"
 
 
 def test_an_existing_output_or_manifest_needs_overwrite(paths: _Paths) -> None:
     paths.output.write_text("keep", encoding="utf-8")
     with pytest.raises(PredictionFailed) as caught:
         paths.check()
-    assert str(caught.value) == "Error: Output file already exists at out.jsonl. Use --overwrite to replace."
+    assert str(caught.value) == "out.jsonl: output file already exists; use --overwrite to replace"
     assert paths.check(overwrite=True) is None
 
     paths.output.unlink()
     paths.manifest.write_text("keep", encoding="utf-8")
     with pytest.raises(PredictionFailed) as caught:
         paths.check()
-    assert str(caught.value) == "Error: Manifest already exists at out.man.json. Use --overwrite to replace."
+    assert str(caught.value) == "out.man.json: manifest already exists; use --overwrite to replace"
     assert paths.check(overwrite=True) is None
     assert paths.check(manifest=False) is None  # no manifest requested, so the existing file is not in the way
 
 
 def test_an_output_that_is_also_an_input_is_refused(paths: _Paths) -> None:
-    with pytest.raises(PredictionFailed, match="^Error: --output"):
+    with pytest.raises(PredictionFailed, match="^--output"):
         check_predict_paths(paths.model, paths.input, paths.input, None, None, True)
 
 
@@ -110,7 +110,7 @@ def test_a_path_that_cannot_be_checked_is_one_line_naming_it_by_name(
     with pytest.raises(PredictionFailed) as caught:
         paths.check()
 
-    assert str(caught.value) == "Error: cannot check locked: Permission denied"
+    assert str(caught.value) == "locked: Permission denied"
 
 
 # --- load_scoring_model ------------------------------------------------------------------------------------
@@ -128,7 +128,7 @@ def test_a_corrupt_artifact_is_one_line_naming_the_file_only(tmp_path: Path) -> 
         load_scoring_model(bad)
 
     message = str(caught.value)
-    assert message.startswith("Failed to load model: ") and "bad.joblib" in message
+    assert message.startswith("Corrupt or unreadable model artifact at bad.joblib: ")
     assert "\n" not in message and str(tmp_path) not in message
 
 
@@ -137,7 +137,7 @@ def test_a_casing_helper_artifact_is_not_a_scoring_model(tmp_path: Path) -> None
     helper = tmp_path / "case.joblib"
     CRFModel(label_mode="CASE", max_iterations=5).fit(records).save_model(helper)
 
-    with pytest.raises(PredictionFailed, match="^Error: .*CASE.*scoring mode"):
+    with pytest.raises(PredictionFailed, match="^case.joblib: .*CASE.*scoring mode"):
         load_scoring_model(helper)
 
 
@@ -172,7 +172,7 @@ def test_an_id_missing_from_the_input_is_one_line_naming_the_file_only(tmp_path:
     with pytest.raises(PredictionFailed) as caught:
         read_input_records(source, ids)
 
-    assert str(caught.value).startswith("Error: Missing 1 selected IDs from input file eval.jsonl")
+    assert str(caught.value).startswith("Missing 1 selected IDs from input file eval.jsonl")
     assert str(tmp_path) not in str(caught.value)
 
 
@@ -194,7 +194,7 @@ def test_a_label_sequence_the_contract_rejects_is_a_prediction_failure(
     with pytest.raises(PredictionFailed) as caught:
         predict_records(model, [])
 
-    assert str(caught.value) == "Prediction failed: Model predicted 1 labels for sequence e1"
+    assert str(caught.value) == "prediction failed: Model predicted 1 labels for sequence e1"
 
 
 def test_a_bug_while_predicting_is_not_reported_as_a_user_error(
@@ -256,8 +256,7 @@ def test_a_full_disk_while_writing_is_one_line(tmp_path: Path, monkeypatch: pyte
     with pytest.raises(PredictionFailed) as caught:
         write_model_predictions(model, [], tmp_path / "in.jsonl", tmp_path / "p.jsonl", None)
 
-    assert str(caught.value) == "Error: Could not write prediction outputs: " + str(
-        OSError(errno.ENOSPC, "No space left on device", "p.jsonl"))
+    assert str(caught.value) == "could not write prediction outputs: p.jsonl: No space left on device"
 
 
 def test_the_library_prints_nothing(paths: _Paths, model_file: Path, capsys: pytest.CaptureFixture[str]) -> None:

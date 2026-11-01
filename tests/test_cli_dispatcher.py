@@ -42,6 +42,7 @@ def test_unknown_command_exits_2_with_one_stderr_line(capsys):
     assert main(["nope"]) == 2
     err = capsys.readouterr().err
     assert err.count("\n") == 1 and "nope" in err and "recap --help" in err
+    assert err.startswith("error: unknown command ")
 
 
 def test_dispatch_passes_args_and_returns_the_code(monkeypatch):

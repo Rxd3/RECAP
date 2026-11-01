@@ -126,20 +126,20 @@ def test_a_missing_artifact_is_a_file_not_found_error_naming_the_file_only(tmp_p
     with pytest.raises(FileNotFoundError) as caught:
         inspect_artifact(tmp_path / "deep" / "ghost.joblib")
 
-    assert str(caught.value) == "Artifact not found at ghost.joblib"
+    assert str(caught.value) == "ghost.joblib: artifact not found"
 
 
 def test_a_file_that_is_not_an_artifact_is_a_value_error(tmp_path: Path) -> None:
     junk = tmp_path / "junk.joblib"
     junk.write_bytes(b"this is not a joblib file")
-    with pytest.raises(ValueError, match="^Failed to read artifact: "):
+    with pytest.raises(ValueError, match="^junk.joblib: cannot read artifact: "):
         inspect_artifact(junk)
 
     listing = tmp_path / "list.joblib"
     joblib.dump([1, 2], listing)
     with pytest.raises(ValueError) as caught:
         inspect_artifact(listing)
-    assert str(caught.value) == "Invalid artifact format: root is list"
+    assert str(caught.value) == "list.joblib: invalid artifact format: root is list"
 
 
 def test_the_library_prints_nothing(artifact: Path, capsys: pytest.CaptureFixture[str]) -> None:

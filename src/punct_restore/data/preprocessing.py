@@ -13,9 +13,11 @@ import collections
 import hashlib
 import os
 import re
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from itertools import chain, islice
+from typing import TypedDict
 
 # --- Source identity (SponSpeech; D1 approved) ------------------------------------------------------------------
 
@@ -37,11 +39,14 @@ class SourceUtterance:
     sha256: str            # of the raw file bytes
 
 
+Removal = tuple[str, str]      # (rule, the text it removed)
+
+
 class SourceError(ValueError):
     """A raw file breaks the input expectations (encoding, single line, ID format, utt2spk agreement)."""
 
 
-def _map_source_files(function, items):
+def _map_source_files[T, R](function: Callable[[T], R], items: Iterable[T]) -> Iterator[R]:
     """Read small source files concurrently, preserving order with bounded pending work.
 
     Windows file-open latency dominates the 206k-file source check. Batches avoid
@@ -58,7 +63,7 @@ def _map_source_files(function, items):
             yield from pool.map(function, batch)
 
 
-def read_utt2spk(raw_dir, source_split):
+def read_utt2spk(raw_dir: str | os.PathLike[str], source_split: str) -> dict[str, str]:
     """{utterance id: video id} for one SponSpeech split. Lines are '<utt-id> <video-id>'."""
     mapping = {}
     with open(os.path.join(raw_dir, source_split, "utt2spk"), encoding="utf-8") as f:
@@ -70,9 +75,9 @@ def read_utt2spk(raw_dir, source_split):
     return mapping
 
 
-def read_source_split(raw_dir, source_split):
+def read_source_split(raw_dir: str | os.PathLike[str], source_split: str) -> list[SourceUtterance]:
     """All utterances of one SponSpeech split, sorted by upstream ID, with input checks."""
-    def read_one(item):
+    def read_one(item: tuple[str, str]) -> SourceUtterance:
         utt_id, video_id = item
         with open(os.path.join(raw_dir, source_split, "text", utt_id + ".txt"), "rb") as f:
             raw = f.read()
@@ -80,19 +85,20 @@ def read_source_split(raw_dir, source_split):
             text = raw.decode("utf-8")
         except UnicodeDecodeError as e:
             raise SourceError(f"{source_split}/{utt_id}: not UTF-8") from e
-        m = UTT_ID_RE.match(utt_id)
-        if not m or m.group(1) != video_id:
+        id_match = UTT_ID_RE.match(utt_id)
+        if not id_match or id_match.group(1) != video_id:
             raise SourceError(f"{source_split}/{utt_id}: ID does not match utt2spk video {video_id}")
         if not text.strip() or "\n" in text or "\r" in text:
             raise SourceError(f"{source_split}/{utt_id}: empty or multi-line transcript")
-        return SourceUtterance(source_split, utt_id, video_id, int(m.group(2)), text, hashlib.sha256(raw).hexdigest())
+        return SourceUtterance(source_split, utt_id, video_id, int(id_match.group(2)), text,
+                               hashlib.sha256(raw).hexdigest())
     return list(_map_source_files(read_one, sorted(read_utt2spk(raw_dir, source_split).items())))
 
 
-def verify_raw_manifest(manifest_path):
+def verify_raw_manifest(manifest_path: str | os.PathLike[str]) -> list[str]:
     """Paths (relative to the manifest) whose SHA-256 no longer matches. Empty list means raw data is unchanged."""
     base = os.path.dirname(os.path.abspath(manifest_path))
-    def check_one(line):
+    def check_one(line: str) -> str | None:
         digest, rel = line.rstrip("\n").split("  ", 1)
         with open(os.path.join(base, rel), "rb") as fh:
             return rel if hashlib.sha256(fh.read()).hexdigest() != digest else None
@@ -142,38 +148,39 @@ INVERTED_FOLD = re.compile(r"(?:^|[\s\"(])[?!][A-Za-z]")   # upstream folded '¿
 QUESTION_IN_WORD = re.compile(r"[A-Za-z]\?[a-z]")           # upstream replaced a letter by '?': 'Hebdom?konta'
 
 
-def _squash(text):
+def _squash(text: str) -> str:
     """Collapse whitespace and re-attach marks stranded by a removal ('word ,' -> 'word,')."""
     text = re.sub(r"\s+", " ", text).strip()
     return re.sub(r"(?<=\w) +(?=[.,?!;:](?:\s|$))", "", text)
 
 
-def _strip_markers(text):
+def _strip_markers(text: str) -> str:
     """Timecodes and turn markers removed without logging; speaker labels are counted on this view."""
     for rx in (TIMECODE_TAG, TIMECODE_INLINE, SPEAKER_N, CHEVRONS):
         text = rx.sub(" ", text)
     return _squash(TURN_DASH_START.sub("", _squash(text)))
 
 
-def build_speaker_inventory(texts, min_recur=SPEAKER_MIN_RECUR):
+def build_speaker_inventory(texts: Iterable[str], min_recur: int = SPEAKER_MIN_RECUR) -> dict[str, set[str]]:
     """Speaker names that recur >= min_recur times among one video's transcripts."""
-    labels, tc_names, caps, glued = (collections.Counter() for _ in range(4))
-    for t in texts:
-        m = NAME_THEN_TIMECODE.match(t)
-        if m:
-            tc_names[m.group(1)] += 1
-        clean = _strip_markers(t)
-        for m in TITLE_LABEL.finditer(clean):
-            labels[m.group(1)] += 1
-        for m in CAPS_LABEL.finditer(clean):
-            caps[m.group("name")] += 1
-        for m in GLUED_LABEL.finditer(clean):
-            glued[m.group(1)] += 1
+    labels, timecode_names, caps, glued = (collections.Counter[str]() for _ in range(4))
+    for text in texts:
+        match = NAME_THEN_TIMECODE.match(text)
+        if match:
+            timecode_names[match.group(1)] += 1
+        clean = _strip_markers(text)
+        for match in TITLE_LABEL.finditer(clean):
+            labels[match.group(1)] += 1
+        for match in CAPS_LABEL.finditer(clean):
+            caps[match.group("name")] += 1
+        for match in GLUED_LABEL.finditer(clean):
+            glued[match.group(1)] += 1
 
-    def keep(c):
-        return {x for x, n in c.items() if n >= min_recur and x.split()[0] not in NOT_SPEAKER_LABELS}
+    def recurring(counts: collections.Counter[str]) -> set[str]:
+        return {name for name, n in counts.items() if n >= min_recur and name.split()[0] not in NOT_SPEAKER_LABELS}
 
-    return {"labels": keep(labels), "timecode_names": keep(tc_names), "glued_ok": keep(labels + caps + glued)}
+    return {"labels": recurring(labels), "timecode_names": recurring(timecode_names),
+            "glued_ok": recurring(labels + caps + glued)}
 
 
 def _flag_source_artifacts(text: str, flags: set[str]) -> set[str]:
@@ -183,54 +190,64 @@ def _flag_source_artifacts(text: str, flags: set[str]) -> set[str]:
     return flags | found
 
 
-def normalize(text, speakers=None):
+def _is_droppable_tag(match: re.Match[str]) -> bool:
+    """True for a bracketed or parenthesized tag that is not speech: sound or music tags, empty tags, names."""
+    inner = match.group()[1:-1].strip()
+    if NONSPEECH_TAG.search(inner) or inner in ("", "...", "?", "!!!"):
+        return True
+    return match.group().startswith("[") and bool(BRACKET_NAME.match(inner))     # [Student], [Instructor], [HANK:]
+
+
+def normalize(text: str, speakers: Mapping[str, set[str]] | None = None) -> tuple[str, list[Removal], set[str]]:
     """Return (cleaned_text, removals, flags). Spoken words are never removed; unclear tags are kept and flagged."""
     speakers = {"labels": set(), "timecode_names": set(), "glued_ok": set(), **(speakers or {})}
-    ops, flags = [], set()
+    removals: list[Removal] = []
+    flags: set[str] = set()
 
-    def remove(pattern, rule, s, keep=None):
-        def repl(m):
-            if keep and keep(m):
-                return m.group()
-            ops.append((rule, m.group()))
+    def remove(pattern: re.Pattern[str], rule: str, source: str,
+               keep: Callable[[re.Match[str]], bool] | None = None) -> str:
+        def replace(match: re.Match[str]) -> str:
+            if keep and keep(match):
+                return match.group()
+            removals.append((rule, match.group()))
             return " "
-        return _squash(pattern.sub(repl, s))
+        return _squash(pattern.sub(replace, source))
 
-    tc_name = NAME_THEN_TIMECODE.match(text)
+    name_before_timecode = NAME_THEN_TIMECODE.match(text)
 
-    def unsure(m):
-        ops.append(("uncertain_word_marker", m.group()))
-        return " " + m.group(1).replace("?", " ") + " "
-    t = _squash(UNCERTAIN_WORDS.sub(unsure, text))
-    if t != _squash(text):
+    def replace_uncertain_marker(match: re.Match[str]) -> str:
+        removals.append(("uncertain_word_marker", match.group()))
+        return " " + match.group(1).replace("?", " ") + " "
+    cleaned = _squash(UNCERTAIN_WORDS.sub(replace_uncertain_marker, text))
+    if cleaned != _squash(text):
         flags.add("uncertain_words")
-    t = remove(TIMECODE_TAG, "timecode_tag", t)
-    t = remove(TIMECODE_INLINE, "timecode_inline", t)
-    t = remove(SPEAKER_N, "speaker_number", t)
-    t = remove(CHEVRONS, "chevrons", t)
+    cleaned = remove(TIMECODE_TAG, "timecode_tag", cleaned)
+    cleaned = remove(TIMECODE_INLINE, "timecode_inline", cleaned)
+    cleaned = remove(SPEAKER_N, "speaker_number", cleaned)
+    cleaned = remove(CHEVRONS, "chevrons", cleaned)
 
-    def tag_keep(m):
-        inner = m.group()[1:-1].strip()
-        if NONSPEECH_TAG.search(inner) or inner in ("", "...", "?", "!!!"):
+    def keep_tag(match: re.Match[str]) -> bool:
+        if _is_droppable_tag(match):
             return False
-        if m.group().startswith("[") and BRACKET_NAME.match(inner):
-            return False                               # [Student], [Instructor], [HANK:]
         flags.add("kept_bracket_or_paren")
         return True
-    t = remove(TAG, "nonspeech_or_name_tag", t, keep=tag_keep)
+    cleaned = remove(TAG, "nonspeech_or_name_tag", cleaned, keep=keep_tag)
 
-    def caps_label(m):
-        ops.append(("speaker_label_caps", m.group("name") + ":"))
-        return " " + (m.group("lead") or "")
-    t = _squash(CAPS_LABEL.sub(caps_label, t))
-    t = remove(GLUED_LABEL, "speaker_label_glued", t, keep=lambda m: m.group(1) not in speakers["glued_ok"])
-    t = remove(TITLE_LABEL, "speaker_label_recurring", t, keep=lambda m: m.group(1) not in speakers["labels"])
-    if TITLE_LABEL.search(t):
+    def replace_caps_label(match: re.Match[str]) -> str:
+        removals.append(("speaker_label_caps", match.group("name") + ":"))
+        return " " + (match.group("lead") or "")
+    cleaned = _squash(CAPS_LABEL.sub(replace_caps_label, cleaned))
+    cleaned = remove(GLUED_LABEL, "speaker_label_glued", cleaned,
+                     keep=lambda match: match.group(1) not in speakers["glued_ok"])
+    cleaned = remove(TITLE_LABEL, "speaker_label_recurring", cleaned,
+                     keep=lambda match: match.group(1) not in speakers["labels"])
+    if TITLE_LABEL.search(cleaned):
         flags.add("possible_speaker_label")            # label-shaped but not recurring in this video: kept
-    t = remove(TURN_DASH_START, "turn_dash_start", t)
-    if tc_name and tc_name.group(1) in speakers["timecode_names"] and t.startswith(tc_name.group(1) + " "):
+    cleaned = remove(TURN_DASH_START, "turn_dash_start", cleaned)
+    if (name_before_timecode and name_before_timecode.group(1) in speakers["timecode_names"]
+            and cleaned.startswith(name_before_timecode.group(1) + " ")):
         flags.add("possible_speaker_label")            # 'Dr. Kalu [00:20:58] ...': flagged, never removed
-    return t, ops, _flag_source_artifacts(t, flags)
+    return cleaned, removals, _flag_source_artifacts(cleaned, flags)
 
 
 # --- Tokenization ------------------------------------------------------------------------------------------------
@@ -272,7 +289,7 @@ class Token:
     abbrev: bool     # a trailing abbreviation '.' was absorbed into the word
 
 
-def _is_abbreviation(word, prev, nxt):
+def _is_abbreviation(word: str, prev: str, nxt: str) -> bool:
     low = word.lower()
     if low in ABBREVIATIONS or INITIALISM.fullmatch(low):
         return True
@@ -283,14 +300,14 @@ def _is_abbreviation(word, prev, nxt):
     return False
 
 
-def tokenize(text):
+def tokenize(text: str) -> list[Token]:
     """Words of the cleaned text. Quotes, brackets, dashes and marks stay in the gaps, never in tokens."""
     matches = list(WORD.finditer(text))
     out = []
-    for i, m in enumerate(matches):
-        start, end = m.start(), m.end()
+    for i, match in enumerate(matches):
+        start, end = match.start(), match.end()
         next_start = matches[i + 1].start() if i + 1 < len(matches) else len(text)
-        word, gap = m.group(), text[end:next_start]
+        word, gap = match.group(), text[end:next_start]
         prev = matches[i - 1].group() if i else ""
         nxt = matches[i + 1].group() if i + 1 < len(matches) else ""
         absorbed = gap.startswith(".") and not gap.startswith("..") and _is_abbreviation(word, prev, nxt)
@@ -300,7 +317,7 @@ def tokenize(text):
     return out
 
 
-def model_token(surface):
+def model_token(surface: str) -> str:
     """Model input form of a word: Python str.lower(), as proposed in DATA_CONTRACT.md (not casefold)."""
     return surface.lower()
 
@@ -312,11 +329,18 @@ LOW_COMMA_MIN_WORDS = 300
 TTS_TITLE = re.compile(r"\|\s*Wikipedia audio article\s*$", re.I)
 
 
-def video_context(texts, title=None):
+class VideoContext(TypedDict):
+    """What is known about one video from all of its transcripts."""
+
+    speakers: dict[str, set[str]]
+    flags: set[str]
+
+
+def video_context(texts: Sequence[str], title: str | None = None) -> VideoContext:
     """Speaker inventory and source-quality flags for one video."""
-    words = sum(len(t.split()) for t in texts)
-    commas = sum(t.count(",") for t in texts)
-    flags = set()
+    words = sum(len(text.split()) for text in texts)
+    commas = sum(text.count(",") for text in texts)
+    flags: set[str] = set()
     if words >= LOW_COMMA_MIN_WORDS and 100 * commas / words < LOW_COMMA_PER_100W:
         flags.add("low_comma_video")
     if title and TTS_TITLE.search(title):

@@ -17,51 +17,53 @@ import os
 import sys
 
 from punct_restore.data import extraction
-from punct_restore.data.release import build_release
+from punct_restore.data.release import ReleaseSources, build_release
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import one_line_error
 
 
-def run_extract(a):
-    if a.archive:
-        extraction.extract_archive(a.archive, a.raw_root)
+def run_extract(args: argparse.Namespace) -> None:
+    if args.archive:
+        extraction.extract_archive(args.archive, args.raw_root, log=print)
     else:
-        extraction.extract_ranges(a.raw_root)
-    problems, extra = extraction.verify_extraction(a.raw_root, os.path.join(a.raw_root, "MANIFEST.sha256"))
+        extraction.extract_ranges(args.raw_root, log=print)
+    problems, extra = extraction.verify_extraction(args.raw_root, os.path.join(args.raw_root, "MANIFEST.sha256"))
     if problems or extra:
         sys.exit(f"extraction does not match MANIFEST.sha256: {len(problems)} missing/different, {len(extra)} extra "
                  f"(first: {(problems or extra)[:3]})")
     print("extraction matches MANIFEST.sha256")
 
 
-def run_build(a):
-    manifest = os.path.join(a.raw_root, "MANIFEST.sha256")
-    titles = os.path.join(a.raw_root, "video_metadata_oembed.jsonl")
+def run_build(args: argparse.Namespace) -> None:
+    manifest = os.path.join(args.raw_root, "MANIFEST.sha256")
+    titles = os.path.join(args.raw_root, "video_metadata_oembed.jsonl")
     for path in (manifest, titles):
         if not os.path.exists(path):   # without them the build is not the published release
             sys.exit(f"missing {os.path.basename(path)}: copy it from the release's provenance package")
-    result = build_release(os.path.join(a.raw_root, extraction.OUTPUT_DIR), a.processed_dir, a.splits_dir, a.release_id,
-                           raw_manifest=manifest, titles_path=titles)
+    sources = ReleaseSources(raw_dir=os.path.join(args.raw_root, extraction.OUTPUT_DIR),
+                             processed_dir=args.processed_dir, splits_dir=args.splits_dir,
+                             release_id=args.release_id, raw_manifest=manifest, titles_path=titles)
+    result = build_release(sources, log=print)
     print(json.dumps(result["records"]))
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(prog="recap prepare-data", description=__doc__.splitlines()[0])
-    sub = ap.add_subparsers(dest="command", required=True)
-    ex = sub.add_parser("extract", help="recreate the raw transcripts from the official archive")
-    ex.add_argument("--raw-root", required=True)
-    ex.add_argument("--archive", help="local copy of sponspeech.tar.gz (full-archive fallback)")
-    bd = sub.add_parser("build", help="build a release from the raw transcripts")
-    bd.add_argument("--raw-root", required=True)
-    bd.add_argument("--release-id", required=True)
-    bd.add_argument("--processed-dir", default=os.path.join(ROOT, "data", "processed"))
-    bd.add_argument("--splits-dir", default=os.path.join(ROOT, "data", "splits"))
-    a = ap.parse_args(argv)
+    parser = argparse.ArgumentParser(prog="recap prepare-data", description=__doc__.splitlines()[0])
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    extract_parser = subparsers.add_parser("extract", help="recreate the raw transcripts from the official archive")
+    extract_parser.add_argument("--raw-root", required=True)
+    extract_parser.add_argument("--archive", help="local copy of sponspeech.tar.gz (full-archive fallback)")
+    build_parser = subparsers.add_parser("build", help="build a release from the raw transcripts")
+    build_parser.add_argument("--raw-root", required=True)
+    build_parser.add_argument("--release-id", required=True)
+    build_parser.add_argument("--processed-dir", default=os.path.join(ROOT, "data", "processed"))
+    build_parser.add_argument("--splits-dir", default=os.path.join(ROOT, "data", "splits"))
+    args = parser.parse_args(argv)
     try:
-        if a.command == "extract":
-            run_extract(a)
+        if args.command == "extract":
+            run_extract(args)
         else:
-            run_build(a)
+            run_build(args)
     except (OSError, ValueError, extraction.SourceChanged) as exc:
         print(f"error: {one_line_error(exc)}", file=sys.stderr)
         return 1

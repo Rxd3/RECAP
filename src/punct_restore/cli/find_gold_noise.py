@@ -27,7 +27,7 @@ import os
 import shutil
 import sys
 import tempfile
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import Any, NamedTuple
 
@@ -187,7 +187,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """CLI entry point: 0 on success, 1 with one ``error:`` line on stderr, 2 on usage errors."""
     args = build_parser().parse_args(argv)
     try:

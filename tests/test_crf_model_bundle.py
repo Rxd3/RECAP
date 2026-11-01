@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import joblib
 import pytest
 
+from punct_restore.features.crf_features import FeatureConfig
 from punct_restore.models.crf import CRFModel
+from punct_restore.models.crf_io import MODEL_SCHEMA_VERSION, _build_bundle
 
 RECORDS = [
     {"sample_id": "b1", "tokens": ["hello", "everyone"], "punct_labels": ["O", "PERIOD"]},
@@ -74,3 +77,43 @@ def test_load_model_still_rejects_an_artifact_whose_vocabulary_does_not_match_it
 
     with pytest.raises(ValueError, match="does not match expected"):
         CRFModel.load_model(tmp_path / "tampered.joblib")
+
+
+# --- _to_bundle ---------------------------------------------------------------------------------------------
+
+
+def test_to_bundle_hands_over_the_private_state_the_artifact_keeps(fitted: CRFModel) -> None:
+    state = fitted._to_bundle()
+
+    assert state == {"training_metadata": fitted._training_metadata, "backend_state": fitted._backend}
+    assert state["backend_state"] is fitted._backend
+
+
+def test_to_bundle_copies_the_training_metadata_so_the_model_cannot_be_changed_through_it(fitted: CRFModel) -> None:
+    before = {**fitted._training_metadata}
+
+    fitted._to_bundle()["training_metadata"]["num_sequences"] = -1
+
+    assert fitted._training_metadata == before
+
+
+def test_to_bundle_refuses_a_model_that_was_never_fitted() -> None:
+    with pytest.raises(RuntimeError, match="Cannot save an unfitted CRFModel"):
+        CRFModel(max_iterations=5)._to_bundle()
+
+
+def test_the_bundle_is_built_from_to_bundle_and_the_public_settings_only() -> None:
+    """`_build_bundle` may not reach into the model's private attributes: this stand-in has none."""
+    stand_in = SimpleNamespace(
+        model_name="stand_in", label_mode="A", vocabulary=["O", "COMMA"], algorithm="lbfgs", c1=0.1, c2=0.2,
+        max_iterations=5, all_possible_transitions=True, feature_config=FeatureConfig.basic(),
+        _to_bundle=lambda: {"training_metadata": {"num_sequences": 3}, "backend_state": "backend"},
+    )
+
+    bundle = _build_bundle(stand_in)
+
+    assert (bundle["schema_version"], bundle["training_metadata"], bundle["backend_state"]) == (
+        MODEL_SCHEMA_VERSION, {"num_sequences": 3}, "backend")
+    assert list(bundle) == [
+        "schema_version", "model_family", "model_name", "label_mode", "vocabulary", "hyperparameters",
+        "feature_config", "training_metadata", "environment", "backend_state"]

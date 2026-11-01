@@ -52,8 +52,9 @@ def test_write_lines_creates_the_folder_and_writes_the_lines_with_lf_endings(tmp
 
 
 def test_preflight_returns_what_the_build_needs_and_nothing_else(tmp_path: Path) -> None:
-    result = release._preflight("rel", str(tmp_path / "processed"), str(tmp_path / "splits"),
-                                labeling.LABEL_SETS_PATH, None, None)
+    sources = release.ReleaseSources("raw", str(tmp_path / "processed"), str(tmp_path / "splits"), "rel")
+
+    result = release._preflight(sources)
 
     assert result._fields == ("titles", "label_sets", "out", "split_out")
     assert result.titles is None and result.label_sets["projection"]["approved"]

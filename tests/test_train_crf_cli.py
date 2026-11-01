@@ -15,6 +15,7 @@ Covers:
 
 from __future__ import annotations
 
+import argparse
 import json
 import subprocess
 from pathlib import Path
@@ -378,7 +379,7 @@ class TestCRFTrainCLI:
         ])
         assert ret == 1
         captured = capsys.readouterr()
-        assert "Configuration error" in captured.err or "non-negative" in captured.err
+        assert captured.err.startswith("error: ") and "non-negative" in captured.err
 
     def test_train_non_overwriting_protection(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
         """Verify that existing model artifact and manifest are protected from silent overwrite."""
@@ -411,7 +412,7 @@ class TestCRFTrainCLI:
         ])
         assert ret2 == 1
         captured = capsys.readouterr()
-        assert "Output artifact already exists" in captured.err
+        assert captured.err == "error: model.joblib: output artifact already exists; use --overwrite to replace\n"
 
         # With --overwrite succeeds
         ret3 = train_crf.main([
@@ -513,3 +514,40 @@ class TestTrainProvenance:
 )
 def test_the_recorded_command_never_holds_the_launcher_path(argv: list[str], expected: list[str]) -> None:
     assert train_crf.recorded_command(argv) == expected
+
+
+def _subcommands(parser: argparse.ArgumentParser) -> dict[str, argparse.ArgumentParser]:
+    action = next(a for a in parser._actions if isinstance(a, argparse._SubParsersAction))
+    return dict(action.choices)
+
+
+def test_every_subcommand_names_its_handler() -> None:
+    """A subcommand added without a handler must fail here, not fall through `main` to a silent exit code."""
+    subcommands = _subcommands(train_crf.build_cli_parser())
+    assert sorted(subcommands) == ["inspect", "predict", "train"]
+    assert all(callable(parser.get_default("handler")) for parser in subcommands.values())
+
+
+@pytest.mark.parametrize(
+    ("argv", "handler", "code"),
+    [
+        (["train", "-m", "A", "-i", "in.jsonl", "--ids", "a.ids", "-o", "m.joblib"], "cmd_train", 11),
+        (["predict", "-m", "m.joblib", "-i", "in.jsonl", "-o", "p.jsonl"], "cmd_predict", 12),
+        (["inspect", "-m", "m.joblib"], "cmd_inspect", 13),
+    ],
+)
+def test_main_runs_the_handler_of_the_subcommand_and_returns_its_code(
+        monkeypatch: pytest.MonkeyPatch, argv: list[str], handler: str, code: int) -> None:
+    for name, other in {"cmd_train": 1, "cmd_predict": 2, "cmd_inspect": 3}.items():
+        monkeypatch.setattr(train_crf, name, lambda _args, other=other: other)
+    monkeypatch.setattr(train_crf, handler, lambda _args: code)
+    assert train_crf.main(argv) == code
+
+
+@pytest.mark.parametrize("argv", [[], ["bogus"]], ids=["no-subcommand", "unknown-subcommand"])
+def test_a_missing_or_unknown_subcommand_is_a_usage_error_before_any_handler_runs(
+        argv: list[str], capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as stop:
+        train_crf.main(argv)
+    captured = capsys.readouterr()
+    assert stop.value.code == 2 and captured.out == "" and "subcommand" in captured.err

@@ -16,12 +16,14 @@ import collections
 import hashlib
 import json
 import os
-from collections.abc import Callable
-from typing import NamedTuple
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from typing import Any, NamedTuple
 
 from .. import prediction_io
 from ..paths import REPO_ROOT
 from . import labeling, preprocessing, splits, validation
+from .extraction import Log, discard_log
 from .release_checks import ReleaseReadback, verify_release
 from .release_constants import REJECT, UNRESOLVED_COMMON, UNRESOLVED_TOKEN
 from .release_manifest import (
@@ -45,84 +47,94 @@ from .release_outputs import (
 )
 from .release_stats import StatsInputs, build_stats, pairwise_overlap
 
-__all__ = ["build_release", "code_fingerprint", "load_records", "read_ids"]
+__all__ = ["ReleaseSources", "build_release", "code_fingerprint", "load_records", "read_ids"]
 
 
-def code_fingerprint():
+def code_fingerprint() -> str:
     """SHA-256 over this package's source files, recorded in the manifest."""
     here = os.path.join(REPO_ROOT, "src", "punct_restore", "data")
-    h = hashlib.sha256()
+    digest = hashlib.sha256()
     for name in sorted(os.listdir(here)):
         if name.endswith(".py"):
-            with open(os.path.join(here, name), "rb") as f:
-                h.update(name.encode() + b"\0" + f.read())
-    return h.hexdigest()
+            with open(os.path.join(here, name), "rb") as source:
+                digest.update(name.encode() + b"\0" + source.read())
+    return digest.hexdigest()
 
 
-def _flag_positions(ext_flags: list, case_masked: list) -> collections.defaultdict:
+def _flag_positions(token_flags: Sequence[Sequence[str]],
+                    case_masked: list[int]) -> collections.defaultdict[str, list[int]]:
     """Token positions per flag; masked casing positions are listed under case_mixed_approximation."""
-    positions = collections.defaultdict(list)
-    for i, fl in enumerate(ext_flags):
-        for f in fl:
-            positions[f].append(i)
+    positions: collections.defaultdict[str, list[int]] = collections.defaultdict(list)
+    for position, flags in enumerate(token_flags):
+        for flag in flags:
+            positions[flag].append(position)
     if case_masked:
         positions["case_mixed_approximation"] = case_masked
     return positions
 
 
-def process(utt, context, label_sets):
-    """One transcript -> views, status, reasons, masks and audit information."""
-    cleaned, removals, uflags = preprocessing.normalize(utt.text, context["speakers"])
-    uflags |= context["flags"]
-    toks = preprocessing.tokenize(cleaned)
-    out = {"sample_id": splits.sample_id(preprocessing.SOURCE_ID, utt.source_split, utt.upstream_id),
-           "source_split": utt.source_split, "file": splits.FILE_OF[utt.source_split], "group_id": utt.group_id,
-           "original_text": utt.text, "removals": removals, "views": {}, "tokens": []}
-    if not toks:
-        return {**out, "status": "rejected", "reasons": sorted(uflags | {"no_tokens"}), "validation_errors": []}
-    ext, ext_flags = labeling.punctuation_labels(toks, "extended")
-    native, native_flags = labeling.punctuation_labels(toks, "native")
-    canonical = labeling.project_extended_to_standard(ext, label_sets)
-    case, case_cats, case_masked, case_flags = labeling.casing_labels(toks, cleaned)
-    if not labeling.cross_check_standard(toks, native, cleaned):
-        uflags.add("reconstruction_mismatch")
-    if any(t.text.startswith("PS") and t.text[2:3].isdigit() for t in toks):
-        uflags.add("currency_folded")                  # '£' became 'PS' upstream (information only)
-    if any(t.text.startswith("-") for t in toks):
-        uflags.add("leading_minus")                    # kept as a negative sign (D3); dialogue dashes may look alike
-    tokens = [preprocessing.model_token(t.text) for t in toks]
-    meta = {"upstream_id": f"{utt.source_split}/{utt.upstream_id}", "source_split": utt.source_split,
+def _view_metadata(utt: preprocessing.SourceUtterance, words: Sequence[preprocessing.Token],
+                   cleaned: str) -> dict[str, Any]:
+    """The metadata every view of one utterance shares (without `annotation_view`)."""
+    return {"upstream_id": f"{utt.source_split}/{utt.upstream_id}", "source_split": utt.source_split,
             "group_id": utt.group_id, "original_text": utt.text, "normalized_text": cleaned,
-            "offsets": [[t.start, t.end] for t in toks], "source_revision": preprocessing.SOURCE_REVISION,
+            "offsets": [[word.start, word.end] for word in words], "source_revision": preprocessing.SOURCE_REVISION,
             "policy_version": preprocessing.POLICY_VERSION, "condition": "clean"}
 
-    def view(mode, punct, annotation):
-        return {"schema_version": validation.SCHEMA_VERSION, "sample_id": out["sample_id"],
+
+def process(utt: preprocessing.SourceUtterance, context: preprocessing.VideoContext,
+            label_sets: Mapping[str, Any]) -> dict[str, Any]:
+    """One transcript -> views, status, reasons, masks and audit information."""
+    cleaned, removals, utterance_flags = preprocessing.normalize(utt.text, context["speakers"])
+    utterance_flags |= context["flags"]
+    words = preprocessing.tokenize(cleaned)
+    base = {"sample_id": splits.sample_id(preprocessing.SOURCE_ID, utt.source_split, utt.upstream_id),
+            "source_split": utt.source_split, "file": splits.FILE_OF[utt.source_split], "group_id": utt.group_id,
+            "original_text": utt.text, "removals": removals, "views": {}, "tokens": []}
+    if not words:
+        return {**base, "status": "rejected", "reasons": sorted(utterance_flags | {"no_tokens"}),
+                "validation_errors": []}
+    extended, extended_flags = labeling.punctuation_labels(words, "extended")
+    native, _ = labeling.punctuation_labels(words, "native")
+    canonical = labeling.project_extended_to_standard(extended, label_sets)
+    case, case_categories, case_masked, case_flags = labeling.casing_labels(words, cleaned)
+    if not labeling.cross_check_standard(words, native, cleaned):
+        utterance_flags.add("reconstruction_mismatch")
+    if any(word.text.startswith("PS") and word.text[2:3].isdigit() for word in words):
+        utterance_flags.add("currency_folded")         # '£' became 'PS' upstream (information only)
+    if any(word.text.startswith("-") for word in words):
+        utterance_flags.add("leading_minus")           # kept as a negative sign (D3); dialogue dashes may look alike
+    tokens = [preprocessing.model_token(word.text) for word in words]
+    meta = _view_metadata(utt, words, cleaned)
+
+    def make_view(mode: str, punct: list[str], annotation: str) -> dict[str, Any]:
+        return {"schema_version": validation.SCHEMA_VERSION, "sample_id": base["sample_id"],
                 "source": preprocessing.SOURCE_ID, "split": splits.SPLIT_OF[utt.source_split], "label_mode": mode,
                 "tokens": tokens, "punct_labels": punct, "case_labels": case,
                 "metadata": {**meta, "annotation_view": annotation}}
-    views = {"A": view("A", canonical, "canonical"), "B": view("B", ext, "canonical"),
-             "C": view("C", canonical, "canonical"), "native_A": view("A", native, "native")}
-    errors = [e for v in views.values() for e in validation.validate_record(v, label_sets)]
+    views = {"A": make_view("A", canonical, "canonical"), "B": make_view("B", extended, "canonical"),
+             "C": make_view("C", canonical, "canonical"), "native_A": make_view("A", native, "native")}
+    errors = [error for view in views.values() for error in validation.validate_record(view, label_sets)]
     errors += validation.check_model_input(tokens)
-    reject = sorted((uflags & REJECT) | ({"validation_error"} if errors else set()))
-    positions = _flag_positions(ext_flags, case_masked)
+    reject = sorted((utterance_flags & REJECT) | ({"validation_error"} if errors else set()))
+    positions = _flag_positions(extended_flags, case_masked)
     token_unresolved = UNRESOLVED_TOKEN & set(positions)
-    punct = sorted((uflags & UNRESOLVED_COMMON) | token_unresolved)
-    unresolved = {"A": punct, "B": punct, "C": sorted(set(punct) | case_flags)}
+    punct_unresolved = sorted((utterance_flags & UNRESOLVED_COMMON) | token_unresolved)
+    unresolved = {"A": punct_unresolved, "B": punct_unresolved, "C": sorted(set(punct_unresolved) | case_flags)}
     status = "rejected" if reject else ("flagged" if any(unresolved.values()) else "accepted")
-    info = sorted((uflags - REJECT - UNRESOLVED_COMMON) | ({"case_mixed_approximation"} if case_masked else set())
-                  | ({f for f in positions if f in ("ellipsis", "dash", "cutoff_hyphen", "abbrev_at_utt_end")}))
-    return {**out, "status": status, "reasons": reject or sorted(set().union(*unresolved.values())),
+    info = sorted((utterance_flags - REJECT - UNRESOLVED_COMMON)
+                  | ({"case_mixed_approximation"} if case_masked else set())
+                  | {flag for flag in positions if flag in ("ellipsis", "dash", "cutoff_hyphen", "abbrev_at_utt_end")})
+    return {**base, "status": status, "reasons": reject or sorted(set().union(*unresolved.values())),
             "unresolved": unresolved, "positions": dict(positions), "info": info, "validation_errors": errors,
-            "views": views, "tokens": tokens, "canonical": canonical, "native": native, "ext": ext, "case": case,
-            "case_cats": case_cats, "case_masked": case_masked}
+            "views": views, "tokens": tokens, "canonical": canonical, "native": native, "ext": extended, "case": case,
+            "case_cats": case_categories, "case_masked": case_masked}
 
 
-def load_records(path, label_sets=None):
+def load_records(path: str | os.PathLike[str], label_sets: Mapping[str, Any] | None = None) -> list[dict[str, Any]]:
     """Read one release file for model training/evaluation. Raises on any contract violation; never repairs."""
     label_sets = label_sets or labeling.load_label_sets()
-    ok, errors = validation.validate_file(path, label_sets)
+    _, errors = validation.validate_file(path, label_sets)
     if errors:
         raise ValueError(f"{path}: {len(errors)} contract errors, first: line {errors[0][0]}: {errors[0][1]}")
     with open(path, encoding="utf-8") as f:
@@ -138,80 +150,98 @@ def read_ids(path: str | os.PathLike[str]) -> list[str]:
     return prediction_io.read_ids(path, allow_empty=True)
 
 
-def read_titles(path):
+def read_titles(path: str | os.PathLike[str]) -> dict[str, str]:
     """video ID -> title from the dated metadata snapshot (JSONL: video_id, status, title)."""
     titles = {}
     with open(path, encoding="utf-8") as f:
         for line in f:
-            r = json.loads(line)
-            if r.get("status") == 200:
-                titles[r["video_id"]] = r.get("title") or ""
+            row = json.loads(line)
+            if row.get("status") == 200:
+                titles[row["video_id"]] = row.get("title") or ""
     return titles
 
 
 class Preflight(NamedTuple):
     """What the build needs once its preflight checks passed: the TTS titles, label sets and the two output folders."""
 
-    titles: dict | None
-    label_sets: dict
+    titles: dict[str, str] | None
+    label_sets: dict[str, Any]
     out: str
     split_out: str
 
 
-def _preflight(release_id: str, processed_dir: str, splits_dir: str, label_sets_path: str,
-               raw_manifest: str | None, titles_path: str | None) -> Preflight:
+@dataclass(frozen=True)
+class ReleaseSources:
+    """Where one release build reads from and writes to: the raw transcripts, the output folders and the release ID.
+
+    `raw_manifest` (MANIFEST.sha256 of the raw data) and `titles_path` (the metadata snapshot used for the TTS flags)
+    are optional; a build without them is not the published release.
+    """
+
+    raw_dir: str
+    processed_dir: str
+    splits_dir: str
+    release_id: str
+    label_sets_path: str = labeling.LABEL_SETS_PATH
+    raw_manifest: str | None = None
+    titles_path: str | None = None
+
+
+def _preflight(sources: ReleaseSources) -> Preflight:
     """Checks before anything is read or written; raises if the build must not start."""
-    titles = read_titles(titles_path) if titles_path else None
-    label_sets = labeling.load_label_sets(label_sets_path)
+    titles = read_titles(sources.titles_path) if sources.titles_path else None
+    label_sets = labeling.load_label_sets(sources.label_sets_path)
     if not label_sets["projection"].get("approved"):
         raise ValueError("the B -> A projection in configs/label_sets.yaml is not approved")
-    out = os.path.join(processed_dir, release_id)
-    split_out = os.path.join(splits_dir, release_id)
+    out = os.path.join(sources.processed_dir, sources.release_id)
+    split_out = os.path.join(sources.splits_dir, sources.release_id)
     if os.path.exists(out) or os.path.exists(split_out):
-        raise FileExistsError(f"release already exists: {release_id}; use a new immutable release ID")
-    raw_bad_before = preprocessing.verify_raw_manifest(raw_manifest) if raw_manifest else None
+        raise FileExistsError(f"release already exists: {sources.release_id}; use a new immutable release ID")
+    raw_bad_before = preprocessing.verify_raw_manifest(sources.raw_manifest) if sources.raw_manifest else None
     if raw_bad_before:
         raise ValueError(f"raw manifest mismatch before build: {raw_bad_before[:5]}")
     return Preflight(titles, label_sets, out, split_out)
 
 
-def _load_sources(raw_dir: str, titles: dict | None, log: Callable) -> tuple[dict, dict]:
+def _load_sources(raw_dir: str, titles: Mapping[str, str] | None, log: Log) -> tuple[
+        dict[str, list[preprocessing.SourceUtterance]], dict[str, preprocessing.VideoContext]]:
     """Read every source split; returns (utterances per split, video context per video ID)."""
-    utts = {s: preprocessing.read_source_split(raw_dir, s) for s in preprocessing.SOURCE_SPLITS}
-    log("loaded " + ", ".join(f"{s}={len(u)}" for s, u in utts.items()))
-    texts = collections.defaultdict(list)
-    for s in preprocessing.SOURCE_SPLITS:
-        for u in sorted(utts[s], key=lambda u: u.index):
-            texts[u.group_id].append(u.text)
-    contexts = {v: preprocessing.video_context(t, (titles or {}).get(v)) for v, t in sorted(texts.items())}
-    return utts, contexts
+    utterances = {split: preprocessing.read_source_split(raw_dir, split) for split in preprocessing.SOURCE_SPLITS}
+    log("loaded " + ", ".join(f"{split}={len(found)}" for split, found in utterances.items()))
+    video_texts = collections.defaultdict(list)
+    for split in preprocessing.SOURCE_SPLITS:
+        for utterance in sorted(utterances[split], key=lambda utterance: utterance.index):
+            video_texts[utterance.group_id].append(utterance.text)
+    contexts = {video: preprocessing.video_context(texts, (titles or {}).get(video))
+                for video, texts in sorted(video_texts.items())}
+    return utterances, contexts
 
 
-def _group_kept(kept: list) -> tuple[dict, dict]:
+def _group_kept(kept: Sequence[dict[str, Any]]) -> tuple[dict[str, list[dict[str, Any]]],
+                                                          dict[str, list[dict[str, Any]]]]:
     """Released records grouped by release file and by source split."""
     by_file = collections.defaultdict(list)
     by_source = collections.defaultdict(list)
-    for r in kept:
-        by_file[r["file"]].append(r)
-        by_source[r["source_split"]].append(r)
+    for record in kept:
+        by_file[record["file"]].append(record)
+        by_source[record["source_split"]].append(record)
     return by_file, by_source
 
 
-def _log_checks(checks: dict, log: Callable) -> None:
+def _log_checks(checks: Mapping[str, Any], log: Log) -> None:
     """One summary line of the read-back checks."""
     log("checks: " + json.dumps({k: v for k, v in checks.items() if k not in ("file_errors", "view_mismatches")})
         + f" file_errors={len(checks['file_errors'])} view_mismatches={len(checks['view_mismatches'])}")
 
 
-def build_release(raw_dir, processed_dir, splits_dir, release_id, *, label_sets_path=labeling.LABEL_SETS_PATH,
-                  raw_manifest=None, titles_path=None, log=print):
-    """Build the release; returns the manifest dict. `titles_path` is the metadata snapshot used for TTS flags."""
-    titles, label_sets, out, split_out = _preflight(
-        release_id, processed_dir, splits_dir, label_sets_path, raw_manifest, titles_path)
-    utts, contexts = _load_sources(raw_dir, titles, log)
-    results = [process(u, contexts[u.group_id], label_sets) for s in preprocessing.SOURCE_SPLITS for u in utts[s]]
-    log("processed " + json.dumps(collections.Counter(r["status"] for r in results)))
-    kept = [r for r in results if r["status"] != "rejected"]
+def build_release(sources: ReleaseSources, *, log: Log = discard_log) -> dict[str, Any]:
+    """Build the release; returns the manifest dict. `log` gets one line per step (the default says nothing)."""
+    titles, label_sets, out, split_out = _preflight(sources)
+    utterances, contexts = _load_sources(sources.raw_dir, titles, log)
+    results = [process(utterance, contexts[utterance.group_id], label_sets)
+               for split in preprocessing.SOURCE_SPLITS for utterance in utterances[split]]
+    log("processed " + json.dumps(collections.Counter(result["status"] for result in results)))
+    kept = [result for result in results if result["status"] != "rejected"]
     by_file, by_source = _group_kept(kept)
 
     files = write_views(out, by_file)       # rejected records are never written to a view
@@ -221,19 +251,20 @@ def build_release(raw_dir, processed_dir, splits_dir, release_id, *, label_sets_
     controlled, controlled_report = write_leakage_controlled(split_out, by_source)
     default = {"train": by_file["train"], **controlled}
     write_id_lists(split_out, default)
-    log("leakage-controlled subsets: " + json.dumps({k: v["kept"] for k, v in controlled_report.items()}))
+    kept_per_subset = {name: report["kept"] for name, report in controlled_report.items()}
+    log("leakage-controlled subsets: " + json.dumps(kept_per_subset))
 
     overlap = pairwise_overlap(by_file, controlled)
     stats = build_stats(StatsInputs(results, kept, by_file, default, controlled_report, overlap, label_sets))
-    verified = verify_release(ReleaseReadback(out, files, results, kept, label_sets, raw_manifest))
+    verified = verify_release(ReleaseReadback(out, files, results, kept, label_sets, sources.raw_manifest))
     stats["checks"] = verified.checks
     write_json_reports(out, split_out, stats, controlled_report, overlap)
 
-    copy_license(raw_dir, out)
-    manifest = build_manifest(ManifestInputs(release_id, label_sets_path, raw_manifest, titles is not None,
-                                             code_fingerprint, len(results), len(kept)))
-    manifest["provenance"] = build_provenance(manifest["raw_manifest_sha256"], titles_path, contexts, by_file)
-    write_release_notes(out, release_id, stats, manifest)
+    copy_license(sources.raw_dir, out)
+    manifest = build_manifest(ManifestInputs(sources.release_id, sources.label_sets_path, sources.raw_manifest,
+                                             titles is not None, code_fingerprint, len(results), len(kept)))
+    manifest["provenance"] = build_provenance(manifest["raw_manifest_sha256"], sources.titles_path, contexts, by_file)
+    write_release_notes(out, sources.release_id, stats, manifest)
     manifest = with_file_inventory(manifest, verified.files, out, split_out)
     write_manifest(out, manifest)
     write_checksums((out, split_out))

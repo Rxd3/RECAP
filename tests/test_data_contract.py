@@ -257,8 +257,9 @@ def build(tmp_path, name, titles=None):
     raw = tmp_path / "raw"
     manifest = raw / "MANIFEST.sha256" if raw.exists() else write_fixture(raw)
     out = tmp_path / name
-    release.build_release(str(raw), str(out / "processed"), str(out / "splits"), "fixture", raw_manifest=str(manifest),
-                          titles_path=titles, log=lambda _: None)
+    sources = release.ReleaseSources(str(raw), str(out / "processed"), str(out / "splits"), "fixture",
+                                     raw_manifest=str(manifest), titles_path=titles)
+    release.build_release(sources, log=lambda _: None)
     return out / "processed" / "fixture", out / "splits" / "fixture"
 
 

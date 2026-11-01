@@ -2,7 +2,8 @@
 
 Used by punct_restore.cli.train_crf (`predict`), which keeps the order of the steps, the progress lines on stdout and
 the exit code. A step that fails for a reason the user can fix raises PredictionFailed, whose text is the one-line
-message to show; any other exception is a bug and propagates. Nothing here prints.
+reason to show after ``error: `` (``<file name>: <reason>`` when a file is at fault); any other exception is a bug
+and propagates. Nothing here prints.
 """
 
 from __future__ import annotations
@@ -21,7 +22,13 @@ from punct_restore.prediction_io import (
 
 
 class PredictionFailed(Exception):
-    """A prediction step failed; ``str(error)`` is the one-line message for the user."""
+    """A prediction step failed; ``str(error)`` is the one-line reason for the user, without the ``error: `` prefix."""
+
+
+def _named(exc: BaseException, path: Path) -> str:
+    """The one-line reason of ``exc``, led by the file name of ``path`` unless the text already names it."""
+    text = one_line_error(exc, path)
+    return text if path.name in text else f"{path.name}: {text}"
 
 
 def check_predict_paths(
@@ -35,24 +42,21 @@ def check_predict_paths(
     """Raise PredictionFailed for a missing, unreadable or clashing path; files are named by name only."""
     try:
         if not model_path.is_file():
-            raise PredictionFailed(f"Error: Model artifact not found at {model_path.name}")
+            raise PredictionFailed(f"{model_path.name}: model artifact not found")
         if not input_path.is_file():
-            raise PredictionFailed(f"Error: Input JSONL not found at {input_path.name}")
+            raise PredictionFailed(f"{input_path.name}: input JSONL not found")
         check_new_output_paths(
             {"--output": output_path, "--manifest-out": manifest_path},
             {"--input": input_path, "--model": model_path, "--ids": ids_path},
         )
         if output_path.exists() and not overwrite:
-            raise PredictionFailed(
-                f"Error: Output file already exists at {output_path.name}. Use --overwrite to replace.")
+            raise PredictionFailed(f"{output_path.name}: output file already exists; use --overwrite to replace")
         if manifest_path is not None and manifest_path.exists() and not overwrite:
-            raise PredictionFailed(
-                f"Error: Manifest already exists at {manifest_path.name}. Use --overwrite to replace.")
+            raise PredictionFailed(f"{manifest_path.name}: manifest already exists; use --overwrite to replace")
     except ValueError as e:
-        raise PredictionFailed(f"Error: {e}") from e
+        raise PredictionFailed(str(e)) from e
     except OSError as e:  # e.g. a folder on the way cannot be read
-        shown = Path(e.filename).name if e.filename else "a path"
-        raise PredictionFailed(f"Error: cannot check {shown}: {e.strerror or e}") from e
+        raise PredictionFailed(one_line_error(e)) from e
 
 
 def load_scoring_model(model_path: Path) -> CRFModel:
@@ -60,11 +64,11 @@ def load_scoring_model(model_path: Path) -> CRFModel:
     try:
         model = CRFModel.load_model(model_path)
     except (OSError, ValueError) as e:  # an unreadable, corrupt or incompatible artifact
-        raise PredictionFailed(f"Failed to load model: {one_line_error(e, model_path)}") from e
+        raise PredictionFailed(_named(e, model_path)) from e
     try:
         require_scoring_mode(model.label_mode)  # a CASE helper artifact loads fine but must not be scored here
     except ValueError as e:
-        raise PredictionFailed(f"Error: {e}") from e
+        raise PredictionFailed(f"{model_path.name}: {e}") from e
     return model
 
 
@@ -73,7 +77,7 @@ def read_input_records(input_path: Path, ids_path: Path | None) -> list[dict[str
     try:
         return read_observations(input_path, ids_path)
     except (OSError, ValueError) as e:
-        raise PredictionFailed(f"Error: {one_line_error(e, input_path, ids_path)}") from e
+        raise PredictionFailed(one_line_error(e, input_path, ids_path)) from e
 
 
 def predict_records(model: CRFModel, records: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
@@ -81,7 +85,7 @@ def predict_records(model: CRFModel, records: Sequence[Mapping[str, Any]]) -> li
     try:
         return model.predict(records)
     except ValueError as e:
-        raise PredictionFailed(f"Prediction failed: {one_line_error(e)}") from e
+        raise PredictionFailed(f"prediction failed: {one_line_error(e)}") from e
 
 
 def inference_summary(predictions: Sequence[Mapping[str, Any]], duration: float) -> str:
@@ -111,4 +115,5 @@ def write_model_predictions(
             ordered_labels=model.vocabulary,
         )
     except (OSError, ValueError) as e:
-        raise PredictionFailed(f"Error: Could not write prediction outputs: {e}") from e
+        reason = one_line_error(e, output_path, manifest_path, input_path)
+        raise PredictionFailed(f"could not write prediction outputs: {reason}") from e

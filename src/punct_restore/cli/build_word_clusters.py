@@ -16,7 +16,7 @@ import argparse
 import json
 import sys
 import time
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -106,7 +106,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """CLI entry point: 0 on success, 1 with one ``error:`` line on stderr, 2 on usage errors."""
     reconfigure_stdout()
     args = build_parser().parse_args(argv)

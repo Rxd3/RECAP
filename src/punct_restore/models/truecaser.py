@@ -64,7 +64,7 @@ class UnigramTruecaser:
     def from_rows(cls, rows: object, casing: Sequence[str]) -> UnigramTruecaser:
         """Rebuild from ``to_rows`` output; ValueError for anything else."""
         if not isinstance(rows, list):
-            raise ValueError("truecaser must be a list of [word, counts...] rows")  # noqa: TRY004 - ValueError by contract
+            raise ValueError("truecaser must be a list of [word, counts...] rows")
         counts: dict[str, list[int]] = {}
         for row in rows:
             valid = (

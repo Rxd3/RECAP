@@ -52,6 +52,21 @@ def test_one_line_error_keeps_the_system_reason_for_a_file_that_is_not_a_folder(
     assert prediction_io.one_line_error(exc) == "secret.jsonl: Permission denied"
 
 
+def test_one_line_error_keeps_the_system_reason_when_the_file_cannot_even_be_looked_at(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A file under a folder that may not be entered: asking whether it is a folder fails the same way."""
+    locked = tmp_path / "locked" / "m.joblib"
+
+    def stat(self: Path, *_args: object, **_kwargs: object) -> None:
+        raise PermissionError(errno.EACCES, "Permission denied", str(self))
+
+    monkeypatch.setattr(Path, "stat", stat)
+    exc = PermissionError(errno.EACCES, "Permission denied", str(locked))
+
+    assert prediction_io.os_error_code(exc) == errno.EACCES
+    assert prediction_io.one_line_error(exc) == "m.joblib: Permission denied"
+
+
 def test_one_line_error_never_shows_a_folder_of_a_missing_file(tmp_path: Path) -> None:
     exc = FileNotFoundError(errno.ENOENT, "No such file or directory", str(tmp_path / "gone" / "x.json"))
     assert prediction_io.one_line_error(exc) == "x.json: No such file or directory"

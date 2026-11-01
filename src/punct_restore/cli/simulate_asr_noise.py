@@ -278,7 +278,7 @@ def run(args: argparse.Namespace) -> str:
             f"(WER {summary['achieved_wer']:.4f}), tokens {summary['tokens_before']} -> {summary['tokens_after']}")
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """0 on success, 1 with one ``error:`` line on stderr, 2 on usage errors."""
     reconfigure_stdout()
     args = parse_args(argv)

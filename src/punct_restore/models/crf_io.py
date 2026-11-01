@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 import platform
 import sys
 from pathlib import Path
@@ -21,6 +20,7 @@ MODEL_SCHEMA_VERSION = 1
 
 def _build_bundle(model: CRFModel) -> dict[str, Any]:
     """The artifact dict of a fitted CRFModel: metadata, hyperparameters, features and the backend."""
+    state = model._to_bundle()  # RuntimeError if unfitted
     return {
         "schema_version": MODEL_SCHEMA_VERSION,
         "model_family": "crf",
@@ -35,27 +35,22 @@ def _build_bundle(model: CRFModel) -> dict[str, Any]:
             "all_possible_transitions": model.all_possible_transitions,
         },
         "feature_config": model.feature_config.to_dict(),
-        "training_metadata": copy.deepcopy(model._training_metadata),
+        "training_metadata": state["training_metadata"],
         "environment": {
             "python_version": sys.version,
             "platform": platform.platform(),
             "sklearn_crfsuite": getattr(sklearn_crfsuite, "__version__", "unknown"),
             "joblib": getattr(joblib, "__version__", "unknown"),
         },
-        "backend_state": model._backend,
+        "backend_state": state["backend_state"],
     }
 
 
 def write_model(model: CRFModel, path: str | Path) -> None:
     """Save a fitted CRFModel and its complete compatibility metadata to ``path``; RuntimeError if unfitted."""
-    if not model.is_fitted or model._backend is None:
-        raise RuntimeError("Cannot save an unfitted CRFModel.")
-
+    bundle = _build_bundle(model)  # before any folder is created
     save_path = Path(path)
     save_path.parent.mkdir(parents=True, exist_ok=True)
-
-    bundle = _build_bundle(model)
-
     joblib.dump(bundle, save_path)
 
 

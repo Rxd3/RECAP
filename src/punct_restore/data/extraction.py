@@ -10,6 +10,7 @@ Two methods; both write <raw_root>/sponspeech_text/ and must match the published
 
 The ranges and their checksums were measured and verified in Member 1's source inspection (docs/DATASET_PLAN.md).
 """
+import functools
 import hashlib
 import io
 import os
@@ -18,6 +19,7 @@ import tarfile
 import urllib.error
 import urllib.request
 import zlib
+from collections.abc import Callable, Iterator, Mapping
 from pathlib import Path
 
 ARCHIVE_URL = "https://storage.googleapis.com/sponspeech/sponspeech.tar.gz"
@@ -41,11 +43,18 @@ WINDOW = 32768
 OUTPUT_DIR = "sponspeech_text"
 
 
+Log = Callable[[str], None]
+
+
+def discard_log(message: str) -> None:
+    """The default `log` of the library functions: say nothing (the command line passes `print`)."""
+
+
 class SourceChanged(RuntimeError):
     """The remote archive or a downloaded range no longer matches the pinned values."""
 
 
-def _http(url, headers=None, method="GET"):
+def _http(url: str, headers: Mapping[str, str] | None = None, method: str = "GET") -> tuple[dict[str, str], bytes]:
     """Return (headers, body). Falls back to the curl command if Python cannot verify TLS on this machine."""
     req = urllib.request.Request(url, headers=headers or {}, method=method)
     try:
@@ -62,7 +71,7 @@ def _http(url, headers=None, method="GET"):
     return {k.strip().lower(): v.strip() for k, _, v in (line.partition(":") for line in lines)}, body
 
 
-def check_remote(url=ARCHIVE_URL):
+def check_remote(url: str = ARCHIVE_URL) -> None:
     """Stop unless the remote object has the pinned size and generation."""
     headers, _ = _http(url, method="HEAD")
     size, gen = headers.get("content-length"), headers.get("x-goog-generation")
@@ -72,7 +81,7 @@ def check_remote(url=ARCHIVE_URL):
         )
 
 
-def fetch_range(start, length, sha256, url=ARCHIVE_URL):
+def fetch_range(start: int, length: int, sha256: str, url: str = ARCHIVE_URL) -> bytes:
     """Download one byte range and verify it against its pinned SHA-256."""
     _, body = _http(url, headers={"Range": f"bytes={start}-{start + length - 1}"})
     if hashlib.sha256(body).hexdigest() != sha256:
@@ -80,11 +89,11 @@ def fetch_range(start, length, sha256, url=ARCHIVE_URL):
     return body
 
 
-def _shift(buf, bit):
+def _shift(buf: bytes, bit: int) -> bytes:
     return (int.from_bytes(buf, "little") >> bit).to_bytes(len(buf), "little")
 
 
-def decode_from(buf, byte_offset, bit):
+def decode_from(buf: bytes, byte_offset: int, bit: int) -> bytes:
     """Raw-deflate decode from a block start inside `buf`, with an all-zero preset window."""
     data = _shift(buf[byte_offset:], bit)
     d = zlib.decompressobj(wbits=-15, zdict=b"\0" * WINDOW)
@@ -97,7 +106,7 @@ def decode_from(buf, byte_offset, bit):
     return bytes(out)
 
 
-def _valid_header(h):
+def _valid_header(h: bytes) -> bool:
     if len(h) < 512 or h[257:262] != b"ustar":
         return False
     try:
@@ -107,7 +116,7 @@ def _valid_header(h):
     return stored == sum(h[:148]) + 32 * 8 + sum(h[156:512])
 
 
-def members_from_decoded(out):
+def members_from_decoded(out: bytes) -> Iterator[tuple[str, bytes]]:
     """(name, data) of complete regular members, walking checksum-valid tar headers after the first 32 KiB."""
     h = WINDOW
     while h + 512 <= len(out) and not _valid_header(out[h:h + 512]):
@@ -126,65 +135,66 @@ def members_from_decoded(out):
         h += 512 + ((size + 511) // 512) * 512
 
 
-def _keep(name):
+def _keep(name: str) -> bool:
     """Non-audio members below sponspeech/: transcripts, utt2spk, README.txt, .build."""
     return name.startswith("sponspeech/") and not name.endswith(".wav") and not name.endswith("/")
 
 
-def _write(raw_root, name, data):
+def _write(raw_root: str | os.PathLike[str], name: str, data: bytes) -> None:
     path = os.path.join(raw_root, OUTPUT_DIR, name[len("sponspeech/"):])
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "wb") as f:
         f.write(data)
 
 
-def extract_ranges(raw_root, url=ARCHIVE_URL, fetch=None, log=print):
+def extract_ranges(raw_root: str | os.PathLike[str], url: str = ARCHIVE_URL,
+                   fetch: Callable[[int, int, str], bytes] | None = None, log: Log = discard_log) -> int:
     """Recreate the transcripts from pinned byte ranges. Returns the number of files written."""
     if fetch is None:                                  # real download: verify the remote object first
         check_remote(url)
-
-        def fetch(start, length, sha):
-            return fetch_range(start, length, sha, url)
-
+        fetch = functools.partial(fetch_range, url=url)
     written = set()
     head = fetch(HEAD_RANGE["start"], HEAD_RANGE["length"], HEAD_RANGE["sha256"])
     with tarfile.open(fileobj=io.BytesIO(head), mode="r|gz") as tf:
         try:
-            for m in tf:
-                if m.isfile() and m.name == "sponspeech/train/utt2spk":
-                    _write(raw_root, m.name, tf.extractfile(m).read())
-                    written.add(m.name)
+            for member in tf:
+                if member.isfile() and member.name == "sponspeech/train/utt2spk":
+                    _write(raw_root, member.name, tf.extractfile(member).read())
+                    written.add(member.name)
                     break
         except (tarfile.ReadError, EOFError, zlib.error):
             pass  # the head range stops inside a gzip block; verify_extraction reports utt2spk if it was not reached
-    for r in TEXT_RANGES:
-        buf = fetch(r["start"], r["length"], r["sha256"])
-        n = 0
-        for name, data in members_from_decoded(decode_from(buf, r["deflate_byte"] - r["start"], r["bit"])):
+    for text_range in TEXT_RANGES:
+        buf = fetch(text_range["start"], text_range["length"], text_range["sha256"])
+        offset = text_range["deflate_byte"] - text_range["start"]
+        count = 0
+        for name, data in members_from_decoded(decode_from(buf, offset, text_range["bit"])):
             if _keep(name):
                 _write(raw_root, name, data)
                 written.add(name)
-                n += 1
-        log(f"range {r['name']}: {n} files")
+                count += 1
+        log(f"range {text_range['name']}: {count} files")
     return len(written)
 
 
-def extract_archive(archive_path, raw_root, log=print):
+def extract_archive(archive_path: str | os.PathLike[str], raw_root: str | os.PathLike[str],
+                    log: Log = discard_log) -> int:
     """Fallback: stream a fully downloaded sponspeech.tar.gz and keep only the non-audio members."""
     size = os.path.getsize(archive_path)
     if size != ARCHIVE_BYTES:
         raise SourceChanged(f"{Path(archive_path).name}: has {size} bytes; expected {ARCHIVE_BYTES}")
-    n = 0
+    count = 0
     with tarfile.open(archive_path, mode="r|gz") as tf:
-        for m in tf:
-            if m.isfile() and _keep(m.name):
-                _write(raw_root, m.name, tf.extractfile(m).read())
-                n += 1
-    log(f"archive: {n} files")
-    return n
+        for member in tf:
+            if member.isfile() and _keep(member.name):
+                _write(raw_root, member.name, tf.extractfile(member).read())
+                count += 1
+    log(f"archive: {count} files")
+    return count
 
 
-def verify_extraction(raw_root, manifest_path):
+def verify_extraction(raw_root: str | os.PathLike[str],
+                      manifest_path: str | os.PathLike[str]) -> tuple[list[str], list[str]]:
     """Compare <raw_root>/sponspeech_text with the raw manifest: (missing or different paths, extra paths)."""
     from .preprocessing import verify_raw_manifest
     base = os.path.dirname(os.path.abspath(manifest_path))

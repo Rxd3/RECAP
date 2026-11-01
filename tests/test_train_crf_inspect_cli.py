@@ -51,4 +51,4 @@ class TestCRFInspectCLI:
         ret = train_crf.main(["inspect", "-m", str(tmp_path / "deep" / "ghost.joblib")])
         assert ret == 1
         captured = capsys.readouterr()
-        assert captured.err == "Error: Artifact not found at ghost.joblib\n"
+        assert captured.err == "error: ghost.joblib: artifact not found\n"

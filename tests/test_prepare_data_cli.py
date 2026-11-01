@@ -4,16 +4,22 @@ from __future__ import annotations
 
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
 from punct_restore.cli import prepare_data
+from punct_restore.data.release import ReleaseSources
 
 
 def _fake_extraction(monkeypatch: pytest.MonkeyPatch, result: tuple[list[str], list[str]]) -> list[str]:
     calls: list[str] = []
-    monkeypatch.setattr(prepare_data.extraction, "extract_ranges", calls.append)
+
+    def extract_ranges(raw_root: str, log: Callable[[str], None]) -> None:
+        calls.append(raw_root)
+
+    monkeypatch.setattr(prepare_data.extraction, "extract_ranges", extract_ranges)
     monkeypatch.setattr(prepare_data.extraction, "verify_extraction", lambda root, manifest: result)
     return calls
 
@@ -60,7 +66,7 @@ def test_an_archive_that_is_a_folder_is_one_error_line_naming_the_folder_only(
 
 def test_a_changed_source_is_one_error_line(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
-    def changed(_root: str) -> None:
+    def changed(_root: str, log: Callable[[str], None]) -> None:
         raise prepare_data.extraction.SourceChanged("archive changed: size 1, generation 2")
 
     monkeypatch.setattr(prepare_data.extraction, "extract_ranges", changed)
@@ -69,7 +75,7 @@ def test_a_changed_source_is_one_error_line(
 
 
 def test_a_bug_in_extraction_is_not_reported_as_bad_input(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    def bug(_root: str) -> None:
+    def bug(_root: str, log: Callable[[str], None]) -> None:
         raise KeyError("oops")
 
     monkeypatch.setattr(prepare_data.extraction, "extract_ranges", bug)
@@ -86,3 +92,54 @@ def test_build_without_the_manifest_exits_1_with_one_line_naming_the_file_only(t
     assert done.stdout == "" and len(done.stderr.splitlines()) == 1
     assert done.stderr.startswith("missing MANIFEST.sha256") and str(tmp_path) not in done.stderr
     assert "Traceback" not in done.stderr
+
+
+def test_extract_ranges_progress_lines_are_printed_before_the_verdict(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    _fake_extraction(monkeypatch, ([], []))
+
+    def extract_ranges(raw_root: str, log: Callable[[str], None]) -> None:
+        log("range train: 2 files")
+
+    monkeypatch.setattr(prepare_data.extraction, "extract_ranges", extract_ranges)
+    assert prepare_data.main(["extract", "--raw-root", str(tmp_path)]) == 0
+    assert capsys.readouterr().out == "range train: 2 files\nextraction matches MANIFEST.sha256\n"
+
+
+def test_archive_extraction_progress_line_is_printed_before_the_verdict(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    _fake_extraction(monkeypatch, ([], []))
+    seen: list[tuple[str, str]] = []
+
+    def extract_archive(archive: str, raw_root: str, log: Callable[[str], None]) -> int:
+        seen.append((archive, raw_root))
+        log("archive: 3 files")
+        return 3
+
+    monkeypatch.setattr(prepare_data.extraction, "extract_archive", extract_archive)
+    argv = ["extract", "--raw-root", str(tmp_path), "--archive", "sponspeech.tar.gz"]
+    assert prepare_data.main(argv) == 0
+    assert seen == [("sponspeech.tar.gz", str(tmp_path))]
+    assert capsys.readouterr().out == "archive: 3 files\nextraction matches MANIFEST.sha256\n"
+
+
+def test_build_hands_one_release_sources_and_its_progress_lines_to_the_user(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    (tmp_path / "MANIFEST.sha256").write_text("", encoding="utf-8")
+    (tmp_path / "video_metadata_oembed.jsonl").write_text("", encoding="utf-8")
+    received: list[ReleaseSources] = []
+
+    def build_release(sources: ReleaseSources, *, log: Callable[[str], None]) -> dict:
+        received.append(sources)
+        log("loaded train=4")
+        return {"records": {"source": 9, "released_per_view": 8, "rejected": 1}}
+
+    monkeypatch.setattr(prepare_data, "build_release", build_release)
+    argv = ["build", "--raw-root", str(tmp_path), "--release-id", "r1", "--processed-dir", str(tmp_path / "p"),
+            "--splits-dir", str(tmp_path / "s")]
+    assert prepare_data.main(argv) == 0
+    assert received == [ReleaseSources(
+        raw_dir=str(tmp_path / "sponspeech_text"), processed_dir=str(tmp_path / "p"), splits_dir=str(tmp_path / "s"),
+        release_id="r1", raw_manifest=str(tmp_path / "MANIFEST.sha256"),
+        titles_path=str(tmp_path / "video_metadata_oembed.jsonl"))]
+    assert capsys.readouterr().out == 'loaded train=4\n{"source": 9, "released_per_view": 8, "rejected": 1}\n'

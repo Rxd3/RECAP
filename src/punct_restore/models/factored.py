@@ -30,7 +30,7 @@ def _labels_by_id(
             )
         labels = record.get("predicted_labels")
         if not isinstance(labels, list):
-            raise ValueError(f"{kind} sample_id {sample_id!r}: predicted_labels must be a list")  # noqa: TRY004 - bad prediction data is a ValueError
+            raise ValueError(f"{kind} sample_id {sample_id!r}: predicted_labels must be a list")
         unknown = [label for label in labels if label not in vocabulary]
         if unknown:
             raise ValueError(f"{kind} sample_id {sample_id!r}: unknown mode {mode} label {unknown[0]!r}")

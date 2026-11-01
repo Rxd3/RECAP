@@ -104,7 +104,7 @@ def test_crf_predict_refuses_output_equal_to_manifest(
     same = tmp_path / "x.json"
     assert train_crf.main(_crf_argv(env, same, same)) == 1
     line = _one_error_line(capsys.readouterr().err)
-    assert line.startswith("Error: ") and "--output" in line and "--manifest-out" in line
+    assert line.startswith("error: ") and "--output" in line and "--manifest-out" in line
     assert not same.exists()
 
 
@@ -119,7 +119,7 @@ def test_crf_predict_never_overwrites_its_inputs_even_with_overwrite(
     man = target if slot == "manifest" else tmp_path / "p.man.json"
     assert train_crf.main([*_crf_argv(env, out, man), "--overwrite"]) == 1
     assert target.read_bytes() == before
-    assert _one_error_line(capsys.readouterr().err).startswith("Error: ")
+    assert _one_error_line(capsys.readouterr().err).startswith("error: ")
     assert not [p for p in (tmp_path / "p.jsonl", tmp_path / "p.man.json") if p.exists()]
 
 
@@ -141,7 +141,7 @@ def test_crf_train_never_lets_one_output_overwrite_another_or_an_input(
             "--overwrite"]
     assert train_crf.main(argv) == 1
     line = _one_error_line(capsys.readouterr().err)
-    assert line.startswith("Error: ") and "same file" in line
+    assert line.startswith("error: ") and "same file" in line
     assert (target.read_bytes() if target.exists() else None) == before
 
 
@@ -260,7 +260,7 @@ def test_crf_refuses_an_output_that_is_a_folder_even_with_overwrite(
     argv = _train_argv(tmp_path, out, man) if command == "train" else _crf_argv(env, out, man)
     assert train_crf.main([*argv, "--overwrite"]) == 1
     line = _one_error_line(capsys.readouterr().err)
-    assert line.startswith("Error: ") and "taken is a folder, not a file" in line
+    assert line.startswith("error: ") and "taken is a folder, not a file" in line
     assert folder.is_dir() and not list(folder.iterdir())
     assert not other.exists() and not other.with_suffix(".man.json").exists()
 
@@ -333,7 +333,7 @@ def test_crf_predict_prints_success_lines_only_after_both_files_are_written(
     assert train_crf.main(_crf_argv(env, out, man)) == 1
     captured = capsys.readouterr()
     assert "Predictions exported" not in captured.out and "Manifest written" not in captured.out
-    assert _one_error_line(captured.err).startswith("Error: Could not write prediction outputs")
+    assert _one_error_line(captured.err) == "error: could not write prediction outputs: disk full"
     assert not out.exists() and not man.exists()
 
 
@@ -431,7 +431,7 @@ def test_crf_predict_reports_an_unencodable_sample_id_as_one_line_and_leaves_no_
             "--output", str(out), "--manifest-out", str(man)]
     assert train_crf.main(argv) == 1
     captured = capsys.readouterr()
-    assert _one_error_line(captured.err).startswith("Error: Could not write prediction outputs: ")
+    assert _one_error_line(captured.err).startswith("error: could not write prediction outputs: ")
     assert "Predictions exported" not in captured.out
     assert not out.exists() and not man.exists()
 
@@ -639,7 +639,7 @@ def test_crf_train_output_without_a_file_name_is_one_error_line(
     assert "--manifest-out" not in argv
     assert train_crf.main(argv) == 1
     line = _one_error_line(capsys.readouterr().err)
-    assert line.startswith("Error: ") and "--output" in line
+    assert line.startswith("error: ") and "--output" in line
 
 
 def _lock(monkeypatch: pytest.MonkeyPatch, locked: Path) -> None:
@@ -688,7 +688,7 @@ def test_crf_predict_reports_an_unreadable_model_folder_in_one_line(
     argv[argv.index("--model") + 1] = str(locked / "m.joblib")
     assert train_crf.main(argv) == 1
     line = _one_error_line(capsys.readouterr().err)
-    assert line.startswith("Error: cannot check m.joblib") and "not found" not in line
+    assert line == "error: m.joblib: Permission denied"
 
 
 @pytest.mark.parametrize("flag", ["--model", "--input"])
