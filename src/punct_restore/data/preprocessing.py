@@ -173,6 +173,16 @@ def build_speaker_inventory(texts, min_recur=SPEAKER_MIN_RECUR):
     return {"labels": keep(labels), "timecode_names": keep(tc_names), "glued_ok": keep(labels + caps + glued)}
 
 
+def _flag_source_artifacts(text: str, flags: set[str]) -> None:
+    """Add the flags for asterisk text, folded inverted marks and a letter replaced by '?' (text is kept)."""
+    if ASTERISK_TEXT.search(text):
+        flags.add("asterisk_text")
+    if INVERTED_FOLD.search(text):
+        flags.add("inverted_mark_folded")
+    if QUESTION_IN_WORD.search(text):
+        flags.add("question_inside_word")
+
+
 def normalize(text, speakers=None):
     """Return (cleaned_text, removals, flags). Spoken words are never removed; unclear tags are kept and flagged."""
     speakers = {"labels": set(), "timecode_names": set(), "glued_ok": set(), **(speakers or {})}
@@ -220,12 +230,7 @@ def normalize(text, speakers=None):
     t = remove(TURN_DASH_START, "turn_dash_start", t)
     if tc_name and tc_name.group(1) in speakers["timecode_names"] and t.startswith(tc_name.group(1) + " "):
         flags.add("possible_speaker_label")            # 'Dr. Kalu [00:20:58] ...': flagged, never removed
-    if ASTERISK_TEXT.search(t):
-        flags.add("asterisk_text")
-    if INVERTED_FOLD.search(t):
-        flags.add("inverted_mark_folded")
-    if QUESTION_IN_WORD.search(t):
-        flags.add("question_inside_word")
+    _flag_source_artifacts(t, flags)
     return t, ops, flags
 
 
