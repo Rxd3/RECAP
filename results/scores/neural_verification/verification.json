@@ -1,0 +1,801 @@
+{
+  "date": "2026-11-01",
+  "repository_ref": "72ebfd1",
+  "selection_ref": "64fa17e8c92289d14b7f6a07fc1f1b703365c6c9",
+  "scope": "Independent arithmetic and input-identity checks; official re-scoring where prediction files are available.",
+  "archive": {
+    "drive_file_id": "1yfmI8jkr4MosqnU1XUpOKhar7h4i3SSJ",
+    "name": "RECAP-completed-validation-results.zip",
+    "bytes": 588758,
+    "sha256": "ef89cdd777c22c2dfab6368f4406d6dc5f289087aca3c4f675c8b5ddda252cbe",
+    "entries": 8,
+    "crc": "pass",
+    "entry_sha256": "pass",
+    "contains_held_out_predictions": false
+  },
+  "scores": [
+    {
+      "path": "results/scores/neural/bert_A_test.json",
+      "sha256": "26cceee9153f182e4ea2e1ff7a563f5705da3897a827cba0a0f078c0722d56bc",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.762546
+      },
+      "sequences": 12321,
+      "tokens": 407750,
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/neural/bert_A_test_amb.json",
+      "sha256": "d200b3af26bbbebb6f4c55dfd1c18c2b456fe18865a874335695ff74086208d4",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.754554
+      },
+      "sequences": 12734,
+      "tokens": 484304,
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/neural/bert_A_validation.json",
+      "sha256": "d96a2bcf60d2fd3461e6f0a13b827ca69f9fc1a2a1dfaaf83976c8beea4c1ef5",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.767223
+      },
+      "sequences": 20040,
+      "tokens": 618771,
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/neural/bert_B_test.json",
+      "sha256": "d77e7738a80a2d083c6c843c117b6f9dc55268b711657e6a1d5b25b1f7a8934c",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.364289
+      },
+      "sequences": 12321,
+      "tokens": 407750,
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/neural/bert_B_test_amb.json",
+      "sha256": "00431e68b0917f7756ba0a5c876e5d27a23ac1a17119c3cc20405f31fa3676c3",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.369019
+      },
+      "sequences": 12734,
+      "tokens": 484304,
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/neural/bert_B_validation.json",
+      "sha256": "bbff21d4d89c1346906025c91fefd8e1ccf5485cbeaec5a6af2ee6430718f7e4",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.423853
+      },
+      "sequences": 20040,
+      "tokens": 618771,
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/neural/t5_A_test.json",
+      "sha256": "844a3c45a6c2a390206e9626f5ddc38b713c0994835aab46a7d306191aff6f82",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.767619
+      },
+      "sequences": 12321,
+      "tokens": 407750,
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/neural/t5_A_test_amb.json",
+      "sha256": "d13d5c7d2f0e4b51dbd5fb2ad7a33eb5d6ceaf421e73e8403b3da21dbbb255e2",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.754523
+      },
+      "sequences": 12734,
+      "tokens": 484304,
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/neural/t5_A_validation.json",
+      "sha256": "c9a944313346d681eb0edab7c0cbb453a3710e6e0e289d17189ef2715bf4e240",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.771668
+      },
+      "sequences": 20040,
+      "tokens": 618771,
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/neural/t5_B_test.json",
+      "sha256": "2012b51c6e98cac3518821587e2577bf791dfc68581943af8b81dd395725958b",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.367901
+      },
+      "sequences": 12321,
+      "tokens": 407750,
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/neural/t5_B_test_amb.json",
+      "sha256": "67a057dfb0bc5e2fbbe2682f450bda7809b77229e15dd9b0eb744d816fb2fb87",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.363077
+      },
+      "sequences": 12734,
+      "tokens": 484304,
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/hmm/hmm_A_test.json",
+      "sha256": "8b5d8501331ed294ff715f227ceb901f94057f99ac4ebded255f25d30c382f6a",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.351233
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/crf_test/m3_basic_A_test.json",
+      "sha256": "9714e001c4841a67894025abf444cb149bb6b9b24256cb0b632ce80319de06f4",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.436548
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/crf_test/m3_improved_A_test.json",
+      "sha256": "886091a281f7e617a7d64537037253fbe684fe6d92dae00bf64f4fd07cbba77a",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.499241
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/threshold_prior/tg_improved_A_test.json",
+      "sha256": "d5f08ea6f1039da41178118e19b04a66113045d9b53a8e539edf42d737bc568d",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.513425
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/hidden_event_lm/hel_A_test_score.json",
+      "sha256": "09c878729600a79522e35ee5b0ef4c37ae3526ced8eb15cd912b51a2af5a2d97",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.483801
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/hmm/hmm_A_test_amb.json",
+      "sha256": "83d4431a5efa7d24a136ac7b77da927b68b99941574460e3059232429255427b",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.314973
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/crf_test/m3_basic_A_test_amb.json",
+      "sha256": "357eaea202213e715b3113a965958f1120c18a0685dcf658050fce2960af9569",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.413493
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/crf_test/m3_improved_A_test_amb.json",
+      "sha256": "616a52718936f9d7619ce0fe9615ea393a06605574787aec124c05a50adf4d74",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.479636
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/threshold_prior/tg_improved_A_test_amb.json",
+      "sha256": "7676176b1bc98b70a4a41618d0d45b4f2e5fce4e49ef738fe7ef1a5e99804670",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.500412
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/hidden_event_lm/hel_A_test_amb_score.json",
+      "sha256": "3383e70c485b314b517035b21ee29855777b83edc85c20422b96fc6b6e8e5205",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.469334
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/hmm/hmm_B_test.json",
+      "sha256": "cc9e9a5443453c12f099bc40b21db2068ed93b1c529d49915a69ac060914ab06",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.16794
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/crf_test/m3_basic_B_test.json",
+      "sha256": "1ccd54b99ab5d3527ff96545996203f9d0e12393e5ad9715b531daade07b6054",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.202497
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/crf_test/m3_improved_B_test.json",
+      "sha256": "bc3ce12bc7c5ff3b8839b390120c4896d132a75eb2349a32bcf4b1877e3ed21d",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.2282
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/threshold_prior/tg_improved_B_test.json",
+      "sha256": "38e5b9871a6b743ec41e7ae7b340194729755b21160f3fcd6d84585e0e3162a2",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.242517
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/hidden_event_lm/hel_B_test_score.json",
+      "sha256": "900e7ef6e3d2957d2b6b67d7f779845415ffbf60d2a5224a8ecfc128a2b5e626",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.225072
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/hmm/hmm_B_test_amb.json",
+      "sha256": "fb6553a93a8aa873c8697589e6ef52e17fa42269fcd63744d89a9169d1b2e13c",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.15322
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/crf_test/m3_basic_B_test_amb.json",
+      "sha256": "9d4e33e432cadb6b576814ea2222b5abcaefe3f605f6064b16e7001b82c95647",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.194396
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/crf_test/m3_improved_B_test_amb.json",
+      "sha256": "36a8101172557a87f5e0a821ddeed68549205c6508d74b7203574a3acfae8e21",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.225881
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/threshold_prior/tg_improved_B_test_amb.json",
+      "sha256": "fca518743c4d0e603d8491e51fa227dbce07f62c055a436f0d326022d14692fe",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.241429
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/hidden_event_lm/hel_B_test_amb_score.json",
+      "sha256": "629148962c2c0c50ac1f86d42499832dfc14f244cd4b2af7f6b9cd4d8c780189",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.222079
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/hmm/hmm_C_test.json",
+      "sha256": "a5964ea3b9f267171f44de1d3294cec8fd8bab4ebed68394e2ebd68b81cd7648",
+      "primary": {
+        "block": "joint/unmasked",
+        "metric": "macro_f1",
+        "value": 0.374138
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/crf_test/m3_basic_C_test.json",
+      "sha256": "2d310fa032d4891dcc311551ae0ff8ac802ff8809935c9475a7cdc964a558b7f",
+      "primary": {
+        "block": "joint/unmasked",
+        "metric": "macro_f1",
+        "value": 0.438472
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/crf_test/m3_improved_C_test.json",
+      "sha256": "8ed83c7c7f9d850ce899e0cc19bfa684905ddf559b44a7a2974cfa17d964e4c2",
+      "primary": {
+        "block": "joint/unmasked",
+        "metric": "macro_f1",
+        "value": 0.470208
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/threshold_prior/tg_improved_C_test.json",
+      "sha256": "101ceb47a8e03d846d3faaede83b787dc1089f32e14185081867014099d31398",
+      "primary": {
+        "block": "joint/unmasked",
+        "metric": "macro_f1",
+        "value": 0.497653
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/hidden_event_lm/hel_C_test_score.json",
+      "sha256": "b846734ea5361b23fa2dea9cf305c6ef91af227b943d442d1cb1625e730f018b",
+      "primary": {
+        "block": "joint/unmasked",
+        "metric": "macro_f1",
+        "value": 0.411844
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/hmm/hmm_C_test_amb.json",
+      "sha256": "c4866d08ac69b74d5ba859ea6f3f3c8b9f039aac364924000ba97c95e03f935c",
+      "primary": {
+        "block": "joint/unmasked",
+        "metric": "macro_f1",
+        "value": 0.36339
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/crf_test/m3_basic_C_test_amb.json",
+      "sha256": "c680ca32f670afd47b75bccce804b8f6e090e72190eaa887504a4e5b6755092b",
+      "primary": {
+        "block": "joint/unmasked",
+        "metric": "macro_f1",
+        "value": 0.435738
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/crf_test/m3_improved_C_test_amb.json",
+      "sha256": "8a35f195a51ff4db13c907d250ce7dd169066af85a0e532865008ba480c63df7",
+      "primary": {
+        "block": "joint/unmasked",
+        "metric": "macro_f1",
+        "value": 0.471571
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/threshold_prior/tg_improved_C_test_amb.json",
+      "sha256": "1e9cecaa62c36d5aacd3621c1c3864726a10b98341c174f26fd6cda1154d0dab",
+      "primary": {
+        "block": "joint/unmasked",
+        "metric": "macro_f1",
+        "value": 0.483081
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    },
+    {
+      "path": "results/scores/hidden_event_lm/hel_C_test_amb_score.json",
+      "sha256": "f6dcb1d387fd7272b1f7cf571a1f17e16f09225130b97e800ce4d391e5d2918c",
+      "primary": {
+        "block": "joint/unmasked",
+        "metric": "macro_f1",
+        "value": 0.41263
+      },
+      "confusion_metrics": "pass",
+      "gold_ids_hashes": "pass",
+      "gold_support_and_groups": "pass"
+    }
+  ],
+  "comparisons": [
+    {
+      "path": "results/scores/neural/bert_A_test_amb_vs_crf_improved.json",
+      "sha256": "5f951bd9d10ca236caf239b12973dfe9215fe86529ecab5aa3721ed149864255",
+      "difference_arithmetic": "pass",
+      "prediction_identities": "pass",
+      "bootstrap_configuration": "pass"
+    },
+    {
+      "path": "results/scores/neural/bert_A_test_amb_vs_hmm.json",
+      "sha256": "f8858343dedc397277c64c9434f844c2ed64d7e7e0af9b3265e46fd77ab2e2e0",
+      "difference_arithmetic": "pass",
+      "prediction_identities": "pass",
+      "bootstrap_configuration": "pass"
+    },
+    {
+      "path": "results/scores/neural/bert_A_test_amb_vs_tau_gamma.json",
+      "sha256": "82c5b9c5d46634d7228599fcacd8689a0a73bcca4f11986640c86af4a55120f5",
+      "difference_arithmetic": "pass",
+      "prediction_identities": "pass",
+      "bootstrap_configuration": "pass"
+    },
+    {
+      "path": "results/scores/neural/bert_A_test_vs_crf_improved.json",
+      "sha256": "457645081efecfca8fb1b5ce3d800a73b694d411a989892dfe285316c8de42dd",
+      "difference_arithmetic": "pass",
+      "prediction_identities": "pass",
+      "bootstrap_configuration": "pass"
+    },
+    {
+      "path": "results/scores/neural/bert_A_test_vs_hmm.json",
+      "sha256": "1b0c26a328dac9abd88caf99c6f970b7af8f985db457294483c261109626a7fa",
+      "difference_arithmetic": "pass",
+      "prediction_identities": "pass",
+      "bootstrap_configuration": "pass"
+    },
+    {
+      "path": "results/scores/neural/bert_A_test_vs_tau_gamma.json",
+      "sha256": "97db336dac00864f59a5b2ee37ce6b54816e255fb9ef281156fa807ed4ccb5d1",
+      "difference_arithmetic": "pass",
+      "prediction_identities": "pass",
+      "bootstrap_configuration": "pass"
+    },
+    {
+      "path": "results/scores/neural/bert_B_test_amb_vs_crf_improved.json",
+      "sha256": "cd7206d0ce4de4b7bb57b799594d8eafbdb763c9e6bc69846de3d531de38e7bb",
+      "difference_arithmetic": "pass",
+      "prediction_identities": "pass",
+      "bootstrap_configuration": "pass"
+    },
+    {
+      "path": "results/scores/neural/bert_B_test_amb_vs_hmm.json",
+      "sha256": "f9f0f1593414757954d9fa562860e501a1f1e3ecda0b7a52a7c1888ceff7d5d4",
+      "difference_arithmetic": "pass",
+      "prediction_identities": "pass",
+      "bootstrap_configuration": "pass"
+    },
+    {
+      "path": "results/scores/neural/bert_B_test_amb_vs_tau_gamma.json",
+      "sha256": "c0fc3f2af3bff258d86781aaccda1c1f750301e184687702ceace7580a646ec0",
+      "difference_arithmetic": "pass",
+      "prediction_identities": "pass",
+      "bootstrap_configuration": "pass"
+    },
+    {
+      "path": "results/scores/neural/bert_B_test_vs_crf_improved.json",
+      "sha256": "96569d0c21acb278cfe8aaa2cb27823a0878bc0108cfeace7f9c59e60999c096",
+      "difference_arithmetic": "pass",
+      "prediction_identities": "pass",
+      "bootstrap_configuration": "pass"
+    },
+    {
+      "path": "results/scores/neural/bert_B_test_vs_hmm.json",
+      "sha256": "60fb3160c005aba92f54dcdb2f22821c08f6fc0f8966ed62c8d34c9c21da1a4a",
+      "difference_arithmetic": "pass",
+      "prediction_identities": "pass",
+      "bootstrap_configuration": "pass"
+    },
+    {
+      "path": "results/scores/neural/bert_B_test_vs_tau_gamma.json",
+      "sha256": "64e16b55aec44eb0d0dac6eac261e54f3e0d47ad2b920e9aa4acda569ba95682",
+      "difference_arithmetic": "pass",
+      "prediction_identities": "pass",
+      "bootstrap_configuration": "pass"
+    },
+    {
+      "path": "results/scores/neural/t5_A_test_amb_vs_crf_improved.json",
+      "sha256": "1c9024ef79946e079590e50dbf1c63d3561824f5482abacf537d4387bfe1cbfb",
+      "difference_arithmetic": "pass",
+      "prediction_identities": "pass",
+      "bootstrap_configuration": "pass"
+    },
+    {
+      "path": "results/scores/neural/t5_A_test_amb_vs_hmm.json",
+      "sha256": "71c15860be2755cb03539fd2ab59a79b368b492418cebb41d601e6fd92a5af70",
+      "difference_arithmetic": "pass",
+      "prediction_identities": "pass",
+      "bootstrap_configuration": "pass"
+    },
+    {
+      "path": "results/scores/neural/t5_A_test_amb_vs_tau_gamma.json",
+      "sha256": "0a32421e76b4fff35a8cfae2bef19a784a8cfd6739e3fffa118ec63240d8de0e",
+      "difference_arithmetic": "pass",
+      "prediction_identities": "pass",
+      "bootstrap_configuration": "pass"
+    },
+    {
+      "path": "results/scores/neural/t5_A_test_vs_crf_improved.json",
+      "sha256": "b67be70747d648407eb2aeece4dd2e1244c87917bd6c207ca706e2383a458f4d",
+      "difference_arithmetic": "pass",
+      "prediction_identities": "pass",
+      "bootstrap_configuration": "pass"
+    },
+    {
+      "path": "results/scores/neural/t5_A_test_vs_hmm.json",
+      "sha256": "4ec80c36a1a70118ac9675eb8aa6a675d38f82d202f369bc44b07fcf9ae47a3d",
+      "difference_arithmetic": "pass",
+      "prediction_identities": "pass",
+      "bootstrap_configuration": "pass"
+    },
+    {
+      "path": "results/scores/neural/t5_A_test_vs_tau_gamma.json",
+      "sha256": "a427fa2810d180faf18322b8b0e0bbf75d9da1e71ebaaa26d781ffca55fa20e5",
+      "difference_arithmetic": "pass",
+      "prediction_identities": "pass",
+      "bootstrap_configuration": "pass"
+    },
+    {
+      "path": "results/scores/neural/t5_B_test_amb_vs_crf_improved.json",
+      "sha256": "8352db1f3d641a990c585dbc67681fc5c7ad3520c4539b1970f2229381e5f945",
+      "difference_arithmetic": "pass",
+      "prediction_identities": "pass",
+      "bootstrap_configuration": "pass"
+    },
+    {
+      "path": "results/scores/neural/t5_B_test_amb_vs_hmm.json",
+      "sha256": "92825a9b2d9756d6ad9d4168be5c879411827cb15de7bcff3491dd2bd21f8dd5",
+      "difference_arithmetic": "pass",
+      "prediction_identities": "pass",
+      "bootstrap_configuration": "pass"
+    },
+    {
+      "path": "results/scores/neural/t5_B_test_amb_vs_tau_gamma.json",
+      "sha256": "4215f195d31eae4b7cd23abb09d9f064313db66834c41f72e3ea04838b09aec6",
+      "difference_arithmetic": "pass",
+      "prediction_identities": "pass",
+      "bootstrap_configuration": "pass"
+    },
+    {
+      "path": "results/scores/neural/t5_B_test_vs_crf_improved.json",
+      "sha256": "305c2efd2124900b4f144ad73aaf3f055188e2edc9ece210a71c8da70c9d5ad4",
+      "difference_arithmetic": "pass",
+      "prediction_identities": "pass",
+      "bootstrap_configuration": "pass"
+    },
+    {
+      "path": "results/scores/neural/t5_B_test_vs_hmm.json",
+      "sha256": "837d4bb65ef1cc7d598ed5f213cc6b1ababb567b6648c1694b00adefa05776b1",
+      "difference_arithmetic": "pass",
+      "prediction_identities": "pass",
+      "bootstrap_configuration": "pass"
+    },
+    {
+      "path": "results/scores/neural/t5_B_test_vs_tau_gamma.json",
+      "sha256": "c93a4d288fc52809a41dad0f4a491ed00944ba141da610f1306789768e47416e",
+      "difference_arithmetic": "pass",
+      "prediction_identities": "pass",
+      "bootstrap_configuration": "pass"
+    }
+  ],
+  "selections": [
+    {
+      "run": "bert_tagger_A",
+      "candidate_grid": "pass",
+      "winner": "pass",
+      "input_hashes": "pass",
+      "runtime_median": "pass"
+    },
+    {
+      "run": "t5_seq2seq_A",
+      "candidate_grid": "pass",
+      "winner": "pass",
+      "input_hashes": "pass",
+      "runtime_median": "pass"
+    },
+    {
+      "run": "bert_tagger_B",
+      "candidate_grid": "pass",
+      "winner": "pass",
+      "input_hashes": "pass",
+      "runtime_median": "pass"
+    },
+    {
+      "run": "t5_seq2seq_B",
+      "candidate_grid": "pass",
+      "winner": "pass",
+      "input_hashes": "pass",
+      "runtime_median": "pass"
+    }
+  ],
+  "validation_rescoring": [
+    {
+      "run": "bert_tagger_A",
+      "official_evaluator": "pass",
+      "bootstrap_resamples": 1000,
+      "seed": 2026,
+      "all_blocks_and_intervals_match": true,
+      "prediction_sha256": "6f2b41caea81063429e6bebd6e1d71916dc8d6c4130078280257bb8aadc07083",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.767223
+      }
+    },
+    {
+      "run": "bert_tagger_B",
+      "official_evaluator": "pass",
+      "bootstrap_resamples": 1000,
+      "seed": 2026,
+      "all_blocks_and_intervals_match": true,
+      "prediction_sha256": "4fd4d146bc2d352fca5b3ad8e83bbdedbf0e2702fcd32d6f79f8baa7b2c78278",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.423853
+      }
+    },
+    {
+      "run": "t5_seq2seq_A",
+      "official_evaluator": "pass",
+      "bootstrap_resamples": 1000,
+      "seed": 2026,
+      "all_blocks_and_intervals_match": true,
+      "prediction_sha256": "6be496fd9833d62890f84310614024781ce6eacda425e7f95c82b5c971fc26d5",
+      "primary": {
+        "block": "punctuation/all",
+        "metric": "macro_f1",
+        "value": 0.771668
+      }
+    }
+  ],
+  "limitations": [
+    "The public Drive validation archive contains BERT A, BERT B and FLAN-T5 A only.",
+    "Held-out predictions/manifests and exclusive inference receipts were not available in that archive. Their committed metrics and input identities are checked, but held-out bootstrap draws are not rerun.",
+    "FLAN-T5 B validation comes from the committed frozen selection record, not a prediction file rescored in this audit.",
+    "Model tensor weights were not downloaded or independently rehashed."
+  ],
+  "model_archive": {
+    "drive_file_id": "1NbIJ9U722Rq12ELUA88jr8-KXSbI4mcu",
+    "name": "RECAP-completed-models-BERT-A-B-T5-A.zip",
+    "bytes": 1884252319,
+    "archive_entries": 44,
+    "retrieved_entries_sha256_verified": 39,
+    "included_runs": [
+      "bert_tagger_A",
+      "bert_tagger_B",
+      "t5_seq2seq_A"
+    ],
+    "access": "HTTP byte ranges; complete ZIP and tensor weights not downloaded"
+  },
+  "status": "pass_with_documented_evidence_limits",
+  "counts": {
+    "score_reports": 41,
+    "neural_score_reports": 11,
+    "held_out_neural_score_reports": 8,
+    "paired_comparisons": 24,
+    "frozen_selections": 4,
+    "validation_prediction_files_rescored": 3
+  }
+}

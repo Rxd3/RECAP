@@ -716,14 +716,41 @@ Clusters help commas in modes A and B, the question mark in mode B, and the mode
 
 ## 15. Pretrained neural taggers (Member 2; exploratory)
 
-Member 2 fine-tuned pretrained models for modes A and B: BERT as a token classifier and FLAN-T5 as a text-to-text model whose output is aligned back to the input tokens. Mode C was left out for time. Member 2 reports that training used `default_train` only, that the model and checkpoint were chosen on primary validation, and that each test list was then predicted once (the selection records are on his machine and referenced by hash in the manifests). Member 5 scored the delivered predictions with the official evaluator and checked that they cover the primary lists exactly once. These models start from large pretrained text corpora, so they are a reference point beyond the course models, not a course baseline, and the comparisons below are exploratory (not in the Holm families). Macro F1 %, paired differences in points with 95% CI (* = interval excludes 0):
+Member 2 fine-tuned pretrained models for modes A and B: BERT as a token classifier and FLAN-T5 as a text-to-text model whose output is aligned back to the input tokens. Mode C was left out for time. The four frozen training/validation records are committed at [64fa17e](https://github.com/Rxd3/RECAP/blob/64fa17e8c92289d14b7f6a07fc1f1b703365c6c9/experiments/NEURAL_NOTES.md); their compact settings and complete candidate grids are retained in [selection_summary.json](../results/scores/neural_verification/selection_summary.json). These records identify `default_train` as the training selection and primary validation as the checkpoint-selection criterion. Member 2 reports that each test list was predicted once. Member 5 scored the delivered predictions with the official evaluator and checked that they cover the primary lists exactly once. These models start from large pretrained text corpora, so they are a reference point beyond the course models, not a course baseline, and the comparisons below are exploratory (not in the Holm families). Macro F1 %, paired differences in points with 95% CI (* = interval excludes 0):
 
 | Mode | Model | Validation | Test (95% CI) | test_amb | Test − CRF improved | Test − τ × γ | Test − HMM |
 |---|---|---|---|---|---|---|---|
 | A | BERT | 76.72 | 76.25 (74.51–77.90) | 75.46 (73.81–76.97) | +26.33 (24.18 to 28.63) * | +24.91 (23.23 to 26.64) * | +41.13 (38.82 to 43.48) * |
 | A | FLAN-T5 | 77.17 | 76.76 (74.78–78.38) | 75.45 (73.69–77.10) | +26.84 (24.63 to 29.23) * | +25.42 (23.55 to 27.34) * | +41.64 (39.24 to 44.05) * |
 | B | BERT | 42.39 | 36.43 (34.41–38.26) | 36.90 (35.31–38.30) | +13.61 (11.80 to 15.27) * | +12.18 (10.45 to 13.83) * | +19.63 (17.76 to 21.47) * |
-| B | FLAN-T5 | — | 36.79 (34.32–39.28) | 36.31 (33.65–38.88) | +13.97 (11.60 to 16.05) * | +12.54 (10.33 to 14.66) * | +20.00 (17.56 to 22.21) * |
+| B | FLAN-T5 | 38.81† | 36.79 (34.32–39.28) | 36.31 (33.65–38.88) | +13.97 (11.60 to 16.05) * | +12.54 (10.33 to 14.66) * | +20.00 (17.56 to 22.21) * |
+
+† FLAN-T5 B validation is the selected candidate's official primary score from the committed frozen record. Its prediction file was not in the public Drive validation packet, so it was not independently rescored in the 2026-11-01 audit.
+
+### Training, selection and runtime
+
+All four runs use the complete A/B training ID lists: 142,722 sequences and 4,137,833 words. BERT tested both learning rates below at epochs 1, 2 and 3; FLAN-T5 tested LR 1e-4 at all three epochs. Selection maximizes the official primary validation macro F1, with ties preferring fewer epochs, then the smaller learning rate. No neural mode C model was trained.
+
+| Run | Backbone | Selected LR | Epoch | Selected training seconds | Full-search training seconds | Validation ms/utterance |
+|---|---|---|---|---|---|---|
+| BERT A | bert-base-uncased | 2e-5 | 3 | 3,844.97 | 7,502.89 | 1.8463 |
+| BERT B | bert-base-uncased | 5e-5 | 3 | 3,610.70 | 7,311.01 | 1.7876 |
+| FLAN-T5 A | google/flan-t5-base | 1e-4 | 3 | 12,416.11 | 12,416.11 | 154.6956 |
+| FLAN-T5 B | google/flan-t5-base | 1e-4 | 2 | 8,136.71 | 12,243.81 | 191.9346 |
+
+The recorded machine is an RTX 5070 with 12,227 MiB VRAM, Windows, Python 3.13.14, torch 2.9.1+cu128 and transformers 4.57.3. Both families use AdamW, seed 2026, batch size 4, gradient accumulation 4 and gradient checkpointing. BERT uses fp16 and FLAN-T5 bf16. Training seconds exclude validation and checkpoint writing. Validation latency includes tokenization, inference/generation and alignment, excludes loading, and is the median of three complete passes after one full warm-up. CPU classical-model and GPU neural-model timings are different measurement conditions.
+
+BERT supervises the first subword and truncates at 512 pieces; incomplete or cut-off words receive default O labels. FLAN-T5 uses four beams and a maximum of `2 * input_words + 16` new tokens per utterance, with matching-block alignment back to the original words. Validation cutoff words are zero for both BERT runs. FLAN-T5 A has 319/618,771 unaligned words (0.0516%); B has 291/618,771 (0.0470%). These are validation diagnostics, not estimates for held-out data.
+
+### Independent verification (2026-11-01)
+
+The [verification record](../results/scores/neural_verification/verification.json) checks 41 score reports, including all eight neural held-out reports, against their confusion matrices and local gold/ID/mask SHA-256s. All per-class, macro, micro and accuracy calculations agree. All 24 neural paired comparisons have consistent score differences and prediction identities; their recorded intervals use 1,000 video-group resamples, seed 2026.
+
+The public Drive file `RECAP-completed-validation-results.zip` is an interim packet, 588,758 bytes, SHA-256 `ef89cdd777c22c2dfab6368f4406d6dc5f289087aca3c4f675c8b5ddda252cbe`. Its CRC and every entry checksum pass. BERT A, BERT B and FLAN-T5 A predictions and manifests match the committed evaluator identities. Re-running the unchanged official evaluator with bootstrap 1000 reproduces every block, count and confidence interval exactly for these three validation files. Their selection/training records and artifact metadata also match the corresponding entries in the shared model archive.
+
+The public packet has no held-out predictions, held-out manifests, inference receipts or FLAN-T5 B validation predictions. This audit therefore verifies held-out score arithmetic and gold/ID identity, and retains Member 5's previously computed intervals; it does not independently regenerate those intervals or certify once-only inference from receipts. Tensor weight files were not independently downloaded and rehashed. The shared model archive contains BERT A/B and FLAN-T5 A; FLAN-T5 B weights and the complete final prediction handoff were not present in the inspected public folders.
+
+### Class-level findings
 
 Per class on test, neural − CRF improved (paired 95% CI, `compare --class`):
 - **BERT, mode A:** COMMA +18.12 (16.46 to 20.00) *; PERIOD +11.14 (9.62 to 12.84) *; QUESTION +49.73 (45.09 to 54.39) *.

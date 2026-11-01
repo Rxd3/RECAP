@@ -21,8 +21,9 @@ The course-baseline settings (HMM smoothing, CRF settings, the plain threshold ฯ
 
 - Audio, prosody and real speech-recognition (ASR) output: RECAP uses the transcripts only, and there is no
   real-ASR condition (a simulated ASR-noise check is in [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) ยง13).
-- Neural models (for example BiLSTM-CRF or transformers), GPU frameworks and pretrained-model
-  downloads.
+- Neural truecasing or joint mode C comparisons. The delivered exploratory extension adds
+  pretrained BERT and FLAN-T5 punctuation models for modes A/B only, beyond the three required
+  course models ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md), section 15).
 - An interactive application beyond the command-line demo (`scripts/run_demo.py`).
 
 ## Evidence rules
