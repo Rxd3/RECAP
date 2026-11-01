@@ -61,10 +61,10 @@ def _bad_file(tmp_path: Path, content: bytes) -> Path:
 @pytest.mark.parametrize(
     ("content", "message"),
     [
-        (b'{"a": 1}\n{oops\n', r"^in\.jsonl:2: not valid JSON$"),
-        (b'{"a": 1}\n[1, 2]\n', r"^in\.jsonl:2: not a JSON object$"),
-        (b"[" * 100_000 + b"\n", r"^in\.jsonl:1: not valid JSON$"),  # RecursionError in the JSON reader
-        (b'{"a": 1}\n\n', r"^in\.jsonl:2: blank JSONL record$"),
+        (b'{"a": 1}\n{oops\n', r"^in\.jsonl line 2: not valid JSON$"),
+        (b'{"a": 1}\n[1, 2]\n', r"^in\.jsonl line 2: not a JSON object$"),
+        (b"[" * 100_000 + b"\n", r"^in\.jsonl line 1: not valid JSON$"),  # RecursionError in the JSON reader
+        (b'{"a": 1}\n\n', r"^in\.jsonl line 2: blank JSONL record$"),
         (b'{"a": 1}\n\xff\xfe\n', r"^in\.jsonl: not valid UTF-8$"),
     ],
     ids=["bad-json", "not-an-object", "nested-too-deeply", "blank-line", "not-utf8"],
@@ -78,5 +78,5 @@ def test_a_line_that_cannot_be_used_is_one_value_error_naming_the_file_and_line_
 def test_every_object_line_before_the_bad_one_is_still_yielded(tmp_path: Path) -> None:
     rows = read_jsonl(_bad_file(tmp_path, b'{"a": 1}\n{"b": 2}\nnope\n'))
     assert next(rows) == {"a": 1} and next(rows) == {"b": 2}
-    with pytest.raises(ValueError, match=r"^in\.jsonl:3: not valid JSON$"):
+    with pytest.raises(ValueError, match=r"^in\.jsonl line 3: not valid JSON$"):
         next(rows)

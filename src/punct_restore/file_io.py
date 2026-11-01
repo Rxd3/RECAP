@@ -1,5 +1,5 @@
 """File-level helpers shared by the commands: the create-new writers for a file and a folder, the JSONL and JSON
-readers, and the checks that a path is a file or does not exist yet.
+readers, the shape check of a parsed file, and the checks that a path is a file or does not exist yet.
 
 Every error names a file by its name only (never the folder it sits in), so a command can print it as one line.
 """
@@ -14,7 +14,7 @@ import shutil
 import tempfile
 from collections.abc import Callable, Iterator, Mapping
 from pathlib import Path
-from typing import Any
+from typing import Any, get_args, get_origin
 
 
 def require_file(path: str | os.PathLike[str], what: str) -> None:
@@ -129,15 +129,65 @@ def read_json(path: Path) -> Any:
         raise ValueError(f"{path.name}: not valid JSON") from exc
 
 
-def read_json_object(path: Path) -> dict[str, Any]:
-    """The JSON object a UTF-8 file holds.
+_KIND_NAMES = {str: "nonempty text", list: "a JSON list", float: "a number", int: "a whole number"}
+
+
+def _has_kind(value: Any, kind: type) -> bool:
+    """Whether a JSON value is of the kind a schema asks for (`object`: anything; numbers: never a bool)."""
+    if kind is str:
+        return isinstance(value, str) and bool(value.strip())
+    if kind is float:
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    if kind is int:
+        return isinstance(value, int) and not isinstance(value, bool)
+    return kind is object or isinstance(value, kind)
+
+
+def _check_kind(name: str, value: Any, want: Any, place: str) -> None:
+    """Require `value`, found at `place` in the file `name`, to match one entry of a schema (see `require_object`)."""
+    if isinstance(want, Mapping):
+        require_object(name, value, want, place)
+    elif get_origin(want) is list:
+        _check_kind(name, value, list, place)
+        (item_kind,) = get_args(want)
+        for number, item in enumerate(value):
+            _check_kind(name, item, item_kind, f"{place}.{number}")
+    elif not _has_kind(value, want):
+        raise ValueError(f"{name}: {place} is not {_KIND_NAMES[want]}")
+
+
+def require_object(name: str, value: Any, schema: Mapping[str, Any], at: str = "") -> dict[str, Any]:
+    """Require `value`, the content of the file `name`, to be a JSON object that holds every key of `schema`.
+
+    A schema value says what its key must hold: `object` anything (the key only has to be there), `str` nonempty
+    text, `float` a number, `int` a whole number, `list` a JSON list, `list[str]` (or `list[float]`, `list[int]`) a
+    list whose every item is of that kind, or a schema of its own for a nested object (`{}`: any object). Other
+    keys are not looked at. `at` is where `value` sits inside the file (a dotted path), for a nested call.
+
+    Raises:
+        ValueError: One line, `<name>: <what is wrong>`, that names the key (or the list item) by its dotted path.
+    """
+    if not isinstance(value, dict):
+        raise ValueError(f"{name}: {at} is not a JSON object" if at else f"{name}: not a JSON object")
+    for key, want in schema.items():
+        place = f"{at}.{key}" if at else key
+        if key not in value:
+            raise ValueError(f"{name}: missing {place}")
+        _check_kind(name, value[key], want, place)
+    return value
+
+
+def read_object(path: Path, schema: Mapping[str, Any]) -> dict[str, Any]:
+    """The JSON object a UTF-8 file holds, checked against `schema` (see `read_json` and `require_object`).
 
     Raises:
         OSError: If the file cannot be read.
         ValueError: One line that starts with the file name only: not valid UTF-8, not valid JSON (also when it
-            is nested too deeply) or not a JSON object.
+            is nested too deeply), not a JSON object, or a key that is missing or of the wrong kind.
     """
-    data = read_json(path)
-    if not isinstance(data, dict):
-        raise ValueError(f"{path.name}: not a JSON object")
-    return data
+    return require_object(path.name, read_json(path), schema)
+
+
+def read_json_object(path: Path) -> dict[str, Any]:
+    """The JSON object a UTF-8 file holds: `read_object` with no key required."""
+    return read_object(path, {})

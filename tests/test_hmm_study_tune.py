@@ -247,12 +247,12 @@ def test_tune_refuses_a_config_that_is_not_utf8(fresh: Study) -> None:
 
 def test_tune_refuses_a_config_that_is_not_yaml(fresh: Study) -> None:
     write_text(fresh.config_path, "a: [1, 2")
-    _refuse_matching(fresh, r"^hmm_unit\.yaml: invalid experiment config: ")
+    _refuse(fresh, "hmm_unit.yaml: not valid YAML")
 
 
 def test_tune_refuses_a_config_without_a_search_section(fresh: Study) -> None:
     _edit_config(fresh, lambda c: {k: v for k, v in c.items() if k != "search"})
-    _refuse(fresh, "hmm_unit.yaml: invalid experiment config: 'search'")
+    _refuse(fresh, "hmm_unit.yaml: invalid experiment config: missing search")
 
 
 def test_tune_refuses_a_config_that_selects_on_test(fresh: Study) -> None:

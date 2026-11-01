@@ -21,10 +21,11 @@ import urllib.request
 import zlib
 from collections.abc import Callable, Iterator, Mapping
 from pathlib import Path
-from typing import IO, Any, cast
+from typing import Any
 
 from ..prediction_io import require_file
 from ..progress import Log, discard_log
+from .preprocessing import parse_manifest_line, verify_raw_manifest
 
 ARCHIVE_URL = "https://storage.googleapis.com/sponspeech/sponspeech.tar.gz"
 ARCHIVE_BYTES = 63547617096
@@ -56,8 +57,8 @@ def _http(url: str, headers: Mapping[str, str] | None = None, method: str = "GET
     """Return (headers, body). Falls back to the curl command if Python cannot verify TLS on this machine."""
     req = urllib.request.Request(url, headers=headers or {}, method=method)
     try:
-        with urllib.request.urlopen(req, timeout=120) as r:
-            return {k.lower(): v for k, v in r.headers.items()}, r.read()
+        with urllib.request.urlopen(req, timeout=120) as response:
+            return {k.lower(): v for k, v in response.headers.items()}, response.read()
     except urllib.error.URLError as e:
         if "CERTIFICATE_VERIFY_FAILED" not in str(e):
             raise
@@ -134,8 +135,15 @@ def members_from_decoded(out: bytes) -> Iterator[tuple[str, bytes]]:
 
 
 def _file_bytes(archive: tarfile.TarFile, member: tarfile.TarInfo) -> bytes:
-    """The content of a regular-file member (``extractfile`` returns None only for other kinds of member)."""
-    return cast(IO[bytes], archive.extractfile(member)).read()
+    """The content of a regular-file member.
+
+    Raises:
+        ValueError: ``<member name>: not a regular file`` for any other kind of member.
+    """
+    handle = archive.extractfile(member)
+    if handle is None:
+        raise ValueError(f"{member.name}: not a regular file")
+    return handle.read()
 
 
 def _keep(name: str) -> bool:
@@ -208,7 +216,6 @@ def extract_archive(archive_path: str | os.PathLike[str], raw_root: str | os.Pat
 def verify_extraction(raw_root: str | os.PathLike[str],
                       manifest_path: str | os.PathLike[str]) -> tuple[list[str], list[str]]:
     """Compare <raw_root>/sponspeech_text with the raw manifest: (missing or different paths, extra paths)."""
-    from .preprocessing import parse_manifest_line, verify_raw_manifest
     base = os.path.dirname(os.path.abspath(manifest_path))
     if os.path.abspath(base) != os.path.abspath(raw_root):
         raise ValueError("MANIFEST.sha256 must be placed directly in raw_root (its paths start with sponspeech_text/)")

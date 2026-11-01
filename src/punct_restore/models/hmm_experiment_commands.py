@@ -10,7 +10,8 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any
 
-from punct_restore.models.hmm_experiment_protocol import now, read_object
+from punct_restore.file_io import read_object
+from punct_restore.models.hmm_experiment_protocol import now
 from punct_restore.models.hmm_workflow import portable_path
 from punct_restore.paths import REPO_ROOT as ROOT
 

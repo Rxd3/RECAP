@@ -1,15 +1,14 @@
-"""What validate_config requires of an experiment config, and the shape check every study JSON file goes through."""
+"""What validate_config requires of an experiment config: its shape first, then the frozen protocol."""
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 import pytest
 import yaml
 from test_hmm_cli import ROOT
 
-from punct_restore.models.hmm_experiment_protocol import read_object, require_object, validate_config
+from punct_restore.models.hmm_experiment_protocol import validate_config
 
 TEXT_KEYS = ("processed_dir", "splits_dir", "label_config", "dataset_release_id", "policy_version", "experiment_id")
 
@@ -59,60 +58,124 @@ def test_the_source_name_is_optional_and_a_valid_config_is_returned_unchanged() 
         validate_config(without(valid, "experiment_id"))
 
 
-# ---- require_object and read_object ----
+# ---- the shape check comes first and never lets Python's own error text out ----
+
+PREFIX = "x.yaml: invalid experiment config: "
+PYTHON_TEXT = ("subscriptable", "unhashable", "indices", "not supported", "NoneType", "KeyError", "TypeError",
+               "not iterable", "object has no", "int()", "float()")
+MISSING = object()  # "the key is not there"
+# every key of the config that the later steps index, with the kind of value it must hold
+LISTS = ("modes", "search.smoothing", "search.min_token_count", "search.tie_break", "evaluation.test_sets")
+SECTIONS = ("search", "evaluation", "runtime", "search.selection_blocks")
+LEAVES = ("schema_version", *TEXT_KEYS, "evaluation.repository_commit", "evaluation.zero_division",
+          "runtime.comparison_ids", "runtime.warmup_sequences", "runtime.repetitions", "runtime.model_threads",
+          "search.selection_split", "search.metric", "search.score_precision", "search.retrain_on_validation")
+ALL_KEYS = (*LEAVES, *LISTS, *SECTIONS)
 
 
-def test_require_object_returns_the_value_it_checked() -> None:
-    value = {"a": {"b": [1]}, "extra": 1}
-    assert require_object("f.json", value, {"a": {"b": list}}) is value
+def damaged(path: str, value: Any) -> dict[str, Any]:
+    """The real config with the value at the dotted `path` replaced (or, for MISSING, taken out)."""
+    content = config()
+    *parents, name = path.split(".")
+    holder = content
+    for parent in parents:
+        holder = holder[parent]
+    if value is MISSING:
+        del holder[name]
+    else:
+        holder[name] = value
+    return content
 
 
-@pytest.mark.parametrize("value", [[], None, "text", 3], ids=["list", "null", "text", "number"])
-def test_require_object_refuses_anything_but_an_object(value: Any) -> None:
-    with pytest.raises(ValueError, match="^f.json: not a JSON object$"):
-        require_object("f.json", value, {})
+DAMAGE = {"missing": MISSING, "null": None, "list": [], "object": {}, "number": 5, "text": "text",
+          "items-list": [["A"]], "items-object": [{}], "items-null": [None], "items-number": [1]}
 
 
-def test_require_object_names_a_missing_key_by_its_dotted_path() -> None:
-    with pytest.raises(ValueError, match="^f.json: missing a.b.c$"):
-        require_object("f.json", {"a": {"b": {}}}, {"a": {"b": {"c": object}}})
+@pytest.mark.parametrize("how", DAMAGE)
+@pytest.mark.parametrize("path", ALL_KEYS)
+def test_a_damaged_config_is_a_value_error_with_no_python_text_whatever_the_key_and_the_damage(
+        path: str, how: str) -> None:
+    """The shape check runs before any step indexes the config; a TypeError or KeyError escaping fails this test."""
+    try:
+        validate_config(damaged(path, DAMAGE[how]), "x.yaml")
+    except ValueError as problem:
+        text = str(problem)
+        assert "\n" not in text and not [bit for bit in PYTHON_TEXT if bit in text], text
 
 
-def test_require_object_names_a_nested_value_of_the_wrong_kind() -> None:
-    with pytest.raises(ValueError, match="^f.json: a.b is not a JSON object$"):
-        require_object("f.json", {"a": {"b": []}}, {"a": {"b": {}}})
-    with pytest.raises(ValueError, match="^f.json: a.xs is not a JSON list$"):
-        require_object("f.json", {"a": {"xs": {}}}, {"a": {"xs": list}})
+@pytest.mark.parametrize("path", ALL_KEYS)
+def test_a_config_that_lacks_a_key_names_it(path: str) -> None:
+    with pytest.raises(ValueError) as problem:
+        validate_config(damaged(path, MISSING), "x.yaml")
+    assert str(problem.value) == f"{PREFIX}missing {path}"
 
 
-def test_a_key_that_may_hold_any_value_only_has_to_be_present() -> None:
-    require_object("f.json", {"a": None}, {"a": object})
-    with pytest.raises(ValueError, match="^f.json: missing a$"):
-        require_object("f.json", {}, {"a": object})
+@pytest.mark.parametrize("path", [*SECTIONS])
+@pytest.mark.parametrize("value", [None, [], 5, "text"], ids=["null", "list", "number", "text"])
+def test_a_section_that_is_no_object_is_refused_by_name(path: str, value: Any) -> None:
+    with pytest.raises(ValueError) as problem:
+        validate_config(damaged(path, value), "x.yaml")
+    assert str(problem.value) == f"{PREFIX}{path} is not a JSON object"
 
 
-def test_the_prefix_places_an_element_of_a_list_in_the_message() -> None:
-    with pytest.raises(ValueError, match="^f.json: candidates.0 is not a JSON object$"):
-        require_object("f.json", 5, {}, "candidates.0")
-    with pytest.raises(ValueError, match="^f.json: candidates.0.model is not nonempty text$"):
-        require_object("f.json", {"model": ""}, {"model": str}, "candidates.0")
+@pytest.mark.parametrize("path", LISTS)
+@pytest.mark.parametrize("value", [None, {}, "text", 5], ids=["null", "object", "text", "number"])
+def test_a_list_that_is_no_list_is_refused_by_name(path: str, value: Any) -> None:
+    with pytest.raises(ValueError) as problem:
+        validate_config(damaged(path, value), "x.yaml")
+    assert str(problem.value) == f"{PREFIX}{path} is not a JSON list"
 
 
-def test_read_object_names_the_file_without_its_folder(tmp_path: Path) -> None:
-    folder = tmp_path / "deep"
-    folder.mkdir()
-    (folder / "r.json").write_text('{"a": []}', encoding="utf-8")
-    with pytest.raises(ValueError) as caught:
-        read_object(folder / "r.json", {"b": object})
-    assert str(caught.value) == "r.json: missing b"
-    assert read_object(folder / "r.json", {"a": list}) == {"a": []}
+@pytest.mark.parametrize("item", [["A"], {}, None, 1, ""], ids=["list", "object", "null", "number", "empty"])
+def test_a_mode_that_is_not_text_is_refused_naming_its_place(item: Any) -> None:
+    """`[["A"]]` reached `set(modes)` and died with 'unhashable type: list'."""
+    with pytest.raises(ValueError) as problem:
+        validate_config(damaged("modes", ["A", item]), "x.yaml")
+    assert str(problem.value) == f"{PREFIX}modes.1 is not nonempty text"
 
 
-@pytest.mark.parametrize(
-    ("content", "message"), [(b"{", "r.json: not valid JSON"), (b"\xff", "r.json: not valid UTF-8")]
-)
-def test_read_object_keeps_the_json_reader_messages(tmp_path: Path, content: bytes, message: str) -> None:
-    (tmp_path / "r.json").write_bytes(content)
-    with pytest.raises(ValueError) as caught:
-        read_object(tmp_path / "r.json", {})
-    assert str(caught.value) == message
+@pytest.mark.parametrize("path", ["search.smoothing", "search.min_token_count"])
+@pytest.mark.parametrize("item", [[1], {}, None, True, "1"], ids=["list", "object", "null", "bool", "text"])
+def test_a_search_value_that_is_not_a_number_is_refused_naming_its_place(path: str, item: Any) -> None:
+    with pytest.raises(ValueError) as problem:
+        validate_config(damaged(path, [1, item]), "x.yaml")
+    assert str(problem.value) == f"{PREFIX}{path}.1 is not a number"
+
+
+@pytest.mark.parametrize("path", ["runtime.repetitions", "runtime.warmup_sequences"])
+@pytest.mark.parametrize("value", [2.5, True, "3", None], ids=["float", "bool", "text", "null"])
+def test_a_runtime_count_that_is_not_a_whole_number_is_refused(path: str, value: Any) -> None:
+    """A text count died in `repetitions < 2`; a fractional one would die later in `range(repetitions)`."""
+    with pytest.raises(ValueError) as problem:
+        validate_config(damaged(path, value), "x.yaml")
+    assert str(problem.value) == f"{PREFIX}{path} is not a whole number"
+
+
+@pytest.mark.parametrize("content", [None, [1], "text", 3], ids=["null", "list", "text", "number"])
+def test_a_config_that_is_no_object_is_refused(content: Any) -> None:
+    with pytest.raises(ValueError) as problem:
+        validate_config(content, "x.yaml")
+    assert str(problem.value) == f"{PREFIX}not a JSON object"
+
+
+def test_a_config_object_with_no_key_is_refused_naming_the_first_key() -> None:
+    with pytest.raises(ValueError) as problem:
+        validate_config({}, "x.yaml")
+    assert str(problem.value) == f"{PREFIX}missing schema_version"
+
+
+def test_a_mode_without_a_selection_block_is_a_protocol_error_not_a_key_error() -> None:
+    content = config()
+    del content["search"]["selection_blocks"]["B"]
+    with pytest.raises(ValueError, match="^mode B: wrong primary selection block$"):
+        validate_config(content, "x.yaml")
+
+
+def test_the_shape_is_checked_before_the_protocol() -> None:
+    """A config that breaks a rule of the protocol AND lacks a key is reported for the missing key."""
+    content = config()
+    content["search"]["selection_split"] = "test"
+    del content["runtime"]
+    with pytest.raises(ValueError) as problem:
+        validate_config(content, "x.yaml")
+    assert str(problem.value) == f"{PREFIX}missing runtime"

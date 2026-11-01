@@ -16,15 +16,15 @@ def describe_files(folder: str | os.PathLike[str],
                    skip: Collection[str] = ("release_manifest.json", "SHA256SUMS")) -> dict[str, dict[str, str | int]]:
     """{relative path: {sha256, bytes, lines}} for every file below `folder`."""
     out: dict[str, dict[str, str | int]] = {}
-    for d, _, fs in os.walk(folder):
-        for x in fs:
-            p = os.path.join(d, x)
-            rel = Path(p).relative_to(folder).as_posix()
+    for folder_path, _, file_names in os.walk(folder):
+        for file_name in file_names:
+            path = os.path.join(folder_path, file_name)
+            rel = Path(path).relative_to(folder).as_posix()
             if rel in skip:
                 continue
-            with open(p, "rb") as f:
+            with open(path, "rb") as f:
                 lines = sum(1 for _ in f)
-            out[rel] = {"sha256": sha256_file(p), "bytes": os.path.getsize(p), "lines": lines}
+            out[rel] = {"sha256": sha256_file(path), "bytes": os.path.getsize(path), "lines": lines}
     return dict(sorted(out.items()))
 
 

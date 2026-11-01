@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Any
 
 from punct_restore.data.labeling import load_label_sets
+from punct_restore.file_io import read_json
 from punct_restore.models.hidden_event_lm_viterbi import Back, History, LogProb, viterbi
 from punct_restore.models.ngram_lm import (
     NgramLM,
@@ -328,10 +329,11 @@ class HiddenEventLM:
 
     @classmethod
     def load_model(cls, path: str | Path) -> HiddenEventLM:
-        """Read an artifact written by ``save_model``; ValueError (one line) if it is malformed."""
+        """Read an artifact written by ``save_model``; ValueError (one line naming the file) if it is malformed."""
+        payload = read_json(Path(path))  # names the file for bytes that are not UTF-8 or not JSON
         try:
-            return cls._from_payload(json.loads(Path(path).read_text(encoding="utf-8")))
-        except (ValueError, RecursionError, OverflowError) as exc:  # OverflowError: a backstop for huge numbers
+            return cls._from_payload(payload)
+        except (ValueError, OverflowError) as exc:  # OverflowError: a backstop for huge numbers
             name = Path(path).name
             raise ValueError(f"{name}: invalid hidden-event LM artifact: {' '.join(str(exc).splitlines())}") from exc
 

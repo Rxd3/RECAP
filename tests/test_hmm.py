@@ -344,23 +344,116 @@ def _saved(tmp_path, content):
 
 
 @pytest.mark.parametrize(
-    ("content", "reason"),
+    ("content", "message"),
     [
-        (b"[" * 100_000, "recursion"),  # nested far deeper than the JSON reader allows
-        (b"[1]", "indices"),
-        (b'{"format_version": 1}', "model_name"),
-        (b"{oops", "expecting"),
-        (b"\xff\xfe", "utf-8"),
+        (b"[" * 100_000, "model.json: not valid JSON"),  # nested far deeper than the JSON reader allows
+        (b"[1]", "model.json: invalid HMM artifact: not a JSON object"),
+        (b"null", "model.json: invalid HMM artifact: not a JSON object"),
+        (b"{}", "model.json: invalid HMM artifact: missing format_version"),
+        (b'{"format_version": 1}', "model.json: invalid HMM artifact: missing model_name"),
+        (b"{oops", "model.json: not valid JSON"),
+        (b"\xff\xfe", "model.json: not valid UTF-8"),
     ],
-    ids=["nested", "array", "missing-key", "bad-json", "not-utf8"],
+    ids=["nested", "array", "null", "empty-object", "missing-key", "bad-json", "not-utf8"],
 )
-def test_an_unusable_artifact_is_one_value_error_that_starts_with_the_file_name(tmp_path, content, reason):
+def test_an_unusable_artifact_is_one_value_error_that_starts_with_the_file_name(tmp_path, content, message):
     path = _saved(tmp_path, content)
     with pytest.raises(ValueError) as raised:
         HMMModel.load_model(path)
     text = str(raised.value)
-    assert text.startswith("model.json: invalid HMM artifact: ") and reason in text.lower()
-    assert "\n" not in text and str(tmp_path) not in text
+    assert text == message
+    assert str(tmp_path) not in text
+
+
+PYTHON_TEXT = ("subscriptable", "unhashable", "indices", "NoneType", "KeyError", "TypeError", "__init__", "argument",
+               "positional", "keyword", "must be a mapping", "not iterable", "has no attribute", "punct_restore.")
+MISSING = object()
+
+
+def _artifact_damaged(fitted, tmp_path, keys, new):
+    """The saved artifact of `fitted` with the value at `keys` replaced (MISSING: removed); returns its path."""
+    path = tmp_path / "model.json"
+    fitted.save_model(path)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not keys:
+        payload = new
+    else:
+        holder = payload
+        for key in keys[:-1]:
+            holder = holder[key]
+        if new is MISSING:
+            del holder[keys[-1]]
+        else:
+            holder[keys[-1]] = new
+    damaged = tmp_path / "damaged" / "model.json"
+    damaged.parent.mkdir()
+    damaged.write_text(json.dumps(payload), encoding="utf-8")
+    return damaged
+
+
+COUNT_KEYS = ("start", "transition", "end", "state", "emissions", "unknown", "vocabulary", "num_sequences")
+ARTIFACT_PROBLEMS = [  # (the place in the artifact, its new value, the one reason load_model gives)
+    ((), None, "not a JSON object"),
+    ((), [], "not a JSON object"),
+    ((), {}, "missing format_version"),
+    (("model_name",), MISSING, "missing model_name"),
+    (("config",), MISSING, "missing config"),
+    *[(("config",), value, "config is not a JSON object") for value in (None, [], 5, "text")],
+    (("config",), {}, "missing config.label_mode"),
+    (("config", "label_mode"), MISSING, "missing config.label_mode"),
+    (("config", "labels"), MISSING, "missing config.labels"),
+    (("config", "extra"), 1, "unknown key config.extra"),
+    (("counts",), MISSING, "missing counts"),
+    *[(("counts",), value, "counts is not a JSON object") for value in (None, [], 5, "text")],
+    (("counts",), {}, "missing counts.start"),
+    *[(("counts", key), MISSING, f"missing counts.{key}") for key in COUNT_KEYS],
+    (("counts", "extra"), 1, "unknown key counts.extra"),
+    (("metadata",), MISSING, "missing metadata"),
+]
+
+
+@pytest.mark.parametrize(
+    ("keys", "new", "reason"), ARTIFACT_PROBLEMS,
+    ids=[f"{'.'.join(keys) or 'root'}-{'missing' if new is MISSING else type(new).__name__}-{n}"
+         for n, (keys, new, _) in enumerate(ARTIFACT_PROBLEMS)],
+)
+def test_an_artifact_that_lacks_a_key_or_holds_the_wrong_kind_is_refused_naming_the_key(
+        fitted, tmp_path, keys, new, reason):
+    """The message is the artifact's own wording, not Python's (`'config'`, `__init__() missing 1 required...`)."""
+    path = _artifact_damaged(fitted, tmp_path, keys, new)
+    with pytest.raises(ValueError) as raised:
+        HMMModel.load_model(path)
+    assert str(raised.value) == f"model.json: invalid HMM artifact: {reason}"
+
+
+def _places(value, prefix=()):
+    """Every place in a parsed artifact: dict keys, and the first two items of a list."""
+    yield prefix
+    if isinstance(value, dict):
+        for key, item in value.items():
+            yield from _places(item, (*prefix, key))
+    elif isinstance(value, list):
+        for index, item in enumerate(value[:2]):
+            yield from _places(item, (*prefix, index))
+
+
+@pytest.mark.parametrize("new", [MISSING, None, [], {}, "x", 5, [{}], [["O"]], [1], [None]],
+                         ids=["missing", "null", "list", "object", "text", "number", "items-object", "items-list",
+                              "items-number", "items-null"])
+def test_no_damage_to_an_artifact_shows_python_text_or_escapes_as_another_error(fitted, tmp_path, new):
+    """Every place of a saved artifact, damaged in every way: a ValueError of one line, or a model that loads."""
+    saved = tmp_path / "saved.json"
+    fitted.save_model(saved)
+    for keys in _places(json.loads(saved.read_text(encoding="utf-8"))):
+        if not keys or (new is MISSING and isinstance(keys[-1], int)):
+            continue
+        folder = tmp_path / ("-".join(map(str, keys)) or "root")
+        folder.mkdir()
+        try:
+            HMMModel.load_model(_artifact_damaged(fitted, folder, keys, new))
+        except ValueError as raised:
+            text = str(raised)
+            assert "\n" not in text and not [bit for bit in PYTHON_TEXT if bit in text], (keys, text)
 
 
 def test_a_save_that_fails_while_writing_leaves_no_half_written_file(training, tmp_path):

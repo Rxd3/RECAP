@@ -27,10 +27,10 @@ def _table_lines(stats: dict) -> list[str]:
                      f"| {status.get('flagged', 0)} | {status.get('rejected', 0)} |\n")
     lines.append("\n## Default and primary subsets (sample counts)\n\n"
                  "| mode | default train | validation | test | test_amb |\n|---|---:|---:|---:|---:|\n")
-    for m in ("A", "B", "C"):
-        z = stats["subset_sizes"][m]
-        lines.append(f"| {m} | {z['default_train']} | {z['primary_validation']} | {z['primary_test']} "
-                     f"| {z['primary_test_amb']} |\n")
+    for mode in ("A", "B", "C"):
+        sizes = stats["subset_sizes"][mode]
+        lines.append(f"| {mode} | {sizes['default_train']} | {sizes['primary_validation']} | {sizes['primary_test']} "
+                     f"| {sizes['primary_test_amb']} |\n")
     return lines
 
 

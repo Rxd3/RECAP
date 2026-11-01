@@ -407,15 +407,15 @@ def test_save_unfitted_is_a_runtime_error(tmp_path):
         GapClassifier("A").save_model(tmp_path / "x.joblib")
 
 
-def test_load_missing_file_is_file_not_found(tmp_path):
-    with pytest.raises(FileNotFoundError):
+def test_load_missing_file_is_file_not_found_naming_the_file_only(tmp_path):
+    with pytest.raises(FileNotFoundError, match=r"^absent\.joblib: model artifact not found$"):
         GapClassifier.load_model(tmp_path / "absent.joblib")
 
 
 def test_load_folder_is_not_reported_as_missing(tmp_path):
     folder = tmp_path / "gap.joblib"
     folder.mkdir()
-    with pytest.raises(ValueError, match=r"gap\.joblib: is a folder, not a model file") as exc:
+    with pytest.raises(IsADirectoryError, match=r"^gap\.joblib: is a folder, not a file$") as exc:
         GapClassifier.load_model(folder)
     assert str(tmp_path) not in str(exc.value)
 

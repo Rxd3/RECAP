@@ -19,8 +19,9 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from punct_restore.file_io import iter_jsonl, require_file
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import read_ids
+from punct_restore.prediction_io import parse_json_object, read_ids
 from punct_restore.reporting._cli import check_out, name_only, run, write_new_text
 
 REPS, WARMUP = 3, 200
@@ -33,12 +34,8 @@ def usable_tokens(tokens: Any) -> bool:
 
 def records(path: str | Path, ids_path: str | Path) -> list[dict[str, Any]]:
     keep = set(read_ids(Path(ids_path)))
-    try:
-        with open(path, encoding="utf-8") as fh:
-            rows = [json.loads(line) for line in fh if line.strip()]
-    except (ValueError, RecursionError) as exc:  # RecursionError: a line nested too deeply
-        raise ValueError(f"{Path(path).name}: {exc}") from exc
-    if any(not isinstance(r, dict) or not isinstance(r.get("sample_id"), str) for r in rows):
+    rows = [row for _, row in iter_jsonl(path, parse_json_object)]
+    if any(not isinstance(r.get("sample_id"), str) for r in rows):
         raise ValueError(f"{Path(path).name}: every record must be an object with a sample_id")
     if any(not usable_tokens(r.get("tokens")) for r in rows):
         raise ValueError(f"{Path(path).name}: every record needs a non-empty tokens list")
@@ -55,11 +52,8 @@ def model_class(kind: str) -> Any:
 
 def load_model(model_cls: Any, path: str) -> Any:
     model_path = Path(path)
-    if model_path.is_dir():
-        raise ValueError(f"{model_path.name}: is a folder, not a file")
-    if not model_path.is_file():
-        raise ValueError(f"{model_path.name}: model file not found")
     try:
+        require_file(model_path, "model file")
         return model_cls.load_model(path)
     except (OSError, ValueError) as exc:  # the loaders quote the whole path: keep the file name only
         text = name_only(str(exc), model_path)

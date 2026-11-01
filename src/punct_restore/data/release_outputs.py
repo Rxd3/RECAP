@@ -65,33 +65,33 @@ def write_split_map(split_out: str, results: list) -> None:
                  f"{r['group_id']}\t{r['status']}\n" for r in results])
 
 
-def _screen_source_split(s: str, refs: tuple, by_source: dict) -> tuple:
-    """(reason counts, kept records, excluded-TSV rows) for source split `s` against its reference splits."""
+def _screen_source_split(source_split: str, refs: tuple, by_source: dict) -> tuple:
+    """(reason counts, kept records, excluded-TSV rows) for `source_split` against its reference splits."""
     ref = splits.Reference([r for name in refs for r in by_source[name]])
     reasons: collections.Counter[str] = collections.Counter()
     keep: list = []
     dropped: list[str] = []
-    for r in by_source[s]:
-        why = splits.overlap_reason(r, ref)
-        if why is None and {"low_comma_video", "tts_source"} & set(r["unresolved"]["A"]):
+    for record in by_source[source_split]:
+        why = splits.overlap_reason(record, ref)
+        if why is None and {"low_comma_video", "tts_source"} & set(record["unresolved"]["A"]):
             why = "low_comma_or_tts_source"
         if why:
             reasons[why] += 1
-            dropped.append(f"{r['sample_id']}\t{why}\n")
+            dropped.append(f"{record['sample_id']}\t{why}\n")
         else:
-            keep.append(r)
+            keep.append(record)
     return reasons, keep, dropped
 
 
 def write_leakage_controlled(split_out: str, by_source: dict) -> tuple[dict, dict]:
     """Frozen leakage-controlled subsets: writes <file>.ids and <file>_excluded.tsv; returns (records, report)."""
     controlled, controlled_report = {}, {}
-    for s, refs in splits.DISJOINT_REFERENCE.items():
-        reasons, keep, dropped = _screen_source_split(s, refs, by_source)
-        name = splits.FILE_OF[s]
+    for source_split, refs in splits.DISJOINT_REFERENCE.items():
+        reasons, keep, dropped = _screen_source_split(source_split, refs, by_source)
+        name = splits.FILE_OF[source_split]
         controlled[name] = keep
         controlled_report[name] = {"reference": [splits.FILE_OF[x] for x in refs],
-                                   "official_records": len(by_source[s]),
+                                   "official_records": len(by_source[source_split]),
                                    "kept": len(keep), "kept_videos": len({r["group_id"] for r in keep}),
                                    "dropped_by_reason": dict(sorted(reasons.items()))}
         write_lines(os.path.join(split_out, "leakage_controlled", name + ".ids"),

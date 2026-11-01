@@ -88,7 +88,25 @@ def _build_argv(tmp_path: Path) -> list[str]:
             "--splits-dir", str(tmp_path / "s")]
 
 
+def test_build_with_a_raw_root_that_does_not_exist_names_the_folder_not_the_manifest(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    assert prepare_data.main(_build_argv(tmp_path)) == 1
+    captured = capsys.readouterr()
+    assert captured.err == "error: raw: folder not found\n"
+    assert captured.out == "" and not (tmp_path / "p").exists() and not (tmp_path / "s").exists()
+
+
+def test_build_with_a_raw_root_that_is_a_file_says_so_naming_it_only(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    (tmp_path / "raw").write_text("not a folder", encoding="utf-8")
+    assert prepare_data.main(_build_argv(tmp_path)) == 1
+    captured = capsys.readouterr()
+    assert captured.err == "error: raw: is a file, not a folder\n"
+    assert captured.out == "" and not (tmp_path / "p").exists() and not (tmp_path / "s").exists()
+
+
 def test_build_without_the_manifest_exits_1_with_one_line_naming_the_file_only(tmp_path: Path) -> None:
+    (tmp_path / "raw").mkdir()
     done = subprocess.run(
         [sys.executable, "-m", "punct_restore.cli.prepare_data", *_build_argv(tmp_path)],
         capture_output=True, text=True, check=False)

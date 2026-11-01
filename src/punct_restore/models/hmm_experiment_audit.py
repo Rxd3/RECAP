@@ -10,9 +10,9 @@ from pathlib import Path
 from typing import Any
 
 from punct_restore.data.labeling import load_label_sets
+from punct_restore.file_io import read_object, require_object
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm import HMMModel
-from punct_restore.models.hmm_experiment_protocol import read_object, require_object
 from punct_restore.models.hmm_records import read_jsonl
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import read_ids
@@ -101,8 +101,8 @@ def probability_checks(model: HMMModel) -> None:
 # The keys of a shared scorer report that a recount reads: its counts and, per metric block, its labels and scores.
 _COUNTS = {"sequences": object, "tokens": object, "ignored_prediction_ids": object}
 _BLOCK = {
-    "labels": list,
-    "macro_over": list,
+    "labels": list[str],
+    "macro_over": list[str],
     "confusion": list,
     "scored_positions": object,
     "macro_f1": float,
@@ -110,7 +110,7 @@ _BLOCK = {
     "micro": {"precision": float, "recall": float, "f1": float},
     "per_class": {},
 }
-_PREDICTION_ROW = {"sample_id": str, "label_mode": object, "predicted_labels": list}
+_PREDICTION_ROW = {"sample_id": str, "label_mode": object, "predicted_labels": list[str]}
 _CLASS = {"support": object, "predicted": object, "precision": float, "recall": float, "f1": float}
 
 
@@ -126,9 +126,14 @@ def _report_schema(mode: str) -> dict[str, Any]:
 
 
 def _require_blocks(name: str, blocks: dict[str, Any], wanted: Iterable[str]) -> None:
-    """Require each wanted metric block to hold what the recount compares, with an entry for each of its labels."""
+    """Require each wanted metric block to hold what the recount compares, with an entry for each of its labels.
+
+    The labels it averages over must be some of its labels, and at least one (the recount divides by their number).
+    """
     for block_name in wanted:
         block = require_object(name, blocks, {block_name: _BLOCK}, "blocks")[block_name]
+        if not block["macro_over"] or not set(block["macro_over"]) <= set(block["labels"]):
+            raise ValueError(f"{name}: blocks.{block_name}.macro_over is not a nonempty subset of labels")
         classes = dict.fromkeys(block["labels"], _CLASS)
         require_object(name, block["per_class"], classes, f"blocks.{block_name}.per_class")
 
@@ -145,7 +150,7 @@ def _prediction_rows(path: Path) -> list[dict[str, Any]]:
     """The rows of a prediction file; each must hold the keys the audit reads (a ValueError names file and line)."""
     rows = list(read_jsonl(path))
     for number, row in enumerate(rows, 1):
-        require_object(f"{path.name}:{number}", row, _PREDICTION_ROW)
+        require_object(f"{path.name} line {number}", row, _PREDICTION_ROW)
     return rows
 
 

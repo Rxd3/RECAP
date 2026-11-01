@@ -143,8 +143,14 @@ def test_train_priors_are_the_add_one_frequencies_of_the_listed_records(tmp_path
 
 
 def test_train_priors_names_a_missing_training_file(tmp_path: Path) -> None:
-    with pytest.raises(FileNotFoundError, match=r"^training file not found at ghost\.jsonl$"):
+    with pytest.raises(FileNotFoundError, match=r"^ghost\.jsonl: training file not found$"):
         train_priors(tmp_path / "ghost.jsonl", _ids(tmp_path, "a"), "A", ["O", "COMMA"])
+
+
+def test_train_priors_names_a_training_folder_as_a_folder(tmp_path: Path) -> None:
+    (tmp_path / "adir").mkdir()
+    with pytest.raises(IsADirectoryError, match=r"^adir: is a folder, not a file$"):
+        train_priors(tmp_path / "adir", _ids(tmp_path, "a"), "A", ["O", "COMMA"])
 
 
 def test_train_priors_names_a_training_file_that_is_not_utf8_but_not_a_bad_id_list(tmp_path: Path) -> None:
@@ -217,8 +223,14 @@ def test_read_tau_file_names_a_file_that_is_not_a_json_object(tmp_path: Path, co
 
 
 def test_read_tau_file_names_a_missing_file(tmp_path: Path) -> None:
-    with pytest.raises(FileNotFoundError, match=r"^tau file not found at ghost\.json$"):
+    with pytest.raises(FileNotFoundError, match=r"^ghost\.json: tau file not found$"):
         read_tau_file(tmp_path / "ghost.json", _model(tmp_path))
+
+
+def test_read_tau_file_names_a_folder_as_a_folder(tmp_path: Path) -> None:
+    (tmp_path / "adir").mkdir()
+    with pytest.raises(IsADirectoryError, match=r"^adir: is a folder, not a file$"):
+        read_tau_file(tmp_path / "adir", _model(tmp_path))
 
 
 def test_tau_result_lists_tau_gamma_priors_grid_and_model_before_the_provenance() -> None:

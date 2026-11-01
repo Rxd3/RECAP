@@ -1,14 +1,12 @@
-"""Protocol rules of the HMM experiment: config validation, the shape check of its files, release authentication and
-winner selection."""
+"""Protocol rules of the HMM experiment: config validation, release authentication and winner selection."""
 
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
 
+from punct_restore.file_io import require_object
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm_workflow import checked_release_file, file_identity, read_release_manifest
 from punct_restore.paths import REPO_ROOT as ROOT
@@ -17,18 +15,30 @@ from punct_restore.paths import REPO_ROOT as ROOT
 # old import path kept: the one JSON reader is in file_io
 from punct_restore.file_io import read_json as read_json
 
-# What an experiment config must hold for the steps after validate_config to index it without a KeyError.
+# What an experiment config must hold for the steps after validate_config to index it, whatever the file says:
+# every key that any step reads, with the kind of value it needs (see file_io.require_object).
 _CONFIG_SCHEMA = {
+    "schema_version": object,
     "experiment_id": str,
     "dataset_release_id": str,
     "policy_version": str,
     "processed_dir": str,
     "splits_dir": str,
     "label_config": str,
-    "modes": list,
-    "evaluation": {"repository_commit": str},
+    "modes": list[str],
+    "search": {
+        "smoothing": list[float],
+        "min_token_count": list[float],
+        "selection_split": object,
+        "selection_blocks": {},
+        "metric": object,
+        "score_precision": object,
+        "tie_break": list[str],
+        "retrain_on_validation": object,
+    },
+    "evaluation": {"repository_commit": str, "test_sets": list[str], "zero_division": object},
+    "runtime": {"comparison_ids": str, "warmup_sequences": int, "repetitions": int, "model_threads": object},
 }
-_KIND_NAMES = {str: "nonempty text", list: "a JSON list", float: "a number"}
 
 
 def now() -> str:
@@ -36,52 +46,8 @@ def now() -> str:
     return datetime.now(UTC).isoformat()
 
 
-def _has_kind(value: Any, kind: type) -> bool:
-    """Whether a JSON value is of the kind a schema asks for (`object`: anything; `float`: a number but not a bool)."""
-    if kind is str:
-        return isinstance(value, str) and bool(value.strip())
-    if kind is float:
-        return isinstance(value, (int, float)) and not isinstance(value, bool)
-    return kind is object or isinstance(value, kind)
-
-
-def require_object(name: str, value: Any, schema: Mapping[str, Any], at: str = "") -> dict[str, Any]:
-    """Require `value`, the content of the file `name`, to be a JSON object that holds every key of `schema`.
-
-    A schema value says what its key must hold: `object` anything (the key only has to be there), `str` nonempty
-    text, `float` a number, `list` a JSON list, or a schema of its own for a nested object (`{}`: any object).
-    Other keys are not looked at. `at` is where `value` sits inside the file (a dotted path), for a nested call.
-
-    Raises:
-        ValueError: One line, `<name>: <what is wrong>`, that names the key by its dotted path.
-    """
-    if not isinstance(value, dict):
-        raise ValueError(f"{name}: {at} is not a JSON object" if at else f"{name}: not a JSON object")
-    for key, want in schema.items():
-        place = f"{at}.{key}" if at else key
-        if key not in value:
-            raise ValueError(f"{name}: missing {place}")
-        if isinstance(want, Mapping):
-            require_object(name, value[key], want, place)
-        elif not _has_kind(value[key], want):
-            raise ValueError(f"{name}: {place} is not {_KIND_NAMES[want]}")
-    return value
-
-
-def read_object(path: Path, schema: Mapping[str, Any]) -> dict[str, Any]:
-    """The JSON object a study file holds, checked against `schema` (see `read_json` and `require_object`).
-
-    Every message starts with the file name only.
-    """
-    return require_object(path.name, read_json(path), schema)
-
-
-def validate_config(config: dict[str, Any], source: str = "config") -> dict[str, Any]:
-    """Reject any experiment config that is not the frozen validation-only protocol.
-
-    `source` names the file the config came from. A text value the later steps index that is missing, empty or of
-    another type is a ValueError that starts `<source>: invalid experiment config:` and names the key.
-    """
+def _check_modes_and_search(config: dict[str, Any]) -> None:
+    """The protocol rules for the modes and the selection settings (the shape of the config is already checked)."""
     if config["schema_version"] != 1 or not config["modes"]:
         raise ValueError("invalid experiment schema/modes")
     if len(set(config["modes"])) != len(config["modes"]) or set(config["modes"]) - set("ABC"):
@@ -97,22 +63,39 @@ def validate_config(config: dict[str, Any], source: str = "config") -> dict[str,
         raise ValueError("report test and test_amb separately")
     for mode in config["modes"]:
         expected = "joint/unmasked" if mode == "C" else "punctuation/all"
-        if search["selection_blocks"][mode] != expected:
+        if search["selection_blocks"].get(mode) != expected:
             raise ValueError(f"mode {mode}: wrong primary selection block")
-    for values, kind in [(search["smoothing"], float), (search["min_token_count"], int)]:
-        if not values or len(set(values)) != len(values):
-            raise ValueError("search values must be nonempty and unique")
-        for value in values:
-            if isinstance(value, bool) or not isinstance(value, (float, int)):
-                raise ValueError("search parameters must be numeric")
-            if not math.isfinite(value) or value <= 0 or (kind is int and type(value) is not int):
-                raise ValueError("smoothing/cutoffs must be positive; cutoffs must be integers")
+
+
+def _check_search_values(values: list[Any], kind: type) -> None:
+    """Require a search grid to be nonempty, unique, positive and finite (cutoffs: whole numbers)."""
+    if not values or len(set(values)) != len(values):
+        raise ValueError("search values must be nonempty and unique")
+    for value in values:
+        if (isinstance(value, float) and not math.isfinite(value)) or value <= 0 or (
+            kind is int and type(value) is not int
+        ):
+            raise ValueError("smoothing/cutoffs must be positive; cutoffs must be integers")
+
+
+def validate_config(config: Any, source: str = "config") -> dict[str, Any]:
+    """Reject any experiment config that is not the frozen validation-only protocol.
+
+    `source` names the file the config came from. The shape comes first: a config that is not an object, or lacks
+    a key a later step indexes, or holds a value of another kind (a mode that is no text, a search value that is
+    no number) is a ValueError of one line, `<source>: invalid experiment config: <what is wrong>`, that names
+    the key. Only then are the protocol rules checked.
+    """
+    require_object(f"{source}: invalid experiment config", config, _CONFIG_SCHEMA)
+    _check_modes_and_search(config)
+    search = config["search"]
+    _check_search_values(search["smoothing"], float)
+    _check_search_values(search["min_token_count"], int)
     runtime = config["runtime"]
     if runtime["repetitions"] < 2 or runtime["warmup_sequences"] < 1:
         raise ValueError("runtime measurement requires warmup and repetitions")
     if runtime["model_threads"] != 1 or config["evaluation"]["zero_division"] != 0:
         raise ValueError("this implementation uses one model thread and zero_division=0")
-    require_object(f"{source}: invalid experiment config", config, _CONFIG_SCHEMA)
     return config
 
 

@@ -24,6 +24,7 @@ from punct_restore.features.word_clusters import (
     induce_clusters,
     map_to_json,
 )
+from punct_restore.file_io import iter_jsonl
 from punct_restore.hashing import sha256_file
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import (
@@ -33,11 +34,6 @@ from punct_restore.prediction_io import (
     reconfigure_stdout,
     write_new_file,
 )
-
-
-def _parse(line: str, name: str, number: int) -> tuple[str, dict[str, Any]]:
-    record = parse_sample_record(line, f"{name} line {number}")
-    return record["sample_id"], record
 
 
 def _tokens(record: dict[str, Any], name: str, number: int) -> list[str]:
@@ -50,20 +46,14 @@ def _tokens(record: dict[str, Any], name: str, number: int) -> list[str]:
 def train_tokens(path: Path, wanted: set[str]) -> Iterator[list[str]]:
     """Stream the token list of every wanted record of the JSONL file; fail at the end if some are missing."""
     seen: set[str] = set()
-    try:
-        with path.open(encoding="utf-8") as handle:
-            for number, line in enumerate(handle, 1):
-                if not line.strip():
-                    continue
-                sample_id, record = _parse(line, path.name, number)
-                if sample_id not in wanted:
-                    continue
-                if sample_id in seen:
-                    raise ValueError(f"{path.name} line {number}: duplicate sample_id")
-                seen.add(sample_id)
-                yield _tokens(record, path.name, number)
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"{path.name}: not valid UTF-8") from exc
+    for number, record in iter_jsonl(path, parse_sample_record):
+        sample_id = record["sample_id"]
+        if sample_id not in wanted:
+            continue
+        if sample_id in seen:
+            raise ValueError(f"{path.name} line {number}: duplicate sample_id")
+        seen.add(sample_id)
+        yield _tokens(record, path.name, number)
     if len(seen) != len(wanted):
         raise ValueError(f"{path.name}: {len(wanted) - len(seen)} ID(s) of the ids file not found")
 

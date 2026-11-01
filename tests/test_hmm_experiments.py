@@ -1,5 +1,6 @@
 """Independent workflow gates and inference/metric checks on tiny fixtures."""
 
+import ast
 import json
 import os
 import subprocess
@@ -73,6 +74,83 @@ def test_source_files_are_exactly_the_modules_the_four_hmm_commands_load():
     assert "src/punct_restore/data/__init__.py" in loaded  # the scan sees the package inits the commands run first
     assert sorted(loaded - listed) == [], "loaded by the study but not hashed"
     assert sorted(listed - loaded) == [], "hashed but not loaded by the study"
+
+
+FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef)
+
+
+def _imports_punct_restore(node: ast.AST) -> bool:
+    """Whether a statement imports from the package, by its name (absolute) or by a dot (relative)."""
+    if isinstance(node, ast.Import):
+        return any(alias.name.split(".")[0] == "punct_restore" for alias in node.names)
+    return isinstance(node, ast.ImportFrom) and (node.level > 0 or (node.module or "").split(".")[0] == "punct_restore")
+
+
+def lazy_punct_restore_imports(source: str) -> list[int]:
+    """The line numbers of the imports of punct_restore, absolute or relative, that sit inside a function."""
+    return sorted({
+        node.lineno
+        for function in ast.walk(ast.parse(source)) if isinstance(function, FUNCTIONS)
+        for node in ast.walk(function) if _imports_punct_restore(node)
+    })
+
+
+LAZY_SOURCE = """
+import json
+from punct_restore.top import fine
+from . import also_fine
+
+
+def plain():
+    import os
+    from collections import Counter
+
+
+def inside(path):
+    import punct_restore.models.hmm
+    from punct_restore.data import labeling
+    from punct_restore import paths
+    from .sibling import thing
+    from . import other
+    from .. import parent
+    return None
+
+
+class Holder:
+    def method(self):
+        import punct_restore.file_io as io
+
+        def nested():
+            from punct_restore.hashing import sha256_file
+"""
+
+
+def test_the_lazy_import_checker_finds_every_form_of_import_inside_a_function_and_nothing_else():
+    """Self-test on inline source: a checker that misses a form (relative, `from x import y`, a method, a nested
+    function) or flags a module-level or standard-library import would make the closure test below worthless."""
+    found = lazy_punct_restore_imports(LAZY_SOURCE)
+    lines = LAZY_SOURCE.splitlines()
+    assert [lines[number - 1].strip() for number in found] == [
+        "import punct_restore.models.hmm",
+        "from punct_restore.data import labeling",
+        "from punct_restore import paths",
+        "from .sibling import thing",
+        "from . import other",
+        "from .. import parent",
+        "import punct_restore.file_io as io",
+        "from punct_restore.hashing import sha256_file",
+    ]
+    assert lazy_punct_restore_imports("import punct_restore\nfrom punct_restore.x import y\nfrom . import z\n") == []
+
+
+def test_no_hashed_source_file_imports_punct_restore_inside_a_function():
+    """The runtime-closure test only sees an import that has run: a lazy one would load a module the record misses."""
+    offenders = {
+        name: lines
+        for name in SOURCE_FILES
+        if name.startswith("src/") and (lines := lazy_punct_restore_imports((ROOT / name).read_text(encoding="utf-8")))
+    }
+    assert offenders == {}
 
 
 def test_the_module_that_computes_the_implementation_record_is_itself_hashed():

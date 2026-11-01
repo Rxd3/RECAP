@@ -42,7 +42,8 @@ VALID_SELECTION = {
     "plan_sha256": "0" * 64, "modes": {}, "mode_selection_sha256": {},
     "used_test_labels": False, "training_includes_validation": False,
 }
-VALID_LOOKING_PLAN = {"config": {}, "implementation": {}, "evaluator": {}}
+VALID_LOOKING_PLAN = {"config": {}, "implementation": {}, "evaluator": {}, "code": {},
+                      "tuning_inputs": {"release_manifest": {}}}
 
 
 def assert_one_error_line(
@@ -194,8 +195,16 @@ def test_time_models_names_a_corrupt_hmm_model_once(tmp_path: Path, capsys: pyte
     bad = tmp_path / "broken.json"
     bad.write_bytes(b"{oops")
     assert time_models.main(time_argv(bad, tmp_path / "t.json", tiny_data_root(tmp_path / "data"))) == 1
-    err = capsys.readouterr().err
-    assert err.startswith("error: broken.json: invalid HMM artifact: ") and err.count("broken.json") == 1
+    assert capsys.readouterr().err == "error: broken.json: not valid JSON\n"
+
+
+def test_time_models_names_a_model_without_its_counts_once_and_without_python_text(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    bad = tmp_path / "broken.json"
+    bad.write_text('{"format_version": 1, "model_name": "hmm", "config": {"label_mode": "A", "labels": []}}',
+                   encoding="utf-8")
+    assert time_models.main(time_argv(bad, tmp_path / "t.json", tiny_data_root(tmp_path / "data"))) == 1
+    assert capsys.readouterr().err == "error: broken.json: invalid HMM artifact: missing counts\n"
 
 
 @pytest.mark.parametrize("kind", ["nested", "not-utf8"])
@@ -313,7 +322,7 @@ def test_tune_with_a_config_that_lacks_a_required_value_is_one_error_line_naming
 @pytest.mark.parametrize("name", GATE_COMMANDS)
 def test_a_plan_whose_config_lacks_a_required_value_is_one_error_line_naming_the_key(
         name: str, key: str, how: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    plan = {"config": damaged_config(key, how), "implementation": {}, "evaluator": {}}
+    plan = {**VALID_LOOKING_PLAN, "config": damaged_config(key, how)}
     run = frozen_run(tmp_path, plan, VALID_SELECTION)
     assert GATE_COMMANDS[name](run, tmp_path) == 1
     assert key in assert_one_error_line(capsys, tmp_path, "plan.json")
@@ -357,6 +366,8 @@ STUDY_FILES = [
     (f"{FINAL}/predictions.manifest.json", "verify", ("inputs", "selection_record", "sha256")),
     (WINNER_RUN, "package", ("training_summary",)),
     (f"{PROCESSED}/stats.json", "verify", ("labels_default_and_primary", "train", "A", "counts")),
+    *[(f"{RUN}/plan.json", command, key_path) for command in GATED
+      for key_path in (("tuning_inputs", "release_manifest"), ("code",))],  # finalize and package read these
     *[(f"{RUN}/selection.json", command, ("mode_selection_sha256", "A")) for command in GATED],
     *[(f"{RUN}/selection.json", command, ("modes", "A", "model")) for command in GATED],
     *[(MANIFEST, command, (key,)) for command in ("tune", "finalize", "verify")
@@ -439,6 +450,67 @@ def test_a_damaged_study_file_is_one_error_line_naming_the_file_and_leaves_no_ou
     assert command != "finalize" or not (study.run / "final").exists()
 
 
+# ---- a list whose items are of the wrong kind: `[{}]`, `[["O"]]`, `[1]`, `[null]` ----
+
+ITEMS = {"object": [{}], "list": [["O"]], "number": [1], "null": [None]}
+BLOCK = ("blocks", "punctuation/all")
+REPORTS = (f"{FINAL}/evaluation.json", f"{FINAL}/shortcut.evaluation.json")
+CONFIG_LISTS = [("config", "modes"), ("config", "search", "smoothing"), ("config", "search", "min_token_count"),
+                ("config", "search", "tie_break"), ("config", "evaluation", "test_sets")]
+# (file under the study root, the command that reads it, the path of the list in it, how the line starts after
+# `error: `). Not here: a mode's candidates and a candidate's validation.json, which the frozen gate hashes first.
+LIST_FIELDS = [
+    *[(report, "verify", (*BLOCK, name), f"{Path(report).name}: {'.'.join(BLOCK)}.{name}.0 is not nonempty text")
+      for report in REPORTS for name in ("labels", "macro_over")],
+    *[(report, "verify", (*BLOCK, "confusion"), "confusion matrix/support mismatch") for report in REPORTS],
+    (f"{RUN}/runtime.json", "verify", ("modes", "A", "prediction_seconds"), "invalid runtime repetitions"),
+    *[(f"{RUN}/plan.json", command, path, f"plan.json: invalid experiment config: {'.'.join(path[1:])}.0 is not")
+      for command in GATED for path in CONFIG_LISTS],
+]
+NUMBERS = {("config", "search", "smoothing"), ("config", "search", "min_token_count")}  # `[1]` is right for these
+LIST_CASES = [
+    pytest.param(relative, command, path, start, items, id=f"{Path(relative).name}-{'.'.join(path)}-{command}-{items}")
+    for relative, command, path, start in LIST_FIELDS for items in ITEMS if not (items == "number" and path in NUMBERS)
+]
+
+
+def set_at(path: Path, key_path: tuple[str, ...], value: Any) -> None:
+    """Write the JSON file at `path` back with the value at `key_path` replaced."""
+    content = read_json(path)
+    holder = content
+    for key in key_path[:-1]:
+        holder = holder[key]
+    holder[key_path[-1]] = value
+    path.write_text(json.dumps(content), encoding="utf-8")
+
+
+@pytest.mark.parametrize(("relative", "command", "key_path", "start", "items"), LIST_CASES)
+def test_a_list_with_items_of_the_wrong_kind_is_one_error_line_and_leaves_no_output(
+        relative: str, command: str, key_path: tuple[str, ...], start: str, items: str,
+        study: Study, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """`labels: [{}]` used to reach `dict.fromkeys` and die with `TypeError: unhashable type`."""
+    winner = Path(read_json(study.run / "selection.json")["modes"]["A"]["model"]).parent.as_posix()
+    target = study.root / relative.replace("{winner_A}", winner)
+    if command == "finalize":
+        strip_to_tuned(study)
+    set_at(target, key_path, ITEMS[items])
+    assert run_study_command(command, study) == 1
+    assert_one_error_line(capsys, tmp_path, start, quiet=False)
+    left = [study.root / "artifacts/hmm/new", study.run / "audit-new", study.root / "artifacts/handoff-new"]
+    assert [path for path in left if path.exists()] == []
+    assert command != "finalize" or not (study.run / "final").exists()
+
+
+@pytest.mark.parametrize("labels", [[], ["NOPE"], ["COMMA", "NOPE"]], ids=["empty", "unknown", "partly-unknown"])
+def test_macro_over_must_be_a_nonempty_subset_of_the_labels(
+        labels: list[str], study: Study, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """An empty list divided by zero and an unknown label was a KeyError, both as a traceback."""
+    set_at(study.run / "final/mode_A/test/evaluation.json", ("blocks", "punctuation/all", "macro_over"), labels)
+    assert run_study_command("verify", study) == 1
+    err = assert_one_error_line(capsys, tmp_path, "evaluation.json: ", quiet=False)
+    assert err.endswith("blocks.punctuation/all.macro_over is not a nonempty subset of labels\n")
+
+
 # A prediction file is JSON lines, not a JSON object, but the audit indexes its rows the same way.
 PREDICTION_FILES = [f"{FINAL}/shortcut.jsonl", f"{RUN}/{{winner_A}}/predictions.jsonl"]
 ROW_DAMAGE = {  # what the first row of the file becomes, and the reason the audit gives for it
@@ -446,6 +518,8 @@ ROW_DAMAGE = {  # what the first row of the file becomes, and the reason the aud
     "no-mode": (lambda row: {k: v for k, v in row.items() if k != "label_mode"}, "missing label_mode"),
     "no-labels": (lambda row: {k: v for k, v in row.items() if k != "predicted_labels"}, "missing predicted_labels"),
     "labels-text": (lambda row: {**row, "predicted_labels": "O"}, "predicted_labels is not a JSON list"),
+    **{f"labels-hold-{name}": ((lambda row, items=items: {**row, "predicted_labels": items}),
+                               "predicted_labels.0 is not nonempty text") for name, items in ITEMS.items()},
     "array": (lambda row: [], "not a JSON object"),
     "null": (lambda row: None, "not a JSON object"),
 }
@@ -462,5 +536,5 @@ def test_a_damaged_prediction_row_is_one_error_line_naming_the_file_and_its_line
     lines = [json.dumps(row) + "\n" for row in [change(rows[0]), *rows[1:]]]
     target.write_text("".join(lines), encoding="utf-8")
     assert run_study_command("verify", study) == 1
-    err = assert_one_error_line(capsys, tmp_path, f"{target.name}:1: {reason}", quiet=False)
+    err = assert_one_error_line(capsys, tmp_path, f"{target.name} line 1: {reason}", quiet=False)
     assert err.endswith(f"{reason}\n") and not (study.run / "audit-new").exists()

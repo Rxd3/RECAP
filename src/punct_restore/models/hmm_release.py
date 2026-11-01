@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from punct_restore.data.preprocessing import parse_manifest_line
-from punct_restore.file_io import read_json_object
+from punct_restore.file_io import read_object, require_object
 from punct_restore.hashing import sha256_file
 
 
@@ -44,10 +44,10 @@ def _check_split_manifest(split_manifest: Path, manifest: dict[str, Any]) -> Non
     for number, line in enumerate(lines, 1):
         digest, name = parse_manifest_line(line, number, split_manifest.name)
         if name in actual_sums:
-            raise ValueError("duplicate path in split checksum manifest")
+            raise ValueError(f"{split_manifest.name}: duplicate path in split checksum manifest")
         actual_sums[name] = digest
     if actual_sums != expected_sums:
-        raise ValueError("split checksum manifest does not match release")
+        raise ValueError(f"{split_manifest.name}: split checksum manifest does not match release")
 
 
 def _check_prediction_files(
@@ -87,26 +87,27 @@ class ReleaseInputs:
     prediction_ids: Path | None = None
 
 
-_MANIFEST_TEXT_FIELDS = ("release_id", "policy_version", "label_sets_sha256")
-_MANIFEST_FILE_TABLES = ("files", "split_files")
+# What the HMM commands read from a release manifest; `{}` is a table whose entries `read_release_manifest` checks.
+_RELEASE_MANIFEST = {
+    "release_id": str,
+    "policy_version": str,
+    "label_sets_sha256": str,
+    "files": {},
+    "split_files": {},
+    "source": {"revision": str},
+}
+_FILE_ENTRY = {"sha256": str, "bytes": int}
 
 
 def read_release_manifest(path: Path) -> dict[str, Any]:
-    """A release manifest with the fields the HMM commands read; a wrong shape is a ValueError naming the file."""
-    manifest = read_json_object(path)
-    for field in _MANIFEST_TEXT_FIELDS:
-        if not isinstance(manifest.get(field), str):
-            raise ValueError(f"{path.name}: release manifest has no text field {field}")
-    for table in _MANIFEST_FILE_TABLES:
-        entries = manifest.get(table)
-        if not isinstance(entries, dict) or not all(
-            isinstance(entry, dict) and isinstance(entry.get("sha256"), str) and isinstance(entry.get("bytes"), int)
-            for entry in entries.values()
-        ):
-            raise ValueError(f"{path.name}: release manifest {table} must map names to sha256 and bytes")
-    source = manifest.get("source")
-    if not isinstance(source, dict) or not isinstance(source.get("revision"), str):
-        raise ValueError(f"{path.name}: release manifest has no source revision")
+    """A release manifest with the fields the HMM commands read; a wrong shape is a ValueError naming the file.
+
+    The message is `<file name>: missing <key>` or `<file name>: <key> is not <kind>` (`file_io.require_object`);
+    an entry of `files` or `split_files` is placed by its name (`files.mode_A/train.jsonl.bytes`).
+    """
+    manifest = read_object(path, _RELEASE_MANIFEST)
+    for table in ("files", "split_files"):
+        require_object(path.name, manifest[table], dict.fromkeys(manifest[table], _FILE_ENTRY), table)
     return manifest
 
 

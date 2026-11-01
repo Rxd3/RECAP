@@ -72,22 +72,22 @@ def test_one_line_error_never_shows_a_folder_of_a_missing_file(tmp_path: Path) -
     assert prediction_io.one_line_error(exc) == "x.json: No such file or directory"
 
 
-def test_one_line_error_naming_cuts_the_paths_it_is_given_to_their_file_names(tmp_path: Path) -> None:
+def test_one_line_error_with_short_paths_cuts_the_paths_it_is_given_to_their_file_names(tmp_path: Path) -> None:
     data, ids = tmp_path / "deep" / "data.jsonl", tmp_path / "train.ids"
     exc = ValueError(f"Corrupt JSON at line 3 in {data}:\n{ids} is empty")
-    line = prediction_io.one_line_error_naming(exc, data, ids, None)
+    line = prediction_io.one_line_error_with_short_paths(exc, data, ids, None)
     assert line == "Corrupt JSON at line 3 in data.jsonl: train.ids is empty"
 
 
-def test_one_line_error_naming_leaves_a_path_it_is_not_given_alone(tmp_path: Path) -> None:
+def test_one_line_error_with_short_paths_leaves_a_path_it_is_not_given_alone(tmp_path: Path) -> None:
     other = tmp_path / "other.txt"
-    line = prediction_io.one_line_error_naming(ValueError(f"bad {other}"), tmp_path / "data.jsonl")
+    line = prediction_io.one_line_error_with_short_paths(ValueError(f"bad {other}"), tmp_path / "data.jsonl")
     assert line == f"bad {other}"
 
 
-def test_one_line_error_naming_without_paths_reads_as_one_line_error(tmp_path: Path) -> None:
+def test_one_line_error_with_short_paths_without_paths_reads_as_one_line_error(tmp_path: Path) -> None:
     exc = OSError(28, "No space left on device", str(tmp_path / "out.jsonl"))
-    assert prediction_io.one_line_error_naming(exc) == prediction_io.one_line_error(exc)
+    assert prediction_io.one_line_error_with_short_paths(exc) == prediction_io.one_line_error(exc)
 
 
 def test_one_line_error_takes_the_exception_alone_and_leaves_a_quoted_path_as_main_did(tmp_path: Path) -> None:

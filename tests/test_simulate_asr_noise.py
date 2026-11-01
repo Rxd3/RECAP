@@ -325,14 +325,14 @@ def test_masks_follow_the_mode_c_input_whatever_the_order_of_the_inputs(sim, cap
 
 def test_summary_cost_is_computed_from_the_cost_table(sim, monkeypatch):
     monkeypatch.setattr(sim, "COST", {**sim.COST, "swap": 3})
-    args = argparse.Namespace(release="r", split="validation", wer=0.5, seed=1)
+    args = argparse.Namespace(release="r", split="validation", wer=0.5, seed=1, edit_model="v1")
     plan = {"s": Edits(swapped=frozenset({0}))}
     summary = sim.summarize(args, [], {"s": ["a", "b", "c", "d"]}, plan)
     assert summary["edit_cost"] == 3 and summary["cost_share"]["swap"] == 1.0
 
 
-def test_summary_of_a_namespace_without_the_edit_model_option_is_the_v1_summary(sim):
-    args = argparse.Namespace(release="r", split="validation", wer=0.5, seed=1)  # no edit_model attribute
+def test_summary_of_edit_model_v1_has_neither_the_model_nor_a_vocabulary(sim):
+    args = argparse.Namespace(release="r", split="validation", wer=0.5, seed=1, edit_model="v1")
     plan = {"s": Edits(deleted=frozenset({0}))}
     summary = sim.summarize(args, [], {"s": ["a", "b", "c", "d"]}, plan)
     assert "edit_model" not in summary and "vocabulary_source" not in summary

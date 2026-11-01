@@ -21,11 +21,11 @@ from collections.abc import Container
 from pathlib import Path
 from typing import Any
 
-from punct_restore.file_io import iter_jsonl
+from punct_restore.file_io import iter_jsonl, require_file
 from punct_restore.models.hidden_event_lm import HiddenEventLM
 from punct_restore.prediction_io import (
     check_new_output_paths,
-    one_line_error_naming,
+    one_line_error_with_short_paths,
     parse_sample_record,
     read_ids,
     read_observations,
@@ -38,9 +38,10 @@ PATH_OPTIONS = ("input", "ids", "output", "model", "manifest_out")
 
 
 def _require_files(*named: tuple[str, Path | None]) -> None:
-    for flag, path in named:
-        if path is not None and not path.is_file():
-            raise ValueError(f"{flag}: {path.name} is not an existing file")
+    """Raise unless every given path is a file; ``what`` names it in the not-found message (``None`` is skipped)."""
+    for what, path in named:
+        if path is not None:
+            require_file(path, what)
 
 
 def _interned(value: Any) -> Any:
@@ -98,7 +99,7 @@ def _cmd_train(args: argparse.Namespace) -> str:
     input_path, ids_path, output = Path(args.input), Path(args.ids), Path(args.output)
     check_new_output_paths({"--output": output}, {"--input": input_path, "--ids": ids_path})
     refuse_existing(output)
-    _require_files(("--input", input_path), ("--ids", ids_path))
+    _require_files(("input JSONL", input_path), ("ID list", ids_path))
     model = HiddenEventLM(
         args.mode, order=args.order, discount=args.discount, min_count=args.min_count, model_name=args.model_name
     )
@@ -126,7 +127,7 @@ def _cmd_predict(args: argparse.Namespace) -> str:
     check_new_output_paths({"--output": output, "--manifest-out": manifest},
                            {"--model": model_path, "--input": input_path, "--ids": ids_path})
     refuse_existing(output, manifest)
-    _require_files(("--model", model_path), ("--input", input_path), ("--ids", ids_path))
+    _require_files(("model artifact", model_path), ("input JSONL", input_path), ("ID list", ids_path))
     model = HiddenEventLM.load_model(model_path)
     if ids_path is not None:
         read_ids(ids_path)  # read_observations reads the list again; here its errors do not get the input's name
@@ -140,7 +141,7 @@ def _cmd_predict(args: argparse.Namespace) -> str:
 
 def _one_line(exc: ValueError | OSError, args: argparse.Namespace) -> str:
     """The message on one line, with files named by name only (an OSError reports just its file's name)."""
-    return one_line_error_naming(exc, *(getattr(args, option, None) for option in PATH_OPTIONS))
+    return one_line_error_with_short_paths(exc, *(getattr(args, option, None) for option in PATH_OPTIONS))
 
 
 def _build_parser() -> argparse.ArgumentParser:

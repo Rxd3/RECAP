@@ -29,9 +29,9 @@ def validate_record(rec: object, label_sets: Mapping[str, Any]) -> list[str]:
         return errors
     if type(rec["schema_version"]) is not int or rec["schema_version"] != SCHEMA_VERSION:
         errors.append(f"unsupported schema_version {rec['schema_version']!r}")
-    for k in ("sample_id", "source"):
-        if not isinstance(rec[k], str) or not rec[k]:
-            errors.append(f"{k} must be a nonempty string")
+    for field in ("sample_id", "source"):
+        if not isinstance(rec[field], str) or not rec[field]:
+            errors.append(f"{field} must be a nonempty string")
     if rec["split"] not in SPLITS:
         errors.append(f"split {rec['split']!r} not in {SPLITS}")
     if rec["label_mode"] not in MODES:
@@ -56,11 +56,11 @@ def validate_record(rec: object, label_sets: Mapping[str, Any]) -> list[str]:
 def check_model_input(tokens: Iterable[str]) -> list[str]:
     """Member 1 input policy: model tokens are lowercased and carry no trailing target punctuation."""
     errors = []
-    for t in tokens:
-        if t != t.lower():
-            errors.append(f"token {t!r} is not lowercased")
-        if TARGET_MARK_END.search(t) or re.search(r"\s", t):
-            errors.append(f"token {t!r} contains whitespace or a trailing target mark")
+    for token in tokens:
+        if token != token.lower():
+            errors.append(f"token {token!r} is not lowercased")
+        if TARGET_MARK_END.search(token) or re.search(r"\s", token):
+            errors.append(f"token {token!r} contains whitespace or a trailing target mark")
     return errors
 
 

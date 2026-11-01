@@ -194,6 +194,19 @@ def test_a_missing_input_file_names_the_file_only(case: Case, capsys, tmp_path: 
     assert name in err and not case.model.exists()
 
 
+@pytest.mark.parametrize(("option", "what"), [("input", "input JSONL"), ("ids", "ID list")])
+def test_train_says_which_file_is_not_found(case: Case, capsys, tmp_path: Path, option: str, what: str) -> None:
+    err = _refused(capsys, tmp_path, case.train_argv(**{option: case.folder / "ghost.txt"}))
+    assert err == f"error: ghost.txt: {what} not found\n" and not case.model.exists()
+
+
+@pytest.mark.parametrize("option", ["input", "ids"])
+def test_train_says_a_folder_given_as_a_file_is_a_folder(case: Case, capsys, tmp_path: Path, option: str) -> None:
+    (case.folder / "adir").mkdir()
+    err = _refused(capsys, tmp_path, case.train_argv(**{option: case.folder / "adir"}))
+    assert err == "error: adir: is a folder, not a file\n" and not case.model.exists()
+
+
 def test_corrupt_and_duplicate_input_lines_are_one_line_errors(case: Case, capsys, tmp_path: Path) -> None:
     lines = case.train.read_text(encoding="utf-8").splitlines()
     case.train.write_text("\n".join([*lines, "{not json"]) + "\n", encoding="utf-8")
@@ -270,6 +283,28 @@ def test_predict_outputs_may_not_collide_with_each_other_or_with_inputs(
     assert not trained.preds.exists()
 
 
+@pytest.mark.parametrize(("option", "what"), [("model", "model artifact"), ("input", "input JSONL")])
+def test_predict_says_which_file_is_not_found(
+        trained: Case, capsys, tmp_path: Path, option: str, what: str) -> None:
+    err = _refused(capsys, tmp_path, trained.predict_argv(**{option: trained.folder / "ghost.txt"}))
+    assert err == f"error: ghost.txt: {what} not found\n" and not trained.preds.exists()
+
+
+def test_predict_says_an_ids_file_is_not_found(trained: Case, capsys, tmp_path: Path) -> None:
+    err = _refused(capsys, tmp_path, trained.predict_argv("--ids", str(trained.folder / "ghost.txt")))
+    assert err == "error: ghost.txt: ID list not found\n" and not trained.preds.exists()
+
+
+@pytest.mark.parametrize("option", ["model", "input", "ids"])
+def test_predict_says_a_folder_given_as_a_file_is_a_folder(
+        trained: Case, capsys, tmp_path: Path, option: str) -> None:
+    (trained.folder / "adir").mkdir()
+    folder = trained.folder / "adir"
+    argv = trained.predict_argv("--ids", str(folder)) if option == "ids" else trained.predict_argv(**{option: folder})
+    err = _refused(capsys, tmp_path, argv)
+    assert err == "error: adir: is a folder, not a file\n" and not trained.preds.exists()
+
+
 def test_predict_checks_its_outputs_before_loading_the_model(trained: Case, capsys, tmp_path: Path) -> None:
     trained.model.write_text("{not json", encoding="utf-8")
     trained.preds.write_text("keep me", encoding="utf-8")
@@ -277,7 +312,7 @@ def test_predict_checks_its_outputs_before_loading_the_model(trained: Case, caps
 
 
 @pytest.mark.parametrize(("fault", "fragment"), [
-    ("missing model", "absent_model.json"), ("corrupt model", "invalid hidden-event LM artifact"),
+    ("missing model", "absent_model.json"), ("corrupt model", "not valid JSON"),
     ("missing input", "absent_input.jsonl"), ("missing id", "ghost"), ("missing ids file", "absent.ids")])
 def test_predict_faults_are_one_line_errors_and_write_nothing(
         trained: Case, capsys, tmp_path: Path, fault: str, fragment: str) -> None:
@@ -299,9 +334,12 @@ def test_predict_faults_are_one_line_errors_and_write_nothing(
     assert not trained.preds.exists() and not trained.man.exists()
 
 
-def test_a_corrupt_model_reports_the_artifact_error(trained: Case, capsys, tmp_path: Path) -> None:
-    trained.model.write_text("{not json", encoding="utf-8")
-    assert "invalid hidden-event LM artifact" in _refused(capsys, tmp_path, trained.predict_argv())
+@pytest.mark.parametrize(("content", "fragment"), [("{not json", "not valid JSON"),
+                                                   ("[1, 2]", "invalid hidden-event LM artifact")])
+def test_a_corrupt_model_reports_the_artifact_error(
+        trained: Case, capsys, tmp_path: Path, content: str, fragment: str) -> None:
+    trained.model.write_text(content, encoding="utf-8")
+    assert fragment in _refused(capsys, tmp_path, trained.predict_argv())
 
 
 @pytest.mark.parametrize("command", ["train", "predict"])

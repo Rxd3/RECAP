@@ -611,13 +611,24 @@ def test_a_tampered_mode_c_truecaser_is_a_value_error(tmp_path: Path, how: str) 
         HiddenEventLM.load_model(bad)
 
 
-@pytest.mark.parametrize("content", [b"", b"{not json", b"[1, 2]", b"\xff\xfe\x00", b'{"format_version": 1}'])
-def test_corrupt_artifact_bytes_are_a_one_line_value_error(tmp_path: Path, content: bytes) -> None:
+@pytest.mark.parametrize(
+    ("content", "message"),
+    [
+        (b"", r"^bad\.json: not valid JSON$"),
+        (b"{not json", r"^bad\.json: not valid JSON$"),
+        (b"[" * 100_000, r"^bad\.json: not valid JSON$"),
+        (b"\xff\xfe\x00", r"^bad\.json: not valid UTF-8$"),
+        (b"[1, 2]", rf"^bad\.json: {ARTIFACT_ERROR}: "),
+        (b'{"format_version": 1}', rf"^bad\.json: {ARTIFACT_ERROR}: "),
+    ],
+)
+def test_corrupt_artifact_bytes_are_one_named_line_without_python_text(
+        tmp_path: Path, content: bytes, message: str) -> None:
     bad = tmp_path / "bad.json"
     bad.write_bytes(content)
-    with pytest.raises(ValueError, match=ARTIFACT_ERROR) as error:
+    with pytest.raises(ValueError, match=message) as error:
         HiddenEventLM.load_model(bad)
-    assert "\n" not in str(error.value)
+    assert "\n" not in str(error.value) and "codec" not in str(error.value) and "Expecting" not in str(error.value)
 
 
 @pytest.mark.parametrize("content", [b"{not json", b"\xff\xfe\x00", b"[1, 2]", b"[" * 100_000])
@@ -628,5 +639,5 @@ def test_the_artifact_error_starts_with_the_file_name_and_shows_no_folder(tmp_pa
     bad.write_bytes(content)
     with pytest.raises(ValueError) as error:
         HiddenEventLM.load_model(bad)
-    assert str(error.value).startswith("bad.json: invalid hidden-event LM artifact: ")
+    assert str(error.value).startswith("bad.json: ")  # the exact wording per kind is pinned above
     assert "secretfolder" not in str(error.value)

@@ -243,6 +243,7 @@ def _prepare_data_argv(env: Env) -> list[str]:
 
 
 def _prepare_data_without_manifest(env: Env) -> Run:
+    (env.folder / "raw").mkdir(parents=True)  # the raw root exists; only its MANIFEST.sha256 is missing
     return Run(prepare_data.main, _prepare_data_argv(env), Path("MANIFEST.sha256"))
 
 
@@ -389,6 +390,14 @@ def test_prepare_data_build_without_the_manifest_is_one_error_line(
     assert run.main(run.argv) == 1
     line = _error_line(capsys)
     assert line.startswith("error: MANIFEST.sha256: not found; copy it from") and FOLDER not in line
+
+
+def test_prepare_data_build_without_the_raw_root_names_the_folder_not_the_manifest(
+    crf: Fixture, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    run = Run(prepare_data.main, _prepare_data_argv(Env(tmp_path / FOLDER, b"", crf)), Path("raw"))
+    assert run.main(run.argv) == 1
+    assert _error_line(capsys) == "error: raw: folder not found\n"
 
 
 def test_an_unreadable_companion_manifest_is_a_note_not_a_traceback(

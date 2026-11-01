@@ -120,3 +120,15 @@ def test_a_missing_archive_is_named_by_file_name_only(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError) as caught:
         extraction.extract_archive(tmp_path / "deep" / "gone.tar.gz", tmp_path / "raw")
     assert str(caught.value) == "gone.tar.gz: archive not found"
+
+
+def test_a_member_that_is_not_a_regular_file_is_refused_by_name() -> None:
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w") as tar:
+        folder = tarfile.TarInfo("sponspeech/adir")
+        folder.type = tarfile.DIRTYPE
+        tar.addfile(folder)
+    buffer.seek(0)
+    with tarfile.open(fileobj=buffer, mode="r:") as tar, pytest.raises(ValueError) as caught:
+        extraction._file_bytes(tar, tar.getmembers()[0])
+    assert str(caught.value) == "sponspeech/adir: not a regular file"

@@ -1,4 +1,5 @@
-"""The file-level helpers of punct_restore.file_io: the JSONL reader, the new-folder writer and the JSON readers.
+"""The file-level helpers of punct_restore.file_io: the JSONL reader, the new-folder writer, the JSON readers and the
+shape check every study file goes through.
 
 The older helpers (write_new_file, refuse_existing, require_file) are tested through prediction_io, which still
 exports them: the last test pins that those names are the very objects of file_io.
@@ -16,7 +17,14 @@ from typing import Any
 import pytest
 
 from punct_restore import file_io, prediction_io
-from punct_restore.file_io import iter_jsonl, read_json, read_json_object, write_new_folder
+from punct_restore.file_io import (
+    iter_jsonl,
+    read_json,
+    read_json_object,
+    read_object,
+    require_object,
+    write_new_folder,
+)
 from punct_restore.models import hmm_experiment_protocol, hmm_workflow
 from punct_restore.prediction_io import parse_json_object, parse_sample_record
 
@@ -163,6 +171,107 @@ def test_a_missing_json_file_is_an_os_error_for_both_readers(tmp_path: Path) -> 
     for reader in (read_json, read_json_object):
         with pytest.raises(FileNotFoundError):
             reader(tmp_path / "nope.json")
+
+
+# ---------------------------------------------------------------- require_object / read_object
+def test_require_object_returns_the_value_it_checked() -> None:
+    value = {"a": {"b": [1]}, "extra": 1}
+    assert require_object("f.json", value, {"a": {"b": list}}) is value
+
+
+@pytest.mark.parametrize("value", [[], None, "text", 3], ids=["list", "null", "text", "number"])
+def test_require_object_refuses_anything_but_an_object(value: Any) -> None:
+    with pytest.raises(ValueError, match="^f.json: not a JSON object$"):
+        require_object("f.json", value, {})
+
+
+def test_require_object_names_a_missing_key_by_its_dotted_path() -> None:
+    with pytest.raises(ValueError, match="^f.json: missing a.b.c$"):
+        require_object("f.json", {"a": {"b": {}}}, {"a": {"b": {"c": object}}})
+
+
+def test_require_object_names_a_nested_value_of_the_wrong_kind() -> None:
+    with pytest.raises(ValueError, match="^f.json: a.b is not a JSON object$"):
+        require_object("f.json", {"a": {"b": []}}, {"a": {"b": {}}})
+    with pytest.raises(ValueError, match="^f.json: a.xs is not a JSON list$"):
+        require_object("f.json", {"a": {"xs": {}}}, {"a": {"xs": list}})
+
+
+def test_a_key_that_may_hold_any_value_only_has_to_be_present() -> None:
+    require_object("f.json", {"a": None}, {"a": object})
+    with pytest.raises(ValueError, match="^f.json: missing a$"):
+        require_object("f.json", {}, {"a": object})
+
+
+def test_the_prefix_places_an_element_of_a_list_in_the_message() -> None:
+    with pytest.raises(ValueError, match="^f.json: candidates.0 is not a JSON object$"):
+        require_object("f.json", 5, {}, "candidates.0")
+    with pytest.raises(ValueError, match="^f.json: candidates.0.model is not nonempty text$"):
+        require_object("f.json", {"model": ""}, {"model": str}, "candidates.0")
+
+
+NOT_TEXT = [{}, ["O"], 1, None, True, ""]
+
+
+@pytest.mark.parametrize("item", NOT_TEXT, ids=["object", "list", "number", "null", "bool", "empty"])
+def test_a_list_of_text_names_the_first_item_that_is_not_nonempty_text(item: Any) -> None:
+    """A check that only asks for a list lets `[{}]` reach code that uses the items as dict keys."""
+    with pytest.raises(ValueError, match=r"^f.json: a.xs.1 is not nonempty text$"):
+        require_object("f.json", {"a": {"xs": ["O", item, "x"]}}, {"a": {"xs": list[str]}})
+
+
+@pytest.mark.parametrize("value", [{}, "O", None, 3], ids=["object", "text", "null", "number"])
+def test_a_list_of_text_that_is_no_list_is_refused_as_a_list(value: Any) -> None:
+    with pytest.raises(ValueError, match="^f.json: xs is not a JSON list$"):
+        require_object("f.json", {"xs": value}, {"xs": list[str]})
+
+
+def test_a_list_of_text_may_be_empty_and_is_returned_as_it_was() -> None:
+    value = {"xs": [], "ys": ["O", "COMMA"]}
+    assert require_object("f.json", value, {"xs": list[str], "ys": list[str]}) is value
+
+
+@pytest.mark.parametrize("item", [True, "1", None, {}, [1]], ids=["bool", "text", "null", "object", "list"])
+def test_a_list_of_numbers_takes_numbers_only_and_no_bool(item: Any) -> None:
+    require_object("f.json", {"xs": [1, 2.5]}, {"xs": list[float]})
+    with pytest.raises(ValueError, match="^f.json: xs.0 is not a number$"):
+        require_object("f.json", {"xs": [item]}, {"xs": list[float]})
+
+
+@pytest.mark.parametrize("value", [2.5, True, "3", None, [3]], ids=["float", "bool", "text", "null", "list"])
+def test_a_whole_number_is_an_int_but_no_bool_or_float(value: Any) -> None:
+    require_object("f.json", {"n": 3}, {"n": int})
+    with pytest.raises(ValueError, match="^f.json: n is not a whole number$"):
+        require_object("f.json", {"n": value}, {"n": int})
+
+
+def test_read_object_names_the_file_without_its_folder(tmp_path: Path) -> None:
+    folder = tmp_path / "deep"
+    folder.mkdir()
+    _write(folder / "r.json", '{"a": []}')
+    with pytest.raises(ValueError) as caught:
+        read_object(folder / "r.json", {"b": object})
+    assert str(caught.value) == "r.json: missing b"
+    assert read_object(folder / "r.json", {"a": list}) == {"a": []}
+
+
+@pytest.mark.parametrize(
+    ("content", "message"), [(b"{", "r.json: not valid JSON"), (b"\xff", "r.json: not valid UTF-8")]
+)
+def test_read_object_keeps_the_json_reader_messages(tmp_path: Path, content: bytes, message: str) -> None:
+    with pytest.raises(ValueError) as caught:
+        read_object(_write(tmp_path / "r.json", content), {})
+    assert str(caught.value) == message
+
+
+def test_read_json_object_is_read_object_with_no_required_key(tmp_path: Path) -> None:
+    """One checker, one wording: the object reader refuses what the shape check refuses, in the same words."""
+    path = _write(tmp_path / "a.json", "null")
+    with pytest.raises(ValueError) as one:
+        read_json_object(path)
+    with pytest.raises(ValueError) as other:
+        read_object(path, {})
+    assert str(one.value) == str(other.value) == "a.json: not a JSON object"
 
 
 # ---------------------------------------------------------------- old names

@@ -179,12 +179,12 @@ SHAPE_CASES = [
     ),
     pytest.param(
         lambda s: _edit_plan(s, lambda p: {**p, "config": _drop(p["config"], "search")}),
-        "plan.json: invalid experiment config: 'search'",
+        "plan.json: invalid experiment config: missing search",
         id="plan-config-no-search",
     ),
     pytest.param(
         lambda s: _edit_plan(s, lambda p: {**p, "config": {**p["config"], "search": 5}}),
-        "plan.json: invalid experiment config: 'int' object is not subscriptable",
+        "plan.json: invalid experiment config: search is not a JSON object",
         id="plan-config-search-not-an-object",
     ),
     pytest.param(

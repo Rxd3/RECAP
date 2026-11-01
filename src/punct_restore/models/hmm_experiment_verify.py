@@ -8,11 +8,12 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
+from punct_restore.file_io import read_object, require_object
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_experiment_audit import ReportOptions, check_report, probability_checks
 from punct_restore.models.hmm_experiment_frozen import verified_frozen_selection
-from punct_restore.models.hmm_experiment_protocol import authenticate, now, read_object, require_object
+from punct_restore.models.hmm_experiment_protocol import authenticate, now
 from punct_restore.models.hmm_records import SelectedRecords, read_jsonl
 from punct_restore.models.hmm_workflow import file_identity, read_release_manifest, write_json
 from punct_restore.paths import REPO_ROOT as ROOT

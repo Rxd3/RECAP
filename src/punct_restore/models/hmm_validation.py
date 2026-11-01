@@ -2,7 +2,22 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
+
+from punct_restore.file_io import read_json, require_object
+
+# The keys of a saved artifact: `load_model` hands config and counts to the model as keyword arguments, so
+# these are the only ones either may hold (config: smoothing and min_token_count may be left out, they have defaults).
+_CONFIG_KEYS = ("label_mode", "labels", "smoothing", "min_token_count")
+_COUNT_KEYS = ("start", "transition", "end", "state", "emissions", "unknown", "vocabulary", "num_sequences")
+_ARTIFACT = {
+    "format_version": object,
+    "model_name": object,
+    "config": {"label_mode": object, "labels": object},
+    "counts": dict.fromkeys(_COUNT_KEYS, object),
+    "metadata": object,
+}
 
 
 def positive_integer(value: Any) -> bool:
@@ -84,3 +99,21 @@ def validate_counts(counts: Any, k: int, min_token_count: int) -> None:
     for word in vocabulary:
         if sum(table.get(word, 0) for table in counts.emissions) < min_token_count:
             raise ValueError("retained vocabulary violates min_token_count")
+
+
+def read_artifact(path: Path) -> dict[str, Any]:
+    """The JSON an HMM artifact file holds, once it has every key and only the keys the model is built from.
+
+    Raises:
+        OSError: If the file cannot be read.
+        ValueError: One line that starts with the file name: not valid UTF-8 or JSON (also one nested too deeply),
+            or `<file name>: invalid HMM artifact: <what is wrong>` (not an object, a missing key, an unknown key).
+            What the values hold is checked by the model.
+    """
+    name = f"{path.name}: invalid HMM artifact"
+    payload = require_object(name, read_json(path), _ARTIFACT)
+    for section, known in (("config", _CONFIG_KEYS), ("counts", _COUNT_KEYS)):
+        unknown = next((key for key in payload[section] if key not in known), None)
+        if unknown is not None:
+            raise ValueError(f"{name}: unknown key {section}.{unknown}")
+    return payload

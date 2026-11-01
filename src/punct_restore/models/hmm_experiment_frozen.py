@@ -5,12 +5,20 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from punct_restore.file_io import read_json, read_object, require_object
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm_experiment_identity import check_evaluator, implementation
-from punct_restore.models.hmm_experiment_protocol import choose, read_json, read_object, require_object, validate_config
+from punct_restore.models.hmm_experiment_protocol import choose, validate_config
 
-# What the gate reads from the files it binds together; `{}` is a key that must hold a JSON object.
-_PLAN = {"config": {}, "implementation": object, "evaluator": object}
+# What the gate and the held-out steps read from the files they bind together; `{}` is a key that must hold a JSON
+# object. The plan: the config, the code identities (finalize compares the release identity, package cites the code).
+_PLAN = {
+    "config": {},
+    "implementation": object,
+    "evaluator": object,
+    "code": object,
+    "tuning_inputs": {"release_manifest": object},
+}
 _SELECTION = {
     "plan_sha256": object,
     "modes": {},
@@ -29,14 +37,6 @@ _CANDIDATE = {
     "validation_report_sha256": str,
 }
 _VALIDATION_REPORT = {"primary": {"value": object}}
-
-
-def _checked_config(plan: dict[str, Any]) -> dict[str, Any]:
-    """The plan's config, validated; a missing key or a wrong type inside it is a ValueError naming plan.json."""
-    try:
-        return validate_config(plan["config"], "plan.json")
-    except (KeyError, TypeError) as exc:
-        raise ValueError(f"plan.json: invalid experiment config: {exc}") from exc
 
 
 def _check_gate(run: Path, selection: dict[str, Any], config: dict[str, Any]) -> None:
@@ -102,14 +102,14 @@ def verified_frozen_selection(run: Path, evaluator: Path) -> tuple[dict[str, Any
 
     Returns (plan, selection) once every part is as it was when the selection was frozen; raises ValueError for
     the first part that is not. A file of the wrong shape (the plan, its config, the selection, a mode's selection
-    or a validation report) is a ValueError that starts with its file name; a missing key anywhere else is a bug
-    and propagates.
+    or a validation report) is a ValueError that starts with its file name, and the plan and the selection hold
+    every key the held-out steps read; a missing key anywhere else is a bug and propagates.
     """
     plan = read_json(run / "plan.json")
     selection = read_json(run / "selection.json")
     require_object("plan.json", plan, _PLAN)
     require_object("selection.json", selection, _SELECTION)
-    config = _checked_config(plan)
+    config = validate_config(plan["config"], "plan.json")
     _check_gate(run, selection, config)
     if implementation() != plan["implementation"]:
         raise ValueError("HMM implementation changed since selection")

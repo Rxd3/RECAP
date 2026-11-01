@@ -50,7 +50,7 @@ from punct_restore.models.threshold import (
 )
 from punct_restore.prediction_io import (
     check_new_output_paths,
-    one_line_error_naming,
+    one_line_error_with_short_paths,
     read_observations,
     refuse_existing,
     write_new_file,
@@ -215,8 +215,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return args.handler(args)
     except (ValueError, OSError) as exc:
-        print("error: " + one_line_error_naming(exc, *(getattr(args, option, None) for option in PATH_OPTIONS)),
-              file=sys.stderr)
+        paths = [getattr(args, option, None) for option in PATH_OPTIONS]
+        print("error: " + one_line_error_with_short_paths(exc, *paths), file=sys.stderr)
         return 1
 
 

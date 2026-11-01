@@ -69,7 +69,35 @@ def test_predict_with_a_missing_tau_file_names_the_file_only(
 ) -> None:
     argv = _predict_argv(mode_a, tmp_path / FOLDER / "ghost.json", tmp_path / "p.jsonl", tmp_path / "p.man.json")
     assert tune_threshold.main(argv) == 1
-    assert _one_line(capsys) == "error: tau file not found at ghost.json\n"
+    assert _one_line(capsys) == "error: ghost.json: tau file not found\n"
+
+
+def test_predict_with_a_tau_file_that_is_a_folder_says_so_naming_it_only(
+    mode_a: Fixture, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    folder = _in_folder(tmp_path, "tau.json")
+    folder.mkdir()
+    assert tune_threshold.main(_predict_argv(mode_a, folder, tmp_path / "p.jsonl", tmp_path / "p.man.json")) == 1
+    assert _one_line(capsys) == "error: tau.json: is a folder, not a file\n"
+
+
+def test_tune_with_a_missing_train_file_names_the_file_only(
+    mode_a: Fixture, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    ghost = tmp_path / FOLDER / "ghost.jsonl"
+    argv = [*_tune_argv(mode_a, tmp_path / "tau.json"), "--train", str(ghost), "--train-ids", str(mode_a.ids)]
+    assert tune_threshold.main(argv) == 1
+    assert _one_line(capsys) == "error: ghost.jsonl: training file not found\n"
+
+
+def test_tune_with_a_train_file_that_is_a_folder_says_so_naming_it_only(
+    mode_a: Fixture, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    folder = _in_folder(tmp_path, "train.jsonl")
+    folder.mkdir()
+    argv = [*_tune_argv(mode_a, tmp_path / "tau.json"), "--train", str(folder), "--train-ids", str(mode_a.ids)]
+    assert tune_threshold.main(argv) == 1
+    assert _one_line(capsys) == "error: train.jsonl: is a folder, not a file\n"
 
 
 @pytest.mark.parametrize(

@@ -119,10 +119,12 @@ def _check_release_compatibility(
     """Require the artifact, input file and ID selection to belong to the release."""
     release = read_release_manifest(release_manifest)
     meta = model.metadata
+    label_configuration = meta.get("label_configuration")  # the artifact's own note: any JSON value
     if (
         release["release_id"] != meta.get("dataset_release_id")
         or release["policy_version"] != meta.get("label_policy_version")
-        or release["label_sets_sha256"] != meta.get("label_configuration", {}).get("sha256")
+        or release["label_sets_sha256"]
+        != (label_configuration.get("sha256") if isinstance(label_configuration, dict) else None)
     ):
         raise ValueError("artifact is incompatible with this data release")
     relative = checked_release_file(input_path, release_manifest.parent, release["files"])

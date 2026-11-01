@@ -20,65 +20,56 @@ import re
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
+from ..file_io import require_object
 from ..paths import REPO_ROOT
 from .preprocessing import ABBREVIATIONS, TITLES, Token
 
 LABEL_SETS_PATH = os.path.join(REPO_ROOT, "configs", "label_sets.yaml")
 
 
-_KIND_NAMES: dict[type, str] = {dict: "mapping", list: "list", str: "string"}
+# What label_sets.yaml must hold for load_label_sets to build the label sets (see file_io.require_object).
+_LABEL_SCHEMA = {
+    "punctuation": {"standard": list[str], "extended": list[str]},
+    "casing": list[str],
+    "modes": {"C": {"separator": str, "labels": list[str]}},
+    "extended_to_standard": {},
+}
 
 
-def _field(config: Mapping[str, Any], dotted: str, kind: type, file_name: str) -> Any:
-    """The entry at `dotted` ('modes.C.labels') of the parsed YAML, which must be a `kind`; else a ValueError."""
-    keys = dotted.split(".")
-    node: Any = config
-    for depth, key in enumerate(keys):
-        path = ".".join(keys[:depth + 1])
-        if key not in node:
-            raise ValueError(f"{file_name}: missing {path}")
-        node = node[key]
-        wanted = kind if depth == len(keys) - 1 else dict
-        if not isinstance(node, wanted):
-            raise ValueError(f"{file_name}: {path} must be a {_KIND_NAMES[wanted]}")
-    return node
+def read_yaml(path: str | os.PathLike[str]) -> Any:
+    """The parsed YAML of `path`, whatever it holds (a mapping, a list, a number or nothing at all).
 
-
-def _read_yaml(path: str | os.PathLike[str], file_name: str) -> Any:
-    """The parsed YAML of `path`; a ValueError that names `file_name` only (a YAML error mark shows the whole path)."""
+    Raises:
+        OSError: If the file cannot be read.
+        ValueError: One line that names the file only (a YAML error mark shows the whole path):
+            `<file name>: not valid UTF-8` or `<file name>: not valid YAML` (also for a document nested too deeply).
+    """
     import yaml  # PyYAML is a declared runtime dependency of RECAP
     try:
         with open(path, encoding="utf-8") as f:
             return yaml.safe_load(f)
     except UnicodeDecodeError as exc:
-        raise ValueError(f"{file_name}: not valid UTF-8") from exc
+        raise ValueError(f"{os.path.basename(path)}: not valid UTF-8") from exc
     except (yaml.YAMLError, RecursionError) as exc:  # RecursionError: nested too deeply
-        raise ValueError(f"{file_name}: not valid YAML") from exc
+        raise ValueError(f"{os.path.basename(path)}: not valid YAML") from exc
 
 
 def read_label_config(path: str | os.PathLike[str] = LABEL_SETS_PATH) -> dict[str, Any]:
     """The raw label configuration mapping; a ValueError names the file (not UTF-8, not YAML, not a mapping)."""
-    file_name = os.path.basename(path)
-    cfg = _read_yaml(path, file_name)
-    if not isinstance(cfg, dict):
-        raise ValueError(f"{file_name}: the top level must be a mapping")
-    return cfg
+    return require_object(os.path.basename(path), read_yaml(path), {})
 
 
 def load_label_sets(path: str | os.PathLike[str] = LABEL_SETS_PATH) -> dict[str, Any]:
     """Read configs/label_sets.yaml (the vocabulary source of truth) and check its 4/8/12 structure.
 
     Raises ValueError("<file name>: <what is wrong>") for a file that is not valid UTF-8 or YAML, or that parses but
-    lacks a key or has a value of the wrong type.
+    lacks a key or has a value of the wrong type (`file_io.require_object` words it).
     """
     file_name = os.path.basename(path)
-    cfg = read_label_config(path)
-    std = _field(cfg, "punctuation.standard", list, file_name)
-    ext = _field(cfg, "punctuation.extended", list, file_name)
-    case = _field(cfg, "casing", list, file_name)
-    separator = _field(cfg, "modes.C.separator", str, file_name)
-    joint_listed = _field(cfg, "modes.C.labels", list, file_name)
-    projection = _field(cfg, "extended_to_standard", dict, file_name)
+    cfg = require_object(file_name, read_label_config(path), _LABEL_SCHEMA)
+    std, ext, case = cfg["punctuation"]["standard"], cfg["punctuation"]["extended"], cfg["casing"]
+    separator, joint_listed = cfg["modes"]["C"]["separator"], cfg["modes"]["C"]["labels"]
+    projection = cfg["extended_to_standard"]
     joint = [f"{p}{separator}{c}" for p, c in itertools.product(std, case)]
     if (len(std), len(ext), len(case)) != (4, 8, 3) or ext[:4] != std or joint_listed != joint:
         raise ValueError(f"{file_name}: does not have the agreed 4/8/12 structure")

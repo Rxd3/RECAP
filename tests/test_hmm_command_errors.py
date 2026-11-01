@@ -159,24 +159,46 @@ def clean_checkout(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(hmm_experiment_tune, "code_identity", lambda: {"commit": "c", "dirty": False})
 
 
-@pytest.mark.parametrize(
-    ("text", "reason"),
-    [
-        ("schema_version: 1\n", "'modes'"),
-        ("modes: [A\n", "while parsing a flow sequence"),
-        ("- not\n- a mapping\n", "list indices must be integers or slices, not str"),
-    ],
-    ids=["missing-key", "yaml-syntax", "not-a-mapping"],
-)
+def _real_config_with(change: Any) -> str:
+    """The text of the real experiment config after `change(content)` (which returns the new content)."""
+    content = yaml.safe_load((ROOT / "configs/hmm_sponspeech_v2.yaml").read_text(encoding="utf-8"))
+    return yaml.safe_dump(change(content))
+
+
+INVALID = "experiment.yaml: invalid experiment config: "
+CONFIG_PROBLEMS = [  # (id, the config file's text, the one line the command gives for it, after `error: `)
+    ("empty-file", "", f"{INVALID}not a JSON object"),
+    ("null", "null\n", f"{INVALID}not a JSON object"),
+    ("list-of-numbers", "[1]\n", f"{INVALID}not a JSON object"),
+    ("list-of-keys", "- not\n- a mapping\n", f"{INVALID}not a JSON object"),
+    ("text", "just text\n", f"{INVALID}not a JSON object"),
+    ("empty-object", "{}\n", f"{INVALID}missing schema_version"),
+    ("only-the-version", "schema_version: 1\n", f"{INVALID}missing experiment_id"),
+    ("search-is-a-list", _real_config_with(lambda c: {**c, "search": []}), f"{INVALID}search is not a JSON object"),
+    ("search-is-null", _real_config_with(lambda c: {**c, "search": None}), f"{INVALID}search is not a JSON object"),
+    ("search-is-empty", _real_config_with(lambda c: {**c, "search": {}}), f"{INVALID}missing search.smoothing"),
+    ("modes-is-a-list-of-lists", _real_config_with(lambda c: {**c, "modes": [["A"]]}),
+     f"{INVALID}modes.0 is not nonempty text"),
+    ("modes-is-text", _real_config_with(lambda c: {**c, "modes": "ABC"}), f"{INVALID}modes is not a JSON list"),
+    ("smoothing-holds-a-list", _real_config_with(lambda c: {**c, "search": {**c["search"], "smoothing": [[1]]}}),
+     f"{INVALID}search.smoothing.0 is not a number"),
+    ("repetitions-is-text", _real_config_with(lambda c: {**c, "runtime": {**c["runtime"], "repetitions": "3"}}),
+     f"{INVALID}runtime.repetitions is not a whole number"),
+    ("yaml-syntax", "modes: [A\n", "experiment.yaml: not valid YAML"),
+    ("yaml-tab", "search:\n\tsmoothing: 1\n", "experiment.yaml: not valid YAML"),
+]
+
+
+@pytest.mark.parametrize(("text", "line"), [(text, line) for _, text, line in CONFIG_PROBLEMS],
+                         ids=[name for name, _, _ in CONFIG_PROBLEMS])
 def test_an_unusable_experiment_config_is_one_error_line_naming_the_file_and_exit_1(
-        text: str, reason: str, tmp_path: Path, clean_checkout: None, capsys: pytest.CaptureFixture[str]) -> None:
+        text: str, line: str, tmp_path: Path, clean_checkout: None, capsys: pytest.CaptureFixture[str]) -> None:
+    """The line holds no Python or YAML parser text (`'NoneType' object is not subscriptable`, `while parsing`...)."""
     config = tmp_path / "experiment.yaml"
     config.write_text(text, encoding="utf-8")
     assert run_hmm_experiments.main(_tune_argv(config, tmp_path)) == 1
     captured = capsys.readouterr()
-    assert captured.err.startswith("error: experiment.yaml: invalid experiment config: ")
-    assert reason in captured.err and captured.err.count("\n") == 1 and str(tmp_path) not in captured.err
-    assert captured.out == "" and not (tmp_path / "out").exists()
+    assert captured.err == f"error: {line}\n" and captured.out == "" and not (tmp_path / "out").exists()
 
 
 def test_a_key_error_after_the_config_was_read_is_still_a_bug_and_propagates(
@@ -215,6 +237,5 @@ def test_an_experiment_config_nested_too_deeply_is_one_error_line_naming_the_fil
     config.write_text("[" * 100_000, encoding="utf-8")
     assert run_hmm_experiments.main(_tune_argv(config, tmp_path)) == 1
     captured = capsys.readouterr()
-    assert captured.err.startswith("error: experiment.yaml: invalid experiment config: ")
-    assert captured.err.count("\n") == 1 and captured.out == ""
+    assert captured.err == "error: experiment.yaml: not valid YAML\n" and captured.out == ""
     assert not (tmp_path / "out").exists()

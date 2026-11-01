@@ -12,9 +12,10 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
+from punct_restore.file_io import read_object
 from punct_restore.hashing import sha256_file, sha256_stream
 from punct_restore.models.hmm_experiment_frozen import verified_frozen_selection
-from punct_restore.models.hmm_experiment_protocol import now, read_object
+from punct_restore.models.hmm_experiment_protocol import now
 from punct_restore.models.hmm_workflow import code_identity, file_identity, write_json
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import one_line_error

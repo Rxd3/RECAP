@@ -328,7 +328,7 @@ def os_reason(exc: OSError) -> str | None:
     return OS_REASONS[errno.EISDIR] if os_error_code(exc) == errno.EISDIR else exc.strerror
 
 
-def one_line_error_naming(exc: BaseException, *paths: str | os.PathLike[str] | None) -> str:
+def one_line_error_with_short_paths(exc: BaseException, *paths: str | os.PathLike[str] | None) -> str:
     """The message on one line, without the ``error: `` prefix.
 
     An OSError reads ``<file name>: <reason>`` (its own text carries the full path, which is never shown);
@@ -346,11 +346,13 @@ def one_line_error_naming(exc: BaseException, *paths: str | os.PathLike[str] | N
 
 
 def one_line_error(exc: BaseException) -> str:
-    """The message on one line, as main's ``one_line_error(exc)`` gave it (old call form kept, spec section 2).
+    """The message on one line, in main's call form ``one_line_error(exc)`` (kept, spec section 2).
 
-    A path quoted in the text of a non-OS error stays; ``one_line_error_naming`` also cuts the paths it is given.
+    A path quoted in the text of a non-OS error stays; ``one_line_error_with_short_paths`` also cuts the paths it is
+    given. One wording differs from main: opening a folder as a file, which Windows reports as "permission denied",
+    now reads ``<name>: is a folder, not a file``.
     """
-    return one_line_error_naming(exc)
+    return one_line_error_with_short_paths(exc)
 
 
 def reconfigure_stdout() -> None:

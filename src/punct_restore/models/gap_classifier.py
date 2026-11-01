@@ -24,6 +24,7 @@ from sklearn.feature_extraction import DictVectorizer
 from sklearn.linear_model import LogisticRegression
 
 from punct_restore.features.crf_features import FeatureConfig
+from punct_restore.file_io import require_file
 from punct_restore.models.crf import (
     SCORING_MODES,
     CRFModel,
@@ -87,9 +88,10 @@ def _check_unique_sample_ids(records: Any) -> None:
         seen.add(sample_id)
 
 
-def _check_hyperparameters(c: Any, max_iter: Any, model_name: Any) -> None:
-    if isinstance(c, bool) or not isinstance(c, (int, float)) or not math.isfinite(c) or c <= 0:
-        raise ValueError(f"C must be a positive finite number, got {c!r}")
+def _check_hyperparameters(regularization: Any, max_iter: Any, model_name: Any) -> None:
+    if (isinstance(regularization, bool) or not isinstance(regularization, (int, float))
+            or not math.isfinite(regularization) or regularization <= 0):
+        raise ValueError(f"C must be a positive finite number, got {regularization!r}")
     if isinstance(max_iter, bool) or not isinstance(max_iter, int) or max_iter <= 0:
         raise ValueError(f"max_iter must be a positive integer, got {max_iter!r}")
     if not isinstance(model_name, str) or not model_name.strip():
@@ -296,15 +298,13 @@ class GapClassifier:
         """Load a model written by save_model. joblib is pickle: load trusted files only.
 
         Raises:
-            FileNotFoundError: The file does not exist.
+            FileNotFoundError: ``<name>: model artifact not found``.
+            IsADirectoryError: ``<name>: is a folder, not a file``.
             OSError: The file cannot be read (permissions, I/O); passed through as is.
-            ValueError: A folder, an unreadable file, wrong family or schema, or inconsistent or missing parts.
+            ValueError: An unreadable file, wrong family or schema, or inconsistent or missing parts.
         """
         source = Path(path)
-        if source.is_dir():
-            raise ValueError(f"{source.name}: is a folder, not a model file")
-        if not source.is_file():
-            raise FileNotFoundError(f"Model artifact not found: {source.name}")
+        require_file(source, "model artifact")
         try:
             bundle = joblib.load(source)  # pickle: trusted files only (see docstring)
         except OSError:

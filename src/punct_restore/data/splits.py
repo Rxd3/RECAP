@@ -37,11 +37,11 @@ class Reference:
 
     def __init__(self, records: Iterable[Mapping[str, Any]]) -> None:
         self.groups, self.texts, self.model_inputs, self.grams = set(), set(), set(), set()
-        for r in records:
-            self.groups.add(r["group_id"])
-            self.texts.add(r["original_text"])
-            self.model_inputs.add(tuple(r["tokens"]))
-            self.grams |= ngram_keys(r["tokens"])
+        for record in records:
+            self.groups.add(record["group_id"])
+            self.texts.add(record["original_text"])
+            self.model_inputs.add(tuple(record["tokens"]))
+            self.grams |= ngram_keys(record["tokens"])
 
 
 def overlap_reason(rec: Mapping[str, Any], ref: Reference) -> str | None:

@@ -25,6 +25,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TypeGuard
 
+from punct_restore.file_io import iter_jsonl, require_file
 from punct_restore.hashing import sha256_file
 from punct_restore.prediction_io import parse_sample_record, read_ids, write_predictions_jsonl
 
@@ -267,33 +268,25 @@ def tau_result(
 def stream_train_labels(train_path: Path, ids: Sequence[str], mode: str) -> Iterator[dict[str, Any]]:
     """Yield the gold label lists of the listed records, one line at a time; all IDs must be found."""
     wanted, found = set(ids), set()
-    with open(train_path, encoding="utf-8") as handle:
-        for number, line in enumerate(handle, 1):
-            if not line.strip():
-                continue
-            where = f"{train_path.name} line {number}"
-            record = parse_sample_record(line, where)
-            if record["sample_id"] not in wanted:
-                continue
-            if record["sample_id"] in found:
-                raise ValueError(f"{where}: a listed sample_id appears twice")
-            if record.get("label_mode") != mode:
-                raise ValueError(f"{where}: a listed record is not label mode {mode}")
-            found.add(record["sample_id"])
-            yield {key: record.get(key) for key in ("punct_labels", "case_labels")}
+    for number, record in iter_jsonl(train_path, parse_sample_record):
+        if record["sample_id"] not in wanted:
+            continue
+        where = f"{train_path.name} line {number}"
+        if record["sample_id"] in found:
+            raise ValueError(f"{where}: a listed sample_id appears twice")
+        if record.get("label_mode") != mode:
+            raise ValueError(f"{where}: a listed record is not label mode {mode}")
+        found.add(record["sample_id"])
+        yield {key: record.get(key) for key in ("punct_labels", "case_labels")}
     if len(found) < len(wanted):
         raise ValueError(f"{len(wanted) - len(found)} listed ID(s) are missing from {train_path.name}")
 
 
 def train_priors(train: Path, train_ids: Path, mode: str, vocabulary: Sequence[str]) -> dict[str, float]:
     """Add-one label priors of ``mode`` (over ``vocabulary``) from the training records that ``train_ids`` lists."""
-    if not train.is_file():
-        raise FileNotFoundError(f"training file not found at {train.name}")
-    try:
-        ids = read_ids(train_ids)
-        return label_priors(stream_train_labels(train, ids, mode), vocabulary)
-    except UnicodeDecodeError:  # read_ids names a bad ID list itself, so this is the training file
-        raise ValueError(f"{train.name}: not valid UTF-8") from None
+    require_file(train, "training file")
+    ids = read_ids(train_ids)
+    return label_priors(stream_train_labels(train, ids, mode), vocabulary)
 
 
 # --- the tau file that predict reads ---------------------------------------------------------------------------------
@@ -322,8 +315,7 @@ def _gamma_settings(data: Mapping[str, Any]) -> tuple[float, dict[str, float] | 
 
 def read_tau_file(path: Path, model_path: Path) -> TauSettings:
     """Tau, gamma and priors from a ``tune`` result, provided it was tuned for exactly this model file."""
-    if not path.is_file():
-        raise FileNotFoundError(f"tau file not found at {path.name}")
+    require_file(path, "tau file")
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except UnicodeDecodeError as exc:

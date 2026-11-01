@@ -175,7 +175,7 @@ def write_jsonl(path: Path, rows: Iterable[Mapping[str, Any]]) -> None:
 
 def summarize(args: argparse.Namespace, inputs: Sequence[ModeInput], tokens: Mapping[str, Sequence[str]],
               plan: Mapping[str, Edits]) -> dict[str, Any]:
-    edit_model = getattr(args, "edit_model", DEFAULT_EDIT_MODEL)  # callers of summarize may omit the option
+    edit_model = args.edit_model
     counts, before = edit_counts(plan, edit_model=edit_model), sum(len(t) for t in tokens.values())
     kind_to_cost = {"deletion": "delete", "insertion": "insert", "substitution": "replace", "swap": "swap"}
     spent = {name: counts[name] * COST[kind_to_cost[name]] for name in counts}
