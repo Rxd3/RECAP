@@ -94,7 +94,8 @@ with casing to form a 24-class target; do not store an independent, diverging
 The mapping treats colon/dash as internal boundaries and exclamation/semicolon
 as stronger boundaries. It is a modeling simplification, not a linguistic
 equivalence. The team lead approved it on 2026-10-28 (D5, policy `m1-v1`;
-`approved: true` in `label_sets.yaml`). Canonical modes A and C use it. A release
+`approved: true` in `label_sets.yaml`; without it the release build stops with a `ValueError`, which
+`recap prepare-data` prints as one `error:` line with exit 1). Canonical modes A and C use it. A release
 may also carry a separately versioned *native* four-class view of the source
 (`benchmark_native/`, `metadata.annotation_view: "native"`) for comparison with
 the original benchmark; its scores are never compared with canonical scores as

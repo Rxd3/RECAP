@@ -23,12 +23,15 @@ git worktree add --detach tmp/member2-evaluation-3044a58 3044a58e777200bcac64e6e
 
 The editable install without dependencies adds the `recap` command (and makes the `scripts/` stubs
 work) without the CRF packages; the HMM commands need only the standard library and PyYAML.
-**Studies tuned before the restructure.** The list of hashed HMM source files in `plan.json` changed on
-2026-11-01, when the code moved into the package. On this code, `finalize`, `verify-hmm-experiments` and
-`package-hmm-handoff` therefore all refuse a study tuned before then, the delivered
-`hmm-sponspeech-v2-20261029` included ("HMM implementation changed since selection"). A new study runs all
-four steps here. For an old one, run the three steps in a worktree of `main` at `72ebfd1` that holds its own
-copy of the data and the study, because the old scripts read the data through their own checkout and
+
+**Studies tuned on older code.** `plan.json` records the SHA-256 of every hashed HMM source file. On
+2026-11-01 the list changed twice: once when the code moved into the package, and again when it became
+the study's whole import closure (30 files, `models/hmm_experiment_identity.SOURCE_FILES`). Finalize,
+verify and package all pass `verified_frozen_selection` first, so they refuse any study tuned before the
+current list ("HMM implementation changed since selection"), by design. That includes the delivered
+`hmm-sponspeech-v2-20261029`. A new study runs all four steps on this code. Finalize, verify and package a
+study with the code it was tuned on: for the delivered study, a worktree of `main` at `72ebfd1` that holds
+its own copy of the data and the study. The old scripts read the data through their own checkout and
 write the package under its `artifacts/`. From the repository root:
 
 ```powershell

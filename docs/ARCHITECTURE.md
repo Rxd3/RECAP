@@ -27,51 +27,81 @@ script that `[project.scripts]` in `pyproject.toml` points at `punct_restore.cli
 
 ```text
 src/punct_restore/
-  cli/              __init__.py (the dispatcher and COMMANDS) and one module per
-                    command (18), plus train_crf_inspect.py and train_crf_predict.py, the inspect and
-                    predict subcommands of train-crf
+  cli/              __init__.py (the dispatcher and COMMANDS) and one module per command (18);
+                    argument parsing and the error boundary only
   reporting/        7 reporting commands, plus _cli.py, build_tables.py and
                     asr_noise_{stats,report,findings}.py (the parts of the ASR noise report)
   data/             extraction, preprocessing, labeling, splits, validation, asr_noise, gold_noise;
                     release.py with release_{constants,stats,notes,checks,manifest,outputs}.py
+                    (release_outputs holds every writer; release_checks returns a ReleaseCheck)
   features/         crf_features.py with crf_lexicons.py and crf_cues.py; word_clusters.py
-  models/           hmm.py with hmm_validation.py; hmm_workflow.py and
-                    hmm_experiment_{protocol,commands,runtime,audit}.py (the HMM study);
-                    crf.py with crf_{modes,records,io,training}.py; threshold.py; gap_classifier.py;
+  models/           hmm.py with hmm_validation.py and hmm_records.py; hmm_workflow.py; the HMM study in
+                    hmm_experiment_{identity,protocol,commands,tune,frozen,finalize,verify,runtime,audit}.py;
+                    crf.py with crf_{modes,records,io,training,training_data,prediction,inspection}.py;
+                    threshold.py; gap_classifier.py;
                     hidden_event_lm.py with hidden_event_lm_viterbi.py, ngram_lm.py, truecaser.py; factored.py
   evaluation/       inputs, views, metrics, uncertainty, comparison, error_analysis, baseline, manifest, report
+  hashing.py        sha256_file and sha256_stream, the one streaming SHA-256
   paths.py          REPO_ROOT, the checkout root, for the commands' default paths
   pipeline.py       demo inference (load_model, RestorationPipeline)
-  prediction_io.py  gold-free prediction files and manifests
+  prediction_io.py  shared command I/O: gold-free prediction files and manifests, read_ids,
+                    parse_json_object and parse_sample_record, write_new_file, refuse_existing, and the
+                    error boundary (one_line_error, OS_REASONS, reconfigure_stdout)
+  progress.py       Log and discard_log: library functions take a log callable and stay silent by default
 scripts/            25 three-line stubs (scripts/<name>.py, scripts/reporting/<name>.py), one per command
 ```
 
 - **Dispatcher.** `punct_restore.cli.COMMANDS` maps each command name (the module name with `_` written as
   `-`) to its module. `recap`, `recap -h` and `recap --help` list the commands with the first line of each
-  module's docstring and exit 0. An unknown name prints one line on stderr and exits 2. Otherwise the
-  dispatcher returns the module's `main(argv)`, so argparse help and usage errors pass through.
-- **Command modules** have a module docstring (the help summary) and `main(argv: list[str] | None) -> int`.
-  `python -m punct_restore.cli.<module>` (or `punct_restore.reporting.<module>`) runs one directly.
+  module's docstring and exit 0. An unknown name prints `error: unknown command '<name>'; run recap --help
+  for the list` on stderr and exits 2. Otherwise the dispatcher returns the module's `main(argv)`, so
+  argparse help and usage errors (exit 2) pass through.
+- **Command modules** have a module docstring (the help summary, with no team roles) and exactly
+  `main(argv: list[str] | None = None) -> int` (`tests/test_main_signature.py`). They parse arguments,
+  call the library and hold the error boundary; the work is in the library modules. No cli module
+  imports another cli module (`tests/test_repo_hygiene.py`). `python -m punct_restore.cli.<module>` (or
+  `punct_restore.reporting.<module>`) runs one directly.
+- **Errors.** A runtime error (a missing, unreadable or malformed file, a bad value) is one stderr line,
+  `error: <file name>: <reason>`, and exit 1, built by `prediction_io.one_line_error`. It names files by
+  file name only, never a folder, and prints no traceback. Argparse usage errors stay exit 2, and a code
+  bug propagates. `tests/test_malformed_inputs.py` and `tests/test_malformed_inputs_hmm.py` check this
+  for every command. An unapproved B → A projection in `configs/label_sets.yaml` is a `ValueError`, so
+  `recap prepare-data` reports it the same way.
+- **Library calls.** The record, release and HMM helpers return new values instead of changing their
+  arguments (`tests/test_arguments_not_mutated.py`, `tests/test_data_release_structure.py`). Long
+  parameter lists are frozen dataclasses built with keywords, for example
+  `build_release(sources: ReleaseSources, *, log=discard_log)`; `CRFModel.__init__`, a scikit-learn-style
+  estimator constructor, keeps its keyword-only parameters. Library functions report progress through a
+  `log` callable: the default `progress.discard_log` says nothing, and the commands pass `print`.
 - **Stubs.** Each file in `scripts/` imports `main` from its command module and exits with its return
   value, so the old `scripts/<name>.py` command lines keep working. Recorded commands in run manifests
   keep those paths.
 - **Split modules.** The size split moved helpers out of long modules (for example `models/crf.py` into
-  `crf_io`, `crf_modes`, `crf_records` and `crf_training`). The original module re-exports them, so old
-  import names still work. `tests/test_code_limits.py` keeps every function in `src/` and `scripts/` at
-  50 lines or less, nesting at 4 levels or less and every file at 400 lines or less.
+  `crf_io`, `crf_modes`, `crf_records` and `crf_training`). The classes stored in saved models
+  (`CRFModel`, `FeatureConfig`, `HMMModel`, `HiddenEventLM`) stay in their modules, so saved models
+  load. Moved helpers are imported from the module that now defines them; `punct_restore.data` keeps
+  its public names (`load_records`, `read_ids`, `build_release`, ...). `tests/test_code_limits.py`
+  keeps every function in `src/` and `scripts/` at 50 lines or less (from its first decorator to its
+  last line), nesting at 4 levels or less and every file at 400 lines or less; `tests/test_type_hints.py`
+  requires every function in `src/` to annotate its parameters and return type.
+- **HMM study provenance.** `models/hmm_experiment_identity.SOURCE_FILES` lists the study's whole
+  `punct_restore` import closure (30 files, the command modules and their stubs included). A test checks it
+  against the real imports, and `plan.json` records the SHA-256 of each file. `verified_frozen_selection`
+  (`models/hmm_experiment_frozen.py`) is the gate that finalize, verify and package all pass: it refuses a
+  study whose recorded hashes differ from the code on disk.
 
 ## Ownership
 
 | Area | Primary owner | Boundary |
 | --- | --- | --- |
 | `data/` (with the `release_*` modules), `cli/prepare_data.py` (`recap prepare-data`), data documentation | Member 1 | Source text → records; no model training |
-| `models/hmm.py`, `models/hmm_validation.py`, `models/hmm_workflow.py`, `models/hmm_experiment_*.py`; `cli/train_hmm.py`, `cli/predict_hmm.py`, `cli/run_hmm_experiments.py`, `cli/verify_hmm_experiments.py`, `cli/package_hmm_handoff.py` | Member 2 | Records → HMM artifacts/predictions |
-| `models/crf.py` with `crf_modes.py`, `crf_records.py`, `crf_io.py`, `crf_training.py`; `cli/train_crf.py` with `train_crf_inspect.py` and `train_crf_predict.py` (`recap train-crf`) | Member 3 | Records + injected features → CRF artifacts/predictions |
+| `models/hmm.py`, `models/hmm_validation.py`, `models/hmm_records.py`, `models/hmm_workflow.py`, `models/hmm_experiment_*.py`; `cli/train_hmm.py`, `cli/predict_hmm.py`, `cli/run_hmm_experiments.py`, `cli/verify_hmm_experiments.py`, `cli/package_hmm_handoff.py` | Member 2 | Records → HMM artifacts/predictions |
+| `models/crf.py` with `crf_modes.py`, `crf_records.py`, `crf_io.py`, `crf_training.py`, `crf_training_data.py`, `crf_prediction.py` and `crf_inspection.py`; `cli/train_crf.py` (`recap train-crf`) | Member 3 | Records + injected features → CRF artifacts/predictions |
 | `features/` (`crf_features.py`, `crf_lexicons.py`, `crf_cues.py`, `word_clusters.py`), `cli/run_ablations.py`, `cli/build_word_clusters.py` | Member 4 (role); code by Member 3, ablation runner by Member 5 | Observable tokens → aligned feature dictionaries |
 | `evaluation/`, `cli/evaluate_models.py` (`recap evaluate-models`), `reporting/`, results | Member 5 | Gold + predictions → verified reports |
 | Comparison methods and robustness checks: `models/gap_classifier.py`, `models/hidden_event_lm.py` (+ `hidden_event_lm_viterbi.py`, `ngram_lm.py`, `truecaser.py`), τ × γ in `models/threshold.py` (`cli/tune_threshold.py`), question lookback, `models/factored.py` and the CRF `CASE` mode, `data/asr_noise.py`, `data/gold_noise.py` (the gold-noise check), the demo loader; commands `recap train-hidden-event-lm`, `recap factor-predictions`, `recap simulate-asr-noise`, `recap find-gold-noise`, `recap project-joint`, `recap build-leakage-subsets`, `recap crf-convergence`, `recap length-position`, `recap asr-noise-table` (+ `reporting/asr_noise_stats.py`, `asr_noise_report.py`, `asr_noise_findings.py`) | Member 5 | Exploratory comparisons and checks next to the course baselines |
 | `pipeline.py` (`load_model`, `ModelAdapter`, `RestorationPipeline`) and `cli/run_demo.py` (`recap run-demo`, the demo path), presentation | Member 6 | Text + saved HMM or hidden-event LM (`.json`), or CRF or gap classifier (`.joblib`, `.pkl`) → restored text |
-| `cli/__init__.py` (dispatcher), `paths.py`, the `scripts/` stubs | Team (restructure, 2026-11-01) | Command routing only; no model or data logic |
+| `cli/__init__.py` (dispatcher), `paths.py`, `hashing.py`, `progress.py`, the shared helpers and error boundary in `prediction_io.py`, the `scripts/` stubs | Team (restructure, 2026-11-01) | Command routing and shared plumbing; no model or data logic |
 
 The feature code in `crf_features.py`, both presets included, was written by Member 3; Member 4's
 branch has no commits ([contributions](../contributions/Mohamed_2309015740_Mokamaleldin.md)). The threshold
