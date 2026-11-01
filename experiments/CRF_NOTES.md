@@ -1,6 +1,6 @@
 # CRF Engineering & Technical Notes — Member 3 Workstream
 
-**Modules:** `src/punct_restore/models/crf.py`, `scripts/train_crf.py`, `src/punct_restore/features/crf_features.py`
+**Modules:** `src/punct_restore/models/crf.py`, `recap train-crf`, `src/punct_restore/features/crf_features.py`
 **CRF Tests:** `tests/test_crf_features.py`, `tests/test_crf_model.py`, `tests/test_train_crf_cli.py`
 **Status:** Six full-data CRF models (modes A, B, C × basic, improved) were trained on the official `sponspeech-m1-v2` `default_train` lists; see [CRF_EXPERIMENTS.md](../docs/CRF_EXPERIMENTS.md) §7. Member 5 reproduced all six validation prediction files byte for byte from the shared models and scored each frozen model once on test and test_amb. The course-baseline settings (HMM smoothing, CRF settings, the plain threshold τ) were fixed or chosen on validation before any test result. The comparison methods in sections 13–14 of EVALUATION_RESULTS_CRF.md (simulated ASR noise, gap classifier, hidden-event LM, prior-adjusted decoding, question lookback, factored casing) were added on 2026-10-30, after the first test report, in response to a review that cited test results. They are exploratory; their settings were still chosen on validation only, and each test list was predicted once. The final results are in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md). The test counts below describe the suite at commit `aa232be`.
 
@@ -139,18 +139,18 @@ Real-data performance is measured by Member 5, not by these unit tests: validati
 
 ---
 
-## 8. Phase 5: Reproducible CRF Training Pipeline (`scripts/train_crf.py`)
+## 8. Phase 5: Reproducible CRF Training Pipeline (`recap train-crf`)
 
-**CLI Script:** `scripts/train_crf.py`
+**CLI:** `recap train-crf` (module `src/punct_restore/cli/train_crf.py`, stub `scripts/train_crf.py`)
 **CLI Tests:** `tests/test_train_crf_cli.py`
 
 ### 8.1 CLI Architecture & Supported Operations
 
-`scripts/train_crf.py` provides a thin, deterministic command-line interface delegating directly to `CRFModel` and `extract_sequence_features`. It implements three primary subcommands:
+`recap train-crf` provides a thin, deterministic command-line interface delegating directly to `CRFModel` and `extract_sequence_features`. It implements three primary subcommands:
 
 1. **`train` — Train a linear-chain CRF model:**
    ```bash
-   python scripts/train_crf.py train \
+   recap train-crf train \
        --mode {A,B,C} \
        --input <path/to/data.jsonl> \
        --ids <path/to/mode_<MODE>.ids> \
@@ -171,7 +171,7 @@ Real-data performance is measured by Member 5, not by these unit tests: validati
 
 2. **`predict` — Generate gold-free contract-compliant predictions:**
    ```bash
-   python scripts/train_crf.py predict \
+   recap train-crf predict \
        --model <path/to/model.joblib> \
        --input <path/to/eval_input.jsonl> \
        --output <path/to/predictions.jsonl> \
@@ -181,7 +181,7 @@ Real-data performance is measured by Member 5, not by these unit tests: validati
 
 3. **`inspect` — Inspect metadata and parameters of a saved artifact:**
    ```bash
-   python scripts/train_crf.py inspect \
+   recap train-crf inspect \
        --model <path/to/model.joblib>
    ```
 
@@ -225,7 +225,7 @@ Every training run automatically generates a companion provenance manifest (`<mo
 - `artifact`: Path, SHA-256 integrity checksum, and file size in bytes.
 - `backend`: Backend library name and version (`sklearn-crfsuite`, `python-crfsuite`).
 - `environment`: Python version, operating system, machine architecture, CPU core count, and dependency versions (`joblib`, `numpy`, `scipy`, `recap-nlp`).
-- `code_fingerprint`: SHA-256 digest computed across `scripts/train_crf.py`, `configs/label_sets.yaml`, `pyproject.toml`, and all 19 `punct_restore/**/*.py` source files.
+- `code_fingerprint`: SHA-256 digest computed across `scripts/train_crf.py`, `configs/label_sets.yaml`, `pyproject.toml`, and all 19 `punct_restore/**/*.py` source files (as recorded by the six delivered manifests; since the restructure, `scripts/train_crf.py` is a stub and new manifests also fingerprint `src/punct_restore/cli/train_crf.py`).
 - `fingerprinted_files`: Deterministically sorted repository-relative POSIX file list.
 - `reproducibility_warning`: Explicit note stating local uncommitted modifications are present on `feat/m3-crf-model`.
 - `created_at`: ISO-8601 UTC timestamp.
@@ -278,7 +278,7 @@ To maintain university research integrity, we strictly delineate the following f
 ### 9.1 Implemented Functionality (Code in Repository)
 - Modular linear-chain CRF model (`CRFModel` in `src/punct_restore/models/crf.py`).
 - Deterministic feature extraction (`FeatureConfig.basic()`, `FeatureConfig.improved()`).
-- CLI pipeline (`scripts/train_crf.py`) supporting `train`, `predict`, and `inspect`.
+- CLI pipeline (`recap train-crf`) supporting `train`, `predict`, and `inspect`.
 - Frozen training ID filtering with strict cardinality and split protection.
 - Comprehensive provenance generation and multi-file source fingerprinting.
 
@@ -306,14 +306,14 @@ A teammate reported the following initial benchmark numbers from a local rebuild
 
 ### 9.5 Follow-up Work (status)
 - **Not done:** a validation grid search over $c_1, c_2$. The CRF settings stayed fixed. A validation sensitivity check (six settings, 50k sample, not used for selection) is in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md) §5.
-- **Done:** feature ablations on **validation only**, never on test: one feature group is removed at a time from the improved preset and trained on a 50k-sequence sample. Results are in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md) §6; `scripts/run_ablations.py --mode {A,B,C} --out DIR` reruns them. The utterance-final shortcut is measured with Member 5's `non_final` view on validation and test.
+- **Done:** feature ablations on **validation only**, never on test: one feature group is removed at a time from the improved preset and trained on a 50k-sequence sample. Results are in [EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md) §6; `recap run-ablations --mode {A,B,C} --out DIR` reruns them. The utterance-final shortcut is measured with Member 5's `non_final` view on validation and test.
 
 ---
 
 ## 10. Team Integration Interface Specification
 
 ### 10.1 Target Consumers
-- **Member 6's demo path:** `src/punct_restore/pipeline.py` loads a saved CRF (`load_model` dispatches `.joblib`/`.pkl` files with `"model_family": "crf"` to `CRFModel.load_model`) and calls `predict`; `scripts/run_demo.py` wraps it. No web application was built.
+- **Member 6's demo path:** `src/punct_restore/pipeline.py` loads a saved CRF (`load_model` dispatches `.joblib`/`.pkl` files with `"model_family": "crf"` to `CRFModel.load_model`) and calls `predict`; `recap run-demo` wraps it. No web application was built.
 
 ### 10.2 Required Input Representation
 Input tokens must be:
@@ -379,4 +379,4 @@ print("Vocabulary:", model.vocabulary)
 
 A 1,000-sequence smoke-test protocol was written before the first real-data run. It is superseded by the
 six full-data runs ([CRF_EXPERIMENTS.md](../docs/CRF_EXPERIMENTS.md) §7) and by Member 5's scoring with
-`scripts/evaluate_models.py` ([EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md)).
+`recap evaluate-models` ([EVALUATION_RESULTS_CRF.md](../docs/EVALUATION_RESULTS_CRF.md)).

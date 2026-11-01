@@ -1,7 +1,7 @@
 # Evaluation protocol — v1
 
 Owner: Member 5. Reviewers: Members 1–4 and 6. The core of this protocol is
-implemented in `src/punct_restore/evaluation/` and `scripts/evaluate_models.py`
+implemented in `src/punct_restore/evaluation/` and `recap evaluate-models`
 (2026-10-29), including grouped bootstrap intervals, paired model comparison,
 error-example export, the prediction-manifest check and the data-policy record. This document holds
 the rules. The results are in [EVALUATION_RESULTS.md](EVALUATION_RESULTS.md) (HMM, shortcut) and
@@ -119,9 +119,9 @@ Masks are required when scoring mode C and rejected for modes A and B.
 
 ```text
 mkdir -p results/predictions results/tables
-python scripts/evaluate_models.py baseline --gold <processed>/mode_A/validation.jsonl \
+recap evaluate-models baseline --gold <processed>/mode_A/validation.jsonl \
     --ids <splits>/primary_eval/validation_mode_A.ids --out results/predictions/shortcut_A_validation.jsonl
-python scripts/evaluate_models.py score --gold <processed>/mode_C/validation.jsonl \
+recap evaluate-models score --gold <processed>/mode_C/validation.jsonl \
     --ids <splits>/primary_eval/validation_mode_C.ids --predictions <model predictions>.jsonl \
     --masks <processed>/masks/case_joint/validation.jsonl --out results/tables/<run_id>.json
 ```
@@ -152,7 +152,7 @@ with canonical mode A scores. Keep clean, real-ASR and synthetic-noise results
 separate. ASR insertions and deletions need a declared alignment policy.
 
 **Known gold issues in the v2 primary lists** (from Member 5's data check; nothing is relabelled):
-- **Leftover speaker labels.** The speaker-label rule of `scripts/find_gold_noise.py` flags 134 validation, 22 test and 63 test_amb primary mode B records (one example is `SPEAKER 1:`). Speaker-label COLONs are 144 of 425 gold COLONs on validation (33.88%), 23 of 166 on test (13.86%) and 76 of 273 on test_amb (27.84%), and 319 of 3,385 (9.42%) in `default_train`. Read COLON scores as an upper bound ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §12).
+- **Leftover speaker labels.** The speaker-label rule of `recap find-gold-noise` flags 134 validation, 22 test and 63 test_amb primary mode B records (one example is `SPEAKER 1:`). Speaker-label COLONs are 144 of 425 gold COLONs on validation (33.88%), 23 of 166 on test (13.86%) and 76 of 273 on test_amb (27.84%), and 319 of 3,385 (9.42%) in `default_train`. Read COLON scores as an upper bound ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §12).
 - **Subtitle cue numbers** (for example `sponspeech:test:nSVl92jJbwk-116`) appear as tokens with gold DASH, and some symbols are dropped from the model input without a flag.
 - **Two auto-caption-style videos** miss commas and sentence ends in their gold: `732fql_jhJQ` (135 validation records) and `JNxcznsrRb8` (46 test records).
 - **Source transcripts:** an informal, unmeasured estimate puts errors in about 1% of records; no method for it is committed. Treat a capital after O as possible gold noise when reading confusion matrices.
@@ -183,7 +183,7 @@ talk/document group level where practical; describe dependence and uncertainty.
 
 **Runtime table: measured** for the HMM ([EVALUATION_RESULTS.md](EVALUATION_RESULTS.md), section 7) and the CRF ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md), section 10).
 - **Method:** the HMM was re-timed on one machine, single process, with no other jobs running: the median of 3 prediction passes over the primary validation set after a warm-up, plus one in-process fit on `default_train`.
-- **The CRF prediction speed was timed the same way** with `scripts/reporting/time_models.py`.
+- **The CRF prediction speed was timed the same way** with `recap time-models`.
 - **Fit times come from different machines.** The CRF fit times come from Member 3's training manifests (his machine), and the HMM bundle's own `runtime.json` comes from another machine. Neither is compared directly with the re-timed rows.
 
 ## Output bundle

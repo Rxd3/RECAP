@@ -12,8 +12,9 @@ hash, the split and the SHA-256 of every input; the runtime files record the mod
 be recomputed or checked from them. The `*.errors.json` files contain short SponSpeech excerpts, and `scores/gold_noise/label_audit_sheet.csv` the
 upstream transcripts of the 100 audited validation utterances (CC BY-NC 4.0, attribution in
 [DATA_LICENSE.md](../docs/DATA_LICENSE.md)). `scores/crf_training_manifests/` holds Member 3's six CRF training
-manifests (settings, data hashes, fit time, peak memory, environment). The scripts in
-`scripts/reporting/` rebuild the result tables from these files ([REPRODUCIBILITY.md](../docs/REPRODUCIBILITY.md)).
+manifests (settings, data hashes, fit time, peak memory, environment). The reporting
+commands (`recap build-m3-tables`, `recap build-m3-final-sections`, `recap build-ablation-table`,
+`recap asr-noise-table`) rebuild the result tables from these files ([REPRODUCIBILITY.md](../docs/REPRODUCIBILITY.md)).
 
 Local outputs go to `predictions/` and `tables/`, which are ignored and not in Git; create them with
 `mkdir -p results/predictions results/tables` first, because the evaluator never creates folders. Local prediction JSONL,
@@ -29,7 +30,7 @@ The reviewed results are tracked as documents:
   ablations (§6), leakage (§8), test_amb (§9) and runtime (§10);
 - [HMM_RESULTS.md](../experiments/HMM_RESULTS.md): the HMM study's own record.
 
-Score a prediction file with `python scripts/evaluate_models.py score ... --out results/tables/<run_id>.json`,
+Score a prediction file with `recap evaluate-models score ... --out results/tables/<run_id>.json`,
 which also writes `<run_id>.md`. The full commands and flags are in
 [the evaluation protocol](../docs/EVALUATION_PROTOCOL.md#scored-sets-masks-views-and-the-shortcut-baseline)
 and [REPRODUCIBILITY.md](../docs/REPRODUCIBILITY.md). Existing outputs are never overwritten.

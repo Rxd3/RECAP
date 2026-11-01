@@ -22,7 +22,7 @@ This is Member 5's evaluation of Member 3's six CRF models (modes A, B and C × 
   - The six `.joblib` files were shared on the team Drive with a `SHA256SUMS` file, and all six checksums match.
   - Before loading, Member 5 listed every import the pickles make. They are only `sklearn_crfsuite.estimator.CRF`, `sklearn_crfsuite._fileresource.FileResource` and `pycrfsuite._logparser.TrainLogParser`.
 - **Reproduction:**
-  - Member 5 regenerated all six validation prediction files from the delivered models with `scripts/train_crf.py predict`. Each is **byte-identical** to the file Member 3 delivered. The sha256 prefixes are:
+  - Member 5 regenerated all six validation prediction files from the delivered models with `recap train-crf predict`. Each is **byte-identical** to the file Member 3 delivered. The sha256 prefixes are:
 
     | Model | Basic | Improved |
     |---|---|---|
@@ -32,11 +32,11 @@ This is Member 5's evaluation of Member 3's six CRF models (modes A, B and C × 
 
   - Mode A basic had also been retrained from a clean `aa232be` checkout, again with byte-identical output.
 - **Test protocol:**
-  - Each model predicted `test` and `test_amb` once with `train_crf.py predict --manifest-out`.
-  - Every prediction file passes `evaluate_models.py score --manifest`.
+  - Each model predicted `test` and `test_amb` once with `recap train-crf predict --manifest-out`.
+  - Every prediction file passes `recap evaluate-models score --manifest`.
   - Threshold decoding (section 7) picked one τ per mode on validation, then predicted test once.
 - **Scoring:**
-  - `scripts/evaluate_models.py` on the primary lists, with the `case_joint` mask in mode C.
+  - `recap evaluate-models` on the primary lists, with the `case_joint` mask in mode C.
   - Grouped bootstrap by video: 1,000 resamples, seed 2026, 95% percentile intervals, not adjusted for multiple comparisons.
   - During the work, validation scores were cross-checked against scikit-learn's `f1_score`; that check is not committed.
 
@@ -264,7 +264,7 @@ Primary = macro F1 % with 95% CI (grouped bootstrap by video, 1,000 resamples, s
 
 ### Sensitivity to the CRF settings (validation, mode A)
 
-Member 3's settings were fixed, not tuned. To check whether the conclusions depend on them, both presets were retrained on the same 50,000-sequence sample as the ablations (`train_crf.py train --ids sample.ids --c1 --c2 --max-iterations`). They were scored on the primary validation list only; test was not used. Primary macro F1 %, and improved − basic with paired 95% CI (* = interval excludes 0):
+Member 3's settings were fixed, not tuned. To check whether the conclusions depend on them, both presets were retrained on the same 50,000-sequence sample as the ablations (`recap train-crf train --ids sample.ids --c1 --c2 --max-iterations`). They were scored on the primary validation list only; test was not used. Primary macro F1 %, and improved − basic with paired 95% CI (* = interval excludes 0):
 
 | c1 = c2 | Iterations | CRF basic | CRF improved | Improved − basic |
 |---|---|---|---|---|
@@ -279,7 +279,7 @@ The improved preset beats the basic one at every setting, by +4.37 to +6.53 poin
 
 ## 6. Feature ablations of the improved CRF (validation)
 
-Member 5 retrained Member 3's improved preset with one feature group switched off at a time, using `scripts/run_ablations.py`. The feature code is Member 3's from `aa232be`, unchanged on `release/final` apart from the filler switch, which is off by default. The settings match the delivered models (c1 = c2 = 0.1, 100 iterations). Unlike them, each ablation model trains on a fixed sample of 50,000 `default_train` sequences per mode, drawn with seed 2026; modes A and B share one sample. All models are scored on the primary validation lists. Test was not used.
+Member 5 retrained Member 3's improved preset with one feature group switched off at a time, using `recap run-ablations`. The feature code is Member 3's from `aa232be`, unchanged on `release/final` apart from the filler switch, which is off by default. The settings match the delivered models (c1 = c2 = 0.1, 100 iterations). Unlike them, each ablation model trains on a fixed sample of 50,000 `default_train` sequences per mode, drawn with seed 2026; modes A and B share one sample. All models are scored on the primary validation lists. Test was not used.
 
 | Group | `FeatureConfig` change | What it adds |
 |---|---|---|
@@ -340,7 +340,7 @@ Each row removes one feature group from the improved CRF. Difference = without �
 
 ### Filler cue (Member 5 extension, H4)
 
-`FeatureConfig.improved(use_filler_cues=True)` adds filler features on top of the improved preset: *um*, *uh*, *er*, *erm*, *like*, the bigrams *you know* and *i mean*, and an immediately repeated word. It was trained on the same sample with the same seed and settings (`scripts/run_ablations.py --variants improved,improved_plus_filler`). The improved-preset predictions are byte-identical to the ablation run above.
+`FeatureConfig.improved(use_filler_cues=True)` adds filler features on top of the improved preset: *um*, *uh*, *er*, *erm*, *like*, the bigrams *you know* and *i mean*, and an immediately repeated word. It was trained on the same sample with the same seed and settings (`recap run-ablations --variants improved,improved_plus_filler`). The improved-preset predictions are byte-identical to the ablation run above.
 
 Difference = with filler − without, in points (validation, 95% paired CI; * = interval excludes 0):
 
@@ -527,7 +527,7 @@ Mode C is shown as its punctuation projection and its masked casing projection; 
 
 ## 11. Label granularity: trained on 8 classes, scored on 4 (validation)
 
-Each mode B model was projected to mode A with the approved D5 mapping (`scripts/project_joint.py --from B`). It was compared with its mode A twin on mode A validation gold, over the same 20,040 primary IDs: B projection − A model, points, paired 95% CI.
+Each mode B model was projected to mode A with the approved D5 mapping (`recap project-joint --from B`). It was compared with its mode A twin on mode A validation gold, over the same 20,040 primary IDs: B projection − A model, points, paired 95% CI.
 
 | Model | Mode A model | Mode B projected | Difference | non_final difference |
 |---|---|---|---|---|
@@ -539,7 +539,7 @@ Training on the finer 8-class labels barely changes 4-class punctuation: the dif
 
 ## 12. Gold-noise check (mode B)
 
-The protocol lists four known sources of noise in the gold labels. `scripts/find_gold_noise.py` flags the three that a rule can detect (leftover speaker labels, subtitle cue residue and the two auto-caption-style videos) on the primary mode B lists (rules in `src/punct_restore/data/gold_noise.py`); the fourth, errors in about 1% of source transcripts, is an unmeasured estimate with no rule. The frozen release was not changed. The counts are an upper estimate: a few titles and headings at label positions also match the speaker-label rule (for example "Spooky Success:" in validation).
+The protocol lists four known sources of noise in the gold labels. `recap find-gold-noise` flags the three that a rule can detect (leftover speaker labels, subtitle cue residue and the two auto-caption-style videos) on the primary mode B lists (rules in `src/punct_restore/data/gold_noise.py`); the fourth, errors in about 1% of source transcripts, is an unmeasured estimate with no rule. The frozen release was not changed. The counts are an upper estimate: a few titles and headings at label positions also match the speaker-label rule (for example "Spooky Success:" in validation).
 
 | Rule | Validation | Test | test_amb |
 |---|---|---|---|
@@ -569,7 +569,7 @@ Findings:
 
 ## 13. Simulated ASR noise (test)
 
-This check is **simulated** and **exploratory** (added after the first test report; nothing was tuned on it); RECAP has no real ASR condition. `scripts/simulate_asr_noise.py` corrupts the primary test inputs at a word error rate of 5, 10 and 15%, with seed 2026. The edits are taken round-robin by type:
+This check is **simulated** and **exploratory** (added after the first test report; nothing was tuned on it); RECAP has no real ASR condition. `recap simulate-asr-noise` corrupts the primary test inputs at a word error rate of 5, 10 and 15%, with seed 2026. The edits are taken round-robin by type:
 - deletion of a function word, whose punctuation label moves to the previous word if that word is O, and is dropped otherwise;
 - homophone substitution (their/there, your/you're, its/it's, to/too/two, then/than);
 - an adjacent swap of two non-final words, counted as two errors.
@@ -619,7 +619,7 @@ Files: `results/scores/asr_noise_v2/` (`summary.json` and one folder per edit mo
 
 ### 14.1 Gap classifier: the CRF without its transitions (validation)
 
-`GapClassifier` is a multinomial logistic regression on exactly the improved CRF's per-token features, with each token predicted independently. It was trained on the same 50k sample with the same features as the ablation CRF (`run_ablations.py --variants gap_improved`). It also differs in training: scikit-learn logistic regression with an L2 penalty, C = 1.0 and up to 200 lbfgs iterations, against the CRF's elastic net c1 = c2 = 0.1 and 100 iterations. The difference is gap − CRF, in points with paired 95% CI (* = interval excludes 0):
+`GapClassifier` is a multinomial logistic regression on exactly the improved CRF's per-token features, with each token predicted independently. It was trained on the same 50k sample with the same features as the ablation CRF (`recap run-ablations --variants gap_improved`). It also differs in training: scikit-learn logistic regression with an L2 penalty, C = 1.0 and up to 200 lbfgs iterations, against the CRF's elastic net c1 = c2 = 0.1 and 100 iterations. The difference is gap − CRF, in points with paired 95% CI (* = interval excludes 0):
 
 | Mode | CRF improved | Gap classifier | Difference | non_final difference |
 |---|---|---|---|---|
@@ -685,7 +685,7 @@ Question lookback is the largest single feature gain we found: +6.11 / +7.12 / +
 
 ### 14.5 Factored vs joint punctuation and casing (validation, mode C)
 
-This is decision D9. The joint mode C improved CRF is compared with a factored pipeline: a mode A improved CRF for punctuation plus a casing-only improved CRF (helper mode `CASE`), combined by `scripts/factor_predictions.py`. All three CRFs train on the same 50k mode C sample with the same features (`run_ablations.py --mode C --variants improved,case_improved,factored`). The difference is factored − joint, paired 95% CI:
+This is decision D9. The joint mode C improved CRF is compared with a factored pipeline: a mode A improved CRF for punctuation plus a casing-only improved CRF (helper mode `CASE`), combined by `recap factor-predictions`. All three CRFs train on the same 50k mode C sample with the same features (`recap run-ablations --mode C --variants improved,case_improved,factored`). The difference is factored − joint, paired 95% CI:
 
 | Block | Joint | Factored | Difference |
 |---|---|---|---|
@@ -704,7 +704,7 @@ Joint training helps punctuation inside the utterance; a separate model helps ca
 
 ### 14.6 Data-driven word clusters (validation)
 
-This extension is off by default (`FeatureConfig.improved(use_word_clusters=True)` with a cluster map). Word classes are induced from the `default_train` tokens only: lowercased words seen at least 5 times, ±2 co-occurrence counts, PPMI weighting, a 100-dimensional truncated SVD and k-means (seed 2026), built by `scripts/build_word_clusters.py`. The CRF gets the cluster of the previous, current and next word and the (current, next) cluster pair. It was trained on the same 50k sample as the ablations (`--variants improved_plus_clusters`). K ∈ {100, 300} was chosen once for all modes by the mean primary difference on validation (K = 300); because the same validation lists choose K and report it, the K = 300 differences are slightly optimistic. With − without, paired 95% CI:
+This extension is off by default (`FeatureConfig.improved(use_word_clusters=True)` with a cluster map). Word classes are induced from the `default_train` tokens only: lowercased words seen at least 5 times, ±2 co-occurrence counts, PPMI weighting, a 100-dimensional truncated SVD and k-means (seed 2026), built by `recap build-word-clusters`. The CRF gets the cluster of the previous, current and next word and the (current, next) cluster pair. It was trained on the same 50k sample as the ablations (`--variants improved_plus_clusters`). K ∈ {100, 300} was chosen once for all modes by the mean primary difference on validation (K = 300); because the same validation lists choose K and report it, the K = 300 differences are slightly optimistic. With − without, paired 95% CI:
 
 | Mode | Improved | + clusters (K = 300) | Difference | Comma class | Question class | K = 100 difference |
 |---|---|---|---|---|---|---|
@@ -770,17 +770,17 @@ The p-values are recomputed from the committed compare JSONs in `results/scores/
 
 Run every command from the repository root. `<rel>` is `sponspeech-m1-v2`. The shared models are listed in [REPRODUCIBILITY.md](REPRODUCIBILITY.md).
 
-- **Test predictions, once per model:** `python scripts/train_crf.py predict --model crf_mode_<m>_<preset>_full_01.joblib --input data/processed/<rel>/mode_<M>/test.jsonl --ids data/splits/<rel>/primary_eval/test_mode_<M>.ids --output PRED.jsonl --manifest-out PRED.manifest.json`. The same command on validation reproduces Member 3's delivered files byte for byte.
-- **Scores and paired comparisons:** `python scripts/evaluate_models.py score|compare ... --bootstrap 1000 --seed 2026`, and `errors ... --per-pair 3` for the error pairs. Mode C needs `--masks data/processed/<rel>/masks/case_joint/<split>.jsonl`.
-- **Threshold decoding (§7):** `python scripts/tune_threshold.py tune ...` on validation, then `predict --tau-file ...` once on test and test_amb.
-- **Ablations and filler cue (§6):** `python scripts/run_ablations.py --mode <M> --out DIR [--variants ...]`, then score as above.
-- **Joint vs punctuation-only (H1):** `python scripts/project_joint.py --predictions C_PRED.jsonl --gold data/processed/<rel>/mode_A/validation.jsonl --out A_PRED.jsonl --manifest-out A_PRED.manifest.json`, then `compare` on mode A gold with `--ids data/splits/<rel>/primary_eval/validation_mode_C.ids`.
+- **Test predictions, once per model:** `recap train-crf predict --model crf_mode_<m>_<preset>_full_01.joblib --input data/processed/<rel>/mode_<M>/test.jsonl --ids data/splits/<rel>/primary_eval/test_mode_<M>.ids --output PRED.jsonl --manifest-out PRED.manifest.json`. The same command on validation reproduces Member 3's delivered files byte for byte.
+- **Scores and paired comparisons:** `recap evaluate-models score|compare ... --bootstrap 1000 --seed 2026`, and `errors ... --per-pair 3` for the error pairs. Mode C needs `--masks data/processed/<rel>/masks/case_joint/<split>.jsonl`.
+- **Threshold decoding (§7):** `recap tune-threshold tune ...` on validation, then `predict --tau-file ...` once on test and test_amb.
+- **Ablations and filler cue (§6):** `recap run-ablations --mode <M> --out DIR [--variants ...]`, then score as above.
+- **Joint vs punctuation-only (H1):** `recap project-joint --predictions C_PRED.jsonl --gold data/processed/<rel>/mode_A/validation.jsonl --out A_PRED.jsonl --manifest-out A_PRED.manifest.json`, then `compare` on mode A gold with `--ids data/splits/<rel>/primary_eval/validation_mode_C.ids`.
 - **Leakage subsets (§8):**
-  - `python scripts/build_leakage_subsets.py --mode A --split test --out DIR` writes the `all`, `kept`, `excluded_train_video`, `excluded_other_leak` and `excluded_quality` ID lists, with counts 17,695 / 12,668 / 2,706 / 2,130 / 191.
-  - Predict the whole official test once: `python scripts/train_crf.py predict --model crf_mode_a_improved_full_01.joblib --input data/processed/<rel>/mode_A/test.jsonl --ids DIR/all.ids --output ALL.jsonl --manifest-out ALL.manifest.json`. Its primary-list predictions are identical to the test run above.
-  - Score once per list: `python scripts/evaluate_models.py score --gold data/processed/<rel>/mode_A/test.jsonl --ids DIR/<list>.ids --predictions ALL.jsonl --bootstrap 1000 --out OUT.json`. For the native rows, use `--gold data/processed/<rel>/benchmark_native/mode_A/test.jsonl`.
-- **Tables in this document:** `python scripts/reporting/build_m3_tables.py --split test --tau --out OUT.md` (§1–4, errors, confusion matrices).
-  - `python scripts/reporting/build_m3_final_sections.py --manifests results/scores/crf_training_manifests --out OUT.md` gives §7–10.
-  - `python scripts/reporting/build_ablation_table.py --out OUT.md` gives the §6 tables.
+  - `recap build-leakage-subsets --mode A --split test --out DIR` writes the `all`, `kept`, `excluded_train_video`, `excluded_other_leak` and `excluded_quality` ID lists, with counts 17,695 / 12,668 / 2,706 / 2,130 / 191.
+  - Predict the whole official test once: `recap train-crf predict --model crf_mode_a_improved_full_01.joblib --input data/processed/<rel>/mode_A/test.jsonl --ids DIR/all.ids --output ALL.jsonl --manifest-out ALL.manifest.json`. Its primary-list predictions are identical to the test run above.
+  - Score once per list: `recap evaluate-models score --gold data/processed/<rel>/mode_A/test.jsonl --ids DIR/<list>.ids --predictions ALL.jsonl --bootstrap 1000 --out OUT.json`. For the native rows, use `--gold data/processed/<rel>/benchmark_native/mode_A/test.jsonl`.
+- **Tables in this document:** `recap build-m3-tables --split test --tau --out OUT.md` (§1–4, errors, confusion matrices).
+  - `recap build-m3-final-sections --manifests results/scores/crf_training_manifests --out OUT.md` gives §7–10.
+  - `recap build-ablation-table --out OUT.md` gives the §6 tables.
   - All three read the committed JSON in `results/scores/` and reproduce the tables above line for line.
-- **Runtime (§10):** `python scripts/reporting/time_models.py --kind crf --model M --mode <M> --out OUT.json`.
+- **Runtime (§10):** `recap time-models --kind crf --model M --mode <M> --out OUT.json`.

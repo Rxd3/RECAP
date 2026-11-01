@@ -141,7 +141,7 @@ To reproduce any training run or prediction export, run these from `release/fina
 
 ### 9.1. Training Command Template
 ```powershell
-.\.venv\Scripts\python.exe scripts/train_crf.py train `
+.\.venv\Scripts\recap.exe train-crf train `
   --mode <A|B|C> `
   --input data/processed/sponspeech-m1-v2/mode_<A|B|C>/train.jsonl `
   --ids data/splits/sponspeech-m1-v2/default_train/mode_<A|B|C>.ids `
@@ -156,9 +156,9 @@ To reproduce any training run or prediction export, run these from `release/fina
 ```
 
 ### 9.2. Primary Validation Prediction Export Template
-The label mode and `model_name` come from the saved artifact. `--manifest-out` writes the prediction manifest that `evaluate_models.py score --manifest` checks.
+The label mode and `model_name` come from the saved artifact. `--manifest-out` writes the prediction manifest that `recap evaluate-models score --manifest` checks.
 ```powershell
-.\.venv\Scripts\python.exe scripts/train_crf.py predict `
+.\.venv\Scripts\recap.exe train-crf predict `
   --model experiments/runs/<run_dir>/<run_id>.joblib `
   --input data/processed/sponspeech-m1-v2/mode_<A|B|C>/validation.jsonl `
   --ids data/splits/sponspeech-m1-v2/primary_eval/validation_mode_<A|B|C>.ids `
@@ -171,7 +171,7 @@ The label mode and `model_name` come from the saved artifact. `--manifest-out` w
 ## 10. Known Scientific & Technical Limitations
 
 1. **Optimizer Budget vs Convergence:**  
-   All six models stopped at the iteration budget (`max_iterations = 100`). The training manifests record only `num_iterations = 100`; the loss traces in the shared models are summarised in `results/scores/crf_convergence/convergence.json` (`scripts/reporting/crf_convergence.py`): the loss was still falling by 0.12–1.52% over the last 10 iterations, so formal convergence is not claimed.
+   All six models stopped at the iteration budget (`max_iterations = 100`). The training manifests record only `num_iterations = 100`; the loss traces in the shared models are summarised in `results/scores/crf_convergence/convergence.json` (`recap crf-convergence`): the loss was still falling by 0.12–1.52% over the last 10 iterations, so formal convergence is not claimed.
 2. **Dataset Partitioning (Source/Video Overlap):**  
    Training uses the `default_train` lists and validation uses the `primary_eval` lists. Those primary lists share no source video, no exact or normalized transcript and no qualifying six-gram with their reference splits ([DATASET_PLAN.md](DATASET_PLAN.md), [DATA_RELEASE_VALIDATION.md](DATA_RELEASE_VALIDATION.md)). Channel overlap remains: 149 of 522 channels span the original splits.
 3. **Mode C Transition Sparsity:**  

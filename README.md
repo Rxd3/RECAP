@@ -54,7 +54,7 @@ record format and alignment.
 | Linear-chain CRF | CRFsuite via `sklearn-crfsuite` 0.5.0, L-BFGS; `src/punct_restore/models/crf.py` | `crf_mode_<a\|b\|c>_basic_full_01` (basic preset: ±1 window, affixes, token shape, utterance boundaries) | c1 = c2 = 0.1, 100 iterations, fixed |
 | Linear-chain CRF | same | `crf_mode_<a\|b\|c>_improved_full_01` (improved preset: adds ±2 window, word pairs, question, clause, casing and position cues) | c1 = c2 = 0.1, 100 iterations, fixed |
 | + threshold decoding (ours) | `src/punct_restore/models/threshold.py` on the improved CRF's marginals | improved CRF + τ: a token is non-O when 1 − P(O) > τ | τ = 0.40 (A), 0.30 (B), 0.35 (C), chosen on validation |
-| + prior-adjusted threshold decoding (ours, exploratory) | `src/punct_restore/models/threshold.py` with add-one training label priors (`tune_threshold.py tune --train --train-ids`) | improved CRF + τ × γ: after the τ gate, the non-O label maximises P(c) / prior(c)^γ | τ = 0.4, γ = 0.5 (A); τ = 0.45, γ = 0.5 (B); τ = 0.35, γ = 0.5 (C), chosen on validation |
+| + prior-adjusted threshold decoding (ours, exploratory) | `src/punct_restore/models/threshold.py` with add-one training label priors (`recap tune-threshold tune --train --train-ids`) | improved CRF + τ × γ: after the τ gate, the non-O label maximises P(c) / prior(c)^γ | τ = 0.4, γ = 0.5 (A); τ = 0.45, γ = 0.5 (B); τ = 0.35, γ = 0.5 (C), chosen on validation |
 | Hidden-event n-gram LM + Viterbi (ours, exploratory) | own code, `src/punct_restore/models/hidden_event_lm.py`; mode C adds a unigram truecaser | one model per mode | order 4 with discount 0.9 (A), 0.75 (B, C), chosen on validation from order ∈ {2, 3, 4} × discount ∈ {0.5, 0.75, 0.9} |
 
 Sources: [HMM_RESULTS.md](experiments/HMM_RESULTS.md), [CRF_EXPERIMENTS.md](docs/CRF_EXPERIMENTS.md) §3, §6–7
@@ -79,7 +79,7 @@ improved-feature CRF above, in modes A, B and C. Member 3 wrote both CRF feature
   lists drop every utterance whose video appears in train or validation, plus exact and near
   duplicates. In the official test file, 4,716 of 17,695 utterances
   (26.7%) come from such videos ([DATASET_PLAN.md](docs/DATASET_PLAN.md)).
-- **A gold-noise audit** (`scripts/find_gold_noise.py`). Leftover speaker labels, subtitle cue residue and
+- **A gold-noise audit** (`recap find-gold-noise`). Leftover speaker labels, subtitle cue residue and
   auto-caption-style videos are flagged, not relabelled. Speaker labels give about a third of the validation
   COLONs (144 of 425), so the COLON scores are an upper bound
   ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §12).
@@ -91,20 +91,20 @@ improved-feature CRF above, in modes A, B and C. Member 3 wrote both CRF feature
   utterance's last token.
 - **The cost of leakage, measured.** The frozen models also predicted the full official test, split
   by why each utterance was excluded ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §8).
-- **Threshold decoding** of the CRF marginals (`scripts/tune_threshold.py`), with τ tuned on validation.
+- **Threshold decoding** of the CRF marginals (`recap tune-threshold`), with τ tuned on validation.
 - **Comparison methods and robustness checks** (exploratory, added on 2026-10-30 after the first test report; settings chosen on validation): a gap classifier (the CRF features without transitions), a
   Stolcke-style hidden-event language model, prior-adjusted threshold decoding (τ × γ), question-lookback
   features, data-driven word clusters (PPMI + SVD + k-means from the training text), a factored casing pipeline
   (punctuation CRF + casing-only CRF), and simulated ASR noise on the test
   inputs (results in [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md)).
-- **A filler-word cue** (`improved_plus_filler` in `scripts/run_ablations.py`), tested on validation.
-- **Word-cluster features** (`improved_plus_clusters` in `scripts/run_ablations.py`, with `--cluster-map` from
-  `scripts/build_word_clusters.py`): clusters induced from `default_train` only (PPMI, SVD, k-means with k = 100 or 300),
+- **A filler-word cue** (`improved_plus_filler` in `recap run-ablations`), tested on validation.
+- **Word-cluster features** (`improved_plus_clusters` in `recap run-ablations`, with `--cluster-map` from
+  `recap build-word-clusters`): clusters induced from `default_train` only (PPMI, SVD, k-means with k = 100 or 300),
   tested on validation.
 - **Label granularity (B→A):** mode B models projected to the four mode A labels with the D5 mapping,
   compared with their mode A twins on mode A validation gold
   ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §11).
-- **Per-class intervals** (`evaluate_models.py compare --class`): paired 95% intervals for single classes,
+- **Per-class intervals** (`recap evaluate-models compare --class`): paired 95% intervals for single classes,
   used for hypotheses H2–H4 (EVALUATION_RESULTS_CRF.md, Team hypotheses).
 - **A sensitivity check of the fixed CRF settings:** both presets retrained on the same 50k training
   sample as the ablations at c1 = c2 ∈ {0.01, 0.1, 1.0} and 100 or 300 iterations (EVALUATION_RESULTS_CRF.md §5).
@@ -179,7 +179,7 @@ They beat the improved CRF by +26.33 to +26.84 points in A and +13.61 to +13.97 
 
 ## Quickstart
 
-Python 3.11 or newer, run from the repository root. Versions actually used are recorded in
+Python 3.12 or newer, run from the repository root. Versions actually used are recorded in
 [REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md).
 
 ```powershell
@@ -187,23 +187,32 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1          # macOS/Linux: source .venv/bin/activate
 python -m pip install -e ".[dev]"
 python -m pytest -q
+recap --help
 ```
 
-The tests use small fixtures and download nothing. With a trained model (an HMM or hidden-event LM
+The tests use small fixtures and download nothing. `recap --help` lists the 25 commands, and
+`recap <command> --help` prints the options of one. With a trained model (an HMM or hidden-event LM
 `.json`, or a CRF or gap-classifier `.joblib`), restore one sentence:
 
 ```powershell
-python scripts/run_demo.py --model-path <model.json or model.joblib> --text "hello everyone welcome to our presentation"
+recap run-demo --model-path <model.json or model.joblib> --text "hello everyone welcome to our presentation"
 ```
 
 Every command, from rebuilding the data to scoring a model, is in
-[REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md).
+[REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md). The old script paths still work after the install:
+each file in `scripts/` is a 3-line stub that runs the same command, so running
+`scripts/train_crf.py train ...` with Python equals `recap train-crf train ...`. Runs made before
+the restructure (2026-11-01) ran the same commands under those paths, and their manifests record them.
+
+Before a pull request, also run the linter: `ruff check src scripts tests` (ruff 0.17.3 comes with the
+`dev` extra; its settings are in `pyproject.toml`). The CI workflow `.github/workflows/ci.yml` runs
+ruff and pytest on Python 3.12 for every push and pull request.
 
 ## Data access
 
 - **Upstream:** SponSpeech (Liu & Beigi, 2024, [arXiv:2409.11241](https://arxiv.org/abs/2409.11241)),
   CC BY-NC 4.0. No dataset files are committed apart from a 10-utterance sample (`data/sample/`) and small release metadata (`data/release_metadata/`); `results/scores/*.errors.json` contain short SponSpeech excerpts as error examples, and `results/scores/gold_noise/label_audit_sheet.csv` holds the upstream transcripts and our rendered labels of the 100 validation utterances in the label audit (both CC BY-NC 4.0, attribution in [DATA_LICENSE.md](docs/DATA_LICENSE.md)).
-- **Rebuild from source:** `scripts/prepare_data.py` with `extract` reads only about 97 MB of pinned
+- **Rebuild from source:** `recap prepare-data` with `extract` reads only about 97 MB of pinned
   byte ranges from the official archive; `build` creates release `sponspeech-m1-v2`. Steps
   and checksums: [data/README.md](data/README.md).
 - **Team copy:** releases are shared in the team's Google Drive folder
@@ -228,8 +237,8 @@ report `test` and `test_amb` separately (they share 25 videos).
 | `experiments/` | Model notes and runbooks: `experiments/HMM_NOTES.md`, `experiments/HMM_RUNBOOK.md`, `experiments/HMM_RESULTS.md`, `experiments/CRF_NOTES.md`, `experiments/FEATURE_NOTES.md`. Local run outputs go to the ignored folder experiments/runs/ (create it with `mkdir -p`). |
 | `presentation/` | Presentation workspace (`presentation/README.md`); the outline is `docs/PRESENTATION_OUTLINE.md`. |
 | `results/` | `results/scores/` holds the committed evaluator JSON behind every reported number (`results/scores/README.md`), including Member 3's six CRF training manifests in `results/scores/crf_training_manifests/`. Local evaluator outputs go to the ignored folders results/predictions/ and results/tables/; create them with `mkdir -p` first, because the evaluator never creates folders. |
-| `scripts/` | Command-line entry points; see the table below and `scripts/README.md`. |
-| `src/punct_restore/` | The Python package; every module is listed in the package table below. |
+| `scripts/` | Compatibility stubs: one 3-line file per command (25, including `scripts/reporting/`) that runs the same `recap` command; listed in the command table below and in `scripts/README.md`. |
+| `src/punct_restore/` | The Python package: the `recap` commands (`src/punct_restore/cli/`, `src/punct_restore/reporting/`), the shared `src/punct_restore/paths.py` and the library folders; every module is listed in the package table below. |
 | `tests/` | The pytest suite for data, models, features, CLIs and evaluation; fixtures only. Groups are listed in `tests/README.md`; the comparison-method and robustness tests are `tests/test_gap_classifier.py`, `tests/test_hidden_event_lm.py`, `tests/test_train_hidden_event_lm_cli.py`, `tests/test_factored.py`, `tests/test_factor_predictions.py`, `tests/test_crf_case_mode.py`, `tests/test_threshold_priors.py`, `tests/test_asr_noise.py`, `tests/test_simulate_asr_noise.py`, `tests/test_asr_noise_table.py`, `tests/test_asr_noise_findings.py` (with the fixture module `tests/asr_noise_table_fixtures.py`), `tests/test_prediction_io_helpers.py`, `tests/test_gold_noise.py`, `tests/test_find_gold_noise.py`, `tests/test_threshold_provenance.py`, `tests/test_crf_convergence.py`, `tests/test_length_position.py`, `tests/test_word_clusters.py`, `tests/test_build_word_clusters.py`, `tests/test_crf_word_clusters.py`. |
 
 **Evaluator outputs** (`results/scores/`, one folder per study; details in `results/scores/README.md`):
@@ -243,7 +252,7 @@ report `test` and `test_amb` separately (they share 25 videos).
 | `results/scores/crf_training_manifests/` | Member 3's six CRF training manifests: settings, data hashes, fit time, peak memory, environment |
 | `results/scores/crf_validation/` | The six CRFs on validation (model selection); paired comparisons; error pairs |
 | `results/scores/filler/` | Improved CRF with and without the filler-word cue, per mode, on validation |
-| `results/scores/gold_noise/` | Mode B rescored without the known noisy records; the flagged IDs and rules (`*_B_noisy.tsv`) and counts (`*_B_summary.json`, also for test_amb and `default_train`) from `scripts/find_gold_noise.py` |
+| `results/scores/gold_noise/` | Mode B rescored without the known noisy records; the flagged IDs and rules (`*_B_noisy.tsv`) and counts (`*_B_summary.json`, also for test_amb and `default_train`) from `recap find-gold-noise` |
 | `results/scores/h1_joint/` | Joint mode C vs punctuation-only mode A on the mode C validation IDs (H1) |
 | `results/scores/hmm/` | HMM and shortcut baseline on validation, test and test_amb; HMM error pairs; `length_position_A_test.json` (mode A micro F1 by length and QUESTION recall by position) |
 | `results/scores/leakage/` | HMM and improved CRF on the official mode A test, split by exclusion cause |
@@ -261,65 +270,81 @@ report `test` and `test_amb` separately (they share 25 videos).
 | `results/scores/neural/` | Member 2's BERT and FLAN-T5 predictions scored on validation, test and test_amb, with paired comparisons against the improved CRF, τ × γ and the HMM |
 | `results/scores/clusters/` | Word-cluster features vs the improved CRF on validation (50k sample), K = 100 and 300, with the K choice in `clusters_summary.json` |
 
-**Package** (`src/punct_restore/`; each package folder `src/punct_restore/`, `src/punct_restore/data/`,
-`src/punct_restore/models/`, `src/punct_restore/features/` and `src/punct_restore/evaluation/` has a
-package initializer, `<folder>/__init__.py`):
+**Package** (`src/punct_restore/`). Package initializers: `src/punct_restore/__init__.py`,
+`src/punct_restore/cli/__init__.py` (the `recap` dispatcher), `src/punct_restore/data/__init__.py`,
+`src/punct_restore/evaluation/__init__.py`, `src/punct_restore/features/__init__.py`,
+`src/punct_restore/models/__init__.py` and `src/punct_restore/reporting/__init__.py`. Modules split out
+of a longer one are re-exported by it, so the old import names still work.
 
 | Module | Role |
 | --- | --- |
-| `src/punct_restore/data/` | Member 1's data pipeline: `extraction` (raw transcripts from the official archive), `preprocessing` (loading, cleaning, tokenization), `labeling` (punctuation and casing labels), `splits` (split assignment and leakage audits), `release` (versioned release build and load), `validation` (checks against the data contract), `asr_noise` (simulated ASR word errors with labels and masks kept aligned), `gold_noise` (rules that flag speaker labels, cue residue and auto-caption videos in the gold). |
+| `src/punct_restore/cli/` | The `recap` command. `__init__` holds the dispatcher (`COMMANDS` maps each subcommand, the module name with `_` written as `-`, to its module; `recap --help` lists them). One module per command: `build_leakage_subsets`, `build_word_clusters`, `evaluate_models`, `factor_predictions`, `find_gold_noise`, `package_hmm_handoff`, `predict_hmm`, `prepare_data`, `project_joint`, `run_ablations`, `run_demo`, `run_hmm_experiments`, `simulate_asr_noise`, `train_crf`, `train_hidden_event_lm`, `train_hmm`, `tune_threshold`, `verify_hmm_experiments`; `train_crf_inspect` and `train_crf_predict` hold the `inspect` and `predict` subcommands of `recap train-crf`. |
+| `src/punct_restore/reporting/` | The reporting commands `asr_noise_table`, `build_ablation_table`, `build_m3_final_sections`, `build_m3_tables`, `crf_convergence`, `length_position`, `time_models`, and their helpers `_cli` (safe output files and one-line errors), `build_tables` (Markdown helpers), `asr_noise_stats`, `asr_noise_report` and `asr_noise_findings` (the parts of the ASR noise report). |
+| `src/punct_restore/paths.py` | `REPO_ROOT`, the checkout root, which the commands use for their default paths. |
+| `src/punct_restore/data/` | Member 1's data pipeline: `extraction` (raw transcripts from the official archive), `preprocessing` (loading, cleaning, tokenization), `labeling` (punctuation and casing labels), `splits` (split assignment and leakage audits), `release` (versioned release build and load, with its parts `release_constants`, `release_stats`, `release_notes`, `release_checks`, `release_manifest` and `release_outputs`), `validation` (checks against the data contract), `asr_noise` (simulated ASR word errors with labels and masks kept aligned), `gold_noise` (rules that flag speaker labels, cue residue and auto-caption videos in the gold). |
 | `src/punct_restore/models/hmm.py` | Supervised HMM with Viterbi decoding. |
+| `src/punct_restore/models/hmm_validation.py` | Input and saved-count validation for the HMM. |
 | `src/punct_restore/models/hmm_workflow.py` | Validated file selection and provenance for the HMM commands. |
+| `src/punct_restore/models/hmm_experiment_protocol.py` | HMM study rules: config validation, release authentication and winner selection. |
+| `src/punct_restore/models/hmm_experiment_commands.py` | Command lines and subprocess runs of the HMM study's train, predict and score steps. |
+| `src/punct_restore/models/hmm_experiment_runtime.py` | Hardware description and inference timing for the HMM study's runtime report. |
+| `src/punct_restore/models/hmm_experiment_audit.py` | Independent recount of scored HMM reports and probability checks. |
 | `src/punct_restore/models/crf.py` | Linear-chain CRF: fit, predict, marginals, save and load. |
+| `src/punct_restore/models/crf_modes.py` | CRF label modes and the per-mode label vocabularies. |
+| `src/punct_restore/models/crf_records.py` | CRF record checks: training records to features and targets, prediction records to features. |
+| `src/punct_restore/models/crf_io.py` | Writing, reading and validating the `.joblib` bundle of a fitted CRF. |
+| `src/punct_restore/models/crf_training.py` | CRF training support: frozen-record loading, code fingerprint and manifest building. |
 | `src/punct_restore/models/threshold.py` | Threshold decoding of CRF marginals (τ, and γ for the prior-adjusted variant, tuned on validation only). |
 | `src/punct_restore/models/gap_classifier.py` | Gap classifier: the improved CRF features with a per-token logistic regression and no label transitions (`gap_improved`). |
 | `src/punct_restore/models/hidden_event_lm.py` | Hidden-event n-gram language model (Stolcke style): Viterbi over word and punctuation-event tokens; mode C adds a unigram truecaser. |
+| `src/punct_restore/models/hidden_event_lm_viterbi.py` | Exact Viterbi decoding of the hidden-event LM's events. |
 | `src/punct_restore/models/ngram_lm.py` | N-gram counting and interpolated absolute-discount probabilities for the hidden-event LM. |
 | `src/punct_restore/models/truecaser.py` | Unigram truecaser: the most frequent casing per word, with a sentence-start rule for unseen words. |
 | `src/punct_restore/models/factored.py` | Factored casing pipeline: joins mode A punctuation and CASE predictions into mode C labels. |
 | `src/punct_restore/features/crf_features.py` | CRF features: basic and improved presets, ablation switches, the filler cue and the opt-in word-cluster features (`use_word_clusters` / `word_clusters`: `cl0`, `cl-1`, `cl+1`, `cl0|cl+1`; the map is stored in the CRF bundle). |
+| `src/punct_restore/features/crf_lexicons.py` | Word lists and constants of the CRF features (re-exported by `crf_features`). |
+| `src/punct_restore/features/crf_cues.py` | Per-position cue helpers of the CRF features: buckets, filler, question lookback, word clusters. |
 | `src/punct_restore/features/word_clusters.py` | Word clusters induced from `default_train` only: lowercased words with count ≥ 5, ±2 co-occurrence matrix, PPMI, TruncatedSVD (about 100 dimensions), L2-normalised rows, k-means (k ∈ {100, 300}, fixed seed); unknown words get `unk`. The JSON map records the train-ids sha256, k, the seed and the vocabulary size. |
 | `src/punct_restore/evaluation/` | Member 5's evaluator: `inputs` (input checks), `views` (scored positions and report blocks), `metrics` (token-level P/R/F1), `uncertainty` (bootstrap grouped by video), `comparison` (paired comparison), `error_analysis` (error examples), `baseline` (shortcut baseline), `manifest` (prediction-manifest check), `report` (JSON and Markdown reports). |
-| `src/punct_restore/prediction_io.py` | Gold-free prediction JSONL and manifest writing, shared by `scripts/train_crf.py`, `scripts/tune_threshold.py` and `scripts/project_joint.py`. |
+| `src/punct_restore/prediction_io.py` | Gold-free prediction JSONL and manifest writing, shared by `recap train-crf`, `recap tune-threshold` and `recap project-joint`. |
 | `src/punct_restore/pipeline.py` | Demo inference: load a trained HMM, hidden-event LM, CRF or gap classifier (`load_model`), clean raw text, predict labels, rebuild text. |
 
 Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM_TASKS.md`
 (work board), `pyproject.toml` and `requirements.txt` (package and dependencies),
 `requirements-lock.txt` (exact `pip freeze` of the tested environment, CPython 3.13.1),
-`requirements-hmm.txt` (the pinned HMM reproduction environment), `.gitignore`, `.gitattributes`.
+`requirements-hmm.txt` (the pinned HMM reproduction environment), `.github/workflows/ci.yml` (ruff and pytest on
+every push and pull request), `.gitignore`, `.gitattributes`.
 
-**Scripts** (run from the repository root; each has `--help` except the two reporting helper modules):
+**Commands** (run from the repository root; `recap <command> --help` prints the options; the stub runs the
+same command):
 
-| Script | Stage | What it does |
-| --- | --- | --- |
-| `scripts/prepare_data.py` | Data | `extract` recreates the raw transcripts from pinned archive ranges; `build` writes a validated, immutable release. |
-| `scripts/train_hmm.py` | HMM | Trains the HMM on an explicit ID list; writes a JSON artifact, a run manifest and optional predictions. |
-| `scripts/predict_hmm.py` | HMM | Predicts with a saved HMM artifact, without training. |
-| `scripts/run_hmm_experiments.py` | HMM | `tune` runs the frozen validation search; `finalize` predicts and scores the selected models. |
-| `scripts/verify_hmm_experiments.py` | HMM | Audits an HMM study: recounts scores, refits the winners and compares predictions. |
-| `scripts/package_hmm_handoff.py` | HMM | Packages a verified HMM study as a checksummed ZIP. |
-| `scripts/train_crf.py` | CRF | `train` fits a CRF (basic or improved features); `predict` writes predictions, and the prediction manifest with `--manifest-out`; `inspect` prints artifact metadata. |
-| `scripts/run_ablations.py` | CRF | Trains the feature-group ablations and writes their validation predictions (never reads test); `improved_plus_clusters` with `--cluster-map` adds the word-cluster features (the map's mode, release and train-ids sha256 must match). |
-| `scripts/tune_threshold.py` | CRF | Threshold decoding: `tune` picks τ on validation, `predict` applies the frozen τ. |
-| `scripts/evaluate_models.py` | Evaluation | `score`, `compare` (paired), `errors` and `baseline` (the shortcut). |
-| `scripts/run_demo.py` | Demo | Restores punctuation and casing for one text with a saved HMM, hidden-event LM, CRF or gap classifier. |
-| `scripts/project_joint.py` | Study (H1) | Projects mode C predictions onto mode A punctuation labels, so a joint model can be compared with its mode A twin. |
-| `scripts/train_hidden_event_lm.py` | Comparison | `train` fits the hidden-event LM on an explicit ID list; `predict` writes predictions and, with `--manifest-out`, a manifest. |
-| `scripts/factor_predictions.py` | Comparison | Combines mode A and CASE predictions into mode C predictions with a manifest (the factored casing pipeline). |
-| `scripts/simulate_asr_noise.py` | Robustness | Writes copies of the validation or test inputs with simulated ASR word errors (`--edit-model {v1,v2}`) at a target WER, labels and masks kept aligned. |
-| `scripts/build_leakage_subsets.py` | Study (leakage) | Splits an official evaluation file into kept and excluded ID lists by exclusion cause, for the leakage-cost analysis. |
-| `scripts/find_gold_noise.py` | Study (gold noise) | Flags speaker labels, subtitle cue residue and auto-caption videos on the primary mode B lists; writes the flagged IDs and summaries. |
-| `scripts/build_word_clusters.py` | CRF (features) | Builds a word-cluster map (`--mode {A,B,C} --k K --out MAP.json`) from `default_train` only; the map feeds `run_ablations.py --cluster-map`. |
-| `scripts/reporting/asr_noise_table.py` | Reporting | Builds the ASR noise `v2` summary JSON and `docs/ASR_NOISE_V2.md` from `results/scores/`. |
-| `scripts/reporting/asr_noise_stats.py`, `asr_noise_report.py`, `asr_noise_findings.py` | Reporting (modules) | Helpers of `asr_noise_table.py`: exact seed statistics and rounding, the report's Markdown, and the findings computed from the summary. Not run on their own. |
-| `scripts/reporting/build_m3_tables.py` | Reporting | Rebuilds the CRF result tables for one split (main, paired, views, per class, errors, confusion) from `results/scores/`. |
-| `scripts/reporting/build_m3_final_sections.py` | Reporting | Rebuilds the threshold, leakage, test_amb and runtime sections from `results/scores/` and the training manifests. |
-| `scripts/reporting/build_ablation_table.py` | Reporting | Rebuilds the feature-ablation tables from `results/scores/ablations/`. |
-| `scripts/reporting/time_models.py` | Reporting | Times HMM or CRF prediction (and an HMM fit) with the protocol used in the runtime tables. |
-| `scripts/reporting/crf_convergence.py` | Reporting | Summarises the CRF training loss traces of trusted `.joblib` models (iterations, final loss, drop over the last 10 iterations). |
-| `scripts/reporting/length_position.py` | Reporting | Mode A micro F1 by utterance length and QUESTION recall by position, per model (EVALUATION_RESULTS.md §6). |
-| `scripts/reporting/build_tables.py` | Reporting | Helper module, not run directly: shared helpers for the table builders (half-up percentages, cells, JSON loading). |
-| `scripts/reporting/_cli.py` | Reporting | Helper module, not run directly: shared one-line error handling for the reporting scripts. |
+| Command | Module and stub | Stage | What it does |
+| --- | --- | --- | --- |
+| `recap prepare-data` | `src/punct_restore/cli/prepare_data.py` (`scripts/prepare_data.py`) | Data | `extract` recreates the raw transcripts from pinned archive ranges; `build` writes a validated, immutable release. |
+| `recap train-hmm` | `src/punct_restore/cli/train_hmm.py` (`scripts/train_hmm.py`) | HMM | Trains the HMM on an explicit ID list; writes a JSON artifact, a run manifest and optional predictions. |
+| `recap predict-hmm` | `src/punct_restore/cli/predict_hmm.py` (`scripts/predict_hmm.py`) | HMM | Predicts with a saved HMM artifact, without training. |
+| `recap run-hmm-experiments` | `src/punct_restore/cli/run_hmm_experiments.py` (`scripts/run_hmm_experiments.py`) | HMM | `tune` runs the frozen validation search; `finalize` predicts and scores the selected models. |
+| `recap verify-hmm-experiments` | `src/punct_restore/cli/verify_hmm_experiments.py` (`scripts/verify_hmm_experiments.py`) | HMM | Audits an HMM study: recounts scores, refits the winners and compares predictions. |
+| `recap package-hmm-handoff` | `src/punct_restore/cli/package_hmm_handoff.py` (`scripts/package_hmm_handoff.py`) | HMM | Packages a verified HMM study as a checksummed ZIP. |
+| `recap train-crf` | `src/punct_restore/cli/train_crf.py` (`scripts/train_crf.py`) | CRF | `train` fits a CRF (basic or improved features); `predict` writes predictions, and the prediction manifest with `--manifest-out`; `inspect` prints artifact metadata. |
+| `recap run-ablations` | `src/punct_restore/cli/run_ablations.py` (`scripts/run_ablations.py`) | CRF | Trains the feature-group ablations and writes their validation predictions (never reads test); `improved_plus_clusters` with `--cluster-map` adds the word-cluster features (the map's mode, release and train-ids sha256 must match). |
+| `recap tune-threshold` | `src/punct_restore/cli/tune_threshold.py` (`scripts/tune_threshold.py`) | CRF | Threshold decoding: `tune` picks τ on validation, `predict` applies the frozen τ. |
+| `recap evaluate-models` | `src/punct_restore/cli/evaluate_models.py` (`scripts/evaluate_models.py`) | Evaluation | `score`, `compare` (paired), `errors` and `baseline` (the shortcut). |
+| `recap run-demo` | `src/punct_restore/cli/run_demo.py` (`scripts/run_demo.py`) | Demo | Restores punctuation and casing for one text with a saved HMM, hidden-event LM, CRF or gap classifier. |
+| `recap project-joint` | `src/punct_restore/cli/project_joint.py` (`scripts/project_joint.py`) | Study (H1) | Projects mode C predictions onto mode A punctuation labels, so a joint model can be compared with its mode A twin. |
+| `recap train-hidden-event-lm` | `src/punct_restore/cli/train_hidden_event_lm.py` (`scripts/train_hidden_event_lm.py`) | Comparison | `train` fits the hidden-event LM on an explicit ID list; `predict` writes predictions and, with `--manifest-out`, a manifest. |
+| `recap factor-predictions` | `src/punct_restore/cli/factor_predictions.py` (`scripts/factor_predictions.py`) | Comparison | Combines mode A and CASE predictions into mode C predictions with a manifest (the factored casing pipeline). |
+| `recap simulate-asr-noise` | `src/punct_restore/cli/simulate_asr_noise.py` (`scripts/simulate_asr_noise.py`) | Robustness | Writes copies of the validation or test inputs with simulated ASR word errors (`--edit-model {v1,v2}`) at a target WER, labels and masks kept aligned. |
+| `recap build-leakage-subsets` | `src/punct_restore/cli/build_leakage_subsets.py` (`scripts/build_leakage_subsets.py`) | Study (leakage) | Splits an official evaluation file into kept and excluded ID lists by exclusion cause, for the leakage-cost analysis. |
+| `recap find-gold-noise` | `src/punct_restore/cli/find_gold_noise.py` (`scripts/find_gold_noise.py`) | Study (gold noise) | Flags speaker labels, subtitle cue residue and auto-caption videos on the primary mode B lists; writes the flagged IDs and summaries. |
+| `recap build-word-clusters` | `src/punct_restore/cli/build_word_clusters.py` (`scripts/build_word_clusters.py`) | CRF (features) | Builds a word-cluster map (`--mode {A,B,C} --k K --out MAP.json`) from `default_train` only; the map feeds `recap run-ablations --cluster-map`. |
+| `recap asr-noise-table` | `src/punct_restore/reporting/asr_noise_table.py` (`scripts/reporting/asr_noise_table.py`) | Reporting | Builds the ASR noise `v2` summary JSON and `docs/ASR_NOISE_V2.md` from `results/scores/`. |
+| `recap build-m3-tables` | `src/punct_restore/reporting/build_m3_tables.py` (`scripts/reporting/build_m3_tables.py`) | Reporting | Rebuilds the CRF result tables for one split (main, paired, views, per class, errors, confusion) from `results/scores/`. |
+| `recap build-m3-final-sections` | `src/punct_restore/reporting/build_m3_final_sections.py` (`scripts/reporting/build_m3_final_sections.py`) | Reporting | Rebuilds the threshold, leakage, test_amb and runtime sections from `results/scores/` and the training manifests. |
+| `recap build-ablation-table` | `src/punct_restore/reporting/build_ablation_table.py` (`scripts/reporting/build_ablation_table.py`) | Reporting | Rebuilds the feature-ablation tables from `results/scores/ablations/`. |
+| `recap time-models` | `src/punct_restore/reporting/time_models.py` (`scripts/reporting/time_models.py`) | Reporting | Times HMM or CRF prediction (and an HMM fit) with the protocol used in the runtime tables. |
+| `recap crf-convergence` | `src/punct_restore/reporting/crf_convergence.py` (`scripts/reporting/crf_convergence.py`) | Reporting | Summarises the CRF training loss traces of trusted `.joblib` models (iterations, final loss, drop over the last 10 iterations). |
+| `recap length-position` | `src/punct_restore/reporting/length_position.py` (`scripts/reporting/length_position.py`) | Reporting | Mode A micro F1 by utterance length and QUESTION recall by position, per model (EVALUATION_RESULTS.md §6). |
 
 **Docs:**
 

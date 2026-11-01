@@ -23,7 +23,7 @@ The course-baseline settings (HMM smoothing, CRF settings, the plain threshold ฯ
   real-ASR condition (a simulated ASR-noise check is in [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) ยง13).
 - Neural models (for example BiLSTM-CRF or transformers), GPU frameworks and pretrained-model
   downloads.
-- An interactive application beyond the command-line demo (`scripts/run_demo.py`).
+- An interactive application beyond the command-line demo (`recap run-demo`).
 
 ## Evidence rules
 

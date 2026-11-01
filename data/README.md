@@ -36,7 +36,7 @@ RAW/sponspeech_text/              train/ dev/ test-amb/ test/ (text/*.txt, utt2s
 3. **Recreate the transcripts** (no audio):
 
    ```bash
-   python scripts/prepare_data.py extract --raw-root data/raw/sponspeech-gcs-generation-1716975130398953
+   recap prepare-data extract --raw-root data/raw/sponspeech-gcs-generation-1716975130398953
    ```
 
    This downloads only the pinned byte ranges of the official archive (about 97 MB: the first 20 MiB plus the four
@@ -48,7 +48,7 @@ RAW/sponspeech_text/              train/ dev/ test-amb/ test/ (text/*.txt, utt2s
 4. **Build.**
 
    ```bash
-   python scripts/prepare_data.py build --raw-root data/raw/sponspeech-gcs-generation-1716975130398953 \
+   recap prepare-data build --raw-root data/raw/sponspeech-gcs-generation-1716975130398953 \
      --release-id sponspeech-m1-v2
    ```
 
