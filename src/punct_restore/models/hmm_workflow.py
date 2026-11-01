@@ -71,6 +71,59 @@ def read_id_selection(path: Path) -> tuple[str, ...]:
     return tuple(ids)
 
 
+def _check_record_basics(record: dict[str, Any], path: Path, seen: set[str]) -> tuple[str, list[Any]]:
+    """Validate schema_version, sample_id and tokens; remember the sample_id."""
+    sid, tokens = record.get("sample_id"), record.get("tokens")
+    if type(record.get("schema_version")) is not int or record["schema_version"] != 1:
+        raise ValueError(f"{path.name}: unsupported schema_version")
+    if not isinstance(sid, str) or not sid.strip() or sid in seen:
+        raise ValueError(f"{path.name}: invalid or duplicate sample_id {sid!r}")
+    seen.add(sid)
+    if (
+        not isinstance(tokens, list)
+        or not tokens
+        or any(not isinstance(word, str) or not word.strip() for word in tokens)
+    ):
+        raise ValueError(f"{sid}: tokens must be a nonempty list of nonempty strings")
+    return sid, tokens
+
+
+def _check_training_record(
+    record: dict[str, Any],
+    sid: str,
+    tokens: list[Any],
+    label_sets: Any,
+    training_mode: str,
+    policy_version: str | None,
+    source_revision: str | None,
+) -> None:
+    """Validate a training row, including the split, mode and release policy."""
+    errors = validate_record(record, label_sets) + check_model_input(tokens)
+    if errors:
+        raise ValueError(f"{sid}: {errors[0]}")
+    if record["split"] != "train" or record["label_mode"] != training_mode:
+        raise ValueError(f"{sid}: training input must contain only train/{training_mode}")
+    if policy_version is not None:
+        meta = record.get("metadata", {})
+        if (
+            meta.get("policy_version") != policy_version
+            or meta.get("source_revision") != source_revision
+            or meta.get("annotation_view") != "canonical"
+        ):
+            raise ValueError(f"{sid}: record does not match the canonical release policy")
+
+
+def _check_selection_complete(
+    path: Path, wanted: set[str] | None, selected: set[str], totals: dict[str, int]
+) -> None:
+    """Reject missing selection IDs and empty selections."""
+    if wanted is not None and selected != wanted:
+        missing = sorted(wanted - selected)
+        raise ValueError(f"{path.name}: {len(missing)} selection IDs missing, first: {missing[:3]}")
+    if not totals["selected_records"]:
+        raise ValueError(f"{path.name}: selection is empty")
+
+
 def selected_records(
     path: Path,
     ids: tuple[str, ...] | None,
@@ -92,32 +145,11 @@ def selected_records(
     totals.update(input_records=0, selected_records=0, selected_tokens=0)
     label_sets = load_label_sets() if training_mode is not None else None
     for record in read_jsonl(path):
-        sid, tokens = record.get("sample_id"), record.get("tokens")
-        if type(record.get("schema_version")) is not int or record["schema_version"] != 1:
-            raise ValueError(f"{path.name}: unsupported schema_version")
-        if not isinstance(sid, str) or not sid.strip() or sid in seen:
-            raise ValueError(f"{path.name}: invalid or duplicate sample_id {sid!r}")
-        seen.add(sid)
-        if (
-            not isinstance(tokens, list)
-            or not tokens
-            or any(not isinstance(word, str) or not word.strip() for word in tokens)
-        ):
-            raise ValueError(f"{sid}: tokens must be a nonempty list of nonempty strings")
+        sid, tokens = _check_record_basics(record, path, seen)
         if training_mode is not None:
-            errors = validate_record(record, label_sets) + check_model_input(tokens)
-            if errors:
-                raise ValueError(f"{sid}: {errors[0]}")
-            if record["split"] != "train" or record["label_mode"] != training_mode:
-                raise ValueError(f"{sid}: training input must contain only train/{training_mode}")
-            if policy_version is not None:
-                meta = record.get("metadata", {})
-                if (
-                    meta.get("policy_version") != policy_version
-                    or meta.get("source_revision") != source_revision
-                    or meta.get("annotation_view") != "canonical"
-                ):
-                    raise ValueError(f"{sid}: record does not match the canonical release policy")
+            _check_training_record(
+                record, sid, tokens, label_sets, training_mode, policy_version, source_revision
+            )
         totals["input_records"] += 1
         if wanted is not None and sid not in wanted:
             continue
@@ -129,11 +161,7 @@ def selected_records(
             if training_mode is not None
             else {"schema_version": 1, "sample_id": sid, "tokens": tokens}
         )
-    if wanted is not None and selected != wanted:
-        missing = sorted(wanted - selected)
-        raise ValueError(f"{path.name}: {len(missing)} selection IDs missing, first: {missing[:3]}")
-    if not totals["selected_records"]:
-        raise ValueError(f"{path.name}: selection is empty")
+    _check_selection_complete(path, wanted, selected, totals)
 
 
 def checked_release_file(
@@ -151,6 +179,42 @@ def checked_release_file(
     if path.stat().st_size != entry["bytes"] or sha256(path) != entry["sha256"]:
         raise ValueError(f"{relative}: release checksum mismatch")
     return relative
+
+
+def _check_split_manifest(split_manifest: Path, manifest: dict[str, Any]) -> None:
+    """Authenticate the supplied split checksum index against the release manifest."""
+    lines = split_manifest.read_text(encoding="utf-8").splitlines()
+    expected_sums = {name: entry["sha256"] for name, entry in manifest["split_files"].items()}
+    actual_sums = {}
+    for line in lines:
+        digest, name = line.split("  ", 1)
+        if name in actual_sums:
+            raise ValueError("duplicate path in split checksum manifest")
+        actual_sums[name] = digest
+    if actual_sums != expected_sums:
+        raise ValueError("split checksum manifest does not match release")
+
+
+def _check_prediction_files(
+    manifest: dict[str, Any],
+    processed: Path,
+    splits: Path,
+    mode: str,
+    prediction: Path,
+    prediction_ids: Path | None,
+) -> None:
+    """Check the prediction input (and its ID selection) against the release."""
+    relative = checked_release_file(prediction, processed, manifest["files"])
+    if not relative.startswith(f"mode_{mode}/"):
+        raise ValueError("prediction input mode does not match model")
+    if prediction_ids is not None:
+        name = Path(relative).stem
+        checked_release_file(
+            prediction_ids,
+            splits,
+            manifest["split_files"],
+            expected=f"primary_eval/{name}_mode_{mode}.ids",
+        )
 
 
 def verify_training_release(
@@ -180,29 +244,9 @@ def verify_training_release(
     checked_release_file(
         train_ids, splits, manifest["split_files"], expected=f"default_train/mode_{mode}.ids"
     )
-    # Authenticate the supplied split checksum index against the release manifest.
-    lines = split_manifest.read_text(encoding="utf-8").splitlines()
-    expected_sums = {name: entry["sha256"] for name, entry in manifest["split_files"].items()}
-    actual_sums = {}
-    for line in lines:
-        digest, name = line.split("  ", 1)
-        if name in actual_sums:
-            raise ValueError("duplicate path in split checksum manifest")
-        actual_sums[name] = digest
-    if actual_sums != expected_sums:
-        raise ValueError("split checksum manifest does not match release")
+    _check_split_manifest(split_manifest, manifest)
     if prediction is not None:
-        relative = checked_release_file(prediction, processed, manifest["files"])
-        if not relative.startswith(f"mode_{mode}/"):
-            raise ValueError("prediction input mode does not match model")
-        if prediction_ids is not None:
-            name = Path(relative).stem
-            checked_release_file(
-                prediction_ids,
-                splits,
-                manifest["split_files"],
-                expected=f"primary_eval/{name}_mode_{mode}.ids",
-            )
+        _check_prediction_files(manifest, processed, splits, mode, prediction, prediction_ids)
     return manifest
 
 
@@ -210,6 +254,95 @@ def write_json(path: Path, value: Any) -> None:
     with path.open("x", encoding="utf-8", newline="\n") as handle:
         json.dump(value, handle, indent=2, sort_keys=True, ensure_ascii=False, allow_nan=False)
         handle.write("\n")
+
+
+def _check_frozen_selection(selection_record: Path, model: Any, inputs: dict[str, Any]) -> None:
+    """Require a valid frozen selection that names this artifact."""
+    selection = json.loads(selection_record.read_text(encoding="utf-8"))
+    if (
+        selection.get("used_test_labels") is not False
+        or selection.get("training_includes_validation") is not False
+        or selection["modes"][model.label_mode]["model_sha256"] != inputs["model"]["sha256"]
+    ):
+        raise ValueError("artifact does not match a valid frozen selection")
+
+
+def _check_release_compatibility(
+    release_manifest: Path, input_path: Path, ids_path: Path | None, model: Any, inputs: dict[str, Any]
+) -> None:
+    """Require the artifact, input file and ID selection to belong to the release."""
+    release = json.loads(release_manifest.read_text(encoding="utf-8"))
+    meta = model.metadata
+    if (
+        release["release_id"] != meta.get("dataset_release_id")
+        or release["policy_version"] != meta.get("label_policy_version")
+        or release["label_sets_sha256"] != meta.get("label_configuration", {}).get("sha256")
+    ):
+        raise ValueError("artifact is incompatible with this data release")
+    relative = checked_release_file(input_path, release_manifest.parent, release["files"])
+    if not relative.startswith(f"mode_{model.label_mode}/"):
+        raise ValueError("prediction input mode does not match the artifact")
+    if ids_path:
+        # Split selections are authenticated through their content, even if copied.
+        allowed = {
+            entry["sha256"]
+            for name, entry in release["split_files"].items()
+            if name.endswith(f"_mode_{model.label_mode}.ids")
+            or name == f"default_train/mode_{model.label_mode}.ids"
+        }
+        if inputs["ids"]["sha256"] not in allowed:
+            raise ValueError("prediction IDs are not an approved release selection")
+
+
+def _check_inputs_unchanged(inputs: dict[str, Any], paths: list[tuple[str, Path | None]]) -> None:
+    """Reject the run if any input file changed while inference ran."""
+    for key, path in paths:
+        if path is not None and sha256(path) != inputs[key]["sha256"]:
+            raise ValueError(f"{path.name}: input changed during inference")
+
+
+def _write_predictions(output_dir: Path, predictions: list[dict[str, Any]]) -> Path:
+    """Create output_dir and write predictions.jsonl; return its path."""
+    output_dir.mkdir(parents=True, exist_ok=False)
+    predictions_path = output_dir / "predictions.jsonl"
+    with predictions_path.open("x", encoding="utf-8", newline="\n") as handle:
+        for row in predictions:
+            handle.write(json.dumps(row, ensure_ascii=False, allow_nan=False) + "\n")
+    return predictions_path
+
+
+def _run_manifest(
+    model: Any,
+    inputs: dict[str, Any],
+    started_at: str,
+    predictions_path: Path,
+    counts: dict[str, int],
+    num_sequences: int,
+    timings: tuple[float, float],
+    command: list[str] | None,
+) -> dict[str, Any]:
+    """Build the prediction run manifest; timings is (load_seconds, prediction_seconds)."""
+    return {
+        "schema_version": 1,
+        "model_name": "hmm",
+        "label_mode": model.label_mode,
+        "run_id": model.metadata.get("run_id"),
+        "ordered_labels": list(model.labels),
+        "started_at_utc": started_at,
+        "inputs": inputs,
+        "model_sha256": inputs["model"]["sha256"],
+        "predictions_sha256": sha256(predictions_path),
+        "selection_counts": counts,
+        "num_sequences": num_sequences,
+        "num_tokens": counts["selected_tokens"],
+        "model_load_seconds": timings[0],
+        "prediction_seconds_including_input": timings[1],
+        "timing_scope": "JSONL reading, observable-input validation, selection, predict; excludes writes",
+        "training_provenance": model.metadata,
+        "code": code_identity(),
+        "environment": {"python": platform.python_version(), "platform": platform.platform()},
+        "command": command,
+    }
 
 
 def predict_run(
@@ -239,74 +372,26 @@ def predict_run(
     model = HMMModel.load_model(model_path)
     load_seconds = perf_counter() - start
     if selection_record:
-        selection = json.loads(selection_record.read_text(encoding="utf-8"))
-        if (
-            selection.get("used_test_labels") is not False
-            or selection.get("training_includes_validation") is not False
-            or selection["modes"][model.label_mode]["model_sha256"] != inputs["model"]["sha256"]
-        ):
-            raise ValueError("artifact does not match a valid frozen selection")
+        _check_frozen_selection(selection_record, model, inputs)
     if release_manifest:
-        release = json.loads(release_manifest.read_text(encoding="utf-8"))
-        meta = model.metadata
-        if (
-            release["release_id"] != meta.get("dataset_release_id")
-            or release["policy_version"] != meta.get("label_policy_version")
-            or release["label_sets_sha256"] != meta.get("label_configuration", {}).get("sha256")
-        ):
-            raise ValueError("artifact is incompatible with this data release")
-        relative = checked_release_file(input_path, release_manifest.parent, release["files"])
-        if not relative.startswith(f"mode_{model.label_mode}/"):
-            raise ValueError("prediction input mode does not match the artifact")
-        if ids_path:
-            # Split selections are authenticated through their content, even if copied.
-            allowed = {
-                entry["sha256"]
-                for name, entry in release["split_files"].items()
-                if name.endswith(f"_mode_{model.label_mode}.ids")
-                or name == f"default_train/mode_{model.label_mode}.ids"
-            }
-            if inputs["ids"]["sha256"] not in allowed:
-                raise ValueError("prediction IDs are not an approved release selection")
+        _check_release_compatibility(release_manifest, input_path, ids_path, model, inputs)
     ids = read_id_selection(ids_path) if ids_path else None
     counts: dict[str, int] = {}
     start = perf_counter()
     predictions = model.predict(selected_records(input_path, ids, counts=counts))
     prediction_seconds = perf_counter() - start
-    for key, path in [
+    checked = [
         ("model", model_path),
         ("input", input_path),
         ("ids", ids_path),
         ("release_manifest", release_manifest),
         ("selection_record", selection_record),
-    ]:
-        if path is not None and sha256(path) != inputs[key]["sha256"]:
-            raise ValueError(f"{path.name}: input changed during inference")
-    output_dir.mkdir(parents=True, exist_ok=False)
-    predictions_path = output_dir / "predictions.jsonl"
-    with predictions_path.open("x", encoding="utf-8", newline="\n") as handle:
-        for row in predictions:
-            handle.write(json.dumps(row, ensure_ascii=False, allow_nan=False) + "\n")
-    manifest = {
-        "schema_version": 1,
-        "model_name": "hmm",
-        "label_mode": model.label_mode,
-        "run_id": model.metadata.get("run_id"),
-        "ordered_labels": list(model.labels),
-        "started_at_utc": started_at,
-        "inputs": inputs,
-        "model_sha256": inputs["model"]["sha256"],
-        "predictions_sha256": sha256(predictions_path),
-        "selection_counts": counts,
-        "num_sequences": len(predictions),
-        "num_tokens": counts["selected_tokens"],
-        "model_load_seconds": load_seconds,
-        "prediction_seconds_including_input": prediction_seconds,
-        "timing_scope": "JSONL reading, observable-input validation, selection, predict; excludes writes",
-        "training_provenance": model.metadata,
-        "code": code_identity(),
-        "environment": {"python": platform.python_version(), "platform": platform.platform()},
-        "command": command,
-    }
+    ]
+    _check_inputs_unchanged(inputs, checked)
+    predictions_path = _write_predictions(output_dir, predictions)
+    manifest = _run_manifest(
+        model, inputs, started_at, predictions_path, counts, len(predictions),
+        (load_seconds, prediction_seconds), command,
+    )
     write_json(output_dir / "predictions.manifest.json", manifest)
     return manifest
