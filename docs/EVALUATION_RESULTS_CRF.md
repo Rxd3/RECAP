@@ -70,11 +70,11 @@ This is Member 5's evaluation of Member 3's six CRF models (modes A, B and C × 
    - The A and C intervals exclude 0; B's crosses 0.
    - On test_amb the gain is +0.88 / +0.57 / +1.28, and all three intervals exclude 0.
    - Most of it comes from comma recall: COMMA F1 rises by +2.38 to +2.79 in every mode. The rare-class changes are individually within noise.
-5. **Leaked test utterances flatter the CRF, but not the HMM** (section 8).
+5. **The CRF scores much higher on test utterances from training videos; the HMM does not** (section 8; descriptive).
    - On the 2,706 official test utterances whose video is also in the training set, the improved CRF scores 67.09 against 49.50 on the leak-free test.
    - The HMM scores 33.54 against 34.74.
    - The two sets are different videos (35 and 153). No interval was computed for either difference or for the CRF − HMM contrast, so this is descriptive.
-   - The leakage-controlled split is what keeps the CRF's score honest.
+   - The leakage-controlled split keeps such utterances out of the primary scores.
 6. **Casing (mode C, masked):** CRF improved 85.09, and 82.49 without the first word. The HMM scores 79.81 and 76.42.
 7. **The most frequent error is still a missed comma** (COMMA → O): 42.9–44.9% of the improved model's punctuation errors on test.
 8. **The ranking holds on test_amb**, the second held-out set:
@@ -88,7 +88,8 @@ This is Member 5's evaluation of Member 3's six CRF models (modes A, B and C × 
    - Question-lookback features add +6.11 / +7.12 / +6.01 QUESTION F1 (validation, 50k sample).
    - Separate punctuation and casing models beat the joint mode C model on the joint metric (+2.08; validation, 50k sample).
    - Data-driven word clusters (K = 300) help commas in A and B and add +0.90 to the mode C joint score; mode A's macro does not move (validation, 50k sample).
-10. **Pretrained neural taggers** (section 15; an external reference: code and predictions held by Member 2, scored here with the official evaluator; not course baselines): fine-tuned BERT and FLAN-T5 reach 76.25 (74.51–77.90) and 76.76 (74.78–78.38) in mode A and 36.43 (34.41–38.26) and 36.79 (34.32–39.28) in mode B on test, +26.33 to +26.84 (A) and +13.61 to +13.97 (B) over the improved CRF. Their pretraining text may overlap with these transcripts.
+
+**External reference, unverified from this repository** (section 15; not one of the findings above: code, predictions and checkpoint-selection records are held by Member 2; scored here with the official evaluator): fine-tuned BERT and FLAN-T5 reach 76.25 (74.51–77.90) and 76.76 (74.78–78.38) in mode A and 36.43 (34.41–38.26) and 36.79 (34.32–39.28) in mode B on test, +26.33 to +26.84 (A) and +13.61 to +13.97 (B) over the improved CRF. Their pretraining text may overlap with these transcripts.
 
 ## Team hypotheses
 
@@ -541,7 +542,7 @@ Training on the finer 8-class labels barely changes 4-class punctuation: the dif
 
 ## 12. Gold-noise check (mode B)
 
-The protocol lists four known sources of noise in the gold labels. `recap find-gold-noise` flags the three that a rule can detect (leftover speaker labels, subtitle cue residue and the two auto-caption-style videos) on the primary mode B lists (rules in `src/punct_restore/data/gold_noise.py`); the fourth, errors in about 1% of source transcripts, is an unmeasured estimate with no rule. The frozen release was not changed. The counts are an upper estimate: a few titles and headings at label positions also match the speaker-label rule (for example "Spooky Success:" in validation).
+The protocol lists four known sources of noise in the gold labels. `recap find-gold-noise` flags the three that a rule can detect (leftover speaker labels, subtitle cue residue and the two auto-caption-style videos) on the primary mode B lists (rules in `src/punct_restore/data/gold_noise.py`); the fourth, errors in the source transcripts themselves, has no rule and was not measured. The frozen release was not changed. The counts are an upper estimate: a few titles and headings at label positions also match the speaker-label rule (for example "Spooky Success:" in validation).
 
 | Rule | Validation | Test | test_amb |
 |---|---|---|---|
@@ -716,27 +717,28 @@ This extension is off by default (`FeatureConfig.improved(use_word_clusters=True
 
 Clusters help commas in modes A and B, the question mark in mode B, and the mode C joint score. In mode A the question mark falls slightly (its interval just includes 0) and the macro score does not move. Like question lookback, this was tested at the 50k-sample scale on validation only and is not in the delivered models.
 
-## 15. Pretrained neural taggers (Member 2; exploratory)
+## 15. Pretrained neural taggers (Member 2; external reference, unverified from this repository)
 
-Member 2 fine-tuned pretrained models for modes A and B: BERT as a token classifier and FLAN-T5 as a text-to-text model whose output is aligned back to the input tokens. Mode C was left out for time. Member 2 reports that training used `default_train` only, that the model and checkpoint were chosen on primary validation, and that each test list was then predicted once (the selection records are on his machine and referenced by hash in the manifests). Member 5 scored the delivered predictions with the official evaluator and checked that they cover the primary lists exactly once. These models start from large pretrained text corpora, so they are a reference point beyond the course models, not a course baseline, and the comparisons below are exploratory (not in the Holm families). Macro F1 %, paired differences in points with 95% CI (* = interval excludes 0):
+Member 2 fine-tuned pretrained models for modes A and B: BERT as a token classifier and FLAN-T5 as a text-to-text model whose output is aligned back to the input tokens. Mode C was left out for time. Member 2 reports that training used `default_train` only, that the model and checkpoint were chosen on primary validation, and that each test list was then predicted once (the selection records are on his machine and referenced by hash in the manifests). Member 5 scored the delivered predictions with the official evaluator and checked that they cover the primary lists exactly once. These models start from large pretrained text corpora, so they are a reference point beyond the course models, not a course baseline, and the comparisons below are exploratory (not in the Holm families). Macro F1 %, paired differences in points with 95% CI. There are no significance marks in this section, because the predictions behind these intervals cannot be checked from the repository:
 
 | Mode | Model | Validation | Test (95% CI) | test_amb | Test − CRF improved | Test − τ × γ | Test − HMM |
 |---|---|---|---|---|---|---|---|
-| A | BERT | 76.72 | 76.25 (74.51–77.90) | 75.46 (73.81–76.97) | +26.33 (24.18 to 28.63) * | +24.91 (23.23 to 26.64) * | +41.13 (38.82 to 43.48) * |
-| A | FLAN-T5 | 77.17 | 76.76 (74.78–78.38) | 75.45 (73.69–77.10) | +26.84 (24.63 to 29.23) * | +25.42 (23.55 to 27.34) * | +41.64 (39.24 to 44.05) * |
-| B | BERT | 42.39 | 36.43 (34.41–38.26) | 36.90 (35.31–38.30) | +13.61 (11.80 to 15.27) * | +12.18 (10.45 to 13.83) * | +19.63 (17.76 to 21.47) * |
-| B | FLAN-T5 | — | 36.79 (34.32–39.28) | 36.31 (33.65–38.88) | +13.97 (11.60 to 16.05) * | +12.54 (10.33 to 14.66) * | +20.00 (17.56 to 22.21) * |
+| A | BERT | 76.72 | 76.25 (74.51–77.90) | 75.46 (73.81–76.97) | +26.33 (24.18 to 28.63) | +24.91 (23.23 to 26.64) | +41.13 (38.82 to 43.48) |
+| A | FLAN-T5 | 77.17 | 76.76 (74.78–78.38) | 75.45 (73.69–77.10) | +26.84 (24.63 to 29.23) | +25.42 (23.55 to 27.34) | +41.64 (39.24 to 44.05) |
+| B | BERT | 42.39 | 36.43 (34.41–38.26) | 36.90 (35.31–38.30) | +13.61 (11.80 to 15.27) | +12.18 (10.45 to 13.83) | +19.63 (17.76 to 21.47) |
+| B | FLAN-T5 | — | 36.79 (34.32–39.28) | 36.31 (33.65–38.88) | +13.97 (11.60 to 16.05) | +12.54 (10.33 to 14.66) | +20.00 (17.56 to 22.21) |
 
 Per class on test, neural − CRF improved (paired 95% CI, `compare --class`):
-- **BERT, mode A:** COMMA +18.12 (16.46 to 20.00) *; PERIOD +11.14 (9.62 to 12.84) *; QUESTION +49.73 (45.09 to 54.39) *.
-- **FLAN-T5, mode A:** COMMA +17.87 (16.24 to 19.79) *; PERIOD +11.81 (10.21 to 13.55) *; QUESTION +50.83 (45.86 to 55.74) *.
-- **BERT, mode B:** COLON +10.27 (2.00 to 19.96) *; COMMA +15.91 (14.32 to 17.79) *; DASH +9.39 (4.73 to 13.44) *; EXCLAMATION +0.76 (−0.39 to 3.32); PERIOD +10.32 (8.89 to 11.90) *; QUESTION +48.62 (44.06 to 53.03) *; SEMICOLON +0.00 (0.00 to 0.00).
-- **FLAN-T5, mode B:** COLON +12.85 (0.53 to 26.71) *; COMMA +17.03 (15.54 to 18.81) *; DASH +2.22 (0.46 to 4.30) *; EXCLAMATION +1.02 (0.00 to 3.52); PERIOD +11.32 (9.75 to 13.11) *; QUESTION +50.20 (45.57 to 54.90) *; SEMICOLON +3.15 (0.00 to 7.64).
+- **BERT, mode A:** COMMA +18.12 (16.46 to 20.00); PERIOD +11.14 (9.62 to 12.84); QUESTION +49.73 (45.09 to 54.39).
+- **FLAN-T5, mode A:** COMMA +17.87 (16.24 to 19.79); PERIOD +11.81 (10.21 to 13.55); QUESTION +50.83 (45.86 to 55.74).
+- **BERT, mode B:** COLON +10.27 (2.00 to 19.96); COMMA +15.91 (14.32 to 17.79); DASH +9.39 (4.73 to 13.44); EXCLAMATION +0.76 (−0.39 to 3.32); PERIOD +10.32 (8.89 to 11.90); QUESTION +48.62 (44.06 to 53.03); SEMICOLON +0.00 (0.00 to 0.00).
+- **FLAN-T5, mode B:** COLON +12.85 (0.53 to 26.71); COMMA +17.03 (15.54 to 18.81); DASH +2.22 (0.46 to 4.30); EXCLAMATION +1.02 (0.00 to 3.52); PERIOD +11.32 (9.75 to 13.11); QUESTION +50.20 (45.57 to 54.90); SEMICOLON +3.15 (0.00 to 7.64).
 
 Findings:
 - **Mode A:** the pretrained models beat the improved CRF on test by 26.33–26.84 points, every interval excluding 0.
 - **Mode B:** the pretrained models beat the improved CRF on test by 13.61–13.97 points, every interval excluding 0.
-- **Rare marks stay hard:** in mode B the gain over the CRF is not significant for at least one model on EXCLAMATION, SEMICOLON.
+- **The BERT mode B drop is unexplained:** BERT falls from 42.39 on validation to 36.43 on test. Over the same validation and test lists the improved CRF moves from 25.10 to 22.82 and the HMM from 18.47 to 16.79, so BERT falls further than the course models. Nothing in this repository explains it: the checkpoint-selection records are Member 2's, so a selection that fits validation too closely can be neither confirmed nor ruled out.
+- **Rare marks stay hard:** in mode B, the interval of the gain over the CRF includes 0 for at least one model on EXCLAMATION and SEMICOLON.
 - **Caveat:** the pretraining text of BERT and FLAN-T5 is not public in full, so overlap with these transcripts cannot be ruled out; the course models see only `default_train`.
 
 Files: `results/scores/neural/` (scores and paired comparisons). The prediction files and models are not committed; each score file records the SHA-256 of the predictions it scored.

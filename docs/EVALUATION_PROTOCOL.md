@@ -89,6 +89,7 @@ outputs are combined.
 
 **Scored set.**
 - The `.ids` list defines which records are scored: `primary_eval/<split>_mode_<M>.ids` for primary results, the full split or `leakage_controlled/*.ids` for supplementary ones.
+- The list must hold unique, non-empty IDs: the evaluator refuses a list with a duplicate ID or with no ID, with one `error:` line and exit 1.
 - Predictions must cover every scored ID.
 - A prediction ID that is not in the gold file is an error.
 - Prediction IDs that are in the gold file but outside the list are ignored and counted (`ignored_prediction_ids`), so one prediction file can be scored on several lists.
@@ -155,7 +156,7 @@ separate. ASR insertions and deletions need a declared alignment policy.
 - **Leftover speaker labels.** The speaker-label rule of `recap find-gold-noise` flags 134 validation, 22 test and 63 test_amb primary mode B records (one example is `SPEAKER 1:`). Speaker-label COLONs are 144 of 425 gold COLONs on validation (33.88%), 23 of 166 on test (13.86%) and 76 of 273 on test_amb (27.84%), and 319 of 3,385 (9.42%) in `default_train`. Read COLON scores as an upper bound ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §12).
 - **Subtitle cue numbers** (for example `sponspeech:test:nSVl92jJbwk-116`) appear as tokens with gold DASH, and some symbols are dropped from the model input without a flag.
 - **Two auto-caption-style videos** miss commas and sentence ends in their gold: `732fql_jhJQ` (135 validation records) and `JNxcznsrRb8` (46 test records).
-- **Source transcripts:** an informal, unmeasured estimate puts errors in about 1% of records; no method for it is committed, and the label audit checks our labels against the upstream text, not the upstream text itself. Treat a capital after O as possible gold noise when reading confusion matrices.
+- **Source transcripts** can contain errors; their rate was not measured (the label audit checks our labels against the upstream text, not the upstream text itself). Treat a capital after O as possible gold noise when reading confusion matrices.
 - **`QUESTION|ALL_UPPER`** has only 18, 9 and 15 primary tokens (validation, test, test_amb). Always give its support and the bootstrap interval, and never rank mode C models on a joint difference smaller than that interval.
 
 ## Efficiency, uncertainty and error analysis

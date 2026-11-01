@@ -302,7 +302,7 @@ Hardware: Intel64 Family 6 Model 158 Stepping 10, GenuineIntel, Python 3.13.1, o
   - leftover speaker labels give 144 of the 425 validation COLONs (23 of 166 on test), so COLON scores are an upper bound ([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §12);
   - subtitle cue numbers carry gold DASH;
   - one auto-caption-style test video (`JNxcznsrRb8`) lacks commas and sentence ends;
-  - about 1% of source transcripts contain errors (an informal, unmeasured estimate).
+  - the source transcripts themselves can contain errors, at a rate that was not measured.
 - **Channels overlap** across the original splits (149 of 522). Grouping by video does not guarantee independence from training.
 - **Intervals cover test-sample variance only.** There is one deterministic fit per setting.
 - **Runtime** was measured on one laptop CPU, single process. Absolute times will differ on other machines; the ratios are what to compare.

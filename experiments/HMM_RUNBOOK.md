@@ -24,9 +24,11 @@ git worktree add --detach tmp/member2-evaluation-3044a58 3044a58e777200bcac64e6e
 The editable install without dependencies adds the `recap` command (and makes the `scripts/` stubs
 work) without the CRF packages; the HMM commands need only the standard library and PyYAML.
 
-**Studies tuned on older code.** `plan.json` records the SHA-256 of every hashed HMM source file. On
+### Studies tuned on older code
+
+`plan.json` records the SHA-256 of every hashed HMM source file. On
 2026-11-01 the list changed twice: once when the code moved into the package, and again when it became
-the study's whole import closure (30 files, `models/hmm_experiment_identity.SOURCE_FILES`). Finalize,
+every `punct_restore` file that a fresh interpreter loads when the four HMM command modules (`cli.train_hmm`, `cli.predict_hmm`, `cli.run_hmm_experiments`, `cli.verify_hmm_experiments`) are imported, package `__init__.py` files included, followed by each command's `scripts/` stub (54 entries, `models/hmm_experiment_identity.SOURCE_FILES`). Finalize,
 verify and package all pass `verified_frozen_selection` first, so they refuse any study tuned before the
 current list ("HMM implementation changed since selection"), by design. That includes the delivered
 `hmm-sponspeech-v2-20261029`. A new study runs all four steps on this code. Finalize, verify and package a

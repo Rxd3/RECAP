@@ -160,7 +160,7 @@ the shortcut, hidden-event LM and threshold columns are our additions):
 
 - **The filler-word cue** leaves macro F1 unchanged on validation, but raises comma F1 slightly: +0.21 (B) and +0.25 (C), with both intervals excluding 0.
 - **Training on the 8-class labels barely changes the 4-class task.** Mode B models projected to mode A differ from their mode A twins by under 0.3 points on validation (HMM +0.10, CRF basic −0.24, CRF improved +0.25) ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §11).
-- **Leakage inflates lexical models.** On test utterances from videos in the training set, the improved CRF scores 67.09 against 49.50 on the leak-free test, while the HMM scores 33.54 against 34.74. The two sets are different videos (35 and 153), and no interval was computed for either difference or for the CRF − HMM contrast, so the gap is descriptive. See [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §8.
+- **The CRF scores much higher on utterances from training videos; the HMM does not** (descriptive). On test utterances from videos in the training set, the improved CRF scores 67.09 against 49.50 on the leak-free test, while the HMM scores 33.54 against 34.74. The two sets are different videos (35 and 153), and no interval was computed for either difference or for the CRF − HMM contrast, so the gap is descriptive. See [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §8.
 - **Joint vs punctuation-only (H1, validation, same 19,936 evaluation IDs):** every joint model gains
   on non-final positions (HMM +8.69, CRF basic +1.59, CRF improved +1.16; all intervals exclude 0), but
   PERIOD F1 does not rise consistently, so H1 as stated is not supported. A controlled check retrains the
@@ -301,9 +301,9 @@ report `test` and `test_amb` separately (they share 25 videos).
 `src/punct_restore/cli/__init__.py` (the `recap` dispatcher), `src/punct_restore/data/__init__.py`,
 `src/punct_restore/evaluation/__init__.py`, `src/punct_restore/features/__init__.py`,
 `src/punct_restore/models/__init__.py` and `src/punct_restore/reporting/__init__.py`.
-Library import paths from `main` at `72ebfd1` still work: every name in `punct_restore.data`,
+Library import paths from `main` at `72ebfd1` still work: every public name in `punct_restore.data`,
 `punct_restore.evaluation`, `punct_restore.features`, `punct_restore.models`, `punct_restore.pipeline` and
-`punct_restore.prediction_io` stays importable from its old module (`tests/test_library_names.py`), and
+`punct_restore.prediction_io` stays importable from its old module and accepts the arguments main's callers passed (`tests/test_library_names.py`, `tests/test_library_signatures.py`; private `_helper` names are not covered), and
 the classes stored in saved models (`CRFModel`, `FeatureConfig`, `HMMModel`, `HiddenEventLM`) stay where
 they were. Moved helpers also live in their new modules, for example `FILLERS` in
 `src/punct_restore/features/crf_lexicons.py` and `write_lines` in `src/punct_restore/data/release_outputs.py`. The internals of the cli modules
@@ -311,17 +311,20 @@ they were. Moved helpers also live in their new modules, for example `FILLERS` i
 
 | Module | Role |
 | --- | --- |
-| `src/punct_restore/cli/` | The `recap` command. `__init__` holds the dispatcher (`COMMANDS` maps each subcommand, the module name with `_` written as `-`, to its module; `recap --help` lists them). One module per command: `build_leakage_subsets`, `build_word_clusters`, `evaluate_models`, `factor_predictions`, `find_gold_noise`, `package_hmm_handoff`, `predict_hmm`, `prepare_data`, `project_joint`, `run_ablations`, `run_demo`, `run_hmm_experiments`, `simulate_asr_noise`, `train_crf`, `train_hidden_event_lm`, `train_hmm`, `tune_threshold`, `verify_hmm_experiments`. These modules only parse arguments and hold the error boundary; no cli module imports another. |
+| `src/punct_restore/cli/` | The `recap` command. `__init__` holds the dispatcher (`COMMANDS` maps each subcommand, the module name with `_` written as `-`, to its module; `recap --help` lists them). One module per command: `build_leakage_subsets`, `build_word_clusters`, `evaluate_models`, `factor_predictions`, `find_gold_noise`, `package_hmm_handoff`, `predict_hmm`, `prepare_data`, `project_joint`, `run_ablations`, `run_demo`, `run_hmm_experiments`, `simulate_asr_noise`, `train_crf`, `train_hidden_event_lm`, `train_hmm`, `tune_threshold`, `verify_hmm_experiments`. Each one parses arguments, reads and writes files and runs its command's own steps behind the error boundary; logic that several commands share lives in the library, and no cli module imports another. The HMM packager keeps its steps here because it copies its own source into the handoff. |
 | `src/punct_restore/reporting/` | The reporting commands `asr_noise_table`, `build_ablation_table`, `build_m3_final_sections`, `build_m3_tables`, `crf_convergence`, `length_position`, `time_models`, and their helpers `_cli` (safe output files and one-line errors), `build_tables` (Markdown helpers), `asr_noise_stats`, `asr_noise_report` and `asr_noise_findings` (the parts of the ASR noise report). |
 | `src/punct_restore/paths.py` | `REPO_ROOT`, the checkout root, which the commands use for their default paths. |
 | `src/punct_restore/hashing.py` | `sha256_file` and `sha256_stream`: the one streaming SHA-256 for files and archive members. |
+| `src/punct_restore/file_io.py` | File helpers: `iter_jsonl`, `write_new_file`, `write_new_folder`, `read_json`, `read_json_object`, `require_file`, `refuse_existing`. |
 | `src/punct_restore/progress.py` | `Log` and `discard_log`: library functions report progress through a `log` callable and are silent by default. |
 | `src/punct_restore/data/` | Member 1's data pipeline: `extraction` (raw transcripts from the official archive), `preprocessing` (loading, cleaning, tokenization), `labeling` (punctuation and casing labels), `splits` (split assignment and leakage audits), `release` (versioned release build and load, with its parts `release_constants`, `release_stats`, `release_notes`, `release_checks`, `release_manifest` and `release_outputs`), `validation` (checks against the data contract), `asr_noise` (simulated ASR word errors with labels and masks kept aligned), `gold_noise` (rules that flag speaker labels, cue residue and auto-caption videos in the gold). |
 | `src/punct_restore/models/hmm.py` | Supervised HMM with Viterbi decoding. |
 | `src/punct_restore/models/hmm_validation.py` | Input and saved-count validation for the HMM. |
 | `src/punct_restore/models/hmm_workflow.py` | Validated file selection and provenance for the HMM commands. |
+| `src/punct_restore/models/hmm_release.py` | The HMM commands' checks of their inputs against a data release. |
+| `src/punct_restore/models/hmm_distributions.py` | `HMMModel.distributions`: a read-only view of the fitted probabilities. |
 | `src/punct_restore/models/hmm_records.py` | Validated, ordered record selection from JSONL files for the HMM commands. |
-| `src/punct_restore/models/hmm_experiment_identity.py` | `SOURCE_FILES` (the study's import closure, 30 files), the code identity and the evaluator check. |
+| `src/punct_restore/models/hmm_experiment_identity.py` | `SOURCE_FILES` (every `punct_restore` file that a fresh interpreter loads when the four HMM command modules (`cli.train_hmm`, `cli.predict_hmm`, `cli.run_hmm_experiments`, `cli.verify_hmm_experiments`) are imported, package initializers included, followed by each command's `scripts/` stub; 54 entries), the code identity and the evaluator check. |
 | `src/punct_restore/models/hmm_experiment_tune.py` | The validation search: train and score every candidate, then freeze the winners. |
 | `src/punct_restore/models/hmm_experiment_frozen.py` | `verified_frozen_selection`, the gate every held-out step passes. |
 | `src/punct_restore/models/hmm_experiment_finalize.py` | The held-out step: predict and score every frozen winner, then time it. |
@@ -338,7 +341,7 @@ they were. Moved helpers also live in their new modules, for example `FILLERS` i
 | `src/punct_restore/models/crf_training_data.py` | Frozen-ID loading of CRF training records, checked for split and labels. |
 | `src/punct_restore/models/crf_prediction.py` | The steps behind `recap train-crf predict`: path checks, loading, reading, predicting, writing. |
 | `src/punct_restore/models/crf_inspection.py` | The text `recap train-crf inspect` shows for a saved model and its manifest. |
-| `src/punct_restore/models/threshold.py` | Threshold decoding of CRF marginals (τ, and γ for the prior-adjusted variant, tuned on validation only). |
+| `src/punct_restore/models/threshold.py` | Threshold decoding of CRF marginals (τ, and γ for the prior-adjusted variant, tuned on validation only): the marginals, the τ/γ grid scoring, the training-label priors and the tau files; `recap tune-threshold` drives it. |
 | `src/punct_restore/models/gap_classifier.py` | Gap classifier: the improved CRF features with a per-token logistic regression and no label transitions (`gap_improved`). |
 | `src/punct_restore/models/hidden_event_lm.py` | Hidden-event n-gram language model (Stolcke style): Viterbi over word and punctuation-event tokens; mode C adds a unigram truecaser. |
 | `src/punct_restore/models/hidden_event_lm_viterbi.py` | Exact Viterbi decoding of the hidden-event LM's events. |
@@ -350,7 +353,7 @@ they were. Moved helpers also live in their new modules, for example `FILLERS` i
 | `src/punct_restore/features/crf_cues.py` | Per-position cue helpers of the CRF features: buckets, filler, question lookback, word clusters. |
 | `src/punct_restore/features/word_clusters.py` | Word clusters induced from `default_train` only: lowercased words with count ≥ 5, ±2 co-occurrence matrix, PPMI, TruncatedSVD (about 100 dimensions), L2-normalised rows, k-means (k ∈ {100, 300}, fixed seed); unknown words get `unk`. The JSON map records the train-ids sha256, k, the seed and the vocabulary size. |
 | `src/punct_restore/evaluation/` | Member 5's evaluator: `inputs` (input checks), `views` (scored positions and report blocks), `metrics` (token-level P/R/F1), `uncertainty` (bootstrap grouped by video), `comparison` (paired comparison), `error_analysis` (error examples), `baseline` (shortcut baseline), `manifest` (prediction-manifest check), `report` (JSON and Markdown reports). |
-| `src/punct_restore/prediction_io.py` | Shared command I/O: gold-free prediction JSONL and manifests, `read_ids`, the JSON-line parsers, `write_new_file`, `refuse_existing`, and the error boundary (`one_line_error`, `reconfigure_stdout`): every runtime error is one `error: <file name>: <reason>` line and exit 1. |
+| `src/punct_restore/prediction_io.py` | Shared command I/O: gold-free prediction JSONL and manifests, `read_ids`, the JSON-line parsers, and the error boundary (`one_line_error`, `one_line_error_naming`, `reconfigure_stdout`): every runtime error is one `error: <file or folder name>: <reason>` line and exit 1. |
 | `src/punct_restore/pipeline.py` | Demo inference: load a trained HMM, hidden-event LM, CRF or gap classifier (`load_model`), clean raw text, predict labels, rebuild text. |
 
 Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM_TASKS.md`

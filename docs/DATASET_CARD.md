@@ -155,8 +155,8 @@ From [EVALUATION_PROTOCOL.md](EVALUATION_PROTOCOL.md), Known gold issues; nothin
 - subtitle cue numbers appear as tokens with gold DASH;
 - two auto-caption-style videos miss commas and sentence ends in their gold (135 validation and
   46 test records);
-- about 1% of source transcripts contain errors: an informal, unmeasured estimate (no method for it is committed;
-  the label audit checks our labels against the upstream text, not the upstream text itself);
+- the source transcripts themselves can contain errors; their rate was not measured (the label audit checks
+  our labels against the upstream text, not the upstream text itself);
 - `QUESTION|ALL_UPPER` has only 18, 9 and 15 primary tokens (validation, test, test_amb).
 
 ## Limitations

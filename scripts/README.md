@@ -7,8 +7,9 @@ The commands live in the package and run as `recap <command>` after `python -m p
 `recap train-crf train ...`. The command name is the module name with `_` written as `-`. Full command
 sequences are in [REPRODUCIBILITY.md](../docs/REPRODUCIBILITY.md).
 
-The command modules only parse arguments, read and write files, and report errors as one line on
-stderr; the logic lives in the library modules of `src/punct_restore/`.
+The command modules parse arguments, read and write files and run their command's own steps, and
+report errors as one `error:` line on stderr. Logic that several commands share lives in the library
+modules of `src/punct_restore/`.
 
 | Command | Stub | Owner | Stage | What it does |
 | --- | --- | --- | --- | --- |
