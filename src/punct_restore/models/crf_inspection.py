@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 from typing import Any, NamedTuple
 
-from punct_restore.models.crf_io import load_artifact
+from punct_restore.models.crf_io import check_bundle_fields, load_artifact
 
 RULE = "=" * 70
 _SECTIONS = (
@@ -30,10 +30,11 @@ class Inspection(NamedTuple):
 
 def _load_artifact(model_path: Path) -> dict[str, Any]:
     """The bundle dict of the artifact; FileNotFoundError if absent, IsADirectoryError if a folder, ValueError if
-    unreadable or not a dict."""
+    unreadable, not a dict, or holding a field that is missing or of the wrong kind (see `check_bundle_fields`)."""
     bundle = load_artifact(model_path, "artifact")
     if not isinstance(bundle, dict):
         raise ValueError(f"{model_path.name}: invalid artifact format: root is {type(bundle).__name__}")
+    check_bundle_fields(model_path.name, bundle)
     return bundle
 
 

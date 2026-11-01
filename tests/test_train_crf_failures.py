@@ -229,8 +229,8 @@ def test_the_loader_never_puts_the_folder_in_its_messages(tmp_path: Path) -> Non
 @pytest.mark.parametrize(("change", "reason"), [
     ({"split": "val"}, "'sample_0001' has split 'val', expected 'train'. Non-train records cannot enter training."),
     ({"label_mode": "B"}, "'sample_0001' has label_mode 'B', expected 'A'"),
-    ({"tokens": []}, "'sample_0001' has empty or non-list tokens"),
-    ({"punct_labels": ["O"]}, "'sample_0001' has mismatched punct_labels length (1 vs 3)"),
+    ({"tokens": []}, "tokens must be a non-empty list."),
+    ({"punct_labels": ["O"]}, "punct_labels length (1) does not match tokens length (3)."),
 ], ids=["split", "label-mode", "tokens", "labels"])
 def test_a_listed_record_that_breaks_the_frozen_data_rules_is_named_with_its_file_and_line(
         tmp_path: Path, change: dict[str, Any], reason: str) -> None:

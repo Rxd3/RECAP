@@ -15,19 +15,29 @@ import sys
 from collections.abc import Callable
 from decimal import Decimal
 from pathlib import Path
+from typing import Any
 
+from punct_restore.file_io import read_object, require_object
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.reporting._cli import check_out, run, write_new_text
 from punct_restore.reporting.build_tables import (
+    CELL,
+    CONFUSION,
+    DIFF,
     MODES,
+    PER_CLASS,
     PRIMARY,
+    ROW,
     cell,
     diff_cell,
     half_up,
-    load,
     pct,
+    read_block,
+    read_scores,
 )
 
+NON_FINAL = "punctuation/non_final"
+C_VIEWS = ("punctuation/all", "casing/unmasked", "casing/unmasked_non_initial", "casing/all")  # mode C, after non_final
 SPLITS = {"validation": "", "test": "_test"}
 CRF_DIRS = {"validation": "crf_validation", "test": "crf_test"}
 Models = dict[str, Callable[[str], Path]]
@@ -62,7 +72,7 @@ def sec_main(ms: Models, split: str) -> list[str]:
         out += [f"**Mode {mode}** (`{blk}`)", "", "| Model | Macro F1 (95% CI) | Micro P / R / F1 | Accuracy |",
                 "|---|---|---|---|"]
         for name, f in ms.items():
-            b = load(f(mode))["blocks"][blk]
+            b = read_block(f(mode), blk, ROW)
             out.append(f"| {name} | {cell(b)} | {prf(b)} | {pct(b['accuracy'])} |")
         out.append("")
     return out
@@ -78,8 +88,9 @@ def sec_paired(scores: Path, split: str, tau: Path | None = None) -> list[str]:
            "| Mode | Comparison | Primary | non_final |", "|---|---|---|---|"]
     for mode in MODES:
         for stem, label, folder in rows:
-            b = load(folder / f"{stem}_{mode}{sfx}.json")["blocks"]
-            primary, non_final = diff_cell(b[PRIMARY[mode]]), diff_cell(b["punctuation/non_final"])
+            shown = dict.fromkeys((PRIMARY[mode], NON_FINAL), DIFF)
+            b = read_scores(folder / f"{stem}_{mode}{sfx}.json", shown)["blocks"]
+            primary, non_final = diff_cell(b[PRIMARY[mode]]), diff_cell(b[NON_FINAL])
             out.append(f"| {mode} | {label} | {primary} | {non_final} |")
     return out + [""]
 
@@ -91,25 +102,24 @@ def sec_views(ms: Models, split: str) -> list[str]:
            ("| Model | A non_final | B non_final | C non_final | C punctuation/all | C casing (masked) | "
             "C casing non-initial | C casing/all |"), "|---|---|---|---|---|---|---|---|"]
     for name, f in ms.items():
-        nf = [cell(load(f(m))["blocks"]["punctuation/non_final"]) for m in MODES]
-        c = load(f("C"))["blocks"]
-        rest = [cell(c[k]) for k in ("punctuation/all", "casing/unmasked", "casing/unmasked_non_initial", "casing/all")]
+        nf = [cell(read_block(f(m), NON_FINAL, CELL)) for m in MODES]
+        c = read_scores(f("C"), dict.fromkeys(C_VIEWS, CELL))["blocks"]
+        rest = [cell(c[k]) for k in C_VIEWS]
         out.append(f"| {name} | " + " | ".join(nf + rest) + " |")
     return out + [""]
 
 
 def class_table(ms: Models, mode: str, blk: str, title: str) -> list[str]:
-    ref = load(next(iter(ms.values()))(mode))["blocks"][blk]
-    labels = ref["labels"]
+    files = [f(mode) for f in ms.values()]
+    labels = read_block(files[0], blk, {"labels": list[str]})["labels"]
+    shape = {"per_class": {lab: PER_CLASS for lab in labels}}
+    stats = [read_block(path, blk, shape)["per_class"] for path in files]
     out = [f"**{title}**", "", "| Class | Support | " + " | ".join(f"{n} P / R / F1" for n in ms) + " |",
            "|---" * (2 + len(ms)) + "|"]
     for lab in labels:
-        cells = []
-        for f in ms.values():
-            pc = load(f(mode))["blocks"][blk]["per_class"][lab]
-            cells.append(f"{pct(pc['precision'])} / {pct(pc['recall'])} / {pct(pc['f1'])}")
+        cells = [f"{pct(pc[lab]['precision'])} / {pct(pc[lab]['recall'])} / {pct(pc[lab]['f1'])}" for pc in stats]
         name = lab.replace("|", r"\|")  # joint labels contain a pipe, which would split the Markdown cell
-        out.append(f"| {name} | {ref['per_class'][lab]['support']:,} | " + " | ".join(cells) + " |")
+        out.append(f"| {name} | {stats[0][lab]['support']:,} | " + " | ".join(cells) + " |")
     return out + [""]
 
 
@@ -123,16 +133,23 @@ def sec_classes(ms: Models, split: str) -> list[str]:
     return out
 
 
+def read_errors(path: Path) -> dict[str, Any]:
+    """The errors file at ``path``: its positive ``errors_total`` and the five most frequent ``pair_counts``."""
+    errors = read_object(path, {"errors_total": int, "pair_counts": list})
+    if errors["errors_total"] <= 0:
+        raise ValueError(f"{path.name}: errors_total must be positive")
+    for number, pair in enumerate(errors["pair_counts"][:5]):
+        require_object(path.name, pair, {"gold": str, "pred": str, "count": int}, f"pair_counts.{number}")
+    return errors
+
+
 def sec_errors(scores: Path, split: str) -> list[str]:
     sfx = SPLITS[split]
     out = [f"## Most frequent errors, M3 improved ({split}, punctuation labels; mode C projected to punctuation)", "",
            "| Mode | Errors | Top pairs (count, share) |", "|---|---|---|"]
     for mode in MODES:
-        name = f"m3_improved_{mode}{sfx}.errors.json"
-        e = load(scores / name)
+        e = read_errors(scores / f"m3_improved_{mode}{sfx}.errors.json")
         total = e["errors_total"]
-        if total <= 0:
-            raise ValueError(f"{name}: errors_total must be positive")
         top = "; ".join(f"{p['gold']}→{p['pred']} {p['count']:,} ({half_up(Decimal(100 * p['count']) / total)}%)"
                         for p in e["pair_counts"][:5])
         out.append(f"| {mode} | {e['errors_total']:,} | {top} |")
@@ -156,7 +173,8 @@ def sec_confusion(ms: Models, split: str) -> list[str]:
     for mode in MODES:
         out += [f"### Mode {mode}", ""]
         for name, f in crfs.items():
-            blocks = load(f(mode))["blocks"]
+            shown = ("punctuation/all", "casing/unmasked") if mode == "C" else ("punctuation/all",)
+            blocks = read_scores(f(mode), dict.fromkeys(shown, CONFUSION))["blocks"]
             out += matrix(blocks["punctuation/all"], f"{name}, punctuation")
             if mode == "C":
                 out += matrix(blocks["casing/unmasked"], f"{name}, casing (masked)")

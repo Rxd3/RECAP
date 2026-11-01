@@ -103,7 +103,7 @@ def write_report(args: argparse.Namespace) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    return run(lambda: write_report(args), json_errors=False)  # it opens pickles: no input-JSON relabelling
+    return run(lambda: write_report(args))
 
 
 if __name__ == "__main__":

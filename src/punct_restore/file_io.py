@@ -47,6 +47,26 @@ def require_folder(path: str | os.PathLike[str], what: str) -> None:
         raise FileNotFoundError(f"{name}: {what} not found")
 
 
+def require_release(data_root: str | os.PathLike[str], release: str) -> Path:
+    """The folder ``<data_root>/processed/<release>``, after checking the data root and that folder exist.
+
+    A release exists once ``recap prepare-data build`` has made its processed folder. Every message names a folder by
+    name only (the parent is never shown).
+
+    Raises:
+        NotADirectoryError: ``<name>: is a file, not a folder`` for a data root that is a file.
+        FileNotFoundError: ``<name>: data root not found`` for a data root that is not there, or
+            ``<release>: release folder not found in <data root name>; run recap prepare-data build first``.
+    """
+    require_folder(data_root, "data root")
+    processed = Path(data_root) / "processed" / release
+    if not processed.is_dir():
+        root_name = Path(os.path.abspath(data_root)).name or str(data_root)
+        raise FileNotFoundError(
+            f"{release}: release folder not found in {root_name}; run recap prepare-data build first")
+    return processed
+
+
 def refuse_existing(*paths: Path | None) -> None:
     """Raise FileExistsError for the first of ``paths`` that already exists; ``None`` entries are skipped.
 

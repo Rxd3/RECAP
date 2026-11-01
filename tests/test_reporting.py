@@ -436,7 +436,7 @@ def test_a_missing_key_is_reported_as_one_line(scores: Path, tmp_path: Path,
     dump(scores / "hmm" / "shortcut_A_validation.json", {})
     code, _, err = run_main(build_m3_tables, capsys, "--scores-root", scores, "--out", tmp_path / "o.md")
     assert code == 1
-    assert_one_error_line(err, "'blocks'")
+    assert err == "error: shortcut_A_validation.json: missing blocks\n"  # the file and the key, not a KeyError's repr
 
 
 def test_a_non_numeric_score_is_reported_as_one_line(scores: Path, tmp_path: Path,
@@ -447,7 +447,7 @@ def test_a_non_numeric_score_is_reported_as_one_line(scores: Path, tmp_path: Pat
     dump(path, document)
     code, _, err = run_main(build_m3_tables, capsys, "--scores-root", scores, "--out", tmp_path / "o.md")
     assert code == 1
-    assert_one_error_line(err)
+    assert err == "error: shortcut_A_validation.json: blocks.punctuation/all.macro_f1 is not a number\n"
 
 
 def test_an_unwritable_out_path_is_reported_by_name(scores: Path, tmp_path: Path,

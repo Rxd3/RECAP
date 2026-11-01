@@ -48,7 +48,7 @@ from punct_restore.data.asr_noise import (
     remap_positions,
     train_vocabulary,
 )
-from punct_restore.file_io import iter_jsonl, write_new_folder
+from punct_restore.file_io import iter_jsonl, require_release, write_new_folder
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import (
     one_line_error,
@@ -247,7 +247,7 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
 
 
 def load_inputs(args: argparse.Namespace) -> list[ModeInput]:
-    processed = args.data_root / "processed" / args.release
+    processed = require_release(args.data_root, args.release)
     lists = args.data_root / "splits" / args.release / "primary_eval"
     ids = {mode: lists / f"{args.split}_mode_{mode}.ids" for mode in MODES}
     return [ModeInput(mode, processed / f"mode_{mode}" / f"{args.split}.jsonl", ids[mode], read_ids(ids[mode]))

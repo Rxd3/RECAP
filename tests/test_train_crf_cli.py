@@ -335,7 +335,7 @@ class TestCRFTrainCLI:
         ])
         assert ret == 1
         captured = capsys.readouterr()
-        assert "mismatched punct_labels length" in captured.err
+        assert "corrupt_data.jsonl line 1: punct_labels length (2) does not match tokens length (3)." in captured.err
 
     def test_train_corrupt_jsonl_failure(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
         """Verify failure when encountering non-JSON lines."""

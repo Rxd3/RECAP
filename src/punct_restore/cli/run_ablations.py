@@ -43,7 +43,7 @@ from typing import Any
 
 from punct_restore.features.crf_features import FeatureConfig
 from punct_restore.features.word_clusters import load_cluster_map
-from punct_restore.file_io import iter_jsonl
+from punct_restore.file_io import iter_jsonl, require_release
 from punct_restore.hashing import sha256_file
 from punct_restore.models.crf import CRFModel
 from punct_restore.models.factored import combine
@@ -281,6 +281,7 @@ def run(args: argparse.Namespace) -> None:
     root = args.out / f"mode_{args.mode}"
     if root.exists():  # fail early, before reading the large train.jsonl
         raise _already_exists(root)
+    require_release(args.data_root, args.release)
     # cheap, and a wrong map must stop the run first
     clusters = load_clusters(args.cluster_map, args.mode, args.release, args.data_root)
     sample, records, gold_free = load_inputs(args)

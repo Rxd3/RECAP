@@ -311,10 +311,10 @@ def test_a_bad_jsonl_line_fails_with_file_name(tmp_path: Path, capsys: pytest.Ca
     assert not out.exists()
 
 
-def test_a_missing_input_file_is_a_friendly_one_line_error(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_a_missing_data_root_is_a_friendly_one_line_error(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     out = tmp_path / "out"
     assert run(tmp_path / "no-such-root", out) == 1
-    err = assert_one_error_line(capsys, "test.jsonl")
+    err = assert_one_error_line(capsys, "no-such-root: data root not found")
     assert str(tmp_path) not in err
     assert not out.exists()
 

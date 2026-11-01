@@ -106,16 +106,36 @@ def parse_manifest_line(line: str, number: int, manifest_name: str) -> tuple[str
     return digest, rel
 
 
+def _inside_raw_root(base: str, rel: str, manifest_name: str) -> str:
+    """The real path of manifest path ``rel`` below ``base`` (the real path of the raw root); a ValueError if it
+    resolves outside (``..``, an absolute path, a link), as ``extraction._write`` refuses an archive entry."""
+    path = os.path.realpath(os.path.join(base, rel))
+    try:
+        inside = os.path.commonpath([base, path]) == base
+    except ValueError:  # on Windows, a path on another drive has no common path with base
+        inside = False
+    if not inside:
+        raise ValueError(f"{rel}: listed in {manifest_name} but outside the raw root")
+    return path
+
+
 def verify_raw_manifest(manifest_path: str | os.PathLike[str]) -> list[str]:
     """Paths (relative to the manifest) whose SHA-256 no longer matches. Empty list means raw data is unchanged.
 
-    Raises ValueError("<manifest name> line N: expected '<sha256>  <path>'") for a line of another shape.
+    Raises ValueError for a line of another shape ("<manifest name> line N: expected '<sha256>  <path>'"), for a path
+    that leaves the folder of the manifest ("<path>: listed in <manifest name> but outside the raw root") and for a
+    listed file that is not there ("<path>: listed in <manifest name> but missing; run recap prepare-data extract
+    again").
     """
-    base = os.path.dirname(os.path.abspath(manifest_path))
+    base = os.path.realpath(os.path.dirname(os.path.abspath(manifest_path)))
     name = os.path.basename(manifest_path)
     def check_one(numbered_line: tuple[int, str]) -> str | None:
         digest, rel = parse_manifest_line(numbered_line[1], numbered_line[0], name)
-        return rel if sha256_file(os.path.join(base, rel)) != digest else None
+        path = _inside_raw_root(base, rel, name)
+        try:
+            return rel if sha256_file(path) != digest else None
+        except FileNotFoundError as exc:
+            raise ValueError(f"{rel}: listed in {name} but missing; run recap prepare-data extract again") from exc
     try:
         with open(manifest_path, encoding="utf-8") as f:
             return [bad for bad in _map_source_files(check_one, enumerate(f, 1)) if bad is not None]

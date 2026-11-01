@@ -379,5 +379,5 @@ def test_a_label_that_is_not_a_string_is_one_error_line_not_a_traceback(
     (tmp_path / "data.jsonl").write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
     assert train_crf.main(argv) == 1
     line = _only_line(capsys.readouterr().err, tmp_path)
-    assert line == "error: training failed: Record at index 0 (sample_0000): punct_labels must be a list of strings."
+    assert line == "error: data.jsonl line 1: punct_labels must be a list of strings."
     assert not (tmp_path / "out.joblib").exists()

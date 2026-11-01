@@ -35,7 +35,7 @@ from punct_restore.data.gold_noise import (
     speaker_label_colons,
     validate_record,
 )
-from punct_restore.file_io import iter_jsonl, require_folder, write_new_folder
+from punct_restore.file_io import iter_jsonl, require_folder, require_release, write_new_folder
 from punct_restore.hashing import sha256_file
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import one_line_error, parse_json_object, read_ids
@@ -134,15 +134,15 @@ def process_split(root: Path, release: str, mode: str, split: str) -> dict[str, 
     return files
 
 
-def check_folders(data_root: Path, out: Path) -> None:
-    """Refuse a data root that is not a folder, or an ``out`` whose parent is not an existing folder."""
-    require_folder(data_root, "data root")
+def check_folders(data_root: Path, release: str, out: Path) -> None:
+    """Refuse a data root or release folder that is not there, or an ``out`` whose parent is not a folder."""
+    require_release(data_root, release)
     require_folder(out.parent, "output parent")
 
 
 def build(data_root: Path, release: str, mode: str, out: Path) -> list[str]:
     """Score every split, then write the outputs; returns one status line per split."""
-    check_folders(data_root, out)
+    check_folders(data_root, release, out)
     if out.exists():
         raise ValueError(f"output path {out.name} already exists; refusing to overwrite")
     files: dict[str, str] = {}

@@ -47,12 +47,12 @@ def _fail(message: str) -> int:
     return 1
 
 
-def run(task: Callable[[], None], *, json_errors: bool = True) -> int:
-    """Run ``task``; a missing file or malformed input becomes ``error: <message>`` and exit code 1.
+def run(task: Callable[[], None]) -> int:
+    """Run ``task``; a missing file or a malformed input file becomes ``error: <message>`` and exit code 1.
 
-    Files are named by their file name only, never by their folder. With ``json_errors`` the task reads
-    JSON inputs, so ``KeyError``/``TypeError``/``ArithmeticError`` are reported as bad input; pass
-    ``json_errors=False`` when the task also runs model code, where those errors are bugs and propagate.
+    Files are named by their file name only, never by their folder. Only ``OSError`` and ``ValueError`` are input
+    problems: the readers raise a ``ValueError`` that names the file and the key (see ``build_tables.load``). Any
+    other exception is a bug in our own code and propagates with its traceback.
     """
     reconfigure_stdout()  # a non-ASCII ``--out`` on a cp1252 console must not crash print()
     try:
@@ -62,12 +62,4 @@ def run(task: Callable[[], None], *, json_errors: bool = True) -> int:
         return _fail(one_line_error(exc) if exc.strerror else "a file could not be read or written")
     except ValueError as exc:
         return _fail(one_line_error(exc))
-    except KeyError as exc:
-        if not json_errors:
-            raise
-        return _fail(f"missing key {exc} in an input JSON file")
-    except (TypeError, ArithmeticError):
-        if not json_errors:
-            raise
-        return _fail("an input JSON file holds a value of the wrong type")
     return 0

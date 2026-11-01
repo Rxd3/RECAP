@@ -222,7 +222,7 @@ def test_a_folder_handed_to_the_loader_is_reported_as_a_folder(
     folder.mkdir()
     with pytest.raises(OSError):  # the system error is not relabelled "not a readable joblib file"
         crf_convergence.read_bundle(folder)
-    assert crf_convergence.run(lambda: crf_convergence.read_bundle(folder), json_errors=False) == 1
+    assert crf_convergence.run(lambda: crf_convergence.read_bundle(folder)) == 1
     assert_one_error_line(capsys.readouterr().err, "sub.joblib: is a folder, not a file")
 
 

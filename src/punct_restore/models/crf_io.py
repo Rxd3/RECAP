@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any
 import joblib
 import sklearn_crfsuite
 
-from punct_restore.file_io import require_file
+from punct_restore.file_io import require_file, require_object
 from punct_restore.models.crf_modes import LABEL_MODES
 
 if TYPE_CHECKING:  # crf.py imports this module at run time
@@ -72,14 +72,61 @@ def load_artifact(path: str | Path, what: str) -> Any:
         raise ValueError(f"{load_path.name}: not a readable CRF artifact") from e
 
 
+# What a saved bundle holds besides the checked schema_version, model_family and label_mode (see
+# `check_bundle_fields`). The flags are `object` here and checked as true or false there (file_io has no such kind).
+_FLAGS = ("use_affixes", "use_shape", "use_internal_punct", "use_token_ngrams", "use_question_cues",
+          "use_clause_cues", "use_casing_cues", "include_utterance_boundaries", "use_positional_buckets")
+# the team-extension switches: an artifact saved before they existed lacks them
+_EXTENSION_FLAGS = ("use_filler_cues", "use_question_lookback", "use_word_clusters")
+_FIELDS: dict[str, Any] = {
+    "model_name": str,
+    "vocabulary": list[str],
+    "hyperparameters": {"algorithm": str, "c1": float, "c2": float, "max_iterations": int,
+                        "all_possible_transitions": object},
+    "feature_config": {"preset": str, "window_size": int, "version": str, **dict.fromkeys(_FLAGS, object)},
+    "training_metadata": {},
+    "environment": {},
+}
+
+
+def _require_flags(prefix: str, section: dict[str, Any], place: str, keys: tuple[str, ...]) -> None:
+    """Raise ValueError for the first of ``keys`` that ``section`` holds and that is not true or false."""
+    for key in keys:
+        if key in section and not isinstance(section[key], bool):
+            raise ValueError(f"{prefix}: {place}.{key} is not true or false")
+
+
+def check_bundle_fields(name: str, bundle: dict[str, Any]) -> None:
+    """Check that every field of a CRF artifact bundle that the loader or ``inspect`` reads is there and of its kind.
+
+    ``name`` is the file name. The team-extension feature switches may be absent (older artifacts) but, if present,
+    must be of their kind. A bundle's backend must be an ``sklearn_crfsuite.CRF``.
+
+    Raises:
+        ValueError: ``<name>: corrupt artifact: missing <field>`` or ``... <field> is not <kind>`` (a dotted path
+            names a nested field or a list item).
+    """
+    prefix = f"{name}: corrupt artifact"
+    if bundle.get("backend_state") is None:
+        raise ValueError(f"{prefix}: missing backend_state")
+    if not isinstance(bundle["backend_state"], sklearn_crfsuite.CRF):
+        raise ValueError(f"{prefix}: backend_state is not a CRF model")
+    require_object(prefix, bundle, _FIELDS)
+    config = bundle["feature_config"]
+    _require_flags(prefix, bundle["hyperparameters"], "hyperparameters", ("all_possible_transitions",))
+    _require_flags(prefix, config, "feature_config", _FLAGS + _EXTENSION_FLAGS)
+    if config.get("word_clusters") is not None:
+        require_object(prefix, config, {"word_clusters": {}}, "feature_config")
+
+
 def read_bundle(path: str | Path) -> dict[str, Any]:
-    """Load the artifact at ``path`` and check root type, schema, family, label mode and backend presence.
+    """Load the artifact at ``path`` and check root type, schema, family, label mode, backend and field kinds.
 
     Raises:
         FileNotFoundError: If the artifact path does not exist.
         IsADirectoryError: If the artifact path is a folder.
-        ValueError: ``<name>: <reason>`` if the artifact is unreadable or its schema, family or metadata is
-            incompatible.
+        ValueError: ``<name>: <reason>`` if the artifact is unreadable or its schema, family, metadata or a field
+            is incompatible (see ``check_bundle_fields``).
     """
     bundle = load_artifact(path, "model artifact")
     name = Path(path).name
@@ -99,9 +146,7 @@ def read_bundle(path: str | Path) -> dict[str, Any]:
     if label_mode not in LABEL_MODES:
         raise ValueError(f"{name}: invalid label_mode in artifact: {label_mode!r}")
 
-    if bundle.get("backend_state") is None:
-        raise ValueError(f"{name}: corrupt artifact: missing backend_state")
-
+    check_bundle_fields(name, bundle)
     return bundle
 
 

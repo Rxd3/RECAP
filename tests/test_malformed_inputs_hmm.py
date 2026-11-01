@@ -258,8 +258,8 @@ REAL_LABEL_CONFIG = (ROOT / "configs/label_sets.yaml").read_text(encoding="utf-8
 LABEL_CONFIG_PROBLEMS = [  # (id, the label config file's text, the one reason train-hmm gives for it)
     ("invalid-yaml", "a: [unclosed\n", "not valid YAML"),
     ("missing-section", "schema_version: 1\n", "missing punctuation"),
-    ("wrong-structure", REAL_LABEL_CONFIG.replace("casing: [LOWER, FIRST_UPPER, ALL_UPPER]", "casing: [LOWER]"),
-     "does not have the agreed 4/8/12 structure"),
+    ("wrong-num-classes", REAL_LABEL_CONFIG.replace("num_classes: 4", "num_classes: 5", 1),
+     "num_classes does not match label vocabulary"),  # mode A ignores casing, as on main (N6)
 ]
 
 

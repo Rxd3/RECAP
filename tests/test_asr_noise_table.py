@@ -335,7 +335,7 @@ def test_a_missing_key_is_reported_with_the_file_name(
         ({"tokens_after": "many"}, "tokens_after must be a positive integer"),
         ({"achieved_wer": float("inf")}, "achieved_wer must be a finite number"),
         ({"edits": {"deletion": -1, "insertion": 1, "substitution": 1, "swap": 1}}, "edits.deletion must be a non-neg"),
-        ({"edits": [1, 2]}, "a field has the wrong type"),
+        ({"edits": [1, 2]}, "edits is not a JSON object"),
     ],
 )
 def test_a_bad_simulator_summary_is_rejected_naming_the_file(

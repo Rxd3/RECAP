@@ -11,7 +11,7 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any, NamedTuple
 
-from punct_restore.data.labeling import label_sets_from_config, read_label_config
+from punct_restore.data.labeling import read_label_config
 from punct_restore.file_io import require_object
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm import HMMModel
@@ -28,21 +28,37 @@ from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import one_line_error, read_ids
 
 
+def _joint_labels(name: str, config: dict[str, Any], punctuation: list[str]) -> list[str]:
+    """Mode C's labels, the punctuation labels times the casing labels, punctuation first, as the file lists them."""
+    mode_config = config["modes"]["C"]
+    if mode_config["separator"] != "|":
+        raise ValueError(f"{name}: joint labels must use the | separator")
+    labels = [f"{p}|{c}" for p in punctuation for c in config["casing"]]
+    if labels != mode_config["labels"]:
+        raise ValueError(f"{name}: explicit joint labels do not match the ordered 4-by-3 product")
+    return labels
+
+
 def load_labels(path: Path, mode: str) -> list[str]:
-    """The ordered labels of ``mode``: the shared label sets of the configuration, which is read once, plus the HMM's
-    own checks (schema version 1, the `|` joint separator, num_classes); a ValueError names the file."""
-    config = read_label_config(path)
-    sets = label_sets_from_config(config, path.name)
-    labels = sets[mode]
-    wanted = {"schema_version": object, "modes": {mode: {"num_classes": int}}}
-    checked = require_object(path.name, config, wanted)
-    version = checked["schema_version"]
+    """The ordered labels of ``mode``, as the first HMM script read them: the punctuation set the mode names
+    (``punctuation[modes[mode].punctuation_set]``; for mode C its product with the casing labels, punctuation first),
+    after the version, `|` separator and num_classes checks. A ValueError names the file."""
+    name = path.name
+    mode_wants: dict[str, Any] = {"punctuation_set": str, "num_classes": int}
+    wanted: dict[str, Any] = {"schema_version": object, "punctuation": {}}
+    if mode == "C":
+        mode_wants = {**mode_wants, "separator": str, "labels": list[str]}
+        wanted = {**wanted, "casing": list[str]}
+    config = require_object(name, read_label_config(path), {**wanted, "modes": {mode: mode_wants}})
+    version = config["schema_version"]
     if type(version) is not int or version != 1:
-        raise ValueError(f"{path.name}: unsupported label configuration version")
-    if mode == "C" and sets["separator"] != "|":
-        raise ValueError(f"{path.name}: joint labels must use the | separator")
-    if checked["modes"][mode]["num_classes"] != len(labels):
-        raise ValueError(f"{path.name}: num_classes does not match label vocabulary")
+        raise ValueError(f"{name}: unsupported label configuration version")
+    mode_config = config["modes"][mode]
+    chosen = mode_config["punctuation_set"]
+    punctuation = require_object(name, config["punctuation"], {chosen: list[str]}, "punctuation")[chosen]
+    labels = _joint_labels(name, config, punctuation) if mode == "C" else list(punctuation)
+    if mode_config["num_classes"] != len(labels):
+        raise ValueError(f"{name}: num_classes does not match label vocabulary")
     return labels
 
 

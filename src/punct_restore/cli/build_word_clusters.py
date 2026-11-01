@@ -24,7 +24,7 @@ from punct_restore.features.word_clusters import (
     induce_clusters,
     map_to_json,
 )
-from punct_restore.file_io import iter_jsonl
+from punct_restore.file_io import iter_jsonl, require_release
 from punct_restore.hashing import sha256_file
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import (
@@ -62,8 +62,9 @@ def build(args: argparse.Namespace) -> ClusterMap:
     """Read the train data of ``args.mode``, induce the clusters and write the map file."""
     if args.out.exists():
         raise ValueError(f"{args.out.name} already exists; refusing to overwrite")
+    processed = require_release(args.data_root, args.release)
     ids_path = args.data_root / "splits" / args.release / "default_train" / f"mode_{args.mode}.ids"
-    train_path = args.data_root / "processed" / args.release / f"mode_{args.mode}" / "train.jsonl"
+    train_path = processed / f"mode_{args.mode}" / "train.jsonl"
     ids, ids_sha256 = set(read_ids(ids_path)), sha256_file(ids_path)
     clusters = induce_clusters(
         train_tokens(train_path, ids), k=args.k, seed=args.seed,

@@ -139,7 +139,7 @@ def main(argv: list[str] | None = None) -> int:
     names = [name for name, _ in args.predictions]
     if len(set(names)) != len(names):
         parser.error("the --predictions names must be distinct")
-    return run(lambda: write_report(args), json_errors=False)  # the evaluator names bad input itself
+    return run(lambda: write_report(args))
 
 
 if __name__ == "__main__":

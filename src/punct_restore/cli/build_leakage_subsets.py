@@ -21,7 +21,7 @@ from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import Any
 
-from punct_restore.file_io import iter_jsonl, write_new_folder
+from punct_restore.file_io import iter_jsonl, require_release, write_new_folder
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import one_line_error, parse_sample_record, read_ids
 
@@ -140,7 +140,7 @@ def build(data_root: Path, release: str, mode: str, split: str, out: Path) -> di
     """Read and check every input, then write the outputs; returns the counts."""
     if out.exists():
         raise ValueError(f"output path {out.name} already exists; refusing to overwrite")
-    processed = data_root / "processed" / release / f"mode_{mode}"
+    processed = require_release(data_root, release) / f"mode_{mode}"
     splits = data_root / "splits" / release
     groups = read_split(processed / f"{split}.jsonl")
     # the release writes this list empty when every record of the split is excluded

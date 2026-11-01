@@ -93,13 +93,15 @@ def _prepare_train_paths(args: argparse.Namespace) -> tuple[Path, Path, Path, Pa
     return input_path, ids_path, output_path, manifest_path
 
 
-def _load_records(input_path: Path, ids_path: Path, mode: str) -> tuple[list[dict[str, Any]], int]:
+def _load_records(
+    input_path: Path, ids_path: Path, mode: str, config_path: str | None = None
+) -> tuple[list[dict[str, Any]], int]:
     """Load and verify the frozen training records; return (records, token count). TrainingFailed says why not."""
     print(f"[RECAP CRF] Loading and verifying training records for Mode {mode}...")
     try:
-        records, frozen_ids = load_and_filter_training_records(input_path, ids_path, mode)
+        records, frozen_ids = load_and_filter_training_records(input_path, ids_path, mode, config_path)
     except (OSError, ValueError) as e:  # a missing or unreadable file, or a record that breaks the frozen-data rules
-        raise TrainingFailed(one_line_error_with_short_paths(e, input_path, ids_path)) from e
+        raise TrainingFailed(one_line_error_with_short_paths(e, input_path, ids_path, config_path)) from e
 
     total_tokens = sum(len(r["tokens"]) for r in records)
     print(
@@ -230,7 +232,7 @@ def _train(args: argparse.Namespace) -> None:
     """Run the training steps in order; TrainingFailed from any step stops the run."""
     input_path, ids_path, output_path, manifest_path = _prepare_train_paths(args)
     mode = args.mode.upper()
-    records, total_tokens = _load_records(input_path, ids_path, mode)
+    records, total_tokens = _load_records(input_path, ids_path, mode, args.config_path)
     model, feature_config = _configure_model(args, mode)
     provenance = build_training_provenance(TrainingSource(
         input_path=input_path, ids_path=ids_path, num_sequences=len(records), num_tokens=total_tokens,

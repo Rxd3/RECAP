@@ -109,3 +109,97 @@ def test_a_mode_that_is_no_mapping_is_named(tmp_path: Path) -> None:
     with pytest.raises(ValueError) as problem:
         load_labels(path, "A")
     assert str(problem.value) == "labels.yaml: modes.A is not a JSON object"
+
+
+def _main_load_labels(path: Path, mode: str) -> list[str]:
+    """The oracle: 72ebfd1's scripts/train_hmm.py `load_labels`, with the file name put in front of its messages."""
+    config = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if type(config["schema_version"]) is not int or config["schema_version"] != 1:
+        raise ValueError("unsupported label configuration version")
+    mode_config = config["modes"][mode]
+    punctuation = config["punctuation"][mode_config["punctuation_set"]]
+    if mode == "C":
+        if mode_config["separator"] != "|":
+            raise ValueError("joint labels must use the | separator")
+        labels = [f"{p}|{c}" for p in punctuation for c in config["casing"]]
+        if labels != mode_config["labels"]:
+            raise ValueError("explicit joint labels do not match the ordered 4-by-3 product")
+    else:
+        labels = punctuation
+    if mode_config["num_classes"] != len(labels):
+        raise ValueError("num_classes does not match label vocabulary")
+    return labels  # type: ignore[no-any-return]
+
+
+_REORDERED_4 = ["O", "PERIOD", "COMMA", "QUESTION"]
+_REORDERED_8 = ["O", "PERIOD", "COMMA", "QUESTION", "DASH", "COLON", "SEMICOLON", "EXCLAMATION"]
+_CASING = ["LOWER", "FIRST_UPPER", "ALL_UPPER"]
+_JOINT_OF_REORDERED_4 = [f"{p}|{c}" for p in _REORDERED_4 for c in _CASING]
+
+
+def _custom(tmp_path: Path, edit: str) -> Path:
+    """label_sets.yaml with one change: a reordered set, and the modes that point at it."""
+    config = yaml.safe_load(Path(LABEL_SETS_PATH).read_text(encoding="utf-8"))
+    modes, punctuation = config["modes"], config["punctuation"]
+    if edit == "A-points-at-a-reordered-set":
+        punctuation["reordered"] = _REORDERED_4
+        modes["A"]["punctuation_set"] = "reordered"
+    elif edit == "B-points-at-a-reordered-set":
+        punctuation["reordered"] = _REORDERED_8
+        modes["B"]["punctuation_set"] = "reordered"
+    elif edit == "C-points-at-a-reordered-set":
+        punctuation["reordered"] = _REORDERED_4
+        modes["C"]["punctuation_set"] = "reordered"
+        modes["C"]["labels"] = _JOINT_OF_REORDERED_4
+    else:  # the standard set itself is reordered, so A and the punctuation of C follow it
+        punctuation["standard"] = _REORDERED_4
+        modes["C"]["labels"] = _JOINT_OF_REORDERED_4
+    path = tmp_path / "labels.yaml"
+    path.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
+    return path
+
+
+@pytest.mark.parametrize(
+    ("edit", "mode", "expected"),
+    [
+        ("A-points-at-a-reordered-set", "A", _REORDERED_4),
+        ("B-points-at-a-reordered-set", "B", _REORDERED_8),
+        ("C-points-at-a-reordered-set", "C", _JOINT_OF_REORDERED_4),
+        ("standard-is-reordered", "A", _REORDERED_4),
+        ("standard-is-reordered", "C", _JOINT_OF_REORDERED_4),
+    ],
+)
+def test_the_labels_are_the_ones_72ebfd1_trained_in_its_order(edit: str, mode: str, expected: list[str],
+                                                              tmp_path: Path) -> None:
+    path = _custom(tmp_path, edit)
+    assert load_labels(path, mode) == expected == _main_load_labels(path, mode)
+
+
+def test_joint_labels_that_are_not_the_ordered_product_are_refused_in_mains_words(tmp_path: Path) -> None:
+    config = yaml.safe_load(Path(LABEL_SETS_PATH).read_text(encoding="utf-8"))
+    config["modes"]["C"]["labels"] = list(reversed(config["modes"]["C"]["labels"]))
+    path = tmp_path / "labels.yaml"
+    path.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
+    with pytest.raises(ValueError) as problem:
+        load_labels(path, "C")
+    assert str(problem.value) == "labels.yaml: explicit joint labels do not match the ordered 4-by-3 product"
+
+
+def test_a_punctuation_set_that_is_not_there_is_named(tmp_path: Path) -> None:
+    path = _custom(tmp_path, "A-points-at-a-reordered-set")
+    config = yaml.safe_load(path.read_text(encoding="utf-8"))
+    del config["punctuation"]["reordered"]
+    path.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
+    with pytest.raises(ValueError) as problem:
+        load_labels(path, "A")
+    assert str(problem.value) == "labels.yaml: missing punctuation.reordered"
+
+
+def test_a_punctuation_set_that_holds_a_non_string_is_named(tmp_path: Path) -> None:
+    config = yaml.safe_load(Path(LABEL_SETS_PATH).read_text(encoding="utf-8"))
+    config["punctuation"]["standard"][1] = 5
+    path = tmp_path / "labels.yaml"
+    path.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
+    with pytest.raises(ValueError) as problem:
+        load_labels(path, "A")
+    assert str(problem.value) == "labels.yaml: punctuation.standard.1 is not nonempty text"
