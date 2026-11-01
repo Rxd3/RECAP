@@ -141,7 +141,15 @@ def _keep(name: str) -> bool:
 
 
 def _write(raw_root: str | os.PathLike[str], name: str, data: bytes) -> None:
-    path = os.path.join(raw_root, OUTPUT_DIR, name[len("sponspeech/"):])
+    """Write one archive member below raw_root/sponspeech_text; a name that resolves outside it is refused."""
+    base = os.path.realpath(os.path.join(raw_root, OUTPUT_DIR))
+    path = os.path.realpath(os.path.join(base, name[len("sponspeech/"):]))
+    try:
+        inside = os.path.commonpath([base, path]) == base
+    except ValueError:  # on Windows, a path on another drive has no common path with base
+        inside = False
+    if not inside:
+        raise ValueError(f"{name}: archive entry would be written outside {OUTPUT_DIR}")
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "wb") as f:
         f.write(data)
