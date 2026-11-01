@@ -18,61 +18,49 @@ from dataclasses import dataclass, field, fields
 import json
 from typing import Any, Mapping, Sequence
 
-# =============================================================================================
-# COURSE presets (basic, improved): Member 3's original feature groups.
-# =============================================================================================
-# Lexical word lists for linguistic feature extraction (all lowercased)
-WH_WORDS: frozenset[str] = frozenset({
-    "what", "why", "when", "where", "who", "whom", "whose", "how", "which"
-})
+from .crf_cues import (
+    _cluster_features,
+    _filler_features,
+    _length_bucket,
+    _position_bucket,
+    _question_lookback_features,
+)
+from .crf_cues import _cluster_label as _cluster_label  # re-exported: tests import it from here
+from .crf_lexicons import (
+    AUXILIARY_VERBS,
+    CONJUNCTIONS,
+    DAYS_AND_MONTHS,
+    DISCOURSE_MARKERS,
+    FILLER_BIGRAMS,
+    FILLERS,
+    HONORIFICS,
+    LOOKBACK_WINDOW,
+    SUBJECT_PRONOUNS,
+    TAG_CUE_PRONOUNS,
+    TAG_CUE_WORDS,
+    UNKNOWN_CLUSTER_LABEL,
+    WH_WORDS,
+)
 
-AUXILIARY_VERBS: frozenset[str] = frozenset({
-    "do", "did", "does", "is", "are", "was", "were", "am",
-    "can", "could", "will", "would", "should", "shall",
-    "may", "might", "must", "have", "has", "had"
-})
+__all__ = [
+    "AUXILIARY_VERBS",
+    "CONJUNCTIONS",
+    "DAYS_AND_MONTHS",
+    "DISCOURSE_MARKERS",
+    "FILLERS",
+    "FILLER_BIGRAMS",
+    "HONORIFICS",
+    "LOOKBACK_WINDOW",
+    "SUBJECT_PRONOUNS",
+    "TAG_CUE_PRONOUNS",
+    "TAG_CUE_WORDS",
+    "UNKNOWN_CLUSTER_LABEL",
+    "WH_WORDS",
+    "FeatureConfig",
+    "extract_sequence_features",
+]
 
-SUBJECT_PRONOUNS: frozenset[str] = frozenset({
-    "you", "we", "they", "he", "she", "it", "i", "there"
-})
-
-CONJUNCTIONS: frozenset[str] = frozenset({
-    "and", "but", "or", "nor", "for", "yet", "so",
-    "because", "although", "though", "since", "unless",
-    "while", "whereas", "if"
-})
-
-DISCOURSE_MARKERS: frozenset[str] = frozenset({
-    "however", "therefore", "moreover", "furthermore", "meanwhile",
-    "actually", "basically", "well", "anyway", "first", "second", "finally"
-})
-
-HONORIFICS: frozenset[str] = frozenset({
-    "mr", "mrs", "ms", "dr", "prof"
-})
-
-DAYS_AND_MONTHS: frozenset[str] = frozenset({
-    "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
-    "january", "february", "march", "april", "may", "june", "july", "august",
-    "september", "october", "november", "december"
-})
-
-# =============================================================================================
-# TEAM EXTENSIONS (filler cues, question lookback): opt-in switches, off in both course presets.
-# =============================================================================================
-FILLERS: frozenset[str] = frozenset({"um", "uh", "er", "erm", "like"})
-
-FILLER_BIGRAMS: frozenset[tuple[str, str]] = frozenset({("you", "know"), ("i", "mean")})
-
-# Question lookback: a wh-word + auxiliary pair anywhere in the last LOOKBACK_WINDOW tokens
-# (current one included), and tag-question endings ("..., isn't it", "..., right").
-LOOKBACK_WINDOW = 12
-TAG_CUE_WORDS: frozenset[str] = frozenset({"right", "correct", "huh", "eh"})
-TAG_CUE_PRONOUNS: frozenset[str] = frozenset({"it", "they", "you", "we", "he", "she", "there"})
-
-# Word clusters: a word -> cluster id map built offline. It travels inside the config, hence inside every
-# saved model, so a trained model needs no side file. A word missing from the map gets this label.
-UNKNOWN_CLUSTER_LABEL = "unk"
+_Feats = dict[str, str | int | float | bool]
 
 
 @dataclass(frozen=True)
@@ -192,75 +180,6 @@ class FeatureConfig:
         return cls(**filtered)
 
 
-def _length_bucket(length: int) -> str:
-    if length <= 1:
-        return "1"
-    if length <= 3:
-        return "short"
-    if length <= 7:
-        return "medium"
-    return "long"
-
-
-def _position_bucket(index: int, total: int) -> str:
-    if total <= 1:
-        return "single"
-    if index == 0:
-        return "start"
-    if index == total - 1:
-        return "end"
-    rel = index / total
-    if rel < 0.33:
-        return "early"
-    if rel > 0.66:
-        return "late"
-    return "middle"
-
-
-def _filler_features(tokens: Sequence[str], i: int) -> dict[str, bool]:
-    """Spoken-disfluency flags for position i; only the true flags are returned."""
-    n = len(tokens)
-    flags = {
-        "is_filler": tokens[i] in FILLERS,
-        "+1:is_filler": i + 1 < n and tokens[i + 1] in FILLERS,
-        "starts_filler_bigram": i + 1 < n and (tokens[i], tokens[i + 1]) in FILLER_BIGRAMS,
-        "+1:starts_filler_bigram": i + 2 < n and (tokens[i + 1], tokens[i + 2]) in FILLER_BIGRAMS,
-        "is_repeat": i > 0 and tokens[i] == tokens[i - 1],
-    }
-    return {name: True for name, on in flags.items() if on}
-
-
-def _question_lookback_features(tokens: Sequence[str], i: int) -> dict[str, bool]:
-    """Question-lookback flags for position i; only the true flags are returned."""
-    start = max(0, i - (LOOKBACK_WINDOW - 1))
-    wh_aux = any(tokens[j] in WH_WORDS and tokens[j + 1] in AUXILIARY_VERBS for j in range(start, i))
-    tag_pronoun = tokens[i] in TAG_CUE_PRONOUNS and i > 0 and tokens[i - 1].endswith("n't")
-    flags = {
-        "wh_aux_lookback": wh_aux,
-        "is_tag_question_cue": tokens[i] in TAG_CUE_WORDS or tag_pronoun,
-    }
-    return {name: True for name, on in flags.items() if on}
-
-
-def _cluster_label(clusters: Mapping[str, int], word: str) -> str:
-    """'c<id>' for a clustered word (looked up in lowercase), UNKNOWN_CLUSTER_LABEL otherwise (id 0 is real)."""
-    cluster_id = clusters.get(word.lower())
-    return UNKNOWN_CLUSTER_LABEL if cluster_id is None else f"c{cluster_id}"
-
-
-def _cluster_features(tokens: Sequence[str], i: int, clusters: Mapping[str, int]) -> dict[str, str]:
-    """Cluster labels of the word at i, its left neighbour and its right neighbour, and the current+next pair."""
-    current = _cluster_label(clusters, tokens[i])
-    feats = {"cl0": current}
-    if i > 0:
-        feats["cl-1"] = _cluster_label(clusters, tokens[i - 1])
-    if i < len(tokens) - 1:
-        following = _cluster_label(clusters, tokens[i + 1])
-        feats["cl+1"] = following
-        feats["cl0|cl+1"] = f"{current}|{following}"
-    return feats
-
-
 def _extract_token_features(token: str, config: FeatureConfig) -> dict[str, str | int | float | bool]:
     """Extract individual token features without sequence context."""
     features: dict[str, str | int | float | bool] = {
@@ -309,6 +228,137 @@ def _extract_token_features(token: str, config: FeatureConfig) -> dict[str, str 
     return features
 
 
+def _validate_tokens(tokens: Sequence[str]) -> None:
+    """Raise TypeError or ValueError unless tokens is a non-empty sequence of non-blank strings."""
+    if isinstance(tokens, (str, bytes)):
+        raise TypeError("tokens must be a sequence of strings, not a single string")
+    if not isinstance(tokens, Sequence):
+        raise TypeError(f"tokens must be a Sequence, got {type(tokens).__name__}")
+    if len(tokens) == 0:
+        raise ValueError("tokens sequence cannot be empty")
+
+    # Validate all tokens are non-empty strings
+    for i, tok in enumerate(tokens):
+        if not isinstance(tok, str):
+            raise TypeError(f"Token at index {i} must be a str, got {type(tok).__name__}")
+        if not tok or not tok.strip():
+            raise ValueError(f"Token at index {i} is empty or whitespace-only")
+
+
+def _resolve_config(config: FeatureConfig | Mapping[str, Any] | None) -> FeatureConfig:
+    """Return a FeatureConfig from None (basic preset), an instance or a mapping; TypeError otherwise."""
+    if config is None:
+        return FeatureConfig.basic()
+    if isinstance(config, FeatureConfig):
+        return config
+    if isinstance(config, Mapping):
+        return FeatureConfig.from_dict(config)
+    raise TypeError(f"Invalid config type: {type(config).__name__}")
+
+
+def _left_context(tokens: Sequence[str], i: int, offset: int, cfg: FeatureConfig) -> _Feats:
+    """Features of the token `offset` positions before i, or the -1:BOS marker when there is none."""
+    feats: _Feats = {}
+    left_idx = i - offset
+    if left_idx >= 0:
+        left_tok = tokens[left_idx]
+        feats[f"-{offset}:token"] = left_tok
+        if cfg.use_affixes and len(left_tok) >= 3:
+            feats[f"-{offset}:suff3"] = left_tok[-3:]
+        if cfg.use_question_cues:
+            feats[f"-{offset}:is_wh"] = left_tok in WH_WORDS
+            feats[f"-{offset}:is_aux"] = left_tok in AUXILIARY_VERBS
+        if cfg.use_clause_cues:
+            feats[f"-{offset}:is_conj"] = left_tok in CONJUNCTIONS
+    elif cfg.include_utterance_boundaries and offset == 1:
+        feats["-1:BOS"] = True
+    return feats
+
+
+def _right_context(tokens: Sequence[str], i: int, offset: int, cfg: FeatureConfig) -> _Feats:
+    """Features of the token `offset` positions after i, or the +1:EOS marker when there is none."""
+    feats: _Feats = {}
+    right_idx = i + offset
+    if right_idx < len(tokens):
+        right_tok = tokens[right_idx]
+        feats[f"+{offset}:token"] = right_tok
+        if cfg.use_affixes and len(right_tok) >= 3:
+            feats[f"+{offset}:pref3"] = right_tok[:3]
+        if cfg.use_question_cues:
+            feats[f"+{offset}:is_subj"] = right_tok in SUBJECT_PRONOUNS
+    elif cfg.include_utterance_boundaries and offset == 1:
+        feats["+1:EOS"] = True
+    return feats
+
+
+def _window_features(tokens: Sequence[str], i: int, cfg: FeatureConfig) -> _Feats:
+    """Contextual window features (negative offsets: past, positive offsets: future), left then right per offset."""
+    feats: _Feats = {}
+    radius = max(1, cfg.window_size)
+    for offset in range(1, radius + 1):
+        feats.update(_left_context(tokens, i, offset, cfg))
+        feats.update(_right_context(tokens, i, offset, cfg))
+    return feats
+
+
+def _ngram_features(tokens: Sequence[str], i: int) -> _Feats:
+    """Token bigram combinations (w-1_w0 and w0_w+1)."""
+    feats: _Feats = {}
+    if i > 0:
+        feats["bigram_prev"] = f"{tokens[i - 1]}_{tokens[i]}"
+    if i < len(tokens) - 1:
+        feats["bigram_next"] = f"{tokens[i]}_{tokens[i + 1]}"
+    return feats
+
+
+def _question_inversion_features(tokens: Sequence[str], i: int) -> _Feats:
+    """Syntactic question cues: aux + subject pronoun inversion and an utterance opening with wh-word or aux."""
+    feats: _Feats = {}
+    # Question inversion: aux + pronoun pattern at current and previous token
+    if i > 0 and tokens[i - 1] in AUXILIARY_VERBS and tokens[i] in SUBJECT_PRONOUNS:
+        feats["q_inversion_curr"] = True
+    if i < len(tokens) - 1 and tokens[i] in AUXILIARY_VERBS and tokens[i + 1] in SUBJECT_PRONOUNS:
+        feats["q_inversion_next"] = True
+    # Utterance starts with Wh-word or Auxiliary verb
+    if tokens[0] in WH_WORDS:
+        feats["utt_starts_wh"] = True
+    if tokens[0] in AUXILIARY_VERBS:
+        feats["utt_starts_aux"] = True
+    return feats
+
+
+def _features_at(tokens: Sequence[str], i: int, cfg: FeatureConfig) -> _Feats:
+    """Feature dict of the token at position i; the key insertion order is kept stable for crfsuite."""
+    total_tokens = len(tokens)
+    token_feats: _Feats = _extract_token_features(tokens[i], cfg)
+
+    # Positional buckets
+    if cfg.use_positional_buckets:
+        token_feats["pos_bucket"] = _position_bucket(i, total_tokens)
+
+    # Utterance boundaries (BOS / EOS)
+    if cfg.include_utterance_boundaries:
+        if i == 0:
+            token_feats["BOS"] = True
+        if i == total_tokens - 1:
+            token_feats["EOS"] = True
+
+    token_feats.update(_window_features(tokens, i, cfg))
+    if cfg.use_token_ngrams:
+        token_feats.update(_ngram_features(tokens, i))
+    if cfg.use_question_cues:
+        token_feats.update(_question_inversion_features(tokens, i))
+
+    # Team extensions (off unless switched on)
+    if cfg.use_filler_cues:
+        token_feats.update(_filler_features(tokens, i))
+    if cfg.use_question_lookback:
+        token_feats.update(_question_lookback_features(tokens, i))
+    if cfg.use_word_clusters:  # __post_init__ guarantees a non-empty map
+        token_feats.update(_cluster_features(tokens, i, cfg.word_clusters))
+    return token_feats
+
+
 def extract_sequence_features(
     tokens: Sequence[str],
     *,
@@ -328,107 +378,6 @@ def extract_sequence_features(
         TypeError: If tokens is not a sequence or contains non-string items.
         ValueError: If tokens is empty or contains whitespace-only/empty tokens.
     """
-    if isinstance(tokens, (str, bytes)):
-        raise TypeError("tokens must be a sequence of strings, not a single string")
-    if not isinstance(tokens, Sequence):
-        raise TypeError(f"tokens must be a Sequence, got {type(tokens).__name__}")
-    if len(tokens) == 0:
-        raise ValueError("tokens sequence cannot be empty")
-
-    # Validate all tokens are non-empty strings
-    for i, tok in enumerate(tokens):
-        if not isinstance(tok, str):
-            raise TypeError(f"Token at index {i} must be a str, got {type(tok).__name__}")
-        if not tok or not tok.strip():
-            raise ValueError(f"Token at index {i} is empty or whitespace-only")
-
-    # Resolve configuration
-    cfg: FeatureConfig
-    if config is None:
-        cfg = FeatureConfig.basic()
-    elif isinstance(config, FeatureConfig):
-        cfg = config
-    elif isinstance(config, Mapping):
-        cfg = FeatureConfig.from_dict(config)
-    else:
-        raise TypeError(f"Invalid config type: {type(config).__name__}")
-
-    total_tokens = len(tokens)
-    seq_features: list[dict[str, str | int | float | bool]] = []
-
-    for i in range(total_tokens):
-        # Base features for current token
-        token_feats = _extract_token_features(tokens[i], cfg)
-
-        # Positional buckets
-        if cfg.use_positional_buckets:
-            token_feats["pos_bucket"] = _position_bucket(i, total_tokens)
-
-        # Utterance boundaries (BOS / EOS)
-        if cfg.include_utterance_boundaries:
-            if i == 0:
-                token_feats["BOS"] = True
-            if i == total_tokens - 1:
-                token_feats["EOS"] = True
-
-        # Contextual window features (negative offsets: past, positive offsets: future)
-        radius = max(1, cfg.window_size)
-        for offset in range(1, radius + 1):
-            # Left context (past tokens)
-            left_idx = i - offset
-            if left_idx >= 0:
-                left_tok = tokens[left_idx]
-                token_feats[f"-{offset}:token"] = left_tok
-                if cfg.use_affixes and len(left_tok) >= 3:
-                    token_feats[f"-{offset}:suff3"] = left_tok[-3:]
-                if cfg.use_question_cues:
-                    token_feats[f"-{offset}:is_wh"] = left_tok in WH_WORDS
-                    token_feats[f"-{offset}:is_aux"] = left_tok in AUXILIARY_VERBS
-                if cfg.use_clause_cues:
-                    token_feats[f"-{offset}:is_conj"] = left_tok in CONJUNCTIONS
-            elif cfg.include_utterance_boundaries and offset == 1:
-                token_feats["-1:BOS"] = True
-
-            # Right context (future tokens)
-            right_idx = i + offset
-            if right_idx < total_tokens:
-                right_tok = tokens[right_idx]
-                token_feats[f"+{offset}:token"] = right_tok
-                if cfg.use_affixes and len(right_tok) >= 3:
-                    token_feats[f"+{offset}:pref3"] = right_tok[:3]
-                if cfg.use_question_cues:
-                    token_feats[f"+{offset}:is_subj"] = right_tok in SUBJECT_PRONOUNS
-            elif cfg.include_utterance_boundaries and offset == 1:
-                token_feats["+1:EOS"] = True
-
-        # Token bigram combinations (w-1_w0 and w0_w+1)
-        if cfg.use_token_ngrams:
-            if i > 0:
-                token_feats["bigram_prev"] = f"{tokens[i - 1]}_{tokens[i]}"
-            if i < total_tokens - 1:
-                token_feats["bigram_next"] = f"{tokens[i]}_{tokens[i + 1]}"
-
-        # Syntactic question cue: auxiliary verb at start or near start followed by subject pronoun
-        if cfg.use_question_cues:
-            # Question inversion: aux + pronoun pattern at current and previous token
-            if i > 0 and tokens[i - 1] in AUXILIARY_VERBS and tokens[i] in SUBJECT_PRONOUNS:
-                token_feats["q_inversion_curr"] = True
-            if i < total_tokens - 1 and tokens[i] in AUXILIARY_VERBS and tokens[i + 1] in SUBJECT_PRONOUNS:
-                token_feats["q_inversion_next"] = True
-            # Utterance starts with Wh-word or Auxiliary verb
-            if tokens[0] in WH_WORDS:
-                token_feats["utt_starts_wh"] = True
-            if tokens[0] in AUXILIARY_VERBS:
-                token_feats["utt_starts_aux"] = True
-
-        # Team extensions (off unless switched on)
-        if cfg.use_filler_cues:
-            token_feats.update(_filler_features(tokens, i))
-        if cfg.use_question_lookback:
-            token_feats.update(_question_lookback_features(tokens, i))
-        if cfg.use_word_clusters:  # __post_init__ guarantees a non-empty map
-            token_feats.update(_cluster_features(tokens, i, cfg.word_clusters))
-
-        seq_features.append(token_feats)
-
-    return seq_features
+    _validate_tokens(tokens)
+    cfg = _resolve_config(config)
+    return [_features_at(tokens, i, cfg) for i in range(len(tokens))]
