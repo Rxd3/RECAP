@@ -22,7 +22,9 @@ The course-baseline settings (HMM smoothing, CRF settings, the plain threshold �
 - Audio, prosody and real speech-recognition (ASR) output: RECAP uses the transcripts only, and there is no
   real-ASR condition (a simulated ASR-noise check is in [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §13).
 - Neural models (for example BiLSTM-CRF or transformers), GPU frameworks and pretrained-model
-  downloads.
+  downloads in the course work. The one exception is an external reference: Member 2's fine-tuned BERT and
+  FLAN-T5 taggers (code and predictions held by Member 2; scored here with the official evaluator,
+  prediction SHA-256s recorded; [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §15).
 - An interactive application beyond the command-line demo (`recap run-demo`).
 
 ## Evidence rules

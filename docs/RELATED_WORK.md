@@ -147,7 +147,8 @@ joint training helps only punctuation inside the utterance (−0.83 for the fact
 Prediction for Unsegmented Transcript Based on Word Vector.* LREC 2016, pp. 654–658.
 <https://aclanthology.org/L16-1103/>
 A DNN or CNN over pre-trained word vectors predicts punctuation on TED talks from the IWSLT data.
-*RECAP differs:* spontaneous podcast speech instead of prepared talks, no pretrained embeddings,
+*RECAP differs:* spontaneous podcast speech instead of prepared talks, no pretrained embeddings in the
+course models (the external-reference neural taggers of [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §15 aside),
 and leakage control by source video.
 
 **Tilk and Alumäe (2016).** Ottokar Tilk, Tanel Alumäe. *Bidirectional Recurrent Neural Network
@@ -164,14 +165,15 @@ periods, and colons and dashes to commas.
 Inference.* IWSLT 2020, pp. 272–279. <https://aclanthology.org/2020.iwslt-1.33/>
 A fine-tuned RoBERTa model with prediction aggregation across windows reaches F1 83.9 on the TED
 benchmark.
-*RECAP differs:* CPU-only classical models with no pretrained weights, on informal speech, with the
+*RECAP differs:* CPU-only classical course models with no pretrained weights (the external-reference neural taggers of [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §15 aside), on
+informal speech, with the
 utterance-final shortcut reported separately.
 
 **Alam, Khan and Alam (2020).** Tanvirul Alam, Akib Khan, Firoj Alam. *Punctuation Restoration
 using Transformer Models for High-and Low-Resource Languages.* W-NUT 2020, pp. 132–142,
 doi:10.18653/v1/2020.wnut-1.18. <https://aclanthology.org/2020.wnut-1.18>
 Transformer models with data augmentation for English and Bangla punctuation restoration.
-*RECAP differs:* no pretrained models; it adds the course's joint punctuation and casing task (mode C, with labels we derived from SponSpeech) and a leakage audit.
+*RECAP differs:* no pretrained models in the course work (the external-reference neural taggers of [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §15 aside); it adds the course's joint punctuation and casing task (mode C, with labels we derived from SponSpeech) and a leakage audit.
 
 ## Team methods
 

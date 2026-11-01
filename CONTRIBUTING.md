@@ -22,7 +22,9 @@ Use [TEAM_TASKS.md](TEAM_TASKS.md) to find owners and reviewers.
 
 ## Environment and validation
 
-Follow the README environment setup. The completed HMM study pins PyYAML in
+Follow the README environment setup. Install the package in editable mode (`pip install -e ".[dev]"`):
+`recap` and the stubs resolve `configs/` and their default folders through the checkout, so a plain
+`pip install .` does not work. The completed HMM study pins PyYAML in
 `requirements-hmm.txt` and records its tested Python version. Add only needed
 dependencies with a clear reason and a compatible tested environment in
 implementation PRs.
