@@ -122,7 +122,7 @@ Every number names its split.
 - **Primary metric:** macro F1 % over the non-O punctuation classes (A, B), or over all 12 joint classes on unmasked positions (C).
 - **Intervals:** 95%, grouped bootstrap by video, 1,000 resamples.
 - **Modes B and C are different tasks;** never rank one against the other.
-- **Selection:** The course-baseline settings (HMM smoothing, CRF settings, the plain threshold τ) were fixed or chosen on validation before any test result. The comparison methods in sections 13–14 of [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) (simulated ASR noise, gap classifier, hidden-event LM, prior-adjusted decoding, question lookback, factored casing) were added on 2026-10-30, after the first test report, in response to a review that cited test results. They are exploratory; their settings were still chosen on validation only, and each test list was predicted once. The CRF settings were c1 = c2 = 0.1 and 100 iterations, not tuned. Each frozen model predicted the primary test lists once. The mode A improved CRF also predicted the full official test once more, for the leakage analysis.
+- **Selection:** The course-baseline settings (HMM smoothing, CRF settings, the plain threshold τ) were fixed or chosen on validation before any test result. The comparison methods in sections 13–14 of [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) (simulated ASR noise, gap classifier, hidden-event LM, prior-adjusted decoding, question lookback, factored casing) were added on 2026-10-30, after the first test report, in response to a review that cited test results. They are exploratory; their settings were still chosen on validation only, and each test list was predicted once. The CRF settings were c1 = c2 = 0.1 and 100 iterations, not tuned. Each frozen model predicted the primary test lists once. The mode A improved CRF also predicted the full official test once more, for the leakage analysis. Member 2's neural taggers (external reference, below) were scored on 2026-11-01, after all test results were public.
 
 **Course baselines on test, primary ID lists** ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §1;
 the shortcut, hidden-event LM and threshold columns are our additions):
@@ -132,16 +132,6 @@ the shortcut, hidden-event LM and threshold columns are our additions):
 | A | 27.48 | 35.12 (32.80–37.31) | 48.38 (46.21–50.62) | 43.65 (41.74–45.59) | 49.92 (47.91–52.01) | **51.34** (49.61–53.06) |
 | B | 11.87 | 16.79 (15.28–18.49) | 22.51 (21.08–23.98) | 20.25 (18.87–21.95) | 22.82 (21.42–24.42) | **24.25** (23.06–25.54) |
 | C | 18.09 | 37.41 (34.56–40.71) | 41.18 (39.42–42.70) | 43.85 (42.13–45.47) | 47.02 (44.97–49.00) | **49.77** (47.26–51.95) |
-
-**Pretrained neural taggers** (Member 2; fine-tuned BERT and FLAN-T5, exploratory and not course baselines; test, [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §15):
-
-| Mode | BERT | FLAN-T5 |
-| --- | --- | --- |
-| A | 76.25 (74.51–77.90) | 76.76 (74.78–78.38) |
-| B | 36.43 (34.41–38.26) | 36.79 (34.32–39.28) |
-| C | not run | not run |
-
-They beat the improved CRF by +26.33 to +26.84 points in A and +13.61 to +13.97 in B (every interval excludes 0). They start from large pretrained corpora, which may overlap with these transcripts.
 
 - **The improved CRF beats the HMM** by +14.80 (A), +6.03 (B) and +9.61 (C) points on test. It beats the basic CRF by +6.27, +2.57 and +3.17, and the basic CRF beats the HMM by +8.53, +3.46 and +6.43. All nine paired intervals exclude 0, and the ranking holds on test_amb.
 - **The CRF gain is mostly COMMA and QUESTION** (mode A test F1, HMM → CRF improved): COMMA 26.28 → 52.52, QUESTION 11.75 → 26.23, PERIOD 67.34 → 71.02.
@@ -163,19 +153,38 @@ They beat the improved CRF by +26.33 to +26.84 points in A and +13.61 to +13.97 
 - **A gap classifier** (the same features without label-to-label transitions) loses 1.27 / 1.70 / 4.74 to the improved CRF on validation (50k sample). The gap is transitions plus training differences: the gap classifier is an L2 logistic regression with C = 1.0 and 200 iterations, while the CRF uses c1 = c2 = 0.1 and 100 iterations.
 - **Question-lookback features** (a wh-word plus an auxiliary anywhere in the last 12 words, and tag questions) raise QUESTION F1 by 6–7 points in every mode on validation (+6.11 / +7.12 / +6.01, every interval excludes 0).
 - **Punctuation and casing as separate models** beat the joint mode C model on the joint metric (+2.08, validation, 50k sample), because a dedicated casing CRF is better at casing. Joint training still helps punctuation inside the utterance.
-- **Data-driven word clusters** (K = 300; validation, 50k sample) raise COMMA F1 by +0.44 in A and +0.25 in B and the mode C joint score by +0.90; the mode A macro score does not move ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §14.6).
-- **Under simulated ASR noise** (15% word errors) the ranking holds: the improved CRF drops from 49.92 to 45.42 in mode A, still well above the HMM (35.16). With a more realistic, substitution-heavy edit mix over three seeds ([ASR_NOISE_V2.md](docs/ASR_NOISE_V2.md)), it drops to 43.46 (43.10–43.88) and the HMM to 33.82; the ranking holds for every seed.
+- **Data-driven word clusters** (K = 300; validation, 50k sample) raise COMMA F1 by +0.44 in A and +0.25 in B and the mode C joint score by +0.90. The mode A macro score does not move, and mode A QUESTION F1 changes by −0.80 (−1.62 to 0.01); at K = 100 that change is −0.92 (−1.75 to −0.11). K was chosen on the same validation lists that report these gains, so they are optimistic ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §14.6).
+- **Under simulated ASR noise** (15% word errors) the ranking holds: the improved CRF drops from 49.92 to 45.42 in mode A, still well above the HMM (35.16). With a more realistic, substitution-heavy edit mix over three seeds ([ASR_NOISE_V2.md](docs/ASR_NOISE_V2.md)), it drops to a mean of 43.46 over three seeds (range 43.10–43.88) and the HMM to 33.82; the ranking holds for every seed.
 
 **Other analyses:**
 
 - **The filler-word cue** leaves macro F1 unchanged on validation, but raises comma F1 slightly: +0.21 (B) and +0.25 (C), with both intervals excluding 0.
 - **Training on the 8-class labels barely changes the 4-class task.** Mode B models projected to mode A differ from their mode A twins by under 0.3 points on validation (HMM +0.10, CRF basic −0.24, CRF improved +0.25) ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §11).
-- **Leakage inflates lexical models.** On test utterances from videos in the training set, the improved CRF scores 67.09 against 49.50 on the leak-free test, while the HMM scores 33.54 against 34.74. See [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §8.
+- **Leakage inflates lexical models.** On test utterances from videos in the training set, the improved CRF scores 67.09 against 49.50 on the leak-free test, while the HMM scores 33.54 against 34.74. The two sets are different videos (35 and 153), and no interval was computed for either difference or for the CRF − HMM contrast, so the gap is descriptive. See [EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §8.
 - **Joint vs punctuation-only (H1, validation, same 19,936 evaluation IDs):** every joint model gains
   on non-final positions (HMM +8.69, CRF basic +1.59, CRF improved +1.16; all intervals exclude 0), but
   PERIOD F1 does not rise consistently, so H1 as stated is not supported. A controlled check retrains the
   mode A HMM and CRF basic on exactly the mode C training IDs and gives the same picture: non-final
   +8.68 (HMM) and +1.36 (CRF basic) ([EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md), H1).
+
+### External reference: pretrained neural taggers
+
+**External reference** (code and predictions held by Member 2; scored here with the official evaluator,
+prediction SHA-256s recorded). Member 2 fine-tuned BERT and FLAN-T5 for modes A and B. They are not course
+baselines and not part of the comparison above. Their training code, prediction files and checkpoint-selection
+records are not in this repository, so these numbers cannot be reproduced from it. Member 2 reports that the
+checkpoints were chosen on primary validation and that each test list was predicted once. Member 5 scored the
+delivered predictions on 2026-11-01 (commit `a5d1c8b`), after all course test results were public. Each score
+file in `results/scores/neural/` records the SHA-256 of the predictions it scored. Test,
+[EVALUATION_RESULTS_CRF.md](docs/EVALUATION_RESULTS_CRF.md) §15:
+
+| Mode | BERT | FLAN-T5 |
+| --- | --- | --- |
+| A | 76.25 (74.51–77.90) | 76.76 (74.78–78.38) |
+| B | 36.43 (34.41–38.26) | 36.79 (34.32–39.28) |
+| C | not run | not run |
+
+They beat the improved CRF by +26.33 to +26.84 points in A and +13.61 to +13.97 in B (every interval excludes 0). They start from large pretrained corpora, which may overlap with these transcripts.
 
 ## Quickstart
 
@@ -191,8 +200,25 @@ recap --help
 ```
 
 The tests use small fixtures and download nothing. `recap --help` lists the 25 commands, and
-`recap <command> --help` prints the options of one. With a trained model (an HMM or hidden-event LM
-`.json`, or a CRF or gap-classifier `.joblib`), restore one sentence:
+`recap <command> --help` prints the options of one. `recap` and the `scripts/` stubs need the editable
+install (`pip install -e .`): the commands find `configs/` and their default folders (such as
+`results/scores/`) through the checkout (`src/punct_restore/paths.py`), so a plain `pip install .` does
+not work.
+
+**Toy run, no download.** Fit a toy HMM on the 10 committed sample utterances (`data/sample/`), then
+restore one sentence with it. The training commands accept only `train` records and the sample rows are
+validation utterances, so the first line writes a copy marked `train` under the ignored folder
+experiments/runs/. The model only shows that the commands work; never report its output.
+
+```powershell
+python -c "import json, pathlib; out = pathlib.Path('experiments/runs/toy'); out.mkdir(parents=True, exist_ok=True); rows = [json.loads(l) for l in open('data/sample/mode_C_validation.jsonl', encoding='utf-8')]; (out / 'train.jsonl').write_text(''.join(json.dumps({**r, 'split': 'train'}) + '\n' for r in rows), encoding='utf-8')"
+recap train-hmm --train experiments/runs/toy/train.jsonl --train-ids data/sample/sample.ids --output-dir experiments/runs/toy/hmm_C --label-mode C --dataset-release-id sponspeech-m1-v2 --preprocessing-version m1-v2 --tokenizer-version m1-v2 --label-policy-version m1-v2 --split-manifest data/sample/sample.ids
+recap run-demo --model-path experiments/runs/toy/hmm_C/model.json --text "hello everyone welcome to our presentation"
+```
+
+The output folder must be new, so delete the folder experiments/runs/toy before running this again. With a real
+trained model (an HMM or hidden-event LM `.json`, or a CRF or gap-classifier `.joblib`), restore one
+sentence the same way:
 
 ```powershell
 recap run-demo --model-path <model.json or model.joblib> --text "hello everyone welcome to our presentation"
@@ -361,7 +387,7 @@ same command):
 | `docs/MODEL_CONTRACT.md` | Model inputs, prediction records and manifests. |
 | `docs/EVALUATION_PROTOCOL.md` | Metrics, views, masks, bootstrap and known gold issues. |
 | `docs/EVALUATION_RESULTS.md` | HMM and shortcut results (validation, test, test_amb). |
-| `docs/HYPOTHESES.md` | The six team hypotheses, written before any CRF result existed (outcomes in the CRF results). |
+| `docs/HYPOTHESES.md` | The six team hypotheses, copied from the team plan, which says they were written before the CRF results (the plan is not in the repo); outcomes in the CRF results. |
 | `docs/EVALUATION_RESULTS_CRF.md` | CRF test results, validation selection, ablations, threshold decoding, filler cue, leakage, runtime, label granularity, multiple comparisons. |
 | `docs/ASR_NOISE_V2.md` | Simulated ASR noise `v2` edit model, multi-seed evaluation tables, `v1` vs `v2` comparison, findings and limits. |
 | `docs/CRF_EXPERIMENTS.md` | The six CRF runs: features, settings, hashes, commands. |

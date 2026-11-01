@@ -129,7 +129,9 @@ manifests are separate sidecars, not prediction manifests.
   CASE-mode CRF, raises `ValueError` `unsupported label mode '<mode>' in model`.
 - **Input cleaning:** `RestorationPipeline(adapter).process_text(text)` splits on whitespace,
   lowercases each token and strips `,.?!:;-"` from its edges. Internal apostrophes and hyphens stay;
-  empty input raises `ValueError`.
+  empty input raises `ValueError`. This is not the release tokenizer (`data.preprocessing.tokenize`), which
+  also keeps an abbreviation's final period in the word and keeps brackets and quotes out of tokens; inputs
+  such as `(hello)` or `mr.` can give tokens that never occur in training.
 - **Prediction:** `ModelAdapter(model_path)` builds one gold-free record
   (`schema_version` 1, `sample_id`, `tokens`) and checks that the model returns one label per token from
   the mode's vocabulary.

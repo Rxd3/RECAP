@@ -89,14 +89,21 @@ configs need affected owners' review.
   derive the target vector from `label_mode`; observable model inputs contain
   tokens and identifiers only. Evaluation retains gold in a separate path.
 - Feature functions accept tokens and declared settings, not whole gold records.
-- The pipeline applies the same preprocessing/tokenization used during training,
-  verifies artifact compatibility and delegates to model adapters.
+- The demo pipeline does not use the training tokenizer. `clean_tokens` in `pipeline.py` splits the raw
+  text on whitespace (`str.split()`), lowercases each piece and strips `,.?!:;-"` from its edges. The
+  release tokens come from `data.preprocessing.tokenize` (lowercased by `model_token`). It also keeps an
+  abbreviation's final period in the word, and it keeps brackets, quotes and dashes in the gaps between
+  words. Inputs such as `(hello)` or `mr.` can therefore give tokens that the release never contains. The
+  pipeline checks artifact compatibility and delegates to model adapters.
 - Evaluation joins by ID, checks order/length/release and applies a named,
   approved projection. It never repairs mismatches by truncating or zipping.
 - Command modules are thin entry points around library code, with repository-relative
   configuration and paths (`paths.REPO_ROOT`). `scripts/` holds only the stubs; see
   [scripts/README.md](../scripts/README.md).
 
-Future neural adapters may implement the common contract; add complexity only
-when an agreed experiment requires it. Separate dataset, artifact and prediction
+Member 2's fine-tuned BERT and FLAN-T5 taggers are an external reference, not part of this package. Their
+code and predictions are held by Member 2. They were scored here with the official evaluator, and the
+SHA-256s of their predictions are recorded in `results/scores/neural/`
+([EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) §15). Future neural adapters may implement the
+common contract; add complexity only when an agreed experiment requires it. Separate dataset, artifact and prediction
 versions preserve the ability to recalculate metrics without retraining.

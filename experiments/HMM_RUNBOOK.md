@@ -23,8 +23,34 @@ git worktree add --detach tmp/member2-evaluation-3044a58 3044a58e777200bcac64e6e
 
 The editable install without dependencies adds the `recap` command (and makes the `scripts/` stubs
 work) without the CRF packages; the HMM commands need only the standard library and PyYAML.
-An HMM study whose `plan.json` was written before the restructure (2026-11-01) must be finalized on
-`main` at `72ebfd1`: the list of hashed HMM source files changed when the code moved into the package.
+**Studies tuned before the restructure.** The list of hashed HMM source files in `plan.json` changed on
+2026-11-01, when the code moved into the package. On this code, `finalize`, `verify-hmm-experiments` and
+`package-hmm-handoff` therefore all refuse a study tuned before then, the delivered
+`hmm-sponspeech-v2-20261029` included ("HMM implementation changed since selection"). A new study runs all
+four steps here. For an old one, run the three steps in a worktree of `main` at `72ebfd1` that holds its own
+copy of the data and the study, because the old scripts read the data through their own checkout and
+write the package under its `artifacts/`. From the repository root:
+
+```powershell
+git worktree add --detach tmp/recap-72ebfd1 72ebfd1
+git worktree add --detach tmp/recap-72ebfd1/tmp/member2-evaluation-3044a58 3044a58e777200bcac64e6e3364922404be359bf
+Copy-Item -Recurse data/processed tmp/recap-72ebfd1/data/processed
+Copy-Item -Recurse data/splits tmp/recap-72ebfd1/data/splits
+New-Item -ItemType Directory -Force tmp/recap-72ebfd1/experiments/runs | Out-Null
+Copy-Item -Recurse experiments/runs/hmm-sponspeech-v2-20261029 tmp/recap-72ebfd1/experiments/runs/
+Set-Location tmp/recap-72ebfd1
+../hmm-env/Scripts/python.exe scripts/run_hmm_experiments.py finalize --run-dir experiments/runs/hmm-sponspeech-v2-20261029 --evaluator-root tmp/member2-evaluation-3044a58
+../hmm-env/Scripts/python.exe scripts/verify_hmm_experiments.py --run-dir experiments/runs/hmm-sponspeech-v2-20261029 --evaluator-root tmp/member2-evaluation-3044a58 --output-dir experiments/runs/hmm-sponspeech-v2-20261029/verification
+../hmm-env/Scripts/python.exe scripts/package_hmm_handoff.py --run-dir experiments/runs/hmm-sponspeech-v2-20261029 --evaluator-root tmp/member2-evaluation-3044a58 --output-dir artifacts/hmm/hmm-sponspeech-v2-20261029
+Set-Location ../..
+```
+
+At `72ebfd1` the files in `scripts/` are the original scripts, not stubs. Each one puts its own checkout's
+`src` first on the import path, so it runs the `72ebfd1` code even though `tmp/hmm-env` has this
+checkout installed. Skip a step whose output already exists; output directories must be new. Copy the
+results back (`experiments/runs/...`, `artifacts/hmm/...`), then remove the evaluator worktree and the
+outer one: `git worktree remove --force tmp/recap-72ebfd1/tmp/member2-evaluation-3044a58`, then
+`git worktree remove --force tmp/recap-72ebfd1`. On Linux/macOS use `cp -r` and `../hmm-env/bin/python`.
 
 Member 5's evaluator is pinned in a separate checkout. It is used directly,
 without replacing it or merging its branch. A/B select non-O punctuation macro F1;

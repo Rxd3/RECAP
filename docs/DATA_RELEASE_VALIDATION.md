@@ -112,5 +112,9 @@ The two halves counted one case differently: in rows 1–50 the agent counted 8 
   with the SHA-256 in the table above. The old `sponspeech-m1-v1-rev2/` folder beside it is superseded.
 - Consumers must select the mode's `default_train` / `primary_eval` IDs explicitly;
   passing a split-manifest path to the existing HMM CLI only hashes that path.
-- The 174-test integration check verifies implementation compatibility. No official
-  full-data HMM training, hyperparameter selection or benchmark scoring was run.
+- At handoff, a 174-test integration check verified implementation compatibility. The full-data
+  HMM and CRF studies, their validation selection and the scoring came later. They are reported in
+  [EVALUATION_RESULTS.md](EVALUATION_RESULTS.md) and [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md).
+- The release notes stored with the release (`RELEASE_NOTES.md` under `data/release_metadata/`) are part of
+  the frozen release and keep the old script path for the rebuild. The stub at that path still works, and
+  `recap prepare-data` runs the same command.

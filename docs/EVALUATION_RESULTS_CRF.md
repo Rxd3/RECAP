@@ -7,6 +7,7 @@ This is Member 5's evaluation of Member 3's six CRF models (modes A, B and C × 
 - The course-baseline settings (HMM smoothing, CRF settings, the plain threshold τ) were fixed or chosen on validation before any CRF test result; the HMM settings were frozen before any test access. Section 5 has the validation tables.
 - The comparison methods in sections 13–14 (simulated ASR noise, gap classifier, hidden-event LM, prior-adjusted decoding, question lookback, factored casing) were added on 2026-10-30, after the first test report, in response to a review that cited test results. They are exploratory; their settings were still chosen on validation only, and each test list was predicted once.
 - Each frozen model predicted the primary test and test_amb lists exactly once. For the supplementary leakage analysis (section 8), the mode A improved model also predicted the full official test once.
+- Member 2's neural taggers (section 15) are an external reference. Member 5 scored them on 2026-11-01, after all test results were public; their checkpoint selection is reported by Member 2 and is not in the repo.
 - Every number comes from an evaluator JSON file in [`results/scores/`](../results/scores/README.md).
 
 ## Provenance
@@ -72,6 +73,7 @@ This is Member 5's evaluation of Member 3's six CRF models (modes A, B and C × 
 5. **Leaked test utterances flatter the CRF, but not the HMM** (section 8).
    - On the 2,706 official test utterances whose video is also in the training set, the improved CRF scores 67.09 against 49.50 on the leak-free test.
    - The HMM scores 33.54 against 34.74.
+   - The two sets are different videos (35 and 153). No interval was computed for either difference or for the CRF − HMM contrast, so this is descriptive.
    - The leakage-controlled split is what keeps the CRF's score honest.
 6. **Casing (mode C, masked):** CRF improved 85.09, and 82.49 without the first word. The HMM scores 79.81 and 76.42.
 7. **The most frequent error is still a missed comma** (COMMA → O): 42.9–44.9% of the improved model's punctuation errors on test.
@@ -86,11 +88,11 @@ This is Member 5's evaluation of Member 3's six CRF models (modes A, B and C × 
    - Question-lookback features add +6.11 / +7.12 / +6.01 QUESTION F1 (validation, 50k sample).
    - Separate punctuation and casing models beat the joint mode C model on the joint metric (+2.08; validation, 50k sample).
    - Data-driven word clusters (K = 300) help commas in A and B and add +0.90 to the mode C joint score; mode A's macro does not move (validation, 50k sample).
-10. **Pretrained neural taggers** (section 15; Member 2, exploratory, not course baselines): fine-tuned BERT and FLAN-T5 reach 76.25 (74.51–77.90) and 76.76 (74.78–78.38) in mode A and 36.43 (34.41–38.26) and 36.79 (34.32–39.28) in mode B on test, +26.33 to +26.84 (A) and +13.61 to +13.97 (B) over the improved CRF. Their pretraining text may overlap with these transcripts.
+10. **Pretrained neural taggers** (section 15; an external reference: code and predictions held by Member 2, scored here with the official evaluator; not course baselines): fine-tuned BERT and FLAN-T5 reach 76.25 (74.51–77.90) and 76.76 (74.78–78.38) in mode A and 36.43 (34.41–38.26) and 36.79 (34.32–39.28) in mode B on test, +26.33 to +26.84 (A) and +13.61 to +13.97 (B) over the improved CRF. Their pretraining text may overlap with these transcripts.
 
 ## Team hypotheses
 
-The team wrote H1–H6 in its execution plan on 2026-10-29, before any CRF result existed; the original text is in [HYPOTHESES.md](HYPOTHESES.md). Each one is reported whatever its outcome.
+H1–H6 are copied verbatim in [HYPOTHESES.md](HYPOTHESES.md) from the team's execution plan, whose status block is dated 2026-10-29 and which says they were written before the CRF results. The plan is not in the repo, so that timing cannot be checked here. Each one is reported whatever its outcome.
 
 | # | Hypothesis | Outcome | Evidence |
 |---|---|---|---|
@@ -393,7 +395,7 @@ Supplementary. The frozen improved CRF and the HMM predicted all 17,695 official
 | Excluded: quality filter (low comma density or TTS source) | canonical | 191 | 27.93 (27.93–27.93) | 43.12 (43.12–43.12) |
 | Official test, all utterances | SponSpeech native | 17,695 | 35.10 (33.15–36.95) | 52.75 (50.79–54.72) |
 
-On utterances from videos it was trained on, the improved CRF scores about 18 points higher than on the leak-free set; the HMM does not gain at all. Reporting the official test as-is would overstate the CRF by about 3 points.
+On utterances from videos it was trained on, the improved CRF scores about 18 points higher than on the leak-free set; the HMM does not gain at all. The two sets are different videos (35 video groups against 153), and no interval was computed for the difference or for the CRF − HMM contrast, so this is a descriptive comparison, not a measured leakage effect. Reporting the official test as-is would overstate the CRF by about 3 points.
 
 ## 9. test_amb (second held-out set)
 
@@ -590,8 +592,8 @@ Every mode gets the same edits, and the mode C casing masks are remapped through
 
 What the table shows:
 - **Under v1, the HMM does not move.** It mostly predicts the utterance-final mark, which word errors inside the utterance do not touch.
-- **In mode A, the improved CRF loses about 1.5 points per 5% of word errors (49.92 → 45.42), and the basic CRF about 0.65 (43.65 → 41.68).** The improved CRF's word-pair features depend on the exact words, so it drops faster.
-- **The ranking holds at every noise level:** CRF improved > CRF basic > HMM in every mode, and at 15% the intervals of the improved CRF and the HMM still do not overlap.
+- **In mode A, the improved CRF loses about 1.5 points per 5% of word errors (49.92 → 45.42), and the basic CRF about 0.65 (43.65 → 41.68).** It drops more than the basic CRF. One possible reason is that its word-pair features depend on the exact words, but that was not tested, and no paired interval was computed for the difference between the two drops.
+- **The ranking holds at every noise level:** CRF improved > CRF basic > HMM in every mode, and at 15% the intervals of the improved CRF and the HMM still do not overlap. These are separate intervals per model, not an interval on the difference.
 
 Files: `results/scores/asr_noise/wer<rate>/`, including `summary.json` with the achieved WER and the edit counts.
 
