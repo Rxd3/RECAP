@@ -74,7 +74,7 @@ def load_label_sets(path: str | os.PathLike[str] = LABEL_SETS_PATH) -> dict[str,
     projection = _field(cfg, "extended_to_standard", dict, file_name)
     joint = [f"{p}{separator}{c}" for p, c in itertools.product(std, case)]
     if (len(std), len(ext), len(case)) != (4, 8, 3) or ext[:4] != std or joint_listed != joint:
-        raise ValueError("configs/label_sets.yaml does not have the agreed 4/8/12 structure")
+        raise ValueError(f"{file_name}: does not have the agreed 4/8/12 structure")
     return {"A": list(std), "B": list(ext), "C": joint, "casing": list(case), "separator": separator,
             "projection": projection}
 

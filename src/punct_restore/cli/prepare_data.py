@@ -39,8 +39,12 @@ def run_build(args: argparse.Namespace) -> None:
     titles = os.path.join(args.raw_root, "video_metadata_oembed.jsonl")
     for path in (manifest, titles):
         if not os.path.exists(path):   # without them the build is not the published release
-            raise ValueError(f"missing {os.path.basename(path)}: copy it from the release's provenance package")
-    sources = ReleaseSources(raw_dir=os.path.join(args.raw_root, extraction.OUTPUT_DIR),
+            raise ValueError(f"{os.path.basename(path)}: not found; copy it from the release's provenance package")
+    raw_dir = os.path.join(args.raw_root, extraction.OUTPUT_DIR)
+    if not os.path.isdir(raw_dir):
+        raise ValueError(
+            f"{extraction.OUTPUT_DIR}: folder not found in the raw root; run recap prepare-data extract first")
+    sources = ReleaseSources(raw_dir=raw_dir,
                              processed_dir=args.processed_dir, splits_dir=args.splits_dir,
                              release_id=args.release_id, raw_manifest=manifest, titles_path=titles)
     result = build_release(sources, log=print)

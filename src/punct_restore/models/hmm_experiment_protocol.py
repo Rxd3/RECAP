@@ -1,16 +1,31 @@
-"""Protocol rules of the HMM experiment: config validation, release authentication and winner selection."""
+"""Protocol rules of the HMM experiment: config validation, the shape check of its files, release authentication and
+winner selection."""
 
 from __future__ import annotations
 
 import json
 import math
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from punct_restore.hashing import sha256_file
-from punct_restore.models.hmm_workflow import checked_release_file, file_identity
+from punct_restore.models.hmm_workflow import checked_release_file, file_identity, read_release_manifest
 from punct_restore.paths import REPO_ROOT as ROOT
+
+# What an experiment config must hold for the steps after validate_config to index it without a KeyError.
+_CONFIG_SCHEMA = {
+    "experiment_id": str,
+    "dataset_release_id": str,
+    "policy_version": str,
+    "processed_dir": str,
+    "splits_dir": str,
+    "label_config": str,
+    "modes": list,
+    "evaluation": {"repository_commit": str},
+}
+_KIND_NAMES = {str: "nonempty text", list: "a JSON list", float: "a number"}
 
 
 def now() -> str:
@@ -34,8 +49,52 @@ def read_json(path: Path) -> Any:
         raise ValueError(f"{path.name}: not valid JSON") from exc
 
 
-def validate_config(config: dict[str, Any]) -> dict[str, Any]:
-    """Reject any experiment config that is not the frozen validation-only protocol."""
+def _has_kind(value: Any, kind: type) -> bool:
+    """Whether a JSON value is of the kind a schema asks for (`object`: anything; `float`: a number but not a bool)."""
+    if kind is str:
+        return isinstance(value, str) and bool(value.strip())
+    if kind is float:
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    return kind is object or isinstance(value, kind)
+
+
+def require_object(name: str, value: Any, schema: Mapping[str, Any], at: str = "") -> dict[str, Any]:
+    """Require `value`, the content of the file `name`, to be a JSON object that holds every key of `schema`.
+
+    A schema value says what its key must hold: `object` anything (the key only has to be there), `str` nonempty
+    text, `float` a number, `list` a JSON list, or a schema of its own for a nested object (`{}`: any object).
+    Other keys are not looked at. `at` is where `value` sits inside the file (a dotted path), for a nested call.
+
+    Raises:
+        ValueError: One line, `<name>: <what is wrong>`, that names the key by its dotted path.
+    """
+    if not isinstance(value, dict):
+        raise ValueError(f"{name}: {at} is not a JSON object" if at else f"{name}: not a JSON object")
+    for key, want in schema.items():
+        place = f"{at}.{key}" if at else key
+        if key not in value:
+            raise ValueError(f"{name}: missing {place}")
+        if isinstance(want, Mapping):
+            require_object(name, value[key], want, place)
+        elif not _has_kind(value[key], want):
+            raise ValueError(f"{name}: {place} is not {_KIND_NAMES[want]}")
+    return value
+
+
+def read_object(path: Path, schema: Mapping[str, Any]) -> dict[str, Any]:
+    """The JSON object a study file holds, checked against `schema` (see `read_json` and `require_object`).
+
+    Every message starts with the file name only.
+    """
+    return require_object(path.name, read_json(path), schema)
+
+
+def validate_config(config: dict[str, Any], source: str = "config") -> dict[str, Any]:
+    """Reject any experiment config that is not the frozen validation-only protocol.
+
+    `source` names the file the config came from. A text value the later steps index that is missing, empty or of
+    another type is a ValueError that starts `<source>: invalid experiment config:` and names the key.
+    """
     if config["schema_version"] != 1 or not config["modes"]:
         raise ValueError("invalid experiment schema/modes")
     if len(set(config["modes"])) != len(config["modes"]) or set(config["modes"]) - set("ABC"):
@@ -66,15 +125,19 @@ def validate_config(config: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("runtime measurement requires warmup and repetitions")
     if runtime["model_threads"] != 1 or config["evaluation"]["zero_division"] != 0:
         raise ValueError("this implementation uses one model thread and zero_division=0")
+    require_object(f"{source}: invalid experiment config", config, _CONFIG_SCHEMA)
     return config
 
 
 def authenticate(config: dict[str, Any], phase: str) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Check the release manifest, split lists and masks the given phase may read."""
+    """Check the release manifest, split lists and masks the given phase may read.
+
+    A release manifest of the wrong shape is a ValueError that starts with its file name.
+    """
     processed = ROOT / config["processed_dir"]
     splits = ROOT / config["splits_dir"]
     manifest_path = processed / "release_manifest.json"
-    manifest = read_json(manifest_path)
+    manifest = read_release_manifest(manifest_path)
     if (
         manifest["release_id"] != config["dataset_release_id"]
         or manifest["policy_version"] != config["policy_version"]

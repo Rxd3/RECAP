@@ -2,7 +2,8 @@
 
 Every case runs a command's ``main(argv)`` in-process on a tiny valid fixture (the fixtures of the command's own
 tests) with exactly one input replaced by a malformed file: JSON nested 100,000 levels deep, bytes that are not UTF-8,
-or a model file that is not a model. The line must name the file and must not show the folder or echo the file's text.
+a model file that is not a model, no file at all, or a folder in the file's place. The line must name the file and must
+not show the folder or echo the file's text.
 A real bug in our own code is not covered here: it must still propagate as a traceback.
 """
 
@@ -61,7 +62,7 @@ TITLE_NOT_TEXT = b'{"status": 200, "video_id": "v1", "title": 5}\n'
 
 class Env(NamedTuple):
     folder: Path  # a fresh folder named FOLDER for this case
-    payload: bytes  # the malformed bytes
+    payload: bytes | str  # the malformed bytes, or "missing" (no file at all) or "folder" (a folder in its place)
     crf: Fixture  # a fitted tiny mode A CRF with its gold file and ID list
 
 
@@ -75,7 +76,12 @@ Builder = Callable[[Env], Run]
 
 
 def _damage(path: Path, env: Env) -> Path:
-    path.write_bytes(env.payload)
+    if isinstance(env.payload, str):
+        path.unlink(missing_ok=True)
+        if env.payload == "folder":
+            path.mkdir()
+    else:
+        path.write_bytes(env.payload)
     return path
 
 
@@ -246,6 +252,7 @@ def _prepare_data_raw(env: Env, damaged: str) -> Run:
     raw.mkdir()
     (raw / "MANIFEST.sha256").write_bytes(b"")
     (raw / "video_metadata_oembed.jsonl").write_bytes(b"")
+    (raw / "sponspeech_text").mkdir()  # the extracted transcripts; without them the build stops before it reads these
     return Run(prepare_data.main, _prepare_data_argv(env), _damage(raw / damaged, env))
 
 
@@ -324,6 +331,9 @@ NOT_A_MODEL_CASES: dict[str, Builder] = {
 TITLES_CASES: dict[str, Builder] = {"prepare-data-build-titles": _prepare_data_titles}
 YAML_CASES: dict[str, Builder] = {"train-crf-train-config-path": _crf_config}
 MANIFEST_CASES: dict[str, Builder] = {"prepare-data-build-manifest": _prepare_data_manifest}
+ALL_CASES: dict[str, Builder] = {**NESTED_CASES, **NOT_UTF8_CASES, **NOT_A_MODEL_CASES, **YAML_CASES, **MANIFEST_CASES}
+# evaluate-models still shows the full path of a missing file or a folder (cli/evaluate_models.py, _os_message)
+KNOWN_PATH_LEAK = pytest.mark.xfail(strict=True, reason="evaluate-models shows the full path of the input")
 PARAMS = [pytest.param(build, payload, id=f"{kind}-{name}")
           for kind, payload, cases in (("nested", NESTED, NESTED_CASES), ("not-utf8", NOT_UTF8, NOT_UTF8_CASES),
                                        ("not-a-model", NOT_A_MODEL, NOT_A_MODEL_CASES),
@@ -334,6 +344,9 @@ PARAMS = [pytest.param(build, payload, id=f"{kind}-{name}")
                                        ("not-utf8", NOT_UTF8, MANIFEST_CASES),
                                        ("title-not-text", TITLE_NOT_TEXT, TITLES_CASES))
           for name, build in cases.items()]
+PARAMS += [pytest.param(build, kind, id=f"{kind}-{name}",
+                        marks=[KNOWN_PATH_LEAK] if name.startswith("evaluate-") else [])
+           for kind in ("missing", "folder") for name, build in ALL_CASES.items()]
 
 
 @pytest.fixture(scope="module")
@@ -349,7 +362,7 @@ def _error_line(capsys: pytest.CaptureFixture[str]) -> str:
 
 @pytest.mark.parametrize(("build", "payload"), PARAMS)
 def test_a_malformed_input_is_one_error_line_naming_the_file(
-    build: Builder, payload: bytes, crf: Fixture, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    build: Builder, payload: bytes | str, crf: Fixture, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     folder = tmp_path / FOLDER
     folder.mkdir()
@@ -378,7 +391,7 @@ def test_prepare_data_build_without_the_manifest_is_one_error_line(
     run = _prepare_data_without_manifest(Env(tmp_path / FOLDER, b"", crf))
     assert run.main(run.argv) == 1
     line = _error_line(capsys)
-    assert line.startswith("error: missing MANIFEST.sha256") and FOLDER not in line
+    assert line.startswith("error: MANIFEST.sha256: not found; copy it from") and FOLDER not in line
 
 
 def test_an_unreadable_companion_manifest_is_a_note_not_a_traceback(

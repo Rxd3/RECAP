@@ -310,7 +310,7 @@ def test_load_model_rejects_unrecognised_json(tmp_path: Path, content: str) -> N
     model_path = tmp_path / "bad.json"
     model_path.write_text(content, encoding="utf-8")
 
-    with pytest.raises(ValueError, match="unsupported model file: bad.json") as error:
+    with pytest.raises(ValueError, match="^bad.json: unsupported model file") as error:
         load_model(model_path)
 
     _assert_one_friendly_line(error, tmp_path)
@@ -331,7 +331,7 @@ def test_load_model_rejects_unrecognised_joblib(tmp_path: Path, bundle: Any) -> 
     model_path = tmp_path / "bad.joblib"
     joblib.dump(bundle, model_path)
 
-    with pytest.raises(ValueError, match="unsupported model file: bad.joblib") as error:
+    with pytest.raises(ValueError, match="^bad.joblib: unsupported model file") as error:
         load_model(model_path)
 
     _assert_one_friendly_line(error, tmp_path)
@@ -341,7 +341,7 @@ def test_load_model_rejects_an_unpicklable_file(tmp_path: Path) -> None:
     model_path = tmp_path / "garbage.pkl"
     model_path.write_bytes(b"this is not a pickle")
 
-    with pytest.raises(ValueError, match="unsupported model file: garbage.pkl") as error:
+    with pytest.raises(ValueError, match="^garbage.pkl: unsupported model file") as error:
         load_model(model_path)
 
     _assert_one_friendly_line(error, tmp_path)
@@ -350,7 +350,7 @@ def test_load_model_rejects_an_unpicklable_file(tmp_path: Path) -> None:
 @pytest.mark.parametrize("name", ["folder.json", "folder.joblib"])
 def test_load_model_reports_a_folder_as_a_folder(tmp_path: Path, name: str) -> None:
     (tmp_path / name).mkdir()
-    with pytest.raises(IsADirectoryError, match=f"model path is a folder, not a file: {name}") as error:
+    with pytest.raises(IsADirectoryError, match=f"^{name}: is a folder, not a file$") as error:
         load_model(tmp_path / name)
     assert tmp_path.name not in str(error.value)
 
@@ -367,7 +367,7 @@ def test_load_model_keeps_an_os_read_error_an_os_error(
 
     monkeypatch.setattr(Path, "read_text", denied)
     monkeypatch.setattr(pipeline.joblib, "load", denied)
-    with pytest.raises(OSError, match=f"cannot read model file {name}: Permission denied") as error:
+    with pytest.raises(OSError, match=rf"^{name}: cannot read model file \(Permission denied\)$") as error:
         load_model(model_path)
     assert "unsupported model file" not in str(error.value) and tmp_path.name not in str(error.value)
 
@@ -398,3 +398,49 @@ def test_run_demo_prints_one_error_line_for_a_casing_helper_crf(
     assert code == 1
     assert len(err.strip().splitlines()) == 1
     assert "CASE" in err
+
+
+# --- a model path that is not a file ---------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("name", ["missing.json", "missing.joblib", "missing.pkl"])
+def test_load_model_missing_file_reads_name_then_reason(tmp_path: Path, name: str) -> None:
+    with pytest.raises(FileNotFoundError) as error:
+        load_model(tmp_path / name)
+    assert str(error.value) == f"{name}: model file not found"
+
+
+def test_load_model_calls_a_folder_without_a_model_suffix_a_folder(tmp_path: Path) -> None:
+    (tmp_path / "models").mkdir()
+    with pytest.raises(IsADirectoryError) as error:
+        load_model(tmp_path / "models")
+    assert str(error.value) == "models: is a folder, not a file"
+
+
+def test_a_missing_label_sets_config_reads_name_then_reason(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError) as error:
+        ModelAdapter(tmp_path / "m.json", config_path=tmp_path / "deep" / "labels.yaml")
+    assert str(error.value) == "labels.yaml: label sets config not found"
+
+
+@pytest.mark.parametrize("name", ["models", "folder.joblib"])
+def test_run_demo_says_a_model_path_that_is_a_folder_is_a_folder(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], name: str
+) -> None:
+    (tmp_path / name).mkdir()
+    assert run_demo.main(["--model-path", str(tmp_path / name), "--text", "hello"]) == 1
+    captured = capsys.readouterr()
+    assert captured.err == f"error: {name}: is a folder, not a file\n" and captured.out == ""
+
+
+@pytest.mark.parametrize(("name", "content", "why"), [
+    ("m.txt", b"x", "expected .json, .joblib or .pkl"),
+    ("m.json", b"{not json", "unreadable"),
+    ("m.json", b"[1]", "unknown model family"),
+])
+def test_run_demo_reads_name_then_reason_for_a_file_that_is_not_a_model(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], name: str, content: bytes, why: str
+) -> None:
+    (tmp_path / name).write_bytes(content)
+    assert run_demo.main(["--model-path", str(tmp_path / name), "--text", "hello"]) == 1
+    assert capsys.readouterr().err == f"error: {name}: unsupported model file ({why})\n"

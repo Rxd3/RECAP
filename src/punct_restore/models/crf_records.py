@@ -12,6 +12,12 @@ from punct_restore.models.crf_modes import CASING_VOCABULARY
 FeatureExtractor = Callable[..., list[dict[str, Any]]]
 
 
+def _check_label_strings(labels: Sequence[Any], field: str, where: str, sample_id: str) -> None:
+    """Raise ValueError unless every label is a string (a dict or list label cannot even be looked up in a set)."""
+    if any(not isinstance(label, str) for label in labels):
+        raise ValueError(f"{where} ({sample_id}): {field} must be a list of strings.")
+
+
 def _checked_case_labels(rec: Mapping[str, Any], where: str, sample_id: str, seq_len: int) -> list[str]:
     """Return the record's case_labels as a new list after checking length and vocabulary."""
     case_labels = rec.get("case_labels")
@@ -21,6 +27,7 @@ def _checked_case_labels(rec: Mapping[str, Any], where: str, sample_id: str, seq
             f"({len(case_labels) if isinstance(case_labels, list) else None}) "
             f"does not match tokens length ({seq_len})."
         )
+    _check_label_strings(case_labels, "case_labels", where, sample_id)
     unknown_cases = [c for c in case_labels if c not in CASING_VOCABULARY]
     if unknown_cases:
         raise ValueError(f"{where} ({sample_id}): unknown case_labels {unknown_cases!r}.")
@@ -38,6 +45,7 @@ def _target_sequence(
             f"({len(punct_labels) if isinstance(punct_labels, list) else None}) "
             f"does not match tokens length ({seq_len})."
         )
+    _check_label_strings(punct_labels, "punct_labels", where, sample_id)
     vocab_set = set(vocabulary)
 
     if label_mode in ("A", "B"):
@@ -56,7 +64,7 @@ def _target_sequence(
         case_labels = _checked_case_labels(rec, where, sample_id, seq_len)
         try:
             target_sequence = join_labels(punct_labels, case_labels, separator="|")
-        except Exception as e:
+        except ValueError as e:  # join_labels raises only this, for sequences of different lengths
             raise ValueError(f"{where} ({sample_id}): failed to derive Mode C targets: {e}") from e
         unknown_joint = [lbl for lbl in target_sequence if lbl not in vocab_set]
         if unknown_joint:

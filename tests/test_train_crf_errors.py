@@ -8,9 +8,11 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import yaml
 from crf_cli_fixtures import create_synthetic_train_jsonl, write_id_file
 
 import punct_restore.cli.train_crf as train_crf
+from punct_restore.data.labeling import LABEL_SETS_PATH
 from punct_restore.models.crf import CRFModel
 
 DEEP_LINE = "[" * 100_000  # json.loads raises RecursionError for it, not a JSON error
@@ -58,7 +60,7 @@ def test_a_missing_input_file_is_one_line_naming_the_file_only(
     (tmp_path / "data.jsonl").unlink()
     assert train_crf.main(argv) == 1
     line = _only_line(capsys.readouterr().err, tmp_path)
-    assert line == "error: Input JSONL file not found: data.jsonl"
+    assert line == "error: data.jsonl: input JSONL not found"
 
 
 def test_a_corrupt_input_line_is_one_line_naming_the_file_only(
@@ -101,6 +103,15 @@ def test_a_training_line_that_is_not_an_object_or_has_no_sample_id_is_one_line_n
     assert train_crf.main(argv) == 1
     line = _only_line(capsys.readouterr().err, tmp_path)
     assert line == "error: data.jsonl line 1: sample_id must be a nonempty string"
+
+
+def test_a_config_file_of_the_wrong_structure_is_named_by_the_given_file_not_the_default(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    config = tmp_path / "c1.yaml"
+    config.write_text(yaml.safe_dump({**yaml.safe_load(Path(LABEL_SETS_PATH).read_text("utf-8")), "casing": ["LOWER"]}),
+                      encoding="utf-8")
+    assert train_crf.main(_train_argv(tmp_path, "--config-path", str(config))) == 1
+    assert capsys.readouterr().err == "error: c1.yaml: does not have the agreed 4/8/12 structure\n"
 
 
 def test_a_bad_hyperparameter_is_a_configuration_error(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -323,3 +334,50 @@ def test_inspect_goes_on_to_the_next_manifest_after_an_unreadable_one(
     captured = capsys.readouterr()
     assert captured.err == "Note: companion manifest unreadable: out.joblib.manifest.json\n"
     assert "Companion Manifest:" in captured.out
+
+
+# --- a folder where a file is expected ------------------------------------------------------------------
+
+
+def _folder_in_place_of(path: Path) -> None:
+    path.unlink(missing_ok=True)
+    path.mkdir()
+
+
+def test_a_training_input_that_is_a_folder_is_named_as_a_folder(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    argv = _train_argv(tmp_path)
+    _folder_in_place_of(tmp_path / "data.jsonl")
+    assert train_crf.main(argv) == 1
+    assert _only_line(capsys.readouterr().err, tmp_path) == "error: data.jsonl: is a folder, not a file"
+
+
+def test_a_predict_input_that_is_a_folder_is_named_as_a_folder(
+        tmp_path: Path, model_file: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    argv = _predict_argv(model_file, tmp_path)
+    _folder_in_place_of(tmp_path / "eval.jsonl")
+    assert train_crf.main(argv) == 1
+    assert _only_line(capsys.readouterr().err, tmp_path) == "error: eval.jsonl: is a folder, not a file"
+
+
+@pytest.mark.parametrize("command", ["predict", "inspect"])
+def test_a_model_that_is_a_folder_is_named_as_a_folder(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str], command: str) -> None:
+    folder = tmp_path / "m.joblib"
+    folder.mkdir()
+    argv = _predict_argv(folder, tmp_path) if command == "predict" else ["inspect", "-m", str(folder)]
+    assert train_crf.main(argv) == 1
+    assert _only_line(capsys.readouterr().err, tmp_path) == "error: m.joblib: is a folder, not a file"
+
+
+@pytest.mark.parametrize("bad", ['{"a": 1}', '["O"]', "3", "null"], ids=["dict", "list", "number", "null"])
+def test_a_label_that_is_not_a_string_is_one_error_line_not_a_traceback(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str], bad: str) -> None:
+    argv = _train_argv(tmp_path)
+    rows = [json.loads(line) for line in (tmp_path / "data.jsonl").read_text(encoding="utf-8").splitlines()]
+    rows[0]["punct_labels"][0] = json.loads(bad)
+    (tmp_path / "data.jsonl").write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+    assert train_crf.main(argv) == 1
+    line = _only_line(capsys.readouterr().err, tmp_path)
+    assert line == "error: training failed: Record at index 0 (sample_0000): punct_labels must be a list of strings."
+    assert not (tmp_path / "out.joblib").exists()

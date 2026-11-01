@@ -32,6 +32,7 @@ from hmm_study_fixtures import (
 )
 
 from punct_restore.data import load_label_sets
+from punct_restore.models import hmm_experiment_verify
 from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_experiment_verify import verify
 
@@ -96,13 +97,15 @@ def _final(study: Study, mode: str, split: str) -> Path:
     return study.run / f"final/mode_{mode}/{split}"
 
 
-def _refused(study: Study, out: Path, pattern: str, *, before_output: bool = False) -> None:
-    """verify() raises a one-line ValueError matching `pattern` and writes no verification.json."""
+def _refused(study: Study, out: Path, pattern: str) -> None:
+    """verify() raises a one-line ValueError matching `pattern` and leaves no output folder behind.
+
+    That holds for a refusal before the audit starts and for one in the middle of it: a half-written audit
+    folder (its reproduced models, say) would make the verification ID unusable and look like a result.
+    """
     with pytest.raises(ValueError, match=pattern):
         verify(study.run, study.evaluator, out)
-    assert not (out / "verification.json").exists()
-    if before_output:
-        assert not out.exists()
+    assert not out.exists()
 
 
 def _resync_sidecar(folder: Path) -> None:
@@ -257,23 +260,42 @@ def test_an_existing_output_folder_is_refused_and_kept_as_it_is(study: Study) ->
     assert {p.name: sha256(p) for p in existing.iterdir()} == before
 
 
+def test_a_folder_that_appears_after_the_check_is_not_removed_by_the_failed_audit(
+    study: Study, out: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The cleanup removes only the folder this run created: another run's folder is theirs to keep."""
+    taken = hmm_experiment_verify.authenticate
+
+    def authenticate_then_lose_the_race(config: dict[str, Any], phase: str) -> Any:
+        found = taken(config, phase)
+        if phase == "finalize":  # the last step before the folder is created
+            out.mkdir()
+            (out / "theirs.txt").write_text("keep", encoding="utf-8")
+        return found
+
+    monkeypatch.setattr(hmm_experiment_verify, "authenticate", authenticate_then_lose_the_race)
+    with pytest.raises(FileExistsError):
+        verify(study.run, study.evaluator, out)
+    assert (out / "theirs.txt").read_text(encoding="utf-8") == "keep"
+
+
 def test_a_run_without_results_is_refused_before_any_output(study: Study, out: Path) -> None:
     """A verifier that audits a run whose finalization never finished fails."""
     (study.run / "results.json").unlink()
-    _refused(study, out, _exact(INCOMPLETE), before_output=True)
+    _refused(study, out, _exact(INCOMPLETE))
 
 
 def test_results_bound_to_another_selection_are_refused_before_any_output(study: Study, out: Path) -> None:
     """A verifier that does not tie results.json to the frozen selection fails."""
     rewrite_json(study.run / "results.json", lambda r: {**r, "selection_sha256": "0" * 64})
-    _refused(study, out, _exact(UNBOUND), before_output=True)
+    _refused(study, out, _exact(UNBOUND))
 
 
 def test_a_moved_plan_is_refused_by_the_gate_before_any_output(study: Study, out: Path) -> None:
     """The frozen-selection gate runs first: a plan edited after selection stops verify before it creates anything."""
     plan = study.run / "plan.json"
     plan.write_text(plan.read_text(encoding="utf-8") + " ", encoding="utf-8")
-    _refused(study, out, _exact(PLAN_MOVED), before_output=True)
+    _refused(study, out, _exact(PLAN_MOVED))
 
 
 @pytest.mark.parametrize(
@@ -289,7 +311,7 @@ def test_a_changed_release_file_is_refused_before_any_output(
     """A verifier that authenticates only one phase's release files (train or held-out) fails one of the two cases."""
     path = study.root / PROCESSED / relative
     path.write_text(path.read_text(encoding="utf-8") + "\n", encoding="utf-8")
-    _refused(study, out, _exact(f"{name}: release checksum mismatch"), before_output=True)
+    _refused(study, out, _exact(f"{name}: release checksum mismatch"))
 
 
 # ---- B. refusals during the audit: sidecar, predictions, scores ----
@@ -365,7 +387,7 @@ def test_a_raised_metric_is_caught_by_the_independent_recount(study: Study, out:
     tampered, recount = (float(x) for x in str(caught.value).split(": ", 1)[1].split(" != "))
     assert tampered == before + 0.25
     assert abs(recount - before) <= 5e-7  # the recount agrees with the stored value to the scorer's six decimals
-    assert not (out / "verification.json").exists()
+    assert not out.exists()
 
 
 def test_a_wrong_scored_sequence_count_is_refused(study: Study, out: Path) -> None:

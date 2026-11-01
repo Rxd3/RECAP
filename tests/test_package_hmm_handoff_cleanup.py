@@ -18,7 +18,7 @@ def paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path]:
     monkeypatch.setattr(
         package_hmm_handoff, "verified_frozen_selection", lambda run, evaluator: ({"config": {}}, {"modes": {}})
     )
-    monkeypatch.setattr(package_hmm_handoff, "read_json", lambda path: {})
+    monkeypatch.setattr(package_hmm_handoff, "read_object", lambda path, schema: {})
     monkeypatch.setattr(package_hmm_handoff, "_check_verification", lambda run, verified: None)
     monkeypatch.setattr(package_hmm_handoff, "_selected_models", lambda *args: {})
     monkeypatch.setattr(package_hmm_handoff, "_model_index", lambda *args: {"fake": True})

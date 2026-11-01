@@ -274,3 +274,43 @@ def test_reconfigure_stdout_leaves_a_stdout_without_reconfigure_alone(monkeypatc
     prediction_io.reconfigure_stdout()
     print("ok")
     assert buffer.getvalue() == "ok\n"
+
+
+# --- require_file --------------------------------------------------------------------------------
+
+
+def test_require_file_accepts_a_file(tmp_path: Path) -> None:
+    (tmp_path / "x.txt").write_text("x", encoding="utf-8")
+    assert prediction_io.require_file(tmp_path / "x.txt", "widget") is None
+
+
+def test_require_file_says_a_folder_is_a_folder_naming_it_only(tmp_path: Path) -> None:
+    (tmp_path / "adir").mkdir()
+    with pytest.raises(IsADirectoryError) as caught:
+        prediction_io.require_file(tmp_path / "adir", "widget")
+    assert str(caught.value) == "adir: is a folder, not a file"
+
+
+def test_require_file_says_what_is_not_found_naming_the_file_only(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError) as caught:
+        prediction_io.require_file(tmp_path / "deep" / "ghost.txt", "widget")
+    assert str(caught.value) == "ghost.txt: widget not found"
+
+
+def test_read_observations_names_a_missing_input_and_a_folder_by_name_only(tmp_path: Path) -> None:
+    (tmp_path / "adir").mkdir()
+    with pytest.raises(FileNotFoundError) as missing:
+        prediction_io.read_observations(tmp_path / "ghost.jsonl", None)
+    assert str(missing.value) == "ghost.jsonl: input JSONL not found"
+    with pytest.raises(IsADirectoryError) as folder:
+        prediction_io.read_observations(tmp_path / "adir", None)
+    assert str(folder.value) == "adir: is a folder, not a file"
+
+
+def test_read_observations_never_puts_the_folder_in_its_message(tmp_path: Path) -> None:
+    (tmp_path / "in.jsonl").write_text('{"sample_id": "a", "tokens": ["x"]}\n', encoding="utf-8")
+    (tmp_path / "want.ids").write_text("a\nb\n", encoding="utf-8")
+    with pytest.raises(ValueError) as caught:
+        prediction_io.read_observations(tmp_path / "in.jsonl", tmp_path / "want.ids")
+    assert str(caught.value).startswith("Missing 1 selected IDs from input file in.jsonl.")
+    assert str(tmp_path) not in str(caught.value)

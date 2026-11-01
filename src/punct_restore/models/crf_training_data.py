@@ -10,7 +10,7 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-from punct_restore.prediction_io import parse_sample_record, read_ids
+from punct_restore.prediction_io import parse_sample_record, read_ids, require_file
 
 
 def _check_selected_record(rec: dict[str, Any], sample_id: str, expected_mode: str) -> None:
@@ -75,7 +75,7 @@ def _scan_selected_records(
         sample_id = rec["sample_id"]
         if sample_id in target_id_set:  # selected
             if sample_id in found_ids:
-                raise ValueError(f"Duplicate sample_id {sample_id!r} encountered in source file {input_path}")
+                raise ValueError(f"Duplicate sample_id {sample_id!r} encountered in source file {input_path.name}")
             found_ids.add(sample_id)
             _check_selected_record(rec, sample_id, expected_mode)
             selected_records.append(rec)
@@ -98,8 +98,7 @@ def load_and_filter_training_records(
     - Token and label sequence lengths match exactly.
     - Source sequence order is preserved.
     """
-    if not input_path.is_file():
-        raise FileNotFoundError(f"Input JSONL file not found: {input_path}")
+    require_file(input_path, "input JSONL")
 
     frozen_ids = read_ids(ids_path)
     target_id_set = set(frozen_ids)
@@ -111,7 +110,7 @@ def load_and_filter_training_records(
     if missing_ids:
         sample_missing = sorted(missing_ids)[:5]
         raise ValueError(
-            f"Missing {len(missing_ids)} selected IDs from input file {input_path}. "
+            f"Missing {len(missing_ids)} selected IDs from input file {input_path.name}. "
             f"Examples: {sample_missing}"
         )
 

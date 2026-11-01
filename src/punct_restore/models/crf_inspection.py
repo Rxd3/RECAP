@@ -11,6 +11,8 @@ from typing import Any, NamedTuple
 
 import joblib
 
+from punct_restore.prediction_io import require_file
+
 RULE = "=" * 70
 _SECTIONS = (
     ("hyperparameters", "Hyperparameters:"),
@@ -29,9 +31,9 @@ class Inspection(NamedTuple):
 
 
 def _load_artifact(model_path: Path) -> dict[str, Any]:
-    """The bundle dict of the artifact; FileNotFoundError if absent, ValueError if unreadable or not a dict."""
-    if not model_path.is_file():
-        raise FileNotFoundError(f"{model_path.name}: artifact not found")
+    """The bundle dict of the artifact; FileNotFoundError if absent, IsADirectoryError if a folder, ValueError if
+    unreadable or not a dict."""
+    require_file(model_path, "artifact")
     try:  # joblib is unpickling: the artifact is a local file the user chose to inspect
         bundle = joblib.load(model_path)
     except Exception as e:  # broad on purpose: unpickling a corrupt or foreign file can raise any exception type

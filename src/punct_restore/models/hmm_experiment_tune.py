@@ -112,7 +112,7 @@ def _load_config(config_path: Path) -> dict[str, Any]:
     starts with the file name.
     """
     try:
-        return validate_config(yaml.safe_load(config_path.read_text(encoding="utf-8")))
+        return validate_config(yaml.safe_load(config_path.read_text(encoding="utf-8")), config_path.name)
     except UnicodeDecodeError as exc:
         raise ValueError(f"{config_path.name}: not valid UTF-8") from exc
     except (KeyError, TypeError, yaml.YAMLError, RecursionError) as exc:  # RecursionError: nested too deeply

@@ -117,3 +117,19 @@ def test_the_bundle_is_built_from_to_bundle_and_the_public_settings_only() -> No
     assert list(bundle) == [
         "schema_version", "model_family", "model_name", "label_mode", "vocabulary", "hyperparameters",
         "feature_config", "training_metadata", "environment", "backend_state"]
+
+
+# --- an artifact path that is not a file ---------------------------------------------------------------------
+
+
+def test_load_model_names_a_missing_artifact_by_file_name_only(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError) as caught:
+        CRFModel.load_model(tmp_path / "deep" / "ghost.joblib")
+    assert str(caught.value) == "ghost.joblib: model artifact not found"
+
+
+def test_load_model_says_a_folder_is_a_folder(tmp_path: Path) -> None:
+    (tmp_path / "m.joblib").mkdir()
+    with pytest.raises(IsADirectoryError) as caught:
+        CRFModel.load_model(tmp_path / "m.joblib")
+    assert str(caught.value) == "m.joblib: is a folder, not a file"

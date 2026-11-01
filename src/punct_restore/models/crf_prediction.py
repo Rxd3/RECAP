@@ -17,6 +17,7 @@ from punct_restore.prediction_io import (
     check_new_output_paths,
     one_line_error,
     read_observations,
+    require_file,
     write_prediction_outputs,
 )
 
@@ -41,10 +42,8 @@ def check_predict_paths(
 ) -> None:
     """Raise PredictionFailed for a missing, unreadable or clashing path; files are named by name only."""
     try:
-        if not model_path.is_file():
-            raise PredictionFailed(f"{model_path.name}: model artifact not found")
-        if not input_path.is_file():
-            raise PredictionFailed(f"{input_path.name}: input JSONL not found")
+        require_file(model_path, "model artifact")
+        require_file(input_path, "input JSONL")
         check_new_output_paths(
             {"--output": output_path, "--manifest-out": manifest_path},
             {"--input": input_path, "--model": model_path, "--ids": ids_path},

@@ -7,29 +7,34 @@ from typing import Any
 
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm_experiment_identity import check_evaluator, implementation
-from punct_restore.models.hmm_experiment_protocol import choose, read_json, validate_config
+from punct_restore.models.hmm_experiment_protocol import choose, read_json, read_object, require_object, validate_config
 
-# What the gate reads from the two files it binds together; the ones in _OBJECTS must be JSON objects themselves.
-_PLAN_KEYS = ("config", "implementation", "evaluator")
-_SELECTION_KEYS = ("plan_sha256", "modes", "used_test_labels", "training_includes_validation", "mode_selection_sha256")
-_OBJECTS = ("config", "modes", "mode_selection_sha256")
-
-
-def _require_shape(name: str, value: Any, keys: tuple[str, ...]) -> None:
-    """Require ``value``, the content of the file ``name``, to be a JSON object that holds every one of ``keys``."""
-    if not isinstance(value, dict):
-        raise ValueError(f"{name}: not a JSON object")
-    for key in keys:
-        if key not in value:
-            raise ValueError(f"{name}: missing {key}")
-        if key in _OBJECTS and not isinstance(value[key], dict):
-            raise ValueError(f"{name}: {key} is not a JSON object")
+# What the gate reads from the files it binds together; `{}` is a key that must hold a JSON object.
+_PLAN = {"config": {}, "implementation": object, "evaluator": object}
+_SELECTION = {
+    "plan_sha256": object,
+    "modes": {},
+    "used_test_labels": object,
+    "training_includes_validation": object,
+    "mode_selection_sha256": {},
+}
+_WINNER = {"model": str, "model_sha256": str}
+_MODE_SELECTION = {"candidates": list, "selected": {}}
+_CANDIDATE = {
+    "smoothing": float,
+    "min_token_count": float,
+    "validation_primary": float,
+    "model": str,
+    "model_sha256": str,
+    "validation_report_sha256": str,
+}
+_VALIDATION_REPORT = {"primary": {"value": object}}
 
 
 def _checked_config(plan: dict[str, Any]) -> dict[str, Any]:
     """The plan's config, validated; a missing key or a wrong type inside it is a ValueError naming plan.json."""
     try:
-        return validate_config(plan["config"])
+        return validate_config(plan["config"], "plan.json")
     except (KeyError, TypeError) as exc:
         raise ValueError(f"plan.json: invalid experiment config: {exc}") from exc
 
@@ -44,6 +49,12 @@ def _check_gate(run: Path, selection: dict[str, Any], config: dict[str, Any]) ->
         or selection["training_includes_validation"]
     ):
         raise ValueError("all mode selections must freeze on validation before test access")
+    modes = config["modes"]
+    require_object(
+        "selection.json",
+        selection,
+        {"modes": dict.fromkeys(modes, _WINNER), "mode_selection_sha256": dict.fromkeys(modes, str)},
+    )
 
 
 def _check_candidate(run: Path, candidate: dict[str, Any]) -> None:
@@ -53,7 +64,7 @@ def _check_candidate(run: Path, candidate: dict[str, Any]) -> None:
     if (
         sha256_file(model_path) != candidate["model_sha256"]
         or sha256_file(report_path) != candidate["validation_report_sha256"]
-        or read_json(report_path)["primary"]["value"] != candidate["validation_primary"]
+        or read_object(report_path, _VALIDATION_REPORT)["primary"]["value"] != candidate["validation_primary"]
     ):
         raise ValueError("candidate model/report differs from frozen validation evidence")
 
@@ -74,7 +85,9 @@ def _check_mode(
     """Require one mode's selection file, candidates and winner to be what was frozen."""
     if sha256_file(run / f"mode_{mode}/selection.json") != selection["mode_selection_sha256"][mode]:
         raise ValueError("mode selection changed after freezing")
-    mode_selection = read_json(run / f"mode_{mode}/selection.json")
+    mode_selection = read_object(run / f"mode_{mode}/selection.json", _MODE_SELECTION)
+    for number, candidate in enumerate(mode_selection["candidates"]):
+        require_object("selection.json", candidate, _CANDIDATE, f"candidates.{number}")
     _check_search_complete(config, mode_selection)
     for candidate in mode_selection["candidates"]:
         _check_candidate(run, candidate)
@@ -88,14 +101,14 @@ def verified_frozen_selection(run: Path, evaluator: Path) -> tuple[dict[str, Any
     """Check a run's frozen plan and selection against the code, evaluator and files on disk.
 
     Returns (plan, selection) once every part is as it was when the selection was frozen; raises ValueError for
-    the first part that is not. A plan or selection of the wrong shape (the plan's config included) is a ValueError
-    that starts with its file name; only these reads are relabelled, so a missing key further on is a bug and
-    propagates.
+    the first part that is not. A file of the wrong shape (the plan, its config, the selection, a mode's selection
+    or a validation report) is a ValueError that starts with its file name; a missing key anywhere else is a bug
+    and propagates.
     """
     plan = read_json(run / "plan.json")
     selection = read_json(run / "selection.json")
-    _require_shape("plan.json", plan, _PLAN_KEYS)
-    _require_shape("selection.json", selection, _SELECTION_KEYS)
+    require_object("plan.json", plan, _PLAN)
+    require_object("selection.json", selection, _SELECTION)
     config = _checked_config(plan)
     _check_gate(run, selection, config)
     if implementation() != plan["implementation"]:

@@ -11,6 +11,7 @@ import joblib
 import sklearn_crfsuite
 
 from punct_restore.models.crf_modes import LABEL_MODES
+from punct_restore.prediction_io import require_file
 
 if TYPE_CHECKING:  # crf.py imports this module at run time
     from punct_restore.models.crf import CRFModel
@@ -59,11 +60,11 @@ def read_bundle(path: str | Path) -> dict[str, Any]:
 
     Raises:
         FileNotFoundError: If the artifact path does not exist.
+        IsADirectoryError: If the artifact path is a folder.
         ValueError: If the artifact is unreadable or its schema, family or metadata is incompatible.
     """
     load_path = Path(path)
-    if not load_path.is_file():
-        raise FileNotFoundError(f"Model artifact not found at {load_path}")
+    require_file(load_path, "model artifact")
 
     try:
         bundle = joblib.load(load_path)  # joblib is pickle: artifacts are this project's own saved models only

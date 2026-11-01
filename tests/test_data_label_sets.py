@@ -135,3 +135,13 @@ def test_a_file_that_cannot_be_read_as_yaml_is_one_value_error_naming_the_file_o
     with pytest.raises(ValueError) as problem:
         labeling.load_label_sets(path)
     assert str(problem.value) == f"broken.yaml: {reason}"  # the YAML mark would show the whole path
+
+
+def test_a_wrong_structure_names_the_given_file_not_the_default_one(tmp_path: Path) -> None:
+    folder = tmp_path / "secretfolder"
+    folder.mkdir()
+    path = folder / "c1.yaml"
+    path.write_text(yaml.safe_dump(_with(_config(), ["LOWER"], "casing")), encoding="utf-8")
+    with pytest.raises(ValueError) as problem:
+        labeling.load_label_sets(path)
+    assert str(problem.value) == "c1.yaml: does not have the agreed 4/8/12 structure"

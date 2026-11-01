@@ -22,6 +22,7 @@ import zlib
 from collections.abc import Callable, Iterator, Mapping
 from pathlib import Path
 
+from ..prediction_io import require_file
 from ..progress import Log, discard_log
 
 ARCHIVE_URL = "https://storage.googleapis.com/sponspeech/sponspeech.tar.gz"
@@ -183,6 +184,7 @@ def extract_ranges(raw_root: str | os.PathLike[str], url: str = ARCHIVE_URL,
 def extract_archive(archive_path: str | os.PathLike[str], raw_root: str | os.PathLike[str],
                     log: Log = discard_log) -> int:
     """Fallback: stream a fully downloaded sponspeech.tar.gz and keep only the non-audio members."""
+    require_file(archive_path, "archive")
     size = os.path.getsize(archive_path)
     if size != ARCHIVE_BYTES:
         raise SourceChanged(f"{Path(archive_path).name}: has {size} bytes; expected {ARCHIVE_BYTES}")

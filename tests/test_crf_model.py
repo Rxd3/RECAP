@@ -18,6 +18,7 @@ from pathlib import Path
 import pytest
 
 from punct_restore.features.crf_features import FeatureConfig
+from punct_restore.models import crf_records
 from punct_restore.models.crf import CRFModel, get_mode_vocabulary
 
 # -------------------------------------------------------------------------------------------------
@@ -467,3 +468,35 @@ def test_fit_records_optional_provenance_metadata(synth_mode_a_data):
     assert "provenance" in model._training_metadata
     assert model._training_metadata["provenance"]["dataset_release"] == "sponspeech-m1-v2"
     assert model._training_metadata["provenance"]["run_id"] == "exp_01"
+
+
+@pytest.mark.parametrize("bad", [{"a": 1}, ["O"], 3, None], ids=["dict", "list", "number", "null"])
+@pytest.mark.parametrize("mode", ["A", "B", "C"])
+def test_fit_rejects_a_punct_label_that_is_not_a_string_naming_the_sample(mode, bad):
+    record = {"sample_id": "s7", "tokens": ["hello", "world"], "punct_labels": ["O", bad],
+              "case_labels": ["LOWER", "LOWER"]}
+    with pytest.raises(ValueError, match=r"^Record at index 0 \(s7\): punct_labels must be a list of strings"):
+        CRFModel(label_mode=mode).fit([record])
+
+
+def _mode_c_record() -> dict:
+    return {"sample_id": "s1", "tokens": ["hello", "world"], "punct_labels": ["O", "PERIOD"],
+            "case_labels": ["FIRST_UPPER", "LOWER"]}
+
+
+def test_a_value_error_from_join_labels_names_the_sample(monkeypatch):
+    def refuse(*_args, **_kwargs):
+        raise ValueError("lengths differ")
+
+    monkeypatch.setattr(crf_records, "join_labels", refuse)
+    with pytest.raises(ValueError, match=r"\(s1\): failed to derive Mode C targets: lengths differ"):
+        CRFModel(label_mode="C").fit([_mode_c_record()])
+
+
+def test_a_bug_in_join_labels_is_not_reported_as_bad_data(monkeypatch):
+    def bug(*_args, **_kwargs):
+        raise RuntimeError("a bug")
+
+    monkeypatch.setattr(crf_records, "join_labels", bug)
+    with pytest.raises(RuntimeError, match="a bug"):
+        CRFModel(label_mode="C").fit([_mode_c_record()])

@@ -61,8 +61,7 @@ def test_an_archive_that_is_a_folder_is_one_error_line_naming_the_folder_only(
     folder = tmp_path / "adir"
     folder.mkdir()
     assert prepare_data.main(["extract", "--raw-root", str(tmp_path), "--archive", str(folder)]) == 1
-    line = _one_error_line(capsys.readouterr().err)
-    assert line.startswith("error: adir: ") and str(tmp_path) not in line
+    assert _one_error_line(capsys.readouterr().err) == "error: adir: is a folder, not a file"
 
 
 def test_a_changed_source_is_one_error_line(
@@ -84,15 +83,40 @@ def test_a_bug_in_extraction_is_not_reported_as_bad_input(tmp_path: Path, monkey
         prepare_data.main(["extract", "--raw-root", str(tmp_path)])
 
 
+def _build_argv(tmp_path: Path) -> list[str]:
+    return ["build", "--raw-root", str(tmp_path / "raw"), "--release-id", "r", "--processed-dir", str(tmp_path / "p"),
+            "--splits-dir", str(tmp_path / "s")]
+
+
 def test_build_without_the_manifest_exits_1_with_one_line_naming_the_file_only(tmp_path: Path) -> None:
     done = subprocess.run(
-        [sys.executable, "-m", "punct_restore.cli.prepare_data", "build", "--raw-root", str(tmp_path / "raw"),
-         "--release-id", "r", "--processed-dir", str(tmp_path / "p"), "--splits-dir", str(tmp_path / "s")],
+        [sys.executable, "-m", "punct_restore.cli.prepare_data", *_build_argv(tmp_path)],
         capture_output=True, text=True, check=False)
     assert done.returncode == 1
-    assert done.stdout == "" and len(done.stderr.splitlines()) == 1
-    assert done.stderr.startswith("error: missing MANIFEST.sha256") and str(tmp_path) not in done.stderr
-    assert "Traceback" not in done.stderr
+    assert done.stdout == "" and "Traceback" not in done.stderr and str(tmp_path) not in done.stderr
+    assert done.stderr == "error: MANIFEST.sha256: not found; copy it from the release's provenance package\n"
+
+
+def test_build_without_the_titles_file_names_it_and_says_where_to_get_it(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    (tmp_path / "raw").mkdir()
+    (tmp_path / "raw" / "MANIFEST.sha256").write_text("", encoding="utf-8")
+    assert prepare_data.main(_build_argv(tmp_path)) == 1
+    assert capsys.readouterr().err == (
+        "error: video_metadata_oembed.jsonl: not found; copy it from the release's provenance package\n")
+
+
+def test_build_without_the_extracted_transcripts_names_the_folder_and_says_to_extract_first(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    (raw / "MANIFEST.sha256").write_text("", encoding="utf-8")
+    (raw / "video_metadata_oembed.jsonl").write_text("", encoding="utf-8")
+    assert prepare_data.main(_build_argv(tmp_path)) == 1
+    captured = capsys.readouterr()
+    assert captured.err == (
+        "error: sponspeech_text: folder not found in the raw root; run recap prepare-data extract first\n")
+    assert captured.out == "" and not (tmp_path / "p").exists() and not (tmp_path / "s").exists()
 
 
 def test_extract_ranges_progress_lines_are_printed_before_the_verdict(
@@ -128,6 +152,7 @@ def test_build_hands_one_release_sources_and_its_progress_lines_to_the_user(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     (tmp_path / "MANIFEST.sha256").write_text("", encoding="utf-8")
     (tmp_path / "video_metadata_oembed.jsonl").write_text("", encoding="utf-8")
+    (tmp_path / "sponspeech_text").mkdir()
     received: list[ReleaseSources] = []
 
     def build_release(sources: ReleaseSources, *, log: Callable[[str], None]) -> dict:

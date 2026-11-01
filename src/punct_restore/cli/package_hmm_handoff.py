@@ -8,12 +8,13 @@ import json
 import shutil
 import sys
 import zipfile
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
 from punct_restore.hashing import sha256_file, sha256_stream
 from punct_restore.models.hmm_experiment_frozen import verified_frozen_selection
-from punct_restore.models.hmm_experiment_protocol import now, read_json
+from punct_restore.models.hmm_experiment_protocol import now, read_object
 from punct_restore.models.hmm_workflow import code_identity, file_identity, write_json
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import one_line_error
@@ -46,6 +47,28 @@ _HANDOFF_INSTRUCTIONS = (
 )
 
 
+_SPLITS = ("validation", "test", "test_amb")
+# What the packager reads from the study files besides the frozen plan and selection.
+_SCORED = {"primary": object, "counts": object}
+_RUN_RECORD = {"training_summary": {}}
+
+
+def _verification_schema(modes: Iterable[str]) -> dict[str, Any]:
+    """The keys of verification.json that the packager reads, with one audit entry for each mode."""
+    return {
+        "result": object,
+        "plan": {"sha256": str},
+        "selection": {"sha256": str},
+        "modes": {mode: {"candidates_independently_checked": object} for mode in modes},
+    }
+
+
+def _results_schema(modes: Iterable[str]) -> dict[str, Any]:
+    """The keys of results.json that the packager reads, with one summary for each mode and split."""
+    summary = {"primary": object, "counts": object, "shortcut_primary": object, "evaluation_sha256": str}
+    return {"results": {mode: dict.fromkeys(_SPLITS, summary) for mode in modes}}
+
+
 def _check_verification(run: Path, verified: dict[str, Any]) -> None:
     """Require a passing independent verification bound to this plan and selection."""
     if (
@@ -58,10 +81,10 @@ def _check_verification(run: Path, verified: dict[str, Any]) -> None:
 
 def _check_split_summaries(run: Path, results: dict[str, Any], mode: str) -> None:
     """Require the results summary of every split to match the actual scored reports."""
-    for split in ["validation", "test", "test_amb"]:
+    for split in _SPLITS:
         folder = run / f"final/mode_{mode}/{split}"
-        metric = read_json(folder / "evaluation.json")
-        baseline = read_json(folder / "shortcut.evaluation.json")
+        metric = read_object(folder / "evaluation.json", _SCORED)
+        baseline = read_object(folder / "shortcut.evaluation.json", _SCORED)
         summary = results["results"][mode][split]
         if (
             summary["primary"] != metric["primary"]
@@ -92,7 +115,7 @@ def _selected_models(
         selected[mode] = {
             **winner,
             "path": "experiment/" + winner["model"],
-            "training_summary": read_json((run / winner["model"]).parent / "run.json")[
+            "training_summary": read_object((run / winner["model"]).parent / "run.json", _RUN_RECORD)[
                 "training_summary"
             ],
         }
@@ -206,10 +229,11 @@ def _verify_archive(archive_path: Path, hashes: dict[str, str], sums: str) -> No
 
 def package(run: Path, evaluator: Path, output: Path) -> dict[str, Any]:
     plan, selection = verified_frozen_selection(run, evaluator)
-    verified = read_json(run / "verification/verification.json")
+    modes = list(selection["modes"])
+    verified = read_object(run / "verification/verification.json", _verification_schema(modes))
     _check_verification(run, verified)
     config = plan["config"]
-    results = read_json(run / "results.json")
+    results = read_object(run / "results.json", _results_schema(modes))
     selected = _selected_models(run, config, selection, verified, results)
     run, output, archive_path = _bundle_paths(run, output)
     output.mkdir(parents=True)  # FileExistsError if it appeared since the check: then it is not ours to remove

@@ -68,6 +68,21 @@ def read_frozen_ids(ids_path: Path) -> list[str]:
     return read_ids(ids_path)
 
 
+def require_file(path: str | os.PathLike[str], what: str) -> None:
+    """Raise unless ``path`` is a file, in one line that names it by name only (the folder is never shown).
+
+    Raises:
+        IsADirectoryError: ``<name>: is a folder, not a file`` for a folder.
+        FileNotFoundError: ``<name>: <what> not found`` for anything else that is not a file.
+    """
+    path = Path(path)
+    name = Path(os.path.abspath(path)).name or str(path)
+    if path.is_dir():
+        raise IsADirectoryError(f"{name}: is a folder, not a file")
+    if not path.is_file():
+        raise FileNotFoundError(f"{name}: {what} not found")
+
+
 def parse_json_object(line: str, where: str) -> dict[str, Any]:
     """The JSON object on ``line``; ``where`` (file name and line number) starts the one-line ValueError."""
     try:
@@ -134,11 +149,11 @@ def read_observations(input_path: Path, ids_path: Path | None) -> list[dict[str,
 
     Raises:
         FileNotFoundError: If the input JSONL or the ID list does not exist.
+        IsADirectoryError: If the input JSONL is a folder.
         ValueError: On corrupt, duplicate or invalid records (a bad line reads ``<file> line N: <reason>``, a file
             that is not UTF-8 ``<file>: not valid UTF-8``), or IDs missing from the input.
     """
-    if not input_path.is_file():
-        raise FileNotFoundError(f"Input JSONL not found at {input_path}")
+    require_file(input_path, "input JSONL")
     target_ids = read_ids(ids_path) if ids_path is not None else None
     target_set = set(target_ids) if target_ids is not None else None
 
@@ -156,7 +171,7 @@ def read_observations(input_path: Path, ids_path: Path | None) -> list[dict[str,
         missing_ids = set(target_ids) - {o["sample_id"] for o in observations}
         if missing_ids:
             raise ValueError(
-                f"Missing {len(missing_ids)} selected IDs from input file {input_path}. "
+                f"Missing {len(missing_ids)} selected IDs from input file {input_path.name}. "
                 f"Examples: {sorted(missing_ids)[:5]}"
             )
         if len(observations) != len(target_ids):

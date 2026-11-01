@@ -218,3 +218,29 @@ def test_write_json_leaves_no_half_written_file_when_the_value_is_not_valid_json
     with pytest.raises(ValueError, match="Out of range float"):
         write_json(out, {"a": 1, "x": float("nan")})
     assert not out.exists()
+
+
+def _refused_split_manifest(tmp_path, content):
+    """verify_training_release's ValueError text when the release's split checksum file is replaced by `content`."""
+    _, processed, _, _, opts = release_args(tmp_path)
+    opts["split_manifest"].write_bytes(content(opts["split_manifest"].read_bytes()))
+    with pytest.raises(ValueError) as refused:
+        verify_training_release(processed / "release_manifest.json", ReleaseInputs(**opts))
+    return str(refused.value)
+
+
+def test_a_split_checksum_manifest_that_is_not_utf8_is_a_value_error_naming_the_file(tmp_path):
+    assert _refused_split_manifest(tmp_path, lambda good: b"\xff\xfe") == "SHA256SUMS: not valid UTF-8"
+
+
+@pytest.mark.parametrize("tail", [b"oops\n", b"\n", b"0" * 64 + b"  \n"], ids=["no-separator", "blank", "no-path"])
+def test_a_split_checksum_line_of_another_shape_is_a_value_error_naming_the_file_and_line(tmp_path, tail):
+    """The line number counts from 1 and points at the bad line, not at the first one."""
+    lines = []
+
+    def append(good):
+        lines.extend(good.splitlines())
+        return good + tail
+
+    message = _refused_split_manifest(tmp_path, append)
+    assert message == f"SHA256SUMS line {len(lines) + 1}: expected '<sha256>  <path>'"

@@ -84,8 +84,14 @@ def test_fit_does_not_mutate_the_records(mode_c_records):
         pytest.param(lambda r: r.update(case_labels=["LOWER"] * 9), "case_labels length", id="long"),
         pytest.param(lambda r: r.update(case_labels=["LOWER", "MIXED", "LOWER", "LOWER"]), "unknown case_labels",
                      id="unknown"),
-        pytest.param(lambda r: r.update(case_labels=["LOWER", 1, "LOWER", "LOWER"]), "unknown case_labels",
-                     id="non-string"),
+        pytest.param(lambda r: r.update(case_labels=["LOWER", 1, "LOWER", "LOWER"]),
+                     "case_labels must be a list of strings", id="number"),
+        pytest.param(lambda r: r.update(case_labels=["LOWER", {"a": 1}, "LOWER", "LOWER"]),
+                     "case_labels must be a list of strings", id="dict"),
+        pytest.param(lambda r: r.update(case_labels=["LOWER", ["LOWER"], "LOWER", "LOWER"]),
+                     "case_labels must be a list of strings", id="list"),
+        pytest.param(lambda r: r.update(case_labels=["LOWER", None, "LOWER", "LOWER"]),
+                     "case_labels must be a list of strings", id="null"),
     ],
 )
 def test_bad_case_labels_are_a_value_error(mode_c_records, edit, message):

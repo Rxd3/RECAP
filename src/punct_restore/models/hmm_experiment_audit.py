@@ -12,7 +12,7 @@ from typing import Any
 from punct_restore.data.labeling import load_label_sets
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm import HMMModel
-from punct_restore.models.hmm_experiment_protocol import read_json
+from punct_restore.models.hmm_experiment_protocol import read_object, require_object
 from punct_restore.models.hmm_records import read_jsonl
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import read_ids
@@ -98,12 +98,55 @@ def probability_checks(model: HMMModel) -> None:
         )
 
 
+# The keys of a shared scorer report that a recount reads: its counts and, per metric block, its labels and scores.
+_COUNTS = {"sequences": object, "tokens": object, "ignored_prediction_ids": object}
+_BLOCK = {
+    "labels": list,
+    "macro_over": list,
+    "confusion": list,
+    "scored_positions": object,
+    "macro_f1": float,
+    "accuracy": float,
+    "micro": {"precision": float, "recall": float, "f1": float},
+    "per_class": {},
+}
+_PREDICTION_ROW = {"sample_id": str, "label_mode": object, "predicted_labels": list}
+_CLASS = {"support": object, "predicted": object, "precision": float, "recall": float, "f1": float}
+
+
+def _report_schema(mode: str) -> dict[str, Any]:
+    """The top-level keys of a shared scorer report that check_report reads (mode C also cites its mask file)."""
+    cited = ("gold", "ids", "predictions", *(("masks",) if mode == "C" else ()))
+    return {
+        "primary": {"value": float},
+        "counts": _COUNTS,
+        "blocks": {},
+        "inputs": {key: {"sha256": str} for key in cited},
+    }
+
+
+def _require_blocks(name: str, blocks: dict[str, Any], wanted: Iterable[str]) -> None:
+    """Require each wanted metric block to hold what the recount compares, with an entry for each of its labels."""
+    for block_name in wanted:
+        block = require_object(name, blocks, {block_name: _BLOCK}, "blocks")[block_name]
+        classes = dict.fromkeys(block["labels"], _CLASS)
+        require_object(name, block["per_class"], classes, f"blocks.{block_name}.per_class")
+
+
 def _report_paths(config: dict[str, Any], mode: str, split: str) -> tuple[Path, Path, Path]:
     """The primary-ID list, gold split and case-mask paths of one scored split."""
     ids_path = ROOT / config["splits_dir"] / f"primary_eval/{split}_mode_{mode}.ids"
     gold_path = ROOT / config["processed_dir"] / f"mode_{mode}/{split}.jsonl"
     mask_path = ROOT / config["processed_dir"] / f"masks/case_joint/{split}.jsonl"
     return ids_path, gold_path, mask_path
+
+
+def _prediction_rows(path: Path) -> list[dict[str, Any]]:
+    """The rows of a prediction file; each must hold the keys the audit reads (a ValueError names file and line)."""
+    rows = list(read_jsonl(path))
+    for number, row in enumerate(rows, 1):
+        require_object(f"{path.name}:{number}", row, _PREDICTION_ROW)
+    return rows
 
 
 def _read_gold_and_predictions(
@@ -115,7 +158,7 @@ def _read_gold_and_predictions(
     gold_ids = [row["sample_id"] for row in gold]
     if len(gold_ids) != len(set(gold_ids)) or not wanted <= set(gold_ids):
         raise ValueError("gold/selection ID violation")
-    pred = list(read_jsonl(predictions))
+    pred = _prediction_rows(predictions)
     pred_ids = [row["sample_id"] for row in pred]
     expected_ids = [sid for sid in gold_ids if sid in wanted] if baseline else gold_ids
     if pred_ids != expected_ids:
@@ -265,10 +308,11 @@ def check_report(
     lookup = {row["sample_id"]: row for row in pred}
     _check_label_vocabulary(pred, label_sets, mode)
     masks = _read_masks(mode, mask_path, gold)
-    report = read_json(report_path)
+    report = read_object(report_path, _report_schema(mode))
     _check_input_hashes(report, mode, predictions, (ids_path, gold_path, mask_path))
     primary = config["search"]["selection_blocks"][mode]
     block_names = [primary] if options.primary_only else list(report["blocks"])
+    _require_blocks(report_path.name, report["blocks"], dict.fromkeys([primary, *block_names]))
     spec = _PairSpec(mode=mode, block_names=block_names, primary=primary, masks=masks, examples=options.examples)
     pairs, selected_tokens, samples = _collect_pairs(gold, wanted, lookup, spec)
     _check_counts_and_blocks(report, pairs, wanted, selected_tokens, pred_ids)

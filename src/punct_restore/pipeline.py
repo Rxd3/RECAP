@@ -26,6 +26,7 @@ from punct_restore.models.gap_classifier import GapClassifier
 from punct_restore.models.hidden_event_lm import MODEL_FAMILY as HIDDEN_EVENT_LM_FAMILY
 from punct_restore.models.hidden_event_lm import HiddenEventLM
 from punct_restore.models.hmm import HMMModel
+from punct_restore.prediction_io import require_file
 
 STRIP_CHARS = ',.?!:;-"'
 PUNCT_MAP = {
@@ -50,7 +51,7 @@ _FAMILIES_BY_SUFFIX = {".json": _JSON_FAMILIES, ".joblib": _JOBLIB_FAMILIES, ".p
 
 
 def _unsupported(path: Path, why: str) -> ValueError:
-    return ValueError(f"unsupported model file: {path.name} ({why})")
+    return ValueError(f"{path.name}: unsupported model file ({why})")
 
 
 def _read_payload(path: Path) -> Any:
@@ -60,7 +61,7 @@ def _read_payload(path: Path) -> Any:
             return json.loads(path.read_text(encoding="utf-8"))
         return joblib.load(path)  # pickle: load trusted files only (see the module docstring)
     except OSError as exc:  # the file exists but cannot be read: an OS problem, not a bad artifact
-        raise OSError(f"cannot read model file {path.name}: {exc.strerror or 'read error'}") from exc
+        raise OSError(f"{path.name}: cannot read model file ({exc.strerror or 'read error'})") from exc
     except Exception as exc:  # a corrupt or foreign file; the reason is not shown to the user
         raise _unsupported(path, "unreadable") from exc
 
@@ -78,13 +79,10 @@ def _family_of(payload: Any) -> Any:
 def load_model(path: Path) -> HMMModel | CRFModel | HiddenEventLM | GapClassifier:
     """Load a saved model: the suffix narrows the choice, the family marker inside the file decides."""
     path = Path(path)
+    require_file(path, "model file")
     families = _FAMILIES_BY_SUFFIX.get(path.suffix.lower())
     if families is None:
         raise _unsupported(path, "expected .json, .joblib or .pkl")
-    if path.is_dir():
-        raise IsADirectoryError(f"model path is a folder, not a file: {path.name}")
-    if not path.is_file():
-        raise FileNotFoundError(f"model file not found: {path.name}")
     family = _family_of(_read_payload(path))
     loader = families.get(family) if isinstance(family, str) else None
     if loader is None:
@@ -141,8 +139,7 @@ class ModelAdapter:
 
     def __init__(self, model_path: Path, config_path: Path | str = LABEL_SETS_PATH) -> None:
         config_path = Path(config_path)
-        if not config_path.is_file():
-            raise FileNotFoundError(f"label sets config not found: {config_path.name}")
+        require_file(config_path, "label sets config")
         self.model = load_model(Path(model_path))
         mode = self.model.label_mode
         if mode not in _MODES:

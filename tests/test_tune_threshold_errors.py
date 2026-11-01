@@ -37,7 +37,7 @@ def test_tune_with_a_missing_model_names_the_file_only(
     argv = _tune_argv(mode_a, tmp_path / "tau.json")
     argv[argv.index("--model") + 1] = str(tmp_path / FOLDER / "ghost.joblib")
     assert tune_threshold.main(argv) == 1
-    assert _one_line(capsys) == "error: Model artifact not found at ghost.joblib\n"
+    assert _one_line(capsys) == "error: ghost.joblib: model artifact not found\n"
 
 
 def test_predict_with_a_missing_model_names_the_file_only(
@@ -48,7 +48,7 @@ def test_predict_with_a_missing_model_names_the_file_only(
     argv = _predict_argv(mode_a, tau_file, tmp_path / "p.jsonl", tmp_path / "p.man.json")
     argv[argv.index("--model") + 1] = str(tmp_path / FOLDER / "ghost.joblib")
     assert tune_threshold.main(argv) == 1
-    assert _one_line(capsys) == "error: Model artifact not found at ghost.joblib\n"
+    assert _one_line(capsys) == "error: ghost.joblib: model artifact not found\n"
 
 
 def test_predict_with_a_corrupt_model_names_the_file_only(

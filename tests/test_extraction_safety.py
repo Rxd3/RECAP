@@ -107,3 +107,16 @@ def test_a_manifest_that_is_not_utf8_is_one_error_naming_it(tmp_path: Path) -> N
     manifest.write_bytes(b"\xe9\xff not utf-8\n")
     with pytest.raises(ValueError, match=r"^MANIFEST\.sha256: not valid UTF-8$"):
         extraction.verify_extraction(tmp_path, manifest)
+
+
+def test_an_archive_that_is_a_folder_is_named_as_a_folder_before_its_size_is_read(tmp_path: Path) -> None:
+    (tmp_path / "adir").mkdir()
+    with pytest.raises(IsADirectoryError) as caught:
+        extraction.extract_archive(tmp_path / "adir", tmp_path / "raw")
+    assert str(caught.value) == "adir: is a folder, not a file"
+
+
+def test_a_missing_archive_is_named_by_file_name_only(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError) as caught:
+        extraction.extract_archive(tmp_path / "deep" / "gone.tar.gz", tmp_path / "raw")
+    assert str(caught.value) == "gone.tar.gz: archive not found"

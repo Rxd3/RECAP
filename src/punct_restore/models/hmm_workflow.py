@@ -12,6 +12,7 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any
 
+from punct_restore.data.preprocessing import parse_manifest_line
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_records import SelectedRecords
@@ -121,12 +122,20 @@ def checked_release_file(
 
 
 def _check_split_manifest(split_manifest: Path, manifest: dict[str, Any]) -> None:
-    """Authenticate the supplied split checksum index against the release manifest."""
-    lines = split_manifest.read_text(encoding="utf-8").splitlines()
+    """Authenticate the supplied split checksum index against the release manifest.
+
+    Raises:
+        ValueError: One line that starts with the file name: not valid UTF-8, or a line that is not
+            ``<sha256>  <path>``; or the index does not match the release.
+    """
+    try:
+        lines = split_manifest.read_text(encoding="utf-8").splitlines()
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"{split_manifest.name}: not valid UTF-8") from exc
     expected_sums = {name: entry["sha256"] for name, entry in manifest["split_files"].items()}
     actual_sums = {}
-    for line in lines:
-        digest, name = line.split("  ", 1)
+    for number, line in enumerate(lines, 1):
+        digest, name = parse_manifest_line(line, number, split_manifest.name)
         if name in actual_sums:
             raise ValueError("duplicate path in split checksum manifest")
         actual_sums[name] = digest

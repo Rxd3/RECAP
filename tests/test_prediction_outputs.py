@@ -606,7 +606,7 @@ def test_read_observations_skips_blank_lines_and_reports_a_missing_file(tmp_path
     path = tmp_path / "in.jsonl"
     path.write_text("\n" + _ONE + "\n\n", encoding="utf-8")
     assert prediction_io.read_observations(path, None) == [{"sample_id": "s", "tokens": ["a"]}]
-    with pytest.raises(FileNotFoundError, match="Input JSONL not found"):
+    with pytest.raises(FileNotFoundError, match="^ghost.jsonl: input JSONL not found$"):
         prediction_io.read_observations(tmp_path / "ghost.jsonl", None)
 
 
