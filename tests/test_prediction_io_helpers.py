@@ -262,7 +262,7 @@ def test_read_prediction_lines_is_lazy_so_a_caller_can_stop_at_its_own_error(tmp
     ("text", "message"),
     [
         ("{not json\n", r"^p\.jsonl line 1: not valid JSON$"),
-        ("[" * 5000 + "]" * 5000 + "\n", r"^p\.jsonl line 1: not valid JSON$"),  # RecursionError in json
+        ("[" * 100_000 + "]" * 100_000 + "\n", r"^p\.jsonl line 1: not valid JSON$"),  # RecursionError in json
         ('{"a": 1}\n\n[1, 2]\n', r"^p\.jsonl line 3: not a JSON object$"),
         ("null\n", r"^p\.jsonl line 1: not a JSON object$"),
         ("", r"^p\.jsonl: no predictions found$"),

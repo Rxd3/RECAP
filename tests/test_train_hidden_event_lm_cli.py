@@ -247,7 +247,7 @@ def test_empty_ids_and_non_utf8_input_are_one_line_errors(case: Case, capsys, tm
     assert "train.jsonl" in _refused(capsys, tmp_path, case.train_argv())
 
 
-DEEP_LINE = "[" * 5000 + "]" * 5000  # json.loads gives up on it with RecursionError, which is not a ValueError
+DEEP_LINE = "[" * 100_000 + "]" * 100_000  # json.loads gives up on it with RecursionError, which is not a ValueError
 
 
 def test_a_deeply_nested_training_line_is_a_one_line_error(case: Case, capsys, tmp_path: Path) -> None:

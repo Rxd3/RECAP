@@ -304,7 +304,7 @@ def test_masks_given_as_a_folder_says_so_whatever_the_platform_errno(sim, capsys
     assert code == 1 and stdout == ""
     assert_one_error_line(err)
     assert err == f"error: {tmp_path.name}/maskdir: is a folder, not a file\n"
-    assert [p.name for p in tmp_path.iterdir()] == ["data", "maskdir"]
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["data", "maskdir"]
 
 
 def test_display_name_is_the_parent_and_file_without_an_empty_parent(sim):

@@ -125,7 +125,7 @@ def test_blank_lines_are_skipped_but_counted_in_line_numbers(setup: Setup, capsy
 READ_ERRORS = [
     ("not JSON", "{not json", "line 1: not valid JSON"),
     ("not an object", "[1, 2]", "line 1: not a JSON object"),
-    ("nested too deeply", "[" * 5000 + "]" * 5000, "line 1: not valid JSON"),
+    ("nested too deeply", "[" * 100_000 + "]" * 100_000, "line 1: not valid JSON"),
 ]
 
 

@@ -105,7 +105,7 @@ def test_read_ids_accepts_a_str_path_as_the_documented_data_api_does(tmp_path: P
 # --- parse_json_object / parse_sample_record -----------------------------------------------------
 
 
-@pytest.mark.parametrize("line", ["{not json", "[" * 5000 + "]" * 5000, ""])
+@pytest.mark.parametrize("line", ["{not json", "[" * 100_000 + "]" * 100_000, ""])
 def test_parse_json_object_says_not_valid_json_for_text_json_cannot_read(line: str) -> None:
     with pytest.raises(ValueError, match=r"^p\.jsonl line 7: not valid JSON$"):
         prediction_io.parse_json_object(line, "p.jsonl line 7")
