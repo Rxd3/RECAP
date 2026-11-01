@@ -735,8 +735,8 @@ Per class on test, neural − CRF improved (paired 95% CI, `compare --class`):
 - **FLAN-T5, mode B:** COLON +12.85 (0.53 to 26.71); COMMA +17.03 (15.54 to 18.81); DASH +2.22 (0.46 to 4.30); EXCLAMATION +1.02 (0.00 to 3.52); PERIOD +11.32 (9.75 to 13.11); QUESTION +50.20 (45.57 to 54.90); SEMICOLON +3.15 (0.00 to 7.64).
 
 Findings:
-- **Mode A:** the pretrained models beat the improved CRF on test by 26.33–26.84 points, every interval excluding 0.
-- **Mode B:** the pretrained models beat the improved CRF on test by 13.61–13.97 points, every interval excluding 0.
+- **Mode A:** the pretrained models beat the improved CRF on test by 26.33–26.84 points.
+- **Mode B:** the pretrained models beat the improved CRF on test by 13.61–13.97 points.
 - **The BERT mode B drop is unexplained:** BERT falls from 42.39 on validation to 36.43 on test. Over the same validation and test lists the improved CRF moves from 25.10 to 22.82 and the HMM from 18.47 to 16.79, so BERT falls further than the course models. Nothing in this repository explains it: the checkpoint-selection records are Member 2's, so a selection that fits validation too closely can be neither confirmed nor ruled out.
 - **Rare marks stay hard:** in mode B, the interval of the gain over the CRF includes 0 for at least one model on EXCLAMATION and SEMICOLON.
 - **Caveat:** the pretraining text of BERT and FLAN-T5 is not public in full, so overlap with these transcripts cannot be ruled out; the course models see only `default_train`.

@@ -77,7 +77,10 @@ python -m pytest
 ```
 
 Then compare `data/processed/<release>/SHA256SUMS` and `data/splits/<release>/SHA256SUMS` with
-the published copies. If the byte ranges can no longer be read, add `--archive <path>/sponspeech.tar.gz`
+the published copies. In the processed list, the `RELEASE_NOTES.md` and `release_manifest.json` lines
+differ whenever the data code differs from the version that built the release (it does on the current
+code): both files record `code_sha256`, the SHA-256 of `src/punct_restore/data/*.py`. Compare the other
+lines, as in [data/README.md](../data/README.md) step 5. If the byte ranges can no longer be read, add `--archive <path>/sponspeech.tar.gz`
 to `extract` (the full 63.5 GB archive). To use the team's archive instead of rebuilding:
 
 ```bash

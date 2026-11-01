@@ -184,7 +184,7 @@ file in `results/scores/neural/` records the SHA-256 of the predictions it score
 | B | 36.43 (34.41–38.26) | 36.79 (34.32–39.28) |
 | C | not run | not run |
 
-They beat the improved CRF by +26.33 to +26.84 points in A and +13.61 to +13.97 in B (every interval excludes 0). They start from large pretrained corpora, which may overlap with these transcripts.
+They beat the improved CRF by +26.33 to +26.84 points in A and +13.61 to +13.97 in B. They start from large pretrained corpora, which may overlap with these transcripts.
 
 ## Quickstart
 
@@ -353,7 +353,7 @@ they were. Moved helpers also live in their new modules, for example `FILLERS` i
 | `src/punct_restore/features/crf_cues.py` | Per-position cue helpers of the CRF features: buckets, filler, question lookback, word clusters. |
 | `src/punct_restore/features/word_clusters.py` | Word clusters induced from `default_train` only: lowercased words with count ≥ 5, ±2 co-occurrence matrix, PPMI, TruncatedSVD (about 100 dimensions), L2-normalised rows, k-means (k ∈ {100, 300}, fixed seed); unknown words get `unk`. The JSON map records the train-ids sha256, k, the seed and the vocabulary size. |
 | `src/punct_restore/evaluation/` | Member 5's evaluator: `inputs` (input checks), `views` (scored positions and report blocks), `metrics` (token-level P/R/F1), `uncertainty` (bootstrap grouped by video), `comparison` (paired comparison), `error_analysis` (error examples), `baseline` (shortcut baseline), `manifest` (prediction-manifest check), `report` (JSON and Markdown reports). |
-| `src/punct_restore/prediction_io.py` | Shared command I/O: gold-free prediction JSONL and manifests, `read_ids`, the JSON-line parsers, and the error boundary (`one_line_error`, `one_line_error_naming`, `reconfigure_stdout`): every runtime error is one `error: <file or folder name>: <reason>` line and exit 1. |
+| `src/punct_restore/prediction_io.py` | Shared command I/O: gold-free prediction JSONL and manifests, `read_ids`, the JSON-line parsers, and the error boundary (`one_line_error`, `one_line_error_with_short_paths`, `reconfigure_stdout`): every runtime error is one `error: <file or folder name>: <reason>` line and exit 1. |
 | `src/punct_restore/pipeline.py` | Demo inference: load a trained HMM, hidden-event LM, CRF or gap classifier (`load_model`), clean raw text, predict labels, rebuild text. |
 
 Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM_TASKS.md`

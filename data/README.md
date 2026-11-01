@@ -58,8 +58,18 @@ RAW/sponspeech_text/              train/ dev/ test-amb/ test/ (text/*.txt, utt2s
    `MANIFEST.sha256` is checked before and after the build. The title snapshot
    flags `tts_source` (9 "Wikipedia audio article" videos, 425 records: 405 train, 20 validation); those records are
    unresolved, so without the snapshot the default training and primary evaluation ID lists and all checksums differ.
-5. **Verify.** `python -m pytest`, then check the build against the published checksums:
-   `diff data/processed/<release>/SHA256SUMS <published copy>` (same for `data/splits`).
+5. **Verify.** `python -m pytest`, then check the build against the published checksums.
+   `RELEASE_NOTES.md` and `release_manifest.json` record `code_sha256`, the SHA-256 of
+   `src/punct_restore/data/*.py` at build time, so their two lines in the processed `SHA256SUMS` differ
+   whenever that code differs from the version that built the release (it does on the current code), even
+   when every data file is identical. Compare the other lines:
+
+   ```bash
+   grep -v -e RELEASE_NOTES.md -e release_manifest.json data/processed/<release>/SHA256SUMS > rebuilt.sums
+   grep -v -e RELEASE_NOTES.md -e release_manifest.json <published processed SHA256SUMS> > published.sums
+   diff rebuilt.sums published.sums
+   diff data/splits/<release>/SHA256SUMS <published splits SHA256SUMS>
+   ```
 
 ## Release layout (`sponspeech-m1-v2`, policy `m1-v2`)
 

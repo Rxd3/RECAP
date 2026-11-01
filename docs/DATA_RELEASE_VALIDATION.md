@@ -64,6 +64,11 @@ reduce memory use. Truncated-view and other failure paths have regression tests.
 | Splits SHA256SUMS | `40ea6371b038d5d36e6da390493bfc0e45c513ec46c324ee1a6af8766e7546b7` |
 | Handoff ZIP (224,632,100 bytes) | `1e4b4a9504c68cd8e3af8d6a2a0ef7de5de0146c76457752a56a90dcf6504b9f` |
 
+The data package fingerprint is `code_sha256`, the SHA-256 of `src/punct_restore/data/*.py` when the
+release was built. It is written into `RELEASE_NOTES.md` and `release_manifest.json`, so a rebuild with
+different data code (the current code included) changes those two files and their lines in the processed `SHA256SUMS`, even when every data
+file is identical ([data/README.md](../data/README.md) step 5).
+
 The manifest records the Python version and exact checksums for every generated file.
 Corrected subset counts/distributions and remaining source limitations are recorded
 in [DATASET_PLAN.md](DATASET_PLAN.md).

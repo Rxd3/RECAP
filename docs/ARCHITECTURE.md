@@ -50,7 +50,7 @@ src/punct_restore/
   pipeline.py       demo inference (load_model, RestorationPipeline)
   prediction_io.py  shared command I/O: gold-free prediction files and manifests, read_ids,
                     parse_json_object and parse_sample_record, and the error boundary
-                    (one_line_error, one_line_error_naming, OS_REASONS, reconfigure_stdout)
+                    (one_line_error, one_line_error_with_short_paths, OS_REASONS, reconfigure_stdout)
   progress.py       Log and discard_log: library functions take a log callable and stay silent by default
 scripts/            25 three-line stubs (scripts/<name>.py, scripts/reporting/<name>.py), one per command
 ```
@@ -69,7 +69,7 @@ scripts/            25 three-line stubs (scripts/<name>.py, scripts/reporting/<n
   `punct_restore.reporting.<module>`) runs one directly.
 - **Errors.** A runtime error (a missing, unreadable or malformed file, a bad value) is one stderr line,
   `error: <file or folder name>: <reason>`, and exit 1, built by `prediction_io.one_line_error` (or
-  `one_line_error_naming`, which also cuts the paths it is given to their names). It never shows a full
+  `one_line_error_with_short_paths`, which also cuts the paths it is given to their names). It never shows a full
   path and prints no traceback. Examples: `error: data.jsonl: input JSONL not found`,
   `error: m.joblib: is a folder, not a file`, `error: results.json: missing selection_sha256`. Argparse usage errors stay exit 2, and a code
   bug propagates. `tests/test_malformed_inputs.py` and `tests/test_malformed_inputs_hmm.py` check this
