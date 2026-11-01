@@ -301,10 +301,13 @@ report `test` and `test_amb` separately (they share 25 videos).
 `src/punct_restore/cli/__init__.py` (the `recap` dispatcher), `src/punct_restore/data/__init__.py`,
 `src/punct_restore/evaluation/__init__.py`, `src/punct_restore/features/__init__.py`,
 `src/punct_restore/models/__init__.py` and `src/punct_restore/reporting/__init__.py`.
-The classes stored in saved models (`CRFModel`, `FeatureConfig`, `HMMModel`, `HiddenEventLM`) stay in
-their modules, so saved models load. Helpers moved by the 2026-11-01 restructure are imported from the
-module that now defines them; `punct_restore.data` keeps its public names (`load_records`, `read_ids`,
-`build_release`, ...).
+Library import paths from `main` at `72ebfd1` still work: every name in `punct_restore.data`,
+`punct_restore.evaluation`, `punct_restore.features`, `punct_restore.models`, `punct_restore.pipeline` and
+`punct_restore.prediction_io` stays importable from its old module (`tests/test_library_names.py`), and
+the classes stored in saved models (`CRFModel`, `FeatureConfig`, `HMMModel`, `HiddenEventLM`) stay where
+they were. Moved helpers also live in their new modules, for example `FILLERS` in
+`src/punct_restore/features/crf_lexicons.py` and `write_lines` in `src/punct_restore/data/release_outputs.py`. The internals of the cli modules
+(such as `cli.run_hmm_experiments.frozen`) are not part of that promise.
 
 | Module | Role |
 | --- | --- |

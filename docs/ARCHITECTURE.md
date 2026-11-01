@@ -77,10 +77,15 @@ scripts/            25 three-line stubs (scripts/<name>.py, scripts/reporting/<n
   value, so the old `scripts/<name>.py` command lines keep working. Recorded commands in run manifests
   keep those paths.
 - **Split modules.** The size split moved helpers out of long modules (for example `models/crf.py` into
-  `crf_io`, `crf_modes`, `crf_records` and `crf_training`). The classes stored in saved models
-  (`CRFModel`, `FeatureConfig`, `HMMModel`, `HiddenEventLM`) stay in their modules, so saved models
-  load. Moved helpers are imported from the module that now defines them; `punct_restore.data` keeps
-  its public names (`load_records`, `read_ids`, `build_release`, ...). `tests/test_code_limits.py`
+  `crf_io`, `crf_modes`, `crf_records` and `crf_training`). Library import paths from
+  `main` at `72ebfd1` still work: every name in `punct_restore.data`, `punct_restore.evaluation`,
+  `punct_restore.features`, `punct_restore.models`, `punct_restore.pipeline` and `punct_restore.prediction_io`
+  stays importable from its old module, as re-exports or thin wrappers (`tests/test_library_names.py`,
+  pinned to that commit's name list). The classes stored in saved models (`CRFModel`, `FeatureConfig`,
+  `HMMModel`, `HiddenEventLM`) stay where they were, so saved models load. Moved helpers also live in their
+  new modules, for example `FILLERS` in `features/crf_lexicons.py` and `CASING_VOCABULARY` in
+  `models/crf_modes.py`. The internals of the cli modules (such as `cli.run_hmm_experiments.frozen`) are
+  not part of that promise. `tests/test_code_limits.py`
   keeps every function in `src/` and `scripts/` at 50 lines or less (from its first decorator to its
   last line), nesting at 4 levels or less and every file at 400 lines or less; `tests/test_type_hints.py`
   requires every function in `src/` to annotate its parameters and return type.
