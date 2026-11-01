@@ -100,3 +100,10 @@ def test_a_symlinked_file_inside_the_output_folder_is_not_written_through(tmp_pa
     with pytest.raises(ValueError, match="outside"):
         extraction._write(raw_root, "sponspeech/link.txt", b"x")
     assert victim.read_bytes() == b"keep me"
+
+
+def test_a_manifest_that_is_not_utf8_is_one_error_naming_it(tmp_path: Path) -> None:
+    manifest = tmp_path / "MANIFEST.sha256"
+    manifest.write_bytes(b"\xe9\xff not utf-8\n")
+    with pytest.raises(ValueError, match=r"^MANIFEST\.sha256: not valid UTF-8$"):
+        extraction.verify_extraction(tmp_path, manifest)

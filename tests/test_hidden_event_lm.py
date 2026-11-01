@@ -618,3 +618,15 @@ def test_corrupt_artifact_bytes_are_a_one_line_value_error(tmp_path: Path, conte
     with pytest.raises(ValueError, match=ARTIFACT_ERROR) as error:
         HiddenEventLM.load_model(bad)
     assert "\n" not in str(error.value)
+
+
+@pytest.mark.parametrize("content", [b"{not json", b"\xff\xfe\x00", b"[1, 2]", b"[" * 100_000])
+def test_the_artifact_error_starts_with_the_file_name_and_shows_no_folder(tmp_path: Path, content: bytes) -> None:
+    folder = tmp_path / "secretfolder"
+    folder.mkdir()
+    bad = folder / "bad.json"
+    bad.write_bytes(content)
+    with pytest.raises(ValueError) as error:
+        HiddenEventLM.load_model(bad)
+    assert str(error.value).startswith("bad.json: invalid hidden-event LM artifact: ")
+    assert "secretfolder" not in str(error.value)

@@ -57,7 +57,7 @@ def _sample_records(input_path: Path) -> Iterator[dict[str, Any]]:
         with open(input_path, encoding="utf-8") as f:
             for line_num, line in enumerate(f, 1):
                 if line.strip():
-                    yield parse_sample_record(line.strip(), f"Corrupt JSON at line {line_num} in {input_path.name}")
+                    yield parse_sample_record(line.strip(), f"{input_path.name} line {line_num}")
     except UnicodeDecodeError as exc:
         raise ValueError(f"{input_path.name}: not valid UTF-8") from exc
 

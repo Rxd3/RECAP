@@ -360,7 +360,7 @@ class TestCRFTrainCLI:
         ])
         assert ret == 1
         captured = capsys.readouterr()
-        assert "Corrupt JSON" in captured.err
+        assert "corrupt.jsonl line 2: not valid JSON" in captured.err
 
     def test_train_invalid_hyperparameters(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
         """Verify rejection of invalid hyperparameter values."""

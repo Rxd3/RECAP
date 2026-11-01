@@ -150,15 +150,33 @@ def read_ids(path: str | os.PathLike[str]) -> list[str]:
     return prediction_io.read_ids(path, allow_empty=True)
 
 
+def _title_entry(line: str, where: str) -> tuple[str, str] | None:
+    """(video ID, title) of one metadata line with status 200; None for any other status."""
+    row = prediction_io.parse_json_object(line, where)
+    if row.get("status") != 200:
+        return None
+    video_id = row.get("video_id")
+    if not isinstance(video_id, str):
+        raise ValueError(f"{where}: video_id must be a string")
+    title = row.get("title") or ""
+    if not isinstance(title, str):
+        raise ValueError(f"{where}: title must be a string")
+    return video_id, title
+
+
 def read_titles(path: str | os.PathLike[str]) -> dict[str, str]:
-    """video ID -> title from the dated metadata snapshot (JSONL: video_id, status, title)."""
-    titles = {}
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            row = json.loads(line)
-            if row.get("status") == 200:
-                titles[row["video_id"]] = row.get("title") or ""
-    return titles
+    """video ID -> title from the dated metadata snapshot (JSONL: video_id, status, title).
+
+    Raises ValueError("<file name> line N: <what is wrong>") for a line that is not a JSON object or has a status 200
+    without a string video_id, and ValueError("<file name>: not valid UTF-8") for bytes that are not UTF-8.
+    """
+    name = os.path.basename(path)
+    try:
+        with open(path, encoding="utf-8") as f:
+            entries = (_title_entry(line, f"{name} line {number}") for number, line in enumerate(f, 1))
+            return dict(entry for entry in entries if entry is not None)
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"{name}: not valid UTF-8") from exc
 
 
 class Preflight(NamedTuple):

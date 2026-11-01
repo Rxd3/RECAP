@@ -18,7 +18,7 @@ import json
 import math
 import sys
 from collections.abc import Iterator, Mapping
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -95,7 +95,8 @@ def write_outputs(json_out: Path, json_text: str, out_md: Path, md_text: str) ->
     try:
         write_new_file(out_md, md_text)
     except Exception:
-        json_out.unlink(missing_ok=True)
+        with suppress(OSError):  # a failed delete must not replace the error that is being raised
+            json_out.unlink(missing_ok=True)
         raise
 
 

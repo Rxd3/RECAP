@@ -199,12 +199,16 @@ def extract_archive(archive_path: str | os.PathLike[str], raw_root: str | os.Pat
 def verify_extraction(raw_root: str | os.PathLike[str],
                       manifest_path: str | os.PathLike[str]) -> tuple[list[str], list[str]]:
     """Compare <raw_root>/sponspeech_text with the raw manifest: (missing or different paths, extra paths)."""
-    from .preprocessing import verify_raw_manifest
+    from .preprocessing import parse_manifest_line, verify_raw_manifest
     base = os.path.dirname(os.path.abspath(manifest_path))
     if os.path.abspath(base) != os.path.abspath(raw_root):
         raise ValueError("MANIFEST.sha256 must be placed directly in raw_root (its paths start with sponspeech_text/)")
-    with open(manifest_path, encoding="utf-8") as f:
-        listed = {line.rstrip("\n").split("  ", 1)[1] for line in f}
+    name = os.path.basename(manifest_path)
+    try:
+        with open(manifest_path, encoding="utf-8") as f:
+            listed = {parse_manifest_line(line, number, name)[1] for number, line in enumerate(f, 1)}
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"{name}: not valid UTF-8") from exc
     present = {Path(d, x).relative_to(raw_root).as_posix()
                for d, _, fs in os.walk(os.path.join(raw_root, OUTPUT_DIR)) for x in fs}
     missing = sorted(listed - present)

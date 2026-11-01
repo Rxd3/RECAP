@@ -332,7 +332,8 @@ class HiddenEventLM:
         try:
             return cls._from_payload(json.loads(Path(path).read_text(encoding="utf-8")))
         except (ValueError, RecursionError, OverflowError) as exc:  # OverflowError: a backstop for huge numbers
-            raise ValueError(f"invalid hidden-event LM artifact: {' '.join(str(exc).splitlines())}") from exc
+            name = Path(path).name
+            raise ValueError(f"{name}: invalid hidden-event LM artifact: {' '.join(str(exc).splitlines())}") from exc
 
     @classmethod
     def _from_payload(cls, payload: object) -> HiddenEventLM:

@@ -7,6 +7,7 @@ test_asr_noise_findings.py.
 
 from __future__ import annotations
 
+import errno
 import json
 import os
 import subprocess
@@ -214,6 +215,33 @@ def test_a_failed_second_write_leaves_neither_output(
     assert_one_error_line(capsys.readouterr().err, racer.name)
     assert racer.read_text(encoding="utf-8") == "keep"  # the other process's file is not ours to delete
     assert [p for p in (json_out, md_out) if p != racer and p.exists()] == []
+
+
+def test_a_failed_cleanup_does_not_replace_the_error_that_caused_it(
+    asr_scores: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The second write fails and the first output cannot be removed: the user still hears about the second file."""
+    from punct_restore.reporting import asr_noise_table
+
+    json_out, md_out = tmp_path / "s.json", tmp_path / "r.md"
+    real_render, real_unlink = asr_noise_table.render_markdown, Path.unlink
+
+    def render_then_race(summary: dict[str, Any]) -> str:
+        text = real_render(summary)
+        md_out.write_text("keep", encoding="utf-8")
+        return text
+
+    def unlink_refused(self: Path, missing_ok: bool = False) -> None:
+        if self == json_out:
+            raise PermissionError(errno.EACCES, "Permission denied", str(self))
+        real_unlink(self, missing_ok=missing_ok)
+
+    monkeypatch.setattr(asr_noise_table, "render_markdown", render_then_race)
+    monkeypatch.setattr(Path, "unlink", unlink_refused)
+    assert run_main(asr_scores, json_out, md_out) == 1
+    err = capsys.readouterr().err
+    assert_one_error_line(err, md_out.name)
+    assert json_out.name not in err and "denied" not in err
 
 
 def test_a_write_that_fails_halfway_leaves_neither_output(

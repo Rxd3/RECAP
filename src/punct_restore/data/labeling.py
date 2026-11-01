@@ -44,16 +44,26 @@ def _field(config: Mapping[str, Any], dotted: str, kind: type, file_name: str) -
     return node
 
 
+def _read_yaml(path: str | os.PathLike[str], file_name: str) -> Any:
+    """The parsed YAML of `path`; a ValueError that names `file_name` only (a YAML error mark shows the whole path)."""
+    import yaml  # PyYAML is a declared runtime dependency of RECAP
+    try:
+        with open(path, encoding="utf-8") as f:
+            return yaml.safe_load(f)
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"{file_name}: not valid UTF-8") from exc
+    except (yaml.YAMLError, RecursionError) as exc:  # RecursionError: nested too deeply
+        raise ValueError(f"{file_name}: not valid YAML") from exc
+
+
 def load_label_sets(path: str | os.PathLike[str] = LABEL_SETS_PATH) -> dict[str, Any]:
     """Read configs/label_sets.yaml (the vocabulary source of truth) and check its 4/8/12 structure.
 
-    Raises ValueError("<file name>: <what is wrong>") for a file that parses but lacks a key or has a value of the
-    wrong type.
+    Raises ValueError("<file name>: <what is wrong>") for a file that is not valid UTF-8 or YAML, or that parses but
+    lacks a key or has a value of the wrong type.
     """
-    import yaml  # PyYAML is a declared runtime dependency of RECAP
-    with open(path, encoding="utf-8") as f:
-        cfg = yaml.safe_load(f)
     file_name = os.path.basename(path)
+    cfg = _read_yaml(path, file_name)
     if not isinstance(cfg, dict):
         raise ValueError(f"{file_name}: the top level must be a mapping")
     std = _field(cfg, "punctuation.standard", list, file_name)

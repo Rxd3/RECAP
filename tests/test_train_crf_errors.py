@@ -67,7 +67,7 @@ def test_a_corrupt_input_line_is_one_line_naming_the_file_only(
     (tmp_path / "data.jsonl").write_text("{not json\n", encoding="utf-8")
     assert train_crf.main(argv) == 1
     line = _only_line(capsys.readouterr().err, tmp_path)
-    assert line.startswith("error: ") and "Corrupt JSON at line 1 in data.jsonl" in line
+    assert line.startswith("error: ") and "data.jsonl line 1: not valid JSON" in line
 
 
 def test_a_training_file_that_is_not_utf8_is_one_line_naming_the_file_only(
@@ -86,7 +86,7 @@ def test_a_deeply_nested_training_line_is_one_error_line_not_a_traceback(
     (tmp_path / "data.jsonl").write_text(DEEP_LINE + "\n", encoding="utf-8")
     assert train_crf.main(argv) == 1
     line = _only_line(capsys.readouterr().err, tmp_path)
-    assert line == "error: Corrupt JSON at line 1 in data.jsonl: not valid JSON"
+    assert line == "error: data.jsonl line 1: not valid JSON"
     assert not (tmp_path / "out.joblib").exists()
 
 
@@ -96,11 +96,11 @@ def test_a_training_line_that_is_not_an_object_or_has_no_sample_id_is_one_line_n
     (tmp_path / "data.jsonl").write_text("[1, 2]\n", encoding="utf-8")
     assert train_crf.main(argv) == 1
     line = _only_line(capsys.readouterr().err, tmp_path)
-    assert line == "error: Corrupt JSON at line 1 in data.jsonl: not a JSON object"
+    assert line == "error: data.jsonl line 1: not a JSON object"
     (tmp_path / "data.jsonl").write_text('{"tokens": ["a"]}\n', encoding="utf-8")
     assert train_crf.main(argv) == 1
     line = _only_line(capsys.readouterr().err, tmp_path)
-    assert line == "error: Corrupt JSON at line 1 in data.jsonl: sample_id must be a nonempty string"
+    assert line == "error: data.jsonl line 1: sample_id must be a nonempty string"
 
 
 def test_a_bad_hyperparameter_is_a_configuration_error(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

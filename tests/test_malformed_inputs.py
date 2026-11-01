@@ -16,6 +16,9 @@ from typing import NamedTuple
 import pytest
 from crf_cli_fixtures import create_synthetic_train_jsonl, write_id_file
 from eval_fixtures import CASE, PUNCT, SCORED, cli_argv, pred_row, valid_case, write_jsonl
+from run_ablations_fixtures import RELEASE as ABLATION_RELEASE
+from run_ablations_fixtures import _argv as ablation_argv
+from run_ablations_fixtures import build_root as ablation_root
 from test_build_leakage_subsets import REL as LEAK_REL
 from test_build_leakage_subsets import make_root as leakage_root
 from test_build_word_clusters import args_for as cluster_args
@@ -23,9 +26,6 @@ from test_build_word_clusters import make_root as cluster_root
 from test_find_gold_noise import RELEASE as NOISE_RELEASE
 from test_find_gold_noise import argv_for as noise_argv
 from test_find_gold_noise import build_root as noise_root
-from test_run_ablations import RELEASE as ABLATION_RELEASE
-from test_run_ablations import _argv as ablation_argv
-from test_run_ablations import build_root as ablation_root
 from test_simulate_asr_noise import DATA as SIM_DATA
 from test_simulate_asr_noise import LISTED_C, MASKS, SAMPLES, make_sample, write_root
 from test_simulate_asr_noise import argv_for as sim_argv
@@ -51,6 +51,12 @@ FOLDER = "secretfolder"  # the folder every fixture lives in; it must never be s
 NESTED = b"[" * 100_000 + b"\n"  # the standard json parser gives up on it with a RecursionError
 NOT_UTF8 = b"\xe9\xff not utf-8\n"  # 0xE9 starts a 3-byte sequence that 0xFF breaks
 NOT_A_MODEL = b"123"
+NESTED_YAML = b"a: " + b"[" * 100_000 + b"\n"  # PyYAML gives up on it with a RecursionError
+NOT_YAML = b"a: [unclosed\n"
+JSON_ARRAY = b"[1]\n"  # valid JSON, but not an object
+NO_VIDEO_ID = b'{"status": 200}\n'  # a metadata row without the video it describes
+BAD_MANIFEST_LINE = b"0" * 64 + b" sponspeech_text/x.txt\n"  # one space where two belong
+TITLE_NOT_TEXT = b'{"status": 200, "video_id": "v1", "title": 5}\n'
 
 
 class Env(NamedTuple):
@@ -225,10 +231,39 @@ def _project(env: Env) -> Run:
     return Run(project_joint.main, argv, preds)
 
 
-def _prepare_data_without_manifest(env: Env) -> Run:
-    argv = ["build", "--raw-root", str(env.folder / "raw"), "--release-id", "r",
+def _prepare_data_argv(env: Env) -> list[str]:
+    return ["build", "--raw-root", str(env.folder / "raw"), "--release-id", "r",
             "--processed-dir", str(env.folder / "p"), "--splits-dir", str(env.folder / "s")]
-    return Run(prepare_data.main, argv, Path("MANIFEST.sha256"))
+
+
+def _prepare_data_without_manifest(env: Env) -> Run:
+    return Run(prepare_data.main, _prepare_data_argv(env), Path("MANIFEST.sha256"))
+
+
+def _prepare_data_raw(env: Env, damaged: str) -> Run:
+    """A raw root whose MANIFEST.sha256 and video_metadata_oembed.jsonl are empty, except the one named `damaged`."""
+    raw = env.folder / "raw"
+    raw.mkdir()
+    (raw / "MANIFEST.sha256").write_bytes(b"")
+    (raw / "video_metadata_oembed.jsonl").write_bytes(b"")
+    return Run(prepare_data.main, _prepare_data_argv(env), _damage(raw / damaged, env))
+
+
+def _prepare_data_titles(env: Env) -> Run:
+    return _prepare_data_raw(env, "video_metadata_oembed.jsonl")
+
+
+def _prepare_data_manifest(env: Env) -> Run:
+    return _prepare_data_raw(env, "MANIFEST.sha256")
+
+
+def _crf_config(env: Env) -> Run:
+    data, ids = env.folder / "data.jsonl", env.folder / "train.ids"
+    write_id_file(ids, create_synthetic_train_jsonl(data, "A", 4))
+    config = _damage(env.folder / "label_sets.yaml", env)
+    argv = ["train", "--mode", "A", "--input", str(data), "--ids", str(ids),
+            "--output", str(env.folder / "m.joblib"), "--config-path", str(config)]
+    return Run(train_crf.main, argv, config)
 
 
 # ---------------------------------------------------------------------------------------------------------- the cases
@@ -258,6 +293,7 @@ NESTED_CASES: dict[str, Builder] = {
     "factor-predictions-punct": _factor("punct"),
     "factor-predictions-case": _factor("case"),
     "project-joint-predictions": _project,
+    "prepare-data-build-titles": _prepare_data_titles,
 }
 NOT_UTF8_CASES: dict[str, Builder] = {  # one input per reader family
     "evaluate-score-gold": _evaluate("score", "gold"),
@@ -278,14 +314,25 @@ NOT_UTF8_CASES: dict[str, Builder] = {  # one input per reader family
     "simulate-asr-noise-data": _simulate("B"),
     "factor-predictions-punct": _factor("punct"),
     "project-joint-predictions": _project,
+    "train-crf-train-config-path": _crf_config,
+    "prepare-data-build-titles": _prepare_data_titles,
 }
 NOT_A_MODEL_CASES: dict[str, Builder] = {
     "train-crf-inspect-model": _crf_inspect,
     "train-crf-predict-model": _crf_predict("model"),
 }
+TITLES_CASES: dict[str, Builder] = {"prepare-data-build-titles": _prepare_data_titles}
+YAML_CASES: dict[str, Builder] = {"train-crf-train-config-path": _crf_config}
+MANIFEST_CASES: dict[str, Builder] = {"prepare-data-build-manifest": _prepare_data_manifest}
 PARAMS = [pytest.param(build, payload, id=f"{kind}-{name}")
           for kind, payload, cases in (("nested", NESTED, NESTED_CASES), ("not-utf8", NOT_UTF8, NOT_UTF8_CASES),
-                                       ("not-a-model", NOT_A_MODEL, NOT_A_MODEL_CASES))
+                                       ("not-a-model", NOT_A_MODEL, NOT_A_MODEL_CASES),
+                                       ("nested-yaml", NESTED_YAML, YAML_CASES), ("not-yaml", NOT_YAML, YAML_CASES),
+                                       ("json-array", JSON_ARRAY, TITLES_CASES),
+                                       ("no-video-id", NO_VIDEO_ID, TITLES_CASES),
+                                       ("bad-manifest-line", BAD_MANIFEST_LINE, MANIFEST_CASES),
+                                       ("not-utf8", NOT_UTF8, MANIFEST_CASES),
+                                       ("title-not-text", TITLE_NOT_TEXT, TITLES_CASES))
           for name, build in cases.items()]
 
 

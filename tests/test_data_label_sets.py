@@ -114,3 +114,24 @@ def test_the_message_names_the_file_only_not_its_folder(tmp_path: Path) -> None:
         labeling.load_label_sets(path)
     assert str(problem.value) == "broken.yaml: missing casing"
     assert str(tmp_path) not in str(problem.value)
+
+
+@pytest.mark.parametrize(
+    ("raw", "reason"),
+    [
+        (b"punctuation: [unclosed", "not valid YAML"),
+        (b"a: " + b"[" * 100_000, "not valid YAML"),  # nested so deep that the parser hits the recursion limit
+        (b"a: \xe9\xff", "not valid UTF-8"),
+    ],
+    ids=["syntax", "nested", "not-utf8"],
+)
+def test_a_file_that_cannot_be_read_as_yaml_is_one_value_error_naming_the_file_only(
+    tmp_path: Path, raw: bytes, reason: str
+) -> None:
+    folder = tmp_path / "secretfolder"
+    folder.mkdir()
+    path = folder / "broken.yaml"
+    path.write_bytes(raw)
+    with pytest.raises(ValueError) as problem:
+        labeling.load_label_sets(path)
+    assert str(problem.value) == f"broken.yaml: {reason}"  # the YAML mark would show the whole path

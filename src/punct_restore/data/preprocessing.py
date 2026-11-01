@@ -95,15 +95,31 @@ def read_source_split(raw_dir: str | os.PathLike[str], source_split: str) -> lis
     return list(_map_source_files(read_one, sorted(read_utt2spk(raw_dir, source_split).items())))
 
 
+def parse_manifest_line(line: str, number: int, manifest_name: str) -> tuple[str, str]:
+    """(SHA-256, relative path) of line `number` of a manifest; a ValueError naming `manifest_name` if it is not
+    '<sha256>  <path>'."""
+    digest, separator, rel = line.rstrip("\n").partition("  ")
+    if not separator or not rel:
+        raise ValueError(f"{manifest_name} line {number}: expected '<sha256>  <path>'")
+    return digest, rel
+
+
 def verify_raw_manifest(manifest_path: str | os.PathLike[str]) -> list[str]:
-    """Paths (relative to the manifest) whose SHA-256 no longer matches. Empty list means raw data is unchanged."""
+    """Paths (relative to the manifest) whose SHA-256 no longer matches. Empty list means raw data is unchanged.
+
+    Raises ValueError("<manifest name> line N: expected '<sha256>  <path>'") for a line of another shape.
+    """
     base = os.path.dirname(os.path.abspath(manifest_path))
-    def check_one(line: str) -> str | None:
-        digest, rel = line.rstrip("\n").split("  ", 1)
+    name = os.path.basename(manifest_path)
+    def check_one(numbered_line: tuple[int, str]) -> str | None:
+        digest, rel = parse_manifest_line(numbered_line[1], numbered_line[0], name)
         with open(os.path.join(base, rel), "rb") as fh:
             return rel if hashlib.sha256(fh.read()).hexdigest() != digest else None
-    with open(manifest_path, encoding="utf-8") as f:
-        return [bad for bad in _map_source_files(check_one, f) if bad is not None]
+    try:
+        with open(manifest_path, encoding="utf-8") as f:
+            return [bad for bad in _map_source_files(check_one, enumerate(f, 1)) if bad is not None]
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"{name}: not valid UTF-8") from exc
 
 
 # --- Normalization: remove non-lexical material, log every removal ------------------------------------------------

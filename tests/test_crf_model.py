@@ -16,7 +16,6 @@ import math
 from pathlib import Path
 
 import pytest
-import yaml
 
 from punct_restore.features.crf_features import FeatureConfig
 from punct_restore.models.crf import CRFModel, get_mode_vocabulary
@@ -410,8 +409,9 @@ def test_get_mode_vocabulary_malformed_yaml_raises_error(tmp_path):
     """Malformed YAML syntax must raise error, not silently fall back."""
     bad_yaml = tmp_path / "malformed.yaml"
     bad_yaml.write_text("punctuation: [unclosed list", encoding="utf-8")
-    with pytest.raises(yaml.parser.ParserError):
+    with pytest.raises(ValueError) as problem:
         get_mode_vocabulary("A", config_path=bad_yaml)
+    assert str(problem.value) == "malformed.yaml: not valid YAML"
 
 
 def test_get_mode_vocabulary_inconsistent_structure_raises_error(tmp_path):
