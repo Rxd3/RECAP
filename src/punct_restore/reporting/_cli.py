@@ -10,8 +10,6 @@ import sys
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "src"))
 from punct_restore.prediction_io import check_new_output_paths
 
 

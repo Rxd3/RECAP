@@ -3,7 +3,7 @@
 Seed means are kept exact (``Decimal``, from the six-digit scores in the evaluator files) and are rounded once,
 half-up, when a number is displayed: a mean is never rounded to six digits first, so a difference of two means
 cannot pick up a second rounding. Used by asr_noise_table.py, asr_noise_report.py and asr_noise_findings.py, which
-are run from scripts/reporting (the entry script puts that folder and src on sys.path).
+sit beside it in punct_restore.reporting.
 """
 
 from __future__ import annotations
@@ -13,9 +13,8 @@ from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
-from build_tables import half_up, pct
-
 from punct_restore.data.asr_noise import V2_WEIGHTS
+from punct_restore.reporting.build_tables import half_up, pct
 
 WERS = ("0.05", "0.10", "0.15")
 SEEDS = (2026, 2027, 2028)

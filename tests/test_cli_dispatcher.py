@@ -64,7 +64,7 @@ def test_command_names_follow_the_module_names():
 
 @pytest.fixture
 def make_module(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Callable[[str, str], str]:
-    """Write `<name>.py` into a folder put on sys.path and return the module name."""
+    """Write `<name>.py` into a folder put on the import path and return the module name."""
     monkeypatch.syspath_prepend(str(tmp_path))
 
     def write(name: str, source: str) -> str:

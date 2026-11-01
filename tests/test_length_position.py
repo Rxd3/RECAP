@@ -1,4 +1,4 @@
-"""Tests for scripts/reporting/length_position.py on a small hand-computed mode A case (no real data)."""
+"""Tests for punct_restore.reporting.length_position on a small hand-computed mode A case (no real data)."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from eval_fixtures import gold_row, mask_row, pred_row, write_ids, write_jsonl
 from reporting_fixtures import assert_one_error_line, run_main
 
 from punct_restore.evaluation.inputs import sha256_file
-from scripts.reporting import length_position
+from punct_restore.reporting import length_position
 
 # (sample_id, tokens, gold marks, predicted marks); every other position is O
 CASE: list[tuple[str, int, dict[int, str], dict[int, str]]] = [

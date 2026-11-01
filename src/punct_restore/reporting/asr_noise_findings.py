@@ -22,7 +22,8 @@ from decimal import Decimal
 from itertools import pairwise
 from typing import Any
 
-from asr_noise_stats import (
+from punct_restore.data.asr_noise import HOMOPHONE_GROUPS
+from punct_restore.reporting.asr_noise_stats import (
     ARROW,
     MODEL_LABELS,
     V1_KEY,
@@ -35,9 +36,7 @@ from asr_noise_stats import (
     signed_pts,
     wer_label,
 )
-from build_tables import half_up, pct
-
-from punct_restore.data.asr_noise import HOMOPHONE_GROUPS
+from punct_restore.reporting.build_tables import half_up, pct
 
 EM = "—"  # em dash
 EDIT_MODELS = ("v2", "v1")

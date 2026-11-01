@@ -1,4 +1,4 @@
-"""Tests for scripts/reporting: the shared Markdown helpers, the table builders and time_models.
+"""Tests for punct_restore.reporting: the shared Markdown helpers, the table builders and time_models.
 
 Everything runs on a tiny generated scores tree (tests/reporting_fixtures.py); no real data.
 """
@@ -31,7 +31,7 @@ from reporting_fixtures import (
 
 from punct_restore.models.crf import CRFModel
 from punct_restore.models.hmm import HMMModel
-from scripts.reporting import (
+from punct_restore.reporting import (
     build_ablation_table,
     build_m3_final_sections,
     build_m3_tables,
@@ -478,7 +478,8 @@ def test_scores_root_defaults_to_the_committed_tree(module: ModuleType) -> None:
 
 
 def test_reporting_sources_hold_no_personal_absolute_paths() -> None:
-    for path in (ROOT / "scripts" / "reporting").glob("*.py"):
+    folders = (ROOT / "src" / "punct_restore" / "reporting", ROOT / "scripts" / "reporting")
+    for path in (path for folder in folders for path in folder.glob("*.py")):
         text = path.read_text(encoding="utf-8")
         assert "C:/" not in text and "C:\\" not in text and "Users" not in text, path.name
 

@@ -10,8 +10,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from asr_noise_findings import findings_section
-from asr_noise_stats import (
+from punct_restore.data.asr_noise import INSERT_WORDS, MIN_TRAIN_COUNT, SWAP_CAP_SHARE
+from punct_restore.reporting.asr_noise_findings import findings_section
+from punct_restore.reporting.asr_noise_stats import (
     ARROW,
     EN,
     MINUS,
@@ -25,9 +26,7 @@ from asr_noise_stats import (
     signed_pts,
     wer_label,
 )
-from build_tables import half_up, pct
-
-from punct_restore.data.asr_noise import INSERT_WORDS, MIN_TRAIN_COUNT, SWAP_CAP_SHARE
+from punct_restore.reporting.build_tables import half_up, pct
 
 Summary = Mapping[str, Any]
 

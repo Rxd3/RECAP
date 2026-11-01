@@ -1,4 +1,4 @@
-"""Safety tests for scripts/reporting: no overwriting, no folder names in errors, no crash on odd consoles.
+"""Safety tests for punct_restore.reporting: no overwriting, no folder names in errors, no crash on odd consoles.
 
 Covers the table builders and time_models. Runs on the tiny generated scores tree (tests/reporting_fixtures.py).
 """
@@ -28,7 +28,7 @@ from reporting_fixtures import (
 )
 
 from punct_restore.models.hmm import HMMModel
-from scripts.reporting import (
+from punct_restore.reporting import (
     _cli,
     build_ablation_table,
     build_m3_final_sections,
@@ -37,7 +37,6 @@ from scripts.reporting import (
 )
 
 scores = reporting_fixtures.scores  # the fixture is defined once, there; pytest finds it by this name
-SCRIPTS = Path(__file__).resolve().parents[1] / "scripts" / "reporting"
 # (builder, one of the evaluator JSON files it reads, relative to the scores root)
 BUILDERS = [(build_m3_tables, "hmm/shortcut_A_validation.json"),
             (build_m3_final_sections, "threshold/tau_A.json"),
@@ -288,26 +287,27 @@ def test_run_prints_the_reason_of_an_oserror_that_has_no_file_name(capsys: pytes
     assert capsys.readouterr().err == "error: No space left on device\n"
 
 
-# ---------------------------------------------------------------- odd consoles and plain checkouts
-def run_script(
-        script: str, argv: list[str], extra_env: dict[str, str] | None = None) -> subprocess.CompletedProcess[bytes]:
-    """Run a reporting script as ``python script.py`` the way a user does: no PYTHONPATH, so src comes from _cli."""
+# ---------------------------------------------------------------- odd consoles and python -m runs
+def run_module(
+        module: str, argv: list[str], extra_env: dict[str, str] | None = None) -> subprocess.CompletedProcess[bytes]:
+    """Run a reporting module as ``python -m`` the way a user does: no PYTHONPATH, so the package comes from the
+    install."""
     env = {key: value for key, value in os.environ.items() if key != "PYTHONPATH"} | (extra_env or {})
-    return subprocess.run([sys.executable, str(SCRIPTS / script), *argv], env=env, capture_output=True,
-                          check=False, timeout=120)
+    return subprocess.run([sys.executable, "-m", f"punct_restore.reporting.{module}", *argv], env=env,
+                          capture_output=True, check=False, timeout=120)
 
 
 def test_a_non_ascii_out_path_does_not_crash_a_cp1252_console(scores: Path, tmp_path: Path) -> None:
     out = tmp_path / "\u03a9tables.md"
-    done = run_script("build_m3_tables.py", ["--scores-root", str(scores), "--out", str(out)],
+    done = run_module("build_m3_tables", ["--scores-root", str(scores), "--out", str(out)],
                       {"PYTHONIOENCODING": "cp1252"})
     assert (done.returncode, done.stderr) == (0, b"")
     assert out.is_file() and b"\\u03a9tables.md" in done.stdout
 
 
-def test_time_models_runs_as_a_script_without_pythonpath(tmp_path: Path) -> None:
+def test_time_models_runs_as_a_module_without_pythonpath(tmp_path: Path) -> None:
     out = tmp_path / "t.json"
-    done = run_script("time_models.py", time_argv(tiny_hmm(tmp_path), out, tiny_data_root(tmp_path / "data")))
+    done = run_module("time_models", time_argv(tiny_hmm(tmp_path), out, tiny_data_root(tmp_path / "data")))
     assert (done.returncode, done.stderr) == (0, b"")
     assert out.is_file() and done.stdout.startswith(b"hmm A: ")
 
