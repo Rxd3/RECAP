@@ -10,12 +10,14 @@ from __future__ import annotations
 import contextlib
 import errno
 import json
+import math
 import os
 import shutil
 import tempfile
 from collections.abc import Callable, Iterator, Mapping
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, get_args, get_origin
+from typing import Any, Literal, get_args, get_origin
 
 import yaml
 
@@ -241,61 +243,92 @@ def read_yaml(path: str | os.PathLike[str]) -> Any:
         raise ValueError(f"{os.path.basename(path)}: not valid YAML") from exc
 
 
-_KIND_NAMES = {str: "nonempty text", list: "a JSON list", float: "a number", int: "a whole number"}
+Format = Literal["json", "yaml", "python"]  # what the checked value was read from: a message words the kinds to fit
+_OBJECT_NAMES: dict[Format, str] = {"json": "a JSON object", "yaml": "a mapping", "python": "a dict"}
+_LIST_NAMES: dict[Format, str] = {"json": "a JSON list", "yaml": "a list", "python": "a list"}
+_KIND_NAMES = {str: "nonempty text", float: "a number", int: "a whole number"}
 
 
-def _kind_name(kind: type, is_yaml: bool) -> str:
-    """How a message calls a kind: a YAML file holds a list, not a JSON list."""
-    return "a list" if is_yaml and kind is list else _KIND_NAMES[kind]
+@dataclass(frozen=True)
+class Number:
+    """A schema kind (see `require_object`): a finite number from `low` to `high`, which a message calls `name`.
+
+    `Number("a score", 0, 1)` takes 0, 0.5 and 1 (a bool, a text, `NaN`, `Infinity` and 2 are not scores).
+    """
+
+    name: str
+    low: float = -math.inf
+    high: float = math.inf
 
 
-def _has_kind(value: Any, kind: type) -> bool:
-    """Whether a JSON value is of the kind a schema asks for (`object`: anything; numbers: never a bool)."""
+def _kind_name(kind: Any, fmt: Format) -> str:
+    """How a message calls a kind."""
+    if kind is list:
+        return _LIST_NAMES[fmt]
+    return kind.name if isinstance(kind, Number) else _KIND_NAMES[kind]
+
+
+def is_finite_number(value: Any) -> bool:
+    """Whether `value` is a number (never a bool) that is not `NaN`, `Infinity` or an integer too big for a float."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:  # an integer with hundreds of digits has no float to compare with
+        return False
+
+
+def _has_kind(value: Any, kind: Any) -> bool:
+    """Whether a value is of the kind a schema asks for (`object`: anything; numbers: finite, never a bool)."""
     if kind is str:
         return isinstance(value, str) and bool(value.strip())
     if kind is float:
-        return isinstance(value, (int, float)) and not isinstance(value, bool)
+        return is_finite_number(value)
+    if isinstance(kind, Number):
+        return is_finite_number(value) and kind.low <= value <= kind.high
     if kind is int:
         return isinstance(value, int) and not isinstance(value, bool)
     return kind is object or isinstance(value, kind)
 
 
-def _check_kind(name: str, value: Any, want: Any, place: str, is_yaml: bool) -> None:
+def _check_kind(name: str, value: Any, want: Any, place: str, fmt: Format) -> None:
     """Require `value`, found at `place` in the file `name`, to match one entry of a schema (see `require_object`)."""
     if isinstance(want, Mapping):
-        require_object(name, value, want, place, is_yaml=is_yaml)
+        require_object(name, value, want, place, fmt=fmt)
     elif get_origin(want) is list:
-        _check_kind(name, value, list, place, is_yaml)
+        _check_kind(name, value, list, place, fmt)
         (item_kind,) = get_args(want)
         for number, item in enumerate(value):
-            _check_kind(name, item, item_kind, f"{place}.{number}", is_yaml)
+            _check_kind(name, item, item_kind, f"{place}.{number}", fmt)
     elif not _has_kind(value, want):
-        raise ValueError(f"{name}: {place} is not {_kind_name(want, is_yaml)}")
+        raise ValueError(f"{name}: {place} is not {_kind_name(want, fmt)}")
 
 
 def require_object(
-    name: str, value: Any, schema: Mapping[str, Any], at: str = "", *, is_yaml: bool = False
+    name: str, value: Any, schema: Mapping[str, Any], at: str = "", *, fmt: Format = "json"
 ) -> dict[str, Any]:
-    """Require `value`, the content of the file `name`, to be a JSON object that holds every key of `schema`.
+    """Require `value`, the content of the file `name`, to be an object that holds every key of `schema`.
 
     A schema value says what its key must hold: `object` anything (the key only has to be there), `str` nonempty
-    text, `float` a number, `int` a whole number, `list` a JSON list, `list[str]` (or `list[float]`, `list[int]`) a
-    list whose every item is of that kind, or a schema of its own for a nested object (`{}`: any object). Other
-    keys are not looked at. `at` is where `value` sits inside the file (a dotted path), for a nested call. For a
-    YAML file (`is_yaml`) the message says "a mapping" and "a list" where a JSON file's says "a JSON object" and
-    "a JSON list".
+    text, `float` a finite number (not `NaN`, `Infinity`, `1e999` or an integer too big for a float), `Number(name,
+    low, high)` a finite number in that range, `int` a whole number, `list` a list, `list[str]` (or `list[float]`,
+    `list[int]`) a list whose every item is of that kind, or a schema of its own for a nested object (`{}`: any
+    object). Other keys are not looked at. `at` is where `value` sits inside the file (a dotted path), for a nested
+    call. `fmt` says what the value was read from, so the message calls an object and a list what that format calls
+    them: "a JSON object" and "a JSON list" for a JSON file (the default), "a mapping" and "a list" for a YAML
+    file, "a dict" and "a list" for a joblib file.
 
     Raises:
         ValueError: One line, `<name>: <what is wrong>`, that names the key (or the list item) by its dotted path.
     """
     if not isinstance(value, dict):
-        noun = "a mapping" if is_yaml else "a JSON object"
+        noun = _OBJECT_NAMES[fmt]
         raise ValueError(f"{name}: {at} is not {noun}" if at else f"{name}: not {noun}")
     for key, want in schema.items():
         place = f"{at}.{key}" if at else key
         if key not in value:
             raise ValueError(f"{name}: missing {place}")
-        _check_kind(name, value[key], want, place, is_yaml)
+        _check_kind(name, value[key], want, place, fmt)
     return value
 
 

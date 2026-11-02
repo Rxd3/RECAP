@@ -102,7 +102,7 @@ def load_vocab(path: str | Path = LABEL_SETS_PATH) -> Vocab:
     """
     name = Path(path).name
     try:
-        config = require_object(name, read_yaml(path), _VOCAB_SCHEMA, is_yaml=True)
+        config = require_object(name, read_yaml(path), _VOCAB_SCHEMA, fmt="yaml")
     except ValueError as exc:
         raise EvaluationInputError(str(exc)) from exc
     standard = tuple(config["punctuation"]["standard"])

@@ -169,9 +169,9 @@ KEYS = [
     (TABLES, "crf_validation/m3_basic_A.json", delete("blocks", P, "micro"),
      f"m3_basic_A.json: missing blocks.{P}.micro"),
     (TABLES, "crf_validation/m3_basic_A.json", put("high", "blocks", P, "accuracy"),
-     f"m3_basic_A.json: blocks.{P}.accuracy is not a number"),
+     f"m3_basic_A.json: blocks.{P}.accuracy is not a score"),
     (TABLES, "crf_validation/m3_basic_A.json", put(None, "blocks", P, "macro_f1"),
-     f"m3_basic_A.json: blocks.{P}.macro_f1 is not a number"),
+     f"m3_basic_A.json: blocks.{P}.macro_f1 is not a score"),
     (TABLES, "crf_validation/m3_basic_A.json", put(5, "blocks", P, "macro_f1_ci"),
      f"m3_basic_A.json: blocks.{P}.macro_f1_ci is not a JSON object"),
     (TABLES, "crf_validation/m3_basic_A.json", put({"low": 0.1}, "blocks", P, "macro_f1_ci"),
@@ -184,10 +184,18 @@ KEYS = [
      f"m3_basic_B.json: blocks.{P}.per_class.COMMA.support is not a whole number"),
     (TABLES, "crf_validation/m3_improved_B.json", put([[1, 2, 3], "x", []], "blocks", P, "confusion"),
      f"m3_improved_B.json: blocks.{P}.confusion.1 is not a JSON list"),
+    (TABLES, "crf_validation/m3_improved_B.json", put([[1, 2, 3], [4, 5, 6]], "blocks", P, "confusion"),
+     f"m3_improved_B.json: blocks.{P}.confusion is not 3 rows of 3 counts"),
+    (TABLES, "crf_validation/m3_improved_B.json", put([[1, 2, 3], [4, 5], [6, 7, 8]], "blocks", P, "confusion"),
+     f"m3_improved_B.json: blocks.{P}.confusion is not 3 rows of 3 counts"),
+    (TABLES, "crf_validation/m3_basic_A.json", put([[1, 2], [3, 4], [5, 6]], "blocks", P, "confusion"),
+     f"m3_basic_A.json: blocks.{P}.confusion is not 2 rows of 2 counts"),
+    (TABLES, "crf_validation/m3_basic_C.json", put([[1, 2]], "blocks", "casing/unmasked", "confusion"),
+     "m3_basic_C.json: blocks.casing/unmasked.confusion is not 2 rows of 2 counts"),
     (TABLES, "crf_validation/m3_basic_vs_hmm_B.json", delete("blocks", NF, "difference_ci"),
      f"m3_basic_vs_hmm_B.json: missing blocks.{NF}.difference_ci"),
     (TABLES, "crf_validation/m3_basic_vs_hmm_B.json", put("x", "blocks", P, "difference"),
-     f"m3_basic_vs_hmm_B.json: blocks.{P}.difference is not a number"),
+     f"m3_basic_vs_hmm_B.json: blocks.{P}.difference is not a score"),
     (TABLES, "crf_validation/m3_improved_A.errors.json", delete("pair_counts"),
      "m3_improved_A.errors.json: missing pair_counts"),
     (TABLES, "crf_validation/m3_improved_A.errors.json", put("many", "errors_total"),
@@ -198,7 +206,7 @@ KEYS = [
      "m3_improved_A.errors.json: pair_counts.0 is not a JSON object"),
     (FINAL, "threshold/tau_A.json", delete("grid"), "tau_A.json: missing grid"),
     (FINAL, "threshold/tau_A.json", put("x", "tau"), "tau_A.json: tau is not a number"),
-    (FINAL, "threshold/tau_A.json", put(None, "grid", 1, "macro_f1"), "tau_A.json: grid.1.macro_f1 is not a number"),
+    (FINAL, "threshold/tau_A.json", put(None, "grid", 1, "macro_f1"), "tau_A.json: grid.1.macro_f1 is not a score"),
     (FINAL, "threshold/tau_B.json", put([{"tau": 0.3, "macro_f1": 0.4}], "grid"),
      "tau_B.json: the grid does not have the taus of tau_A.json"),
     (FINAL, "leakage/crf_A_test_leakfree.json", delete("counts"), "crf_A_test_leakfree.json: missing counts"),
@@ -212,13 +220,13 @@ KEYS = [
     (ABLATION, "ablations/mode_A/improved.json", delete("blocks", NF, "macro_f1"),
      f"improved.json: missing blocks.{NF}.macro_f1"),
     (ABLATION, "ablations/mode_A/improved_minus_casing.json", put(None, "blocks", P, "macro_f1"),
-     f"improved_minus_casing.json: blocks.{P}.macro_f1 is not a number"),
+     f"improved_minus_casing.json: blocks.{P}.macro_f1 is not a score"),
     (ABLATION, "ablations/mode_B/full_vs_improved_minus_window2.json", delete("blocks", P, "difference"),
      f"full_vs_improved_minus_window2.json: missing blocks.{P}.difference"),
     (FINAL, "../manifests/crf_mode_a_basic_full_01.manifest.json", delete("training_duration_seconds"),
      "crf_mode_a_basic_full_01.manifest.json: missing training_duration_seconds"),
     (FINAL, "../manifests/crf_mode_a_basic_full_01.manifest.json", put("slow", "training_duration_seconds"),
-     "crf_mode_a_basic_full_01.manifest.json: training_duration_seconds is not a number"),
+     "crf_mode_a_basic_full_01.manifest.json: training_duration_seconds is not a non-negative number"),
 ]
 
 
@@ -271,6 +279,197 @@ def test_a_simulator_summary_of_the_wrong_kind_keeps_its_named_complaint(
     patch_json(v2_run(root, "0.10", 2027) / "summary.json", budget="many")
     code, err = run_command("asr-noise-table", root, tmp_path, capsys)
     assert (code, err) == (1, "error: summary.json: budget must be a positive integer\n")
+
+
+# --- a number the tables cannot round ------------------------------------------------------------------------------
+# Infinity, NaN, 1e999 and an integer of hundreds of digits are JSON that Python reads but no number a table can print:
+# pct and half_up raise decimal.InvalidOperation, a float conversion raises OverflowError. A finite number outside
+# 0..1 (1e30) crashes pct the same way. Each is one named line, never a traceback.
+
+NOT_FINITE = {"Infinity": "Infinity", "-Infinity": "-Infinity", "NaN": "NaN", "1e999": "1e999",
+              "-1e999": "-1e999", "400-digit": "9" * 400, "negative 400-digit": "-" + "9" * 400}
+OUTSIDE_SCORE = {"1e30": "1e30", "1.5": "1.5", "-0.01": "-0.01", "2": "2"}
+OUTSIDE_DIFFERENCE = {"1e30": "1e30", "1.5": "1.5", "-1.01": "-1.01", "-2": "-2"}
+Row = tuple[str, str, tuple[str, ...], str]  # command, file below the scores root, path to the number, end of the line
+
+
+def number_file(relative: str) -> str:
+    return relative.rsplit("/", 1)[-1]
+
+
+def put_raw(path: Path, keys: tuple[str | int, ...], raw: str) -> None:
+    """Set the entry at ``keys`` to the JSON text ``raw``: json.dumps cannot write 1e999 or a 400-digit number."""
+    edit_file(path, put("__raw__", *keys))
+    path.write_text(path.read_text(encoding="utf-8").replace('"__raw__"', raw), encoding="utf-8")
+
+
+def is_score(name: str, relative: str, *keys: str) -> Row:
+    """A number a table shows as a percentage: 0..1 (a difference: -1..1), else ``<key> is not a score``."""
+    return name, relative, keys, f"{'.'.join(keys)} is not a score"
+
+
+def is_difference(keys: tuple[str, ...]) -> bool:
+    return "difference" in keys or "difference_ci" in keys
+
+
+CRF_A = "crf_validation/m3_basic_A.json"
+CRF_B = "crf_validation/m3_basic_B.json"
+CRF_VS_HMM_B = "crf_validation/m3_basic_vs_hmm_B.json"
+NUMBER_ROWS: list[Row] = [
+    is_score(TABLES, "hmm/shortcut_A_validation.json", "blocks", P, "macro_f1"),
+    is_score(TABLES, CRF_A, "blocks", P, "macro_f1_ci", "low"),
+    is_score(TABLES, CRF_A, "blocks", P, "macro_f1_ci", "high"),
+    is_score(TABLES, CRF_A, "blocks", P, "micro", "precision"),
+    is_score(TABLES, CRF_A, "blocks", P, "micro", "recall"),
+    is_score(TABLES, CRF_A, "blocks", P, "micro", "f1"),
+    is_score(TABLES, CRF_A, "blocks", P, "accuracy"),
+    is_score(TABLES, CRF_B, "blocks", P, "per_class", "COMMA", "precision"),
+    is_score(TABLES, CRF_B, "blocks", P, "per_class", "COMMA", "recall"),
+    is_score(TABLES, CRF_B, "blocks", P, "per_class", "DASH", "f1"),
+    is_score(TABLES, "crf_validation/m3_improved_C.json", "blocks", "casing/all", "macro_f1"),
+    is_score(TABLES, CRF_VS_HMM_B, "blocks", P, "difference"),
+    is_score(TABLES, CRF_VS_HMM_B, "blocks", NF, "difference_ci", "low"),
+    is_score(TABLES, CRF_VS_HMM_B, "blocks", NF, "difference_ci", "high"),
+    is_score(FINAL, "threshold/tau_B.json", "grid", "2", "macro_f1"),
+    is_score(FINAL, "crf_validation/m3_improved_C.json", "blocks", "joint/unmasked", "macro_f1"),
+    is_score(FINAL, "leakage/crf_A_test_leakfree.json", "blocks", P, "macro_f1"),
+    is_score(FINAL, "leakage/hmm_A_test_train_video.json", "blocks", P, "macro_f1_ci", "high"),
+    is_score(FINAL, "hmm/shortcut_A_test_amb.json", "blocks", P, "macro_f1"),
+    is_score(FINAL, "crf_test/m3_improved_vs_hmm_C_test_amb.json", "blocks", "joint/unmasked", "difference"),
+    is_score(FINAL, "threshold/tau_vs_improved_A_test_amb.json", "blocks", P, "difference_ci", "low"),
+    is_score(ABLATION, "ablations/mode_A/improved.json", "blocks", P, "macro_f1"),
+    is_score(ABLATION, "ablations/mode_B/improved_minus_casing.json", "blocks", NF, "macro_f1_ci", "low"),
+    is_score(ABLATION, "ablations/mode_B/full_vs_improved_minus_window2.json", "blocks", P, "difference"),
+    is_score(ABLATION, "ablations/mode_C/full_vs_improved_minus_window2.json", "blocks", NF, "difference_ci", "high"),
+    (FINAL, "threshold/tau_A.json", ("tau",), "tau is not a number"),
+    (FINAL, "runtime/crf_basic_A.json", ("median_seconds",), "median_seconds must be a positive number"),
+    (FINAL, "runtime/crf_improved_B.json", ("tokens_per_second",), "tokens_per_second must be a positive number"),
+    (FINAL, "runtime/crf_improved_C.json", ("ms_per_sequence",), "ms_per_sequence must be a positive number"),
+    (FINAL, "../manifests/crf_mode_b_improved_full_01.manifest.json", ("training_duration_seconds",),
+     "training_duration_seconds is not a non-negative number"),
+]
+SCORE_ROWS = [row for row in NUMBER_ROWS if row[3].endswith("is not a score")]
+ROW_IDS = [f"{row[0]}-{row[1].rsplit('/', 1)[-1]}-{row[2][-1]}" for row in NUMBER_ROWS]
+
+
+def run_with_number(row: Row, raw: str, scores: Path, tmp_path: Path,
+                    capsys: pytest.CaptureFixture[str]) -> tuple[int, str]:
+    name, relative, keys, _ = row
+    write_manifests(tmp_path / "manifests")
+    put_raw(tmp_path / "scores" / relative, tuple(int(k) if k.isdigit() else k for k in keys), raw)
+    return run_command(name, scores, tmp_path, capsys)
+
+
+def named_line(row: Row) -> str:
+    return f"error: {row[1].rsplit('/', 1)[-1]}: {row[3]}\n"
+
+
+@pytest.mark.parametrize("raw", NOT_FINITE.values(), ids=list(NOT_FINITE))
+@pytest.mark.parametrize("row", NUMBER_ROWS, ids=ROW_IDS)
+def test_a_number_that_is_not_finite_is_one_named_line_in_every_table_command(
+        row: Row, raw: str, scores: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    assert run_with_number(row, raw, scores, tmp_path, capsys) == (1, named_line(row))
+
+
+OUTSIDE = [(row, raw) for row in SCORE_ROWS
+           for raw in (OUTSIDE_DIFFERENCE if is_difference(row[2]) else OUTSIDE_SCORE).values()]
+
+
+@pytest.mark.parametrize(("row", "raw"), OUTSIDE, ids=[f"{ROW_IDS[NUMBER_ROWS.index(r)]}={v}" for r, v in OUTSIDE])
+def test_a_finite_number_outside_the_range_of_a_score_is_not_a_score(
+        row: Row, raw: str, scores: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    assert run_with_number(row, raw, scores, tmp_path, capsys) == (1, named_line(row))
+
+
+ENDS = [(row, raw) for row in SCORE_ROWS for raw in (("-1", "1") if is_difference(row[2]) else ("0", "1"))]
+
+
+@pytest.mark.parametrize(("row", "raw"), ENDS, ids=[f"{ROW_IDS[NUMBER_ROWS.index(r)]}={v}" for r, v in ENDS])
+def test_the_ends_of_the_range_are_scores(
+        row: Row, raw: str, scores: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    code, err = run_with_number(row, raw, scores, tmp_path, capsys)
+    assert (code, err) == (0, "")
+
+
+def test_two_speeds_whose_ratio_is_no_number_are_refused_by_name(
+        scores: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """Each speed is a finite number, yet 1e300 over 1e-300 is Infinity, which the speed sentence cannot round."""
+    put_raw(tmp_path / "scores" / "runtime" / "crf_improved_A.json", ("tokens_per_second",), "1e300")
+    put_raw(tmp_path / "scores" / "runtime" / "crf_basic_A.json", ("tokens_per_second",), "1e-300")
+    write_manifests(tmp_path / "manifests")
+    assert run_command(FINAL, scores, tmp_path, capsys) == (
+        1, "error: crf_improved_A.json: tokens_per_second cannot be compared with that of crf_basic_A.json\n")
+
+
+@pytest.mark.parametrize("raw", ["-1", "-0.5", "-1e-9"])
+def test_a_negative_fit_time_is_refused_and_zero_is_not(
+        raw: str, scores: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    row = NUMBER_ROWS[-1]
+    assert run_with_number(row, raw, scores, tmp_path, capsys) == (1, named_line(row))
+    assert run_with_number(row, "0", scores, tmp_path, capsys)[0] == 0
+
+
+# (file below the ASR scores root, the path to the number, the field the line names)
+ASR_NUMBERS = [
+    ("hmm/hmm_B_test.json", ("blocks", P, "macro_f1"), "macro_f1"),
+    ("crf_test/m3_basic_A_test.json", ("blocks", P, "macro_f1_ci", "high"), "macro_f1_ci.high"),
+    ("crf_test/m3_basic_C_test.json", ("blocks", "joint/unmasked", "macro_f1_ci", "low"), "macro_f1_ci.low"),
+    ("asr_noise_v2/v2/wer0.10/seed2027/summary.json", ("wer",), "wer"),
+    ("asr_noise_v2/v2/wer0.10/seed2027/summary.json", ("achieved_wer",), "achieved_wer"),
+    ("asr_noise_v2/v2/wer0.10/seed2027/summary.json", ("cost_share", "swap"), "cost_share.swap"),
+    ("asr_noise/wer0.10/summary.json", ("achieved_wer",), "achieved_wer"),
+    ("asr_noise/wer0.10/summary.json", ("cost_share", "deletion"), "cost_share.deletion"),
+]
+ASR_IDS = [f"{number_file(relative)}-{'.'.join(keys)}" for relative, keys, _ in ASR_NUMBERS]
+
+
+def run_asr_with_number(index: int, raw: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> tuple[int, str]:
+    relative, keys, _ = ASR_NUMBERS[index]
+    root = write_asr_scores(tmp_path / "asr_scores")
+    put_raw(root / relative, keys, raw)
+    code, err = run_command("asr-noise-table", root, tmp_path, capsys)
+    assert not list(tmp_path.glob("out*"))  # nothing is written for a refused input
+    return code, err
+
+
+@pytest.mark.parametrize("raw", NOT_FINITE.values(), ids=list(NOT_FINITE))
+@pytest.mark.parametrize("index", range(len(ASR_NUMBERS)), ids=ASR_IDS)
+def test_asr_noise_table_refuses_a_number_that_is_not_finite_by_name(
+        index: int, raw: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    relative, _, field = ASR_NUMBERS[index]
+    assert run_asr_with_number(index, raw, tmp_path, capsys) == (
+        1, f"error: {number_file(relative)}: {field} must be a finite number\n")
+
+
+# (the simulator summary's path to the count, how the line calls it)
+ASR_COUNTS = [(("tokens_before",), "a positive integer"), (("tokens_after",), "a positive integer"),
+              (("budget",), "a positive integer"), (("edits", "deletion"), "a non-negative integer"),
+              (("edits", "swap"), "a non-negative integer")]
+
+
+@pytest.mark.parametrize("raw", ["9" * 400, "1" + "0" * 309], ids=["400-digit", "310-digit"])
+@pytest.mark.parametrize(("keys", "kind"), ASR_COUNTS, ids=[".".join(keys) for keys, _ in ASR_COUNTS])
+def test_asr_noise_table_refuses_a_count_too_big_for_a_float_by_name(
+        keys: tuple[str, ...], kind: str, raw: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """A count is averaged and shown as a float: with 310 digits it is Infinity, which half_up cannot round."""
+    root = write_asr_scores(tmp_path / "asr_scores")
+    put_raw(root / "asr_noise_v2/v2/wer0.10/seed2027/summary.json", keys, raw)
+    assert run_command("asr-noise-table", root, tmp_path, capsys) == (
+        1, f"error: summary.json: {'.'.join(keys)} must be {kind}\n")
+    assert not list(tmp_path.glob("out*"))
+
+
+UNIT_FIELDS = [i for i, (_, _, field) in enumerate(ASR_NUMBERS) if field != "wer"]  # wer has its own check
+
+
+@pytest.mark.parametrize("raw", ["1e30", "1.5", "-0.01"])
+@pytest.mark.parametrize("index", UNIT_FIELDS, ids=[ASR_IDS[i] for i in UNIT_FIELDS])
+def test_asr_noise_table_refuses_a_share_or_score_outside_0_to_1_by_name(
+        index: int, raw: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """1e30 reaches pct, which cannot round it; a score, an achieved WER and a cost share are fractions."""
+    relative, _, field = ASR_NUMBERS[index]
+    assert run_asr_with_number(index, raw, tmp_path, capsys) == (
+        1, f"error: {number_file(relative)}: {field} must be between 0 and 1\n")
 
 
 # --- the boundary --------------------------------------------------------------------------------------------------

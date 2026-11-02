@@ -102,7 +102,8 @@ def validate_config(config: Any, source: str = "config") -> dict[str, Any]:
     otherwise. Only then are the protocol rules checked; a rule that fails is a ValueError of the same form.
     """
     where = f"{source}: invalid experiment config"
-    require_object(where, config, _CONFIG_SCHEMA, is_yaml=Path(source).suffix.lower() in (".yaml", ".yml"))
+    is_yaml = Path(source).suffix.lower() in (".yaml", ".yml")
+    require_object(where, config, _CONFIG_SCHEMA, fmt="yaml" if is_yaml else "json")
     try:
         _check_rules(config)
     except ValueError as exc:

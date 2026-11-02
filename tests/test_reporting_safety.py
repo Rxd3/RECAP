@@ -95,19 +95,26 @@ def test_an_out_in_a_missing_folder_is_refused_before_anything_is_read(
     assert not out.parent.exists()
 
 
-# (folder, file, entry to change, new value, what the one-line error must name)
+# (folder, file, entry to change, new value, the whole error line: the first file that differs, named, and the file
+# it differs from)
 DISAGREE = [
-    ("scores", "runtime/crf_improved_C.json", ("hardware", "python"), "3.12.0", "Python version"),
-    ("scores", "runtime/crf_basic_B.json", ("hardware", "processor"), "Other CPU Family 1", "processor"),
-    ("manifests", "crf_mode_c_improved_full_01.manifest.json", ("environment", "cpu_count"), 64, "CPU count"),
-    ("manifests", "crf_mode_a_basic_full_01.manifest.json", ("environment", "machine"), "OTHER", "machine"),
-    ("scores", "leakage/crf_A_test_official_all.json", ("counts", "sequences"), 1235, "different numbers"),
+    ("scores", "runtime/crf_improved_C.json", ("hardware", "python"), "3.12.0",
+     "crf_improved_C.json: Python version differs from crf_basic_A.json"),
+    ("scores", "runtime/crf_basic_B.json", ("hardware", "processor"), "Other CPU Family 1",
+     "crf_basic_B.json: processor differs from crf_basic_A.json"),
+    ("manifests", "crf_mode_c_improved_full_01.manifest.json", ("environment", "cpu_count"), 64,
+     "crf_mode_c_improved_full_01.manifest.json: CPU count differs from crf_mode_a_basic_full_01.manifest.json"),
+    ("manifests", "crf_mode_a_basic_full_01.manifest.json", ("environment", "machine"), "OTHER",
+     "crf_mode_b_basic_full_01.manifest.json: machine differs from crf_mode_a_basic_full_01.manifest.json"),
+    ("scores", "leakage/crf_A_test_official_all.json", ("counts", "sequences"), 1235,
+     "crf_A_test_official_all.json: counts.sequences differs from hmm_A_test_official_all.json"),
 ]
 
 
-@pytest.mark.parametrize(("folder", "name", "keys", "value", "needle"), DISAGREE, ids=[d[4] for d in DISAGREE])
+@pytest.mark.parametrize(("folder", "name", "keys", "value", "message"), DISAGREE,
+                         ids=[d[2][-1] for d in DISAGREE])
 def test_final_sections_refuse_inputs_that_disagree_on_a_quoted_fact(
-        folder: str, name: str, keys: tuple[str, ...], value: object, needle: str, scores: Path, tmp_path: Path,
+        folder: str, name: str, keys: tuple[str, ...], value: object, message: str, scores: Path, tmp_path: Path,
         capsys: pytest.CaptureFixture[str]) -> None:
     out = tmp_path / "final.md"
     manifests = write_manifests(tmp_path / "manifests")
@@ -115,7 +122,7 @@ def test_final_sections_refuse_inputs_that_disagree_on_a_quoted_fact(
     code, stdout, err = run_main(build_m3_final_sections, capsys, "--scores-root", scores,
                                  "--manifests", manifests, "--out", out)
     assert (code, stdout) == (1, "")
-    assert_one_error_line(err, needle)
+    assert err == f"error: {message}\n"
     assert str(tmp_path) not in err and not out.exists()
 
 

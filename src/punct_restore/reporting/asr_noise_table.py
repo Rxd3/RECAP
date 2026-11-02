@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import sys
 from collections.abc import Mapping
 from contextlib import suppress
@@ -23,9 +22,9 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from punct_restore.file_io import read_object, require_folder, require_object, write_new_file
+from punct_restore.file_io import is_finite_number, read_object, require_object, write_new_file
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.reporting._cli import check_out, run
+from punct_restore.reporting._cli import check_out, check_scores_folder, run
 from punct_restore.reporting.asr_noise_report import render_markdown
 from punct_restore.reporting.asr_noise_stats import (
     MODELS,
@@ -48,7 +47,7 @@ __all__ = ["compute_seed_stats", "main", "render_markdown"]
 
 
 def _finite_float(value: Any, filename: str, field: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+    if not is_finite_number(value):  # NaN, Infinity, 1e999 and an integer too big for a float are not
         raise ValueError(f"{filename}: {field} must be a finite number")
     return float(value)
 
@@ -61,13 +60,15 @@ def _unit_float(value: Any, filename: str, field: str) -> float:
 
 
 def _positive_int(value: Any, filename: str, field: str) -> int:
-    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+    """A count above 0 that a float can hold: the report averages it as a float, and Infinity cannot be rounded."""
+    if not (isinstance(value, int) and is_finite_number(value) and value > 0):
         raise ValueError(f"{filename}: {field} must be a positive integer")
     return value
 
 
 def _nonneg_int(value: Any, filename: str, field: str) -> int:
-    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+    """A count from 0 that a float can hold (see ``_positive_int``)."""
+    if not (isinstance(value, int) and is_finite_number(value) and value >= 0):
         raise ValueError(f"{filename}: {field} must be a non-negative integer")
     return value
 
@@ -76,17 +77,6 @@ def check_outputs(json_out: Path, out_md: Path) -> None:
     """Refuse outputs that collide, are folders, have missing parents, or already exist, before reading inputs."""
     check_out(json_out)
     check_out(out_md, {"--json-out": json_out})
-
-
-def check_scores_folder(scores_root: Path) -> None:
-    """Refuse a scores folder that is missing or a file, in one line that names it only.
-
-    ``require_folder`` raises a bare OSError, which the reporting boundary hides, so it is re-raised as a ValueError.
-    """
-    try:
-        require_folder(scores_root, "scores folder")
-    except OSError as exc:
-        raise ValueError(str(exc)) from exc
 
 
 def write_outputs(json_out: Path, json_text: str, out_md: Path, md_text: str) -> None:
@@ -157,9 +147,9 @@ def _read_sim_summary(path: Path, *, expected_seed: int, expected_wer: str, edit
     target_wer = _finite_float(doc["wer"], path.name, "wer")
     if round(target_wer, 2) != round(float(expected_wer), 2):
         raise ValueError(f"{path.name}: expected wer {expected_wer}, found {target_wer}")
-    achieved_wer = _finite_float(doc["achieved_wer"], path.name, "achieved_wer")
+    achieved_wer = _unit_float(doc["achieved_wer"], path.name, "achieved_wer")
     edits = {k: _nonneg_int(doc["edits"][k], path.name, f"edits.{k}") for k in keys}
-    cost_share = {k: _finite_float(doc["cost_share"][k], path.name, f"cost_share.{k}") for k in keys}
+    cost_share = {k: _unit_float(doc["cost_share"][k], path.name, f"cost_share.{k}") for k in keys}
     return {
         "seed": expected_seed,
         "wer": target_wer,
@@ -179,7 +169,7 @@ def _aggregate_sim_summaries(per_seed: Mapping[int, dict[str, Any]]) -> dict[str
     first = per_seed[SEEDS[0]]
     for s in SEEDS[1:]:
         if per_seed[s]["tokens_before"] != first["tokens_before"] or per_seed[s]["budget"] != first["budget"]:
-            raise ValueError("summary.json files across seeds disagree on tokens_before or budget")
+            raise ValueError(f"summary.json: tokens_before or budget of seed {s} differs from seed {SEEDS[0]}")
     tokens_after = [per_seed[s]["tokens_after"] for s in SEEDS]
     return {
         "wer": first["wer"],

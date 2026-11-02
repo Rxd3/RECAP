@@ -203,7 +203,6 @@ RULE_CASES = [
     ("search.smoothing", [0.1, 0.1], "search values must be nonempty and unique"),
     ("search.smoothing", [-0.1], "smoothing/cutoffs must be positive; cutoffs must be integers"),
     ("search.smoothing", [0.0], "smoothing/cutoffs must be positive; cutoffs must be integers"),
-    ("search.smoothing", [float("inf")], "smoothing/cutoffs must be positive; cutoffs must be integers"),
     ("search.min_token_count", [1.5], "smoothing/cutoffs must be positive; cutoffs must be integers"),
     ("search.min_token_count", [0], "smoothing/cutoffs must be positive; cutoffs must be integers"),
     ("runtime.repetitions", 1, "runtime measurement requires warmup and repetitions"),
@@ -218,6 +217,13 @@ def test_a_protocol_rule_error_starts_with_the_file_name_like_a_shape_error(path
     with pytest.raises(ValueError) as problem:
         validate_config(damaged(path, value), "x.yaml")
     assert str(problem.value) == f"{PREFIX}{reason}"
+
+
+def test_an_infinite_search_value_is_refused_by_the_shape_check_as_not_a_number() -> None:
+    """A float is finite for the shape check, so Infinity never reaches the rules that compare a value with 0."""
+    with pytest.raises(ValueError) as problem:
+        validate_config(damaged("search.smoothing", [float("inf")]), "x.yaml")
+    assert str(problem.value) == f"{PREFIX}search.smoothing.0 is not a number"
 
 
 def test_a_protocol_rule_error_names_the_default_source_when_none_is_given() -> None:

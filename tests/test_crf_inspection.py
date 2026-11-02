@@ -17,11 +17,20 @@ FEATURE_CONFIG = {
     "use_token_ngrams": False, "use_question_cues": False, "use_clause_cues": False, "use_casing_cues": False,
     "include_utterance_boundaries": True, "use_positional_buckets": False, "version": "v1-basic",
 }
+
+
+def _tiny_fitted_crf() -> sklearn_crfsuite.CRF:
+    """A trained CRF (one two-token sequence): an unfitted one is refused as an artifact's backend."""
+    crf = sklearn_crfsuite.CRF(max_iterations=2)
+    crf.fit([[{"w": "a"}, {"w": "b"}]], [["O", "COMMA"]])
+    return crf
+
+
 BUNDLE = {
     "schema_version": 1, "model_name": "crf_probe", "label_mode": "A", "vocabulary": ["O", "COMMA"],
     "hyperparameters": HYPERPARAMETERS, "feature_config": FEATURE_CONFIG,
     "training_metadata": {"num_sequences": 3}, "environment": {"platform": "test-os"},
-    "backend_state": sklearn_crfsuite.CRF(),  # the kind is checked, the model inside is not looked at
+    "backend_state": _tiny_fitted_crf(),  # the kind and that it is trained are checked, not what it predicts
 }
 SIDECAR = {
     "run_id": "run-7", "provenance": {"dataset_release": "rel-1", "policy_version": "pol-1"},
@@ -96,9 +105,9 @@ def test_a_bundle_without_a_field_is_refused_naming_it(field: str, tmp_path: Pat
 
 
 @pytest.mark.parametrize(("field", "value", "reason"), [
-    ("hyperparameters", None, "hyperparameters is not a JSON object"),
-    ("vocabulary", 5, "vocabulary is not a JSON list"),
-    ("environment", [], "environment is not a JSON object"),
+    ("hyperparameters", None, "hyperparameters is not a dict"),
+    ("vocabulary", 5, "vocabulary is not a list"),
+    ("environment", [], "environment is not a dict"),
     ("backend_state", b"x", "backend_state is not a CRF model"),
 ])
 def test_a_field_of_the_wrong_kind_is_refused_naming_it(field: str, value: object, reason: str,

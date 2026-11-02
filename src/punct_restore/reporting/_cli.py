@@ -11,6 +11,7 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 
 from punct_restore.errors import one_line_error, reconfigure_stdout
+from punct_restore.file_io import require_folder, require_release
 from punct_restore.prediction_io import check_new_output_paths, write_new_file
 
 
@@ -23,6 +24,32 @@ def check_out(out: Path, inputs: Mapping[str, Path | None] | None = None) -> Non
         raise ValueError(f"{out.name}: folder {out.parent.name or out.parent} not found")
     if out.exists():
         raise ValueError(f"{out.name} already exists")
+
+
+def _as_value_error(check: Callable[[], object]) -> None:
+    """Run ``check``; the message-only OSError of a ``file_io`` ``require_*`` becomes a ValueError with its text.
+
+    ``file_io`` words these OSErrors by file name only, but ``run`` hides a message-only OSError (it may quote a whole
+    path), so the text would be lost. A system error (it has an errno) is left for ``run`` to word.
+    """
+    try:
+        check()
+    except OSError as exc:
+        if exc.errno is not None:
+            raise
+        raise ValueError(str(exc)) from exc
+
+
+def check_scores_folder(scores_root: Path) -> None:
+    """Refuse a ``--scores-root`` that is missing or a file, as ``<name>: scores folder not found`` or ``<name>: is a
+    file, not a folder``. Call it before reading anything."""
+    _as_value_error(lambda: require_folder(scores_root, "scores folder"))
+
+
+def check_release(data_root: Path, release: str) -> None:
+    """Refuse a ``--data-root`` that is missing or a file, or without the processed folder of ``release`` (the
+    message says to run ``recap prepare-data build``), as ``file_io.require_release`` words it."""
+    _as_value_error(lambda: require_release(data_root, release))
 
 
 def write_new_text(out: Path, text: str) -> None:

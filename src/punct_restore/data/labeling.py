@@ -39,7 +39,7 @@ _LABEL_SCHEMA = {
 
 def read_label_config(path: str | os.PathLike[str] = LABEL_SETS_PATH) -> dict[str, Any]:
     """The raw label configuration mapping; a ValueError names the file (not UTF-8, not YAML, not a mapping)."""
-    return require_object(os.path.basename(path), read_yaml(path), {}, is_yaml=True)
+    return require_object(os.path.basename(path), read_yaml(path), {}, fmt="yaml")
 
 
 def label_sets_from_config(config: Mapping[str, Any], file_name: str) -> dict[str, Any]:
@@ -49,7 +49,7 @@ def label_sets_from_config(config: Mapping[str, Any], file_name: str) -> dict[st
     `file_io.require_object` raises for a missing key or a value of the wrong kind, and the one for a vocabulary
     that is not the agreed 4/8/12 structure (`<file name>: does not have the agreed 4/8/12 structure`).
     """
-    cfg = require_object(file_name, config, _LABEL_SCHEMA, is_yaml=True)
+    cfg = require_object(file_name, config, _LABEL_SCHEMA, fmt="yaml")
     std, ext, case = cfg["punctuation"]["standard"], cfg["punctuation"]["extended"], cfg["casing"]
     separator, joint_listed = cfg["modes"]["C"]["separator"], cfg["modes"]["C"]["labels"]
     projection = cfg["extended_to_standard"]

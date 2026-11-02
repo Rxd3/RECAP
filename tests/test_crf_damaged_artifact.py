@@ -1,8 +1,9 @@
 """A CRF joblib whose fields are of the wrong kind is one `error: <file>: ...` line in every command that reads it.
 
-The files are real joblib files: a model that was saved by the code, with one field damaged. Each of the four damages
-is run through the five commands that open a CRF artifact, in-process through the command's `main`. A real bug in
-our own code is not covered here: it must still propagate as a traceback.
+The files are real joblib files: a model that was saved by the code, with one field damaged. Each damage is run
+through the five commands that open a CRF artifact, in-process through the command's `main`. A real bug in our own
+code is not covered here: it must still propagate as a traceback. The messages say a dict and a list, because a joblib
+file holds Python objects, not JSON.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from typing import Any
 
 import joblib
 import pytest
+import sklearn_crfsuite
 from test_threshold import Fixture, _build_fixture
 
 from punct_restore.cli import run_demo, train_crf, tune_threshold
@@ -40,13 +42,15 @@ def _without(mapping: dict[str, Any], key: str) -> dict[str, Any]:
     return {k: v for k, v in mapping.items() if k != key}
 
 
-# --- the four damages of the five commands ------------------------------------------------------------------
+# --- the damages of the five commands ------------------------------------------------------------------
 
 DAMAGES: dict[str, tuple[Callable[[dict[str, Any]], dict[str, Any]], str]] = {
-    "wrong-type-field": (lambda b: {**b, "feature_config": 5}, "feature_config is not a JSON object"),
+    "wrong-type-field": (lambda b: {**b, "feature_config": 5}, "feature_config is not a dict"),
     "missing-nested-field": (
         lambda b: {**b, "hyperparameters": _without(b["hyperparameters"], "c1")}, "missing hyperparameters.c1"),
     "backend-wrong-type": (lambda b: {**b, "backend_state": b"x"}, "backend_state is not a CRF model"),
+    "backend-not-fitted": (lambda b: {**b, "backend_state": sklearn_crfsuite.CRF()},
+                           "backend_state is not a fitted CRF model"),
     "vocabulary-not-strings": (lambda b: {**b, "vocabulary": [1, 2, 3, 4]}, "vocabulary.0 is not nonempty text"),
 }
 
@@ -97,14 +101,15 @@ def test_a_damaged_artifact_is_one_error_line_in_every_command(
 
 FIELDS = [
     ("model_name", 5, "model_name is not nonempty text"),
-    ("vocabulary", 5, "vocabulary is not a JSON list"),
+    ("vocabulary", 5, "vocabulary is not a list"),
     ("vocabulary", ["O", "COMMA", None, "QUESTION"], "vocabulary.2 is not nonempty text"),
-    ("hyperparameters", [], "hyperparameters is not a JSON object"),
-    ("hyperparameters", None, "hyperparameters is not a JSON object"),
-    ("feature_config", "basic", "feature_config is not a JSON object"),
-    ("training_metadata", [], "training_metadata is not a JSON object"),
-    ("environment", None, "environment is not a JSON object"),
+    ("hyperparameters", [], "hyperparameters is not a dict"),
+    ("hyperparameters", None, "hyperparameters is not a dict"),
+    ("feature_config", "basic", "feature_config is not a dict"),
+    ("training_metadata", [], "training_metadata is not a dict"),
+    ("environment", None, "environment is not a dict"),
     ("backend_state", {}, "backend_state is not a CRF model"),
+    ("backend_state", sklearn_crfsuite.CRF(), "backend_state is not a fitted CRF model"),
 ]
 
 
@@ -179,7 +184,7 @@ def test_the_team_extension_fields_of_the_feature_config_may_be_absent_but_not_o
     joblib.dump(older, tmp_path / "older.joblib")
     assert CRFModel.load_model(tmp_path / "older.joblib").is_fitted
     for key, value, reason in (("use_filler_cues", 1, "use_filler_cues is not true or false"),
-                               ("word_clusters", 5, "word_clusters is not a JSON object")):
+                               ("word_clusters", 5, "word_clusters is not a dict")):
         joblib.dump({**bundle, "feature_config": {**older["feature_config"], key: value}}, tmp_path / NAME)
         with pytest.raises(ValueError) as caught:
             CRFModel.load_model(tmp_path / NAME)

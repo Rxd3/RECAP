@@ -50,13 +50,13 @@ def load_labels(path: Path, mode: str) -> list[str]:
     if mode == "C":
         mode_wants = {**mode_wants, "separator": str, "labels": list[str]}
         wanted = {**wanted, "casing": list[str]}
-    config = require_object(name, read_label_config(path), {**wanted, "modes": {mode: mode_wants}}, is_yaml=True)
+    config = require_object(name, read_label_config(path), {**wanted, "modes": {mode: mode_wants}}, fmt="yaml")
     version = config["schema_version"]
     if type(version) is not int or version != 1:
         raise ValueError(f"{name}: unsupported label configuration version")
     mode_config = config["modes"][mode]
     chosen = mode_config["punctuation_set"]
-    punctuation = require_object(name, config["punctuation"], {chosen: list[str]}, "punctuation", is_yaml=True)[chosen]
+    punctuation = require_object(name, config["punctuation"], {chosen: list[str]}, "punctuation", fmt="yaml")[chosen]
     labels = _joint_labels(name, config, punctuation) if mode == "C" else list(punctuation)
     if mode_config["num_classes"] != len(labels):
         raise ValueError(f"{name}: num_classes does not match label vocabulary")

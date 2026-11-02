@@ -65,6 +65,20 @@ def test_half_up_rounds_the_shortest_decimal_half_up(
     assert build_tables.half_up(value, places, grouping=grouping) == text  # f"{0.125:.2f}" gives 0.12, f"{2.5:.0f}" 2
 
 
+@pytest.mark.parametrize(("value", "places", "grouping", "text"), [
+    (1e30, 0, False, "1" + "0" * 30),
+    (1e300, 1, False, "1" + "0" * 300 + ".0"),
+    (Decimal("1E+400"), 2, False, "1" + "0" * 400 + ".00"),
+    (10**400, 0, False, "1" + "0" * 400),
+    (1e30, 0, True, "1" + ",000" * 10),
+    (1.2345678901234568e29, 0, False, "123456789012345680000000000000"),  # the shortest decimal, as for pct
+])
+def test_half_up_rounds_a_number_of_any_size_where_the_default_decimal_context_would_give_up(
+        value: float | str | Decimal, places: int, grouping: bool, text: str) -> None:
+    """A finite number of 30 digits or more passed the schema and then made decimal.InvalidOperation (28 digits)."""
+    assert build_tables.half_up(value, places, grouping=grouping) == text
+
+
 def test_ci_and_cell_show_the_interval_or_na() -> None:
     block = {"macro_f1": 0.5, "macro_f1_ci": {"low": 0.4, "high": 0.6}}
     assert build_tables.ci(block) == f"40.00{EN}60.00"
@@ -416,7 +430,8 @@ def test_a_missing_scores_file_gives_exit_1_and_one_stderr_line(
         module: ModuleType, extra: list[str], missing: str, tmp_path: Path,
         capsys: pytest.CaptureFixture[str]) -> None:
     out = tmp_path / "out.md"
-    code, stdout, err = run_main(module, capsys, "--scores-root", tmp_path / "nothing", *extra, "--out", out)
+    (tmp_path / "empty").mkdir()  # the folder is there, the file is not (a missing folder has its own tests)
+    code, stdout, err = run_main(module, capsys, "--scores-root", tmp_path / "empty", *extra, "--out", out)
     assert (code, stdout) == (1, "")
     assert_one_error_line(err, missing)
     assert str(tmp_path) not in err
@@ -447,7 +462,7 @@ def test_a_non_numeric_score_is_reported_as_one_line(scores: Path, tmp_path: Pat
     dump(path, document)
     code, _, err = run_main(build_m3_tables, capsys, "--scores-root", scores, "--out", tmp_path / "o.md")
     assert code == 1
-    assert err == "error: shortcut_A_validation.json: blocks.punctuation/all.macro_f1 is not a number\n"
+    assert err == "error: shortcut_A_validation.json: blocks.punctuation/all.macro_f1 is not a score\n"
 
 
 def test_an_unwritable_out_path_is_reported_by_name(scores: Path, tmp_path: Path,

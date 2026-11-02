@@ -22,6 +22,7 @@ from punct_restore import file_io, prediction_io
 from punct_restore.data import labeling
 from punct_restore.errors import one_line_error
 from punct_restore.file_io import (
+    Number,
     iter_jsonl,
     read_json,
     read_json_object,
@@ -269,14 +270,72 @@ def test_a_whole_number_is_an_int_but_no_bool_or_float(value: Any) -> None:
 @pytest.mark.parametrize("value", [[], None, "text", 3], ids=["list", "null", "text", "number"])
 def test_require_object_calls_a_yaml_document_a_mapping(value: Any) -> None:
     with pytest.raises(ValueError, match="^f.yaml: not a mapping$"):
-        require_object("f.yaml", value, {}, is_yaml=True)
+        require_object("f.yaml", value, {}, fmt="yaml")
 
 
 def test_require_object_calls_a_nested_yaml_value_a_mapping_or_a_list() -> None:
     with pytest.raises(ValueError, match="^f.yaml: a.b is not a mapping$"):
-        require_object("f.yaml", {"a": {"b": []}}, {"a": {"b": {}}}, is_yaml=True)
+        require_object("f.yaml", {"a": {"b": []}}, {"a": {"b": {}}}, fmt="yaml")
     with pytest.raises(ValueError, match="^f.yaml: a.xs is not a list$"):
-        require_object("f.yaml", {"a": {"xs": {}}}, {"a": {"xs": list}}, is_yaml=True)
+        require_object("f.yaml", {"a": {"xs": {}}}, {"a": {"xs": list}}, fmt="yaml")
+
+
+@pytest.mark.parametrize("value", [[], None, "text", 3], ids=["list", "null", "text", "number"])
+def test_require_object_calls_a_python_object_a_dict(value: Any) -> None:
+    """A joblib artifact holds Python objects, not JSON: its messages say a dict and a list."""
+    with pytest.raises(ValueError, match="^f.joblib: not a dict$"):
+        require_object("f.joblib", value, {}, fmt="python")
+    with pytest.raises(ValueError, match="^f.joblib: a.b is not a dict$"):
+        require_object("f.joblib", {"a": {"b": value}}, {"a": {"b": {}}}, fmt="python")
+
+
+def test_require_object_calls_a_python_list_a_list() -> None:
+    with pytest.raises(ValueError, match="^f.joblib: xs is not a list$"):
+        require_object("f.joblib", {"xs": {}}, {"xs": list}, fmt="python")
+    with pytest.raises(ValueError, match="^f.joblib: xs is not a list$"):
+        require_object("f.joblib", {"xs": 5}, {"xs": list[str]}, fmt="python")
+
+
+def test_the_json_wording_is_the_default_and_is_yaml_is_gone() -> None:
+    with pytest.raises(ValueError, match="^f.json: not a JSON object$"):
+        require_object("f.json", [], {}, fmt="json")
+    with pytest.raises(TypeError):
+        require_object("f.yaml", [], {}, is_yaml=True)  # type: ignore[call-arg]  # one flag, not two
+
+
+NOT_FINITE = [float("inf"), float("-inf"), float("nan"), json.loads("1e999"), 10**400, -(10**400)]
+NOT_FINITE_IDS = ["inf", "-inf", "nan", "1e999", "400-digit int", "negative 400-digit int"]
+
+
+@pytest.mark.parametrize("value", NOT_FINITE, ids=NOT_FINITE_IDS)
+def test_a_number_is_finite_and_a_number_too_big_for_a_float_is_not_a_number(value: Any) -> None:
+    """Infinity, NaN, 1e999 and an integer with hundreds of digits reach pct and half_up, which cannot round them."""
+    with pytest.raises(ValueError, match="^f.json: n is not a number$"):
+        require_object("f.json", {"n": value}, {"n": float})
+    with pytest.raises(ValueError, match="^f.json: xs.1 is not a number$"):
+        require_object("f.json", {"xs": [1.5, value]}, {"xs": list[float]})
+
+
+def test_a_finite_number_keeps_passing_whatever_its_size() -> None:
+    value = {"a": 0, "b": -2.5, "c": 1e300, "d": 10**300, "e": 5e-324}
+    assert require_object("f.json", value, dict.fromkeys(value, float)) is value
+
+
+SCORE = Number("a score", 0.0, 1.0)
+
+
+@pytest.mark.parametrize("value", [0, 1, 0.0, 1.0, 0.5, 0.123456])
+def test_a_bounded_number_accepts_its_ends_and_what_is_between(value: Any) -> None:
+    require_object("f.json", {"x": value}, {"x": SCORE})
+
+
+@pytest.mark.parametrize("value", [-0.000001, 1.000001, 2, -1, 1e30, True, False, "0.5", None, [0.5], *NOT_FINITE],
+                         ids=lambda value: repr(value)[:24])
+def test_a_bounded_number_names_itself_when_the_value_is_outside_or_no_number(value: Any) -> None:
+    with pytest.raises(ValueError, match="^f.json: x is not a score$"):
+        require_object("f.json", {"x": value}, {"x": SCORE})
+    with pytest.raises(ValueError, match="^f.json: a.x is not a score$"):  # also inside a nested object
+        require_object("f.json", {"a": {"x": value}}, {"a": {"x": SCORE}})
 
 
 def test_read_object_names_the_file_without_its_folder(tmp_path: Path) -> None:

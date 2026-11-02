@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.reporting._cli import check_out, run, write_new_text
+from punct_restore.reporting._cli import check_out, check_scores_folder, run, write_new_text
 from punct_restore.reporting.build_tables import CELL, DIFF, MODES, PRIMARY, cell, diff_cell, read_scores
 
 ORDER = ("window2", "bigrams", "lexcls", "qcue", "ngrams", "question", "clause", "casing", "position")
@@ -41,6 +41,7 @@ def mode_lines(scores: Path, mode: str) -> list[str]:
 
 def build(root: Path, out_md: Path, setup: str = DEFAULT_SETUP) -> None:
     check_out(out_md)  # before reading anything
+    check_scores_folder(root)
     lines = [f"## Feature ablations (validation; {setup})", "",
              ("Each row removes one feature group from the improved CRF. Difference = without − with, in points "
               "(95% paired CI, grouped bootstrap by video, 1,000 resamples, seed 2026; * = interval excludes 0). "

@@ -110,7 +110,8 @@ def check_bundle_fields(name: str, bundle: dict[str, Any]) -> None:
     """Check that every field of a CRF artifact bundle that the loader or ``inspect`` reads is there and of its kind.
 
     ``name`` is the file name. The team-extension feature switches may be absent (older artifacts) but, if present,
-    must be of their kind. A bundle's backend must be an ``sklearn_crfsuite.CRF``.
+    must be of their kind. A bundle's backend must be a fitted ``sklearn_crfsuite.CRF`` (a trained one has a model
+    file; an unfitted one would fail at the first prediction). The kinds are worded for a Python object: "a dict".
 
     Raises:
         ValueError: ``<name>: corrupt artifact: missing <field>`` or ``... <field> is not <kind>`` (a dotted path
@@ -121,12 +122,14 @@ def check_bundle_fields(name: str, bundle: dict[str, Any]) -> None:
         raise ValueError(f"{prefix}: missing backend_state")
     if not isinstance(bundle["backend_state"], sklearn_crfsuite.CRF):
         raise ValueError(f"{prefix}: backend_state is not a CRF model")
-    require_object(prefix, bundle, _FIELDS)
+    if getattr(getattr(bundle["backend_state"], "modelfile", None), "name", None) is None:  # trained: has a model file
+        raise ValueError(f"{prefix}: backend_state is not a fitted CRF model")
+    require_object(prefix, bundle, _FIELDS, fmt="python")
     config = bundle["feature_config"]
     _require_flags(prefix, bundle["hyperparameters"], "hyperparameters", ("all_possible_transitions",))
     _require_flags(prefix, config, "feature_config", _FLAGS + _EXTENSION_FLAGS)
     if config.get("word_clusters") is not None:
-        require_object(prefix, config, {"word_clusters": {}}, "feature_config")
+        require_object(prefix, config, {"word_clusters": {}}, "feature_config", fmt="python")
 
 
 def read_bundle(path: str | Path) -> dict[str, Any]:

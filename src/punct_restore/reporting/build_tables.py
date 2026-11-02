@@ -7,23 +7,27 @@ descriptions in the section prose are written into build_m3_final_sections.py.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_HALF_UP, Decimal, localcontext
 from pathlib import Path
 from typing import Any
 
 from punct_restore.evaluation.report import pct as pct  # the one percent format; the tables import it from here
-from punct_restore.file_io import read_json, read_object, require_object
+from punct_restore.file_io import Number, read_json, read_object, require_object
 
 MODES = ("A", "B", "C")
 PRIMARY = {"A": "punctuation/all", "B": "punctuation/all", "C": "joint/unmasked"}
 
+# A table shows a score as a percentage, and `pct` raises decimal.InvalidOperation for 1e24 or more: a score is 0..1,
+# a difference of two scores -1..1. Anything else is refused by name (`<key> is not a score`).
+SCORE = Number("a score", 0.0, 1.0)
+DIFFERENCE = Number("a score", -1.0, 1.0)
 
 # What the table builders read of one block of an evaluator file (see file_io.require_object for the kinds).
-CELL: dict[str, Any] = {"macro_f1": float}  # cell(); a macro_f1_ci, when there is one, is checked by read_scores
-ROW: dict[str, Any] = {**CELL, "micro": {"precision": float, "recall": float, "f1": float}, "accuracy": float}
-DIFF: dict[str, Any] = {"difference": float, "difference_ci": {"low": float, "high": float}}  # diff_cell()
+CELL: dict[str, Any] = {"macro_f1": SCORE}  # cell(); a macro_f1_ci, when there is one, is checked by read_scores
+ROW: dict[str, Any] = {**CELL, "micro": {"precision": SCORE, "recall": SCORE, "f1": SCORE}, "accuracy": SCORE}
+DIFF: dict[str, Any] = {"difference": DIFFERENCE, "difference_ci": {"low": DIFFERENCE, "high": DIFFERENCE}}  # diff_cell
 CONFUSION: dict[str, Any] = {"labels": list[str], "confusion": list[list[int]]}  # matrix()
-PER_CLASS: dict[str, Any] = {"precision": float, "recall": float, "f1": float, "support": int}
+PER_CLASS: dict[str, Any] = {"precision": SCORE, "recall": SCORE, "f1": SCORE, "support": int}
 
 
 def load(path: str | Path, schema: Mapping[str, Any] | None = None) -> Any:
@@ -51,7 +55,7 @@ def read_scores(path: Path, blocks: Mapping[str, Mapping[str, Any]], extra: Mapp
     for name, schema in blocks.items():
         interval = doc["blocks"][name].get("macro_f1_ci") if "macro_f1" in schema else None
         if interval is not None:
-            require_object(path.name, interval, {"low": float, "high": float}, f"blocks.{name}.macro_f1_ci")
+            require_object(path.name, interval, {"low": SCORE, "high": SCORE}, f"blocks.{name}.macro_f1_ci")
     return doc
 
 
@@ -81,7 +85,11 @@ def half_up(x: float | str | Decimal, places: int = 0, *, grouping: bool = False
     """``x`` rounded half-up to ``places`` decimals, like ``pct``: the shortest decimal of a float, not its binary
     value.
 
-    ``grouping=True`` adds thousands separators (``f"{x:,.{places}f}"`` without the binary-float tie errors).
+    ``grouping=True`` adds thousands separators (``f"{x:,.{places}f}"`` without the binary-float tie errors). A number
+    of any size is rounded: the digits it has plus ``places`` are the precision of the rounding (the default context
+    of 28 digits would raise ``decimal.InvalidOperation`` for ``1e30``).
     """
     value = Decimal(repr(x)) if isinstance(x, float) else Decimal(x)
-    return format(value.quantize(Decimal(1).scaleb(-places), rounding=ROUND_HALF_UP), "," if grouping else "")
+    with localcontext(prec=max(28, value.adjusted() + places + 3)):
+        rounded = value.quantize(Decimal(1).scaleb(-places), rounding=ROUND_HALF_UP)
+    return format(rounded, "," if grouping else "")

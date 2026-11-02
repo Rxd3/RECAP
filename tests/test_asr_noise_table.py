@@ -353,7 +353,8 @@ def test_summaries_that_disagree_across_seeds_are_rejected(
 ) -> None:
     patch_json(v2_run(asr_scores, "0.10", 2028) / "summary.json", budget=201)
     assert run_main(asr_scores, tmp_path / "s.json", tmp_path / "o.md") == 1
-    assert_one_error_line(capsys.readouterr().err, "disagree on tokens_before or budget")
+    assert capsys.readouterr().err == (
+        "error: summary.json: tokens_before or budget of seed 2028 differs from seed 2026\n")
 
 
 def test_asr_noise_table_usage_error_exits_with_2() -> None:

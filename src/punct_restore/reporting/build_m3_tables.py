@@ -19,7 +19,7 @@ from typing import Any
 
 from punct_restore.file_io import read_object, require_object
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.reporting._cli import check_out, run, write_new_text
+from punct_restore.reporting._cli import check_out, check_scores_folder, run, write_new_text
 from punct_restore.reporting.build_tables import (
     CELL,
     CONFUSION,
@@ -156,6 +156,14 @@ def sec_errors(scores: Path, split: str) -> list[str]:
     return out + [""]
 
 
+def square_confusion(path: Path, name: str, block: dict) -> dict:
+    """``block`` (block ``name`` of the file ``path``), after checking that its confusion matrix is labels x labels."""
+    size = len(block["labels"])
+    if len(block["confusion"]) != size or any(len(row) != size for row in block["confusion"]):
+        raise ValueError(f"{path.name}: blocks.{name}.confusion is not {size} rows of {size} counts")
+    return block
+
+
 def matrix(block: dict, title: str) -> list[str]:
     labels = block["labels"]
     rows = [f"*{title}* (rows = gold, columns = predicted)", "", "| gold \\ pred | " + " | ".join(labels) + " |",
@@ -174,15 +182,19 @@ def sec_confusion(ms: Models, split: str) -> list[str]:
         out += [f"### Mode {mode}", ""]
         for name, f in crfs.items():
             shown = ("punctuation/all", "casing/unmasked") if mode == "C" else ("punctuation/all",)
-            blocks = read_scores(f(mode), dict.fromkeys(shown, CONFUSION))["blocks"]
-            out += matrix(blocks["punctuation/all"], f"{name}, punctuation")
+            path = f(mode)
+            blocks = read_scores(path, dict.fromkeys(shown, CONFUSION))["blocks"]
+            out += matrix(square_confusion(path, "punctuation/all", blocks["punctuation/all"]),
+                          f"{name}, punctuation")
             if mode == "C":
-                out += matrix(blocks["casing/unmasked"], f"{name}, casing (masked)")
+                out += matrix(square_confusion(path, "casing/unmasked", blocks["casing/unmasked"]),
+                              f"{name}, casing (masked)")
     return out
 
 
 def build(root: Path, out_md: Path, split: str = "validation", tau: bool = False) -> None:
     check_out(out_md)  # before reading anything
+    check_scores_folder(root)
     scores, tau_dir = root / CRF_DIRS[split], (root / "threshold" if tau else None)
     ms = models(scores, root / "hmm", split, tau_dir)
     body = sec_main(ms, split) + sec_paired(scores, split, tau_dir) + sec_views(ms, split) + sec_classes(ms, split)
