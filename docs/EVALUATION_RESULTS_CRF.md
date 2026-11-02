@@ -755,7 +755,7 @@ The intervals in this document are not adjusted for the number of comparisons. A
   - Survive: removing word pairs (A, B), the ±2 window (A, B) or the question cues (A, B).
   - Do not survive: everything in mode C (word pairs p ≤ 0.096, window p ≤ 0.042, question p ≤ 0.032) and the small mode B effects of the clause cues and position buckets.
 
-The p-values are recomputed from the committed compare JSONs in `results/scores/crf_test/`, `results/scores/threshold/`, `results/scores/threshold_prior/`, `results/scores/hidden_event_lm/` and `results/scores/ablations/`.
+The p-values are in `results/scores/holm.json`, which `recap result-stats holm` recomputes from the committed compare JSONs in `results/scores/crf_test/`, `results/scores/threshold/`, `results/scores/threshold_prior/`, `results/scores/hidden_event_lm/` and `results/scores/ablations/`.
 
 ## Limitations
 

@@ -37,6 +37,7 @@ modules of `src/punct_restore/`.
 | `recap asr-noise-table` | `reporting/asr_noise_table.py` | Team (final push) | Reporting | Builds the multi-seed ASR noise `v2` summary JSON and `docs/ASR_NOISE_V2.md` from `results/scores/`. |
 | `recap crf-convergence` | `reporting/crf_convergence.py` | Team (final push) | Reporting | Loss-trace summary of trusted CRF `.joblib` models. |
 | `recap length-position` | `reporting/length_position.py` | Team (final push) | Reporting | Mode A micro F1 by utterance length and QUESTION recall by position (EVALUATION_RESULTS.md §6). |
+| `recap result-stats` | `reporting/result_stats.py` | Team (restructure) | Reporting | `holm`, `clusters` or `label-audit`: regenerates `results/scores/holm.json`, `clusters/clusters_summary.json` or `gold_noise/label_audit.json` from the committed inputs, byte for byte. |
 | `recap run-demo` | `run_demo.py` | Member 6 | Demo | Loads a saved HMM or hidden-event LM (`.json`), or a CRF or gap classifier (`.joblib`, `.pkl`), through `src/punct_restore/pipeline.py` (CASE-mode CRFs are refused) and prints the restored text; without `--text` it prompts interactively. |
 
 ## Interfaces
@@ -104,6 +105,7 @@ recap asr-noise-table [--scores-root results/scores] --json-out OUT.json --out O
 recap crf-convergence --models MODEL.joblib|DIR [...] --out OUT.json
 recap length-position --gold MODE_A_GOLD.jsonl --ids IDS [--masks K]
     --predictions NAME=PRED.jsonl [NAME=PRED.jsonl ...] --out OUT.json
+recap result-stats {holm,clusters,label-audit} [--scores-root results/scores] --out OUT.json
 
 recap project-joint [--from {C,B}] --predictions PRED.jsonl --gold MODE_A_GOLD.jsonl --out A_PRED.jsonl
     --manifest-out A_PRED.manifest.json
@@ -128,6 +130,9 @@ with `--overwrite`.
 Every command reports a runtime problem as one stderr line, `error: <file or folder name>: <reason>`, and
 exits 1; a usage error from argparse exits 2. No line shows a full path or a traceback. The lines users see:
 
+- **ID lists and records:** a listed ID with no record gives `<file>: N listed ID(s) are missing, first '<id>'`;
+  a repeated `sample_id` (listed or not) gives `<file> line N: duplicate sample_id '<id>'`.
+- **Model files read with joblib:** `<file>: not a readable artifact`.
 - **Paths:** `<name>: <what> not found` (for example `data.jsonl: input JSONL not found`),
   `<name>: is a folder, not a file`, `<name>: is a file, not a folder`.
 - **Data root and release** (`recap simulate-asr-noise`, `recap build-leakage-subsets`,

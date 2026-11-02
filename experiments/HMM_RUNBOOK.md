@@ -28,7 +28,7 @@ work) without the CRF packages; the HMM commands need only the standard library 
 
 `plan.json` records the SHA-256 of every hashed HMM source file. On
 2026-11-01 the list changed three times: when the code moved into the package, when it became the study's
-static import closure (30 files), and when it became the runtime closure (commit `3b4db1c`): every `punct_restore` file that a fresh interpreter loads when the four HMM command modules (`cli.train_hmm`, `cli.predict_hmm`, `cli.run_hmm_experiments`, `cli.verify_hmm_experiments`) are imported, package `__init__.py` files included, followed by each command's `scripts/` stub (54 entries, `models/hmm_experiment_identity.SOURCE_FILES`). Finalize,
+static import closure (30 files), and when it became the runtime closure (commit `3b4db1c`): every `punct_restore` file that a fresh interpreter loads when the four HMM command modules (`cli.train_hmm`, `cli.predict_hmm`, `cli.run_hmm_experiments`, `cli.verify_hmm_experiments`) are imported, package `__init__.py` files included, followed by each command's `scripts/` stub (37 entries, `models/hmm_experiment_identity.SOURCE_FILES`). Finalize,
 verify and package all pass `verified_frozen_selection` first, so they refuse any study tuned before the
 current list ("HMM implementation changed since selection"), by design. That includes the delivered
 `hmm-sponspeech-v2-20261029`. A new study runs all four steps on this code. Finalize, verify and package a

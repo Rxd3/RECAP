@@ -30,9 +30,11 @@ src/punct_restore/
   cli/              __init__.py (the dispatcher and COMMANDS) and one module per command (18);
                     each parses arguments, reads and writes files and runs its command's
                     own steps, behind the error boundary
-  reporting/        7 reporting commands, plus _cli.py, build_tables.py and
-                    asr_noise_{stats,report,findings}.py (the parts of the ASR noise report)
-  data/             extraction, preprocessing, labeling, splits, validation, asr_noise, gold_noise;
+  reporting/        8 reporting commands, plus _cli.py, build_tables.py,
+                    asr_noise_{stats,report,findings}.py (the parts of the ASR noise report) and
+                    holm.py, clusters_summary.py, label_audit.py (the parts of result-stats)
+  data/             (a lazy package: a name loads its submodule when first used) extraction, preprocessing,
+                    labeling, splits, validation, asr_noise, gold_noise;
                     release.py with release_{constants,stats,notes,checks,manifest,outputs}.py
                     (release_outputs holds every writer; release_checks returns a ReleaseCheck)
   features/         crf_features.py with crf_lexicons.py and crf_cues.py; word_clusters.py
@@ -42,18 +44,22 @@ src/punct_restore/
                     crf.py with crf_{modes,records,io,training,training_data,prediction,inspection}.py;
                     threshold.py (decoding, the τ/γ grid scoring, priors and tau files); gap_classifier.py;
                     hidden_event_lm.py with hidden_event_lm_viterbi.py, ngram_lm.py, truecaser.py; factored.py
-  evaluation/       inputs, views, metrics, uncertainty, comparison, error_analysis, baseline, manifest, report
+  evaluation/       (lazy, like data/) inputs, views, metrics, uncertainty, comparison, error_analysis, baseline,
+                    manifest, report
+  errors.py         the error text: one_line_error, one_line_error_with_short_paths, OS_REASONS,
+                    os_error_code, os_reason, reconfigure_stdout
   file_io.py        file helpers: iter_jsonl, write_new_file, write_new_folder, read_json, read_json_object,
                     read_object, require_object, require_file, require_folder, require_release,
-                    refuse_existing
+                    inside_folder, file_identity, file_identity_with, refuse_existing
   hashing.py        sha256_file and sha256_stream, the one streaming SHA-256
+  lazy_exports.py   the lazy (PEP 562) exports of data/ and evaluation/
   paths.py          REPO_ROOT, the checkout root, for the commands' default paths
   pipeline.py       demo inference (load_model, RestorationPipeline)
   prediction_io.py  shared command I/O: gold-free prediction files and manifests, read_ids,
-                    parse_json_object and parse_sample_record, and the error boundary
-                    (one_line_error, one_line_error_with_short_paths, OS_REASONS, reconfigure_stdout)
+                    select_records (the one ID-list record selector), parse_json_object and
+                    parse_sample_record; it re-exports the six error helpers of errors.py
   progress.py       Log and discard_log: library functions take a log callable and stay silent by default
-scripts/            25 three-line stubs (scripts/<name>.py, scripts/reporting/<name>.py), one per command
+scripts/            26 three-line stubs (scripts/<name>.py, scripts/reporting/<name>.py), one per command
 ```
 
 - **Dispatcher.** `punct_restore.cli.COMMANDS` maps each command name (the module name with `_` written as
@@ -69,7 +75,7 @@ scripts/            25 three-line stubs (scripts/<name>.py, scripts/reporting/<n
   imports another cli module (`tests/test_repo_hygiene.py`). `python -m punct_restore.cli.<module>` (or
   `punct_restore.reporting.<module>`) runs one directly.
 - **Errors.** A runtime error (a missing, unreadable or malformed file, a bad value) is one stderr line,
-  `error: <file or folder name>: <reason>`, and exit 1, built by `prediction_io.one_line_error` (or
+  `error: <file or folder name>: <reason>`, and exit 1, built by `errors.one_line_error` (or
   `one_line_error_with_short_paths`, which also cuts the paths it is given to their names). It never shows a full
   path and prints no traceback. Examples: `error: data.jsonl: input JSONL not found`,
   `error: m.joblib: is a folder, not a file`, `error: results.json: missing selection_sha256`; every line users see is listed in
@@ -103,7 +109,7 @@ scripts/            25 three-line stubs (scripts/<name>.py, scripts/reporting/<n
   last line), nesting at 4 levels or less and every file at 400 lines or less; `tests/test_type_hints.py`
   requires every function in `src/` to annotate its parameters and return type.
 - **HMM study provenance.** `models/hmm_experiment_identity.SOURCE_FILES` lists every `punct_restore` file that a fresh interpreter loads when the four HMM command modules (`cli.train_hmm`, `cli.predict_hmm`, `cli.run_hmm_experiments`, `cli.verify_hmm_experiments`) are imported, package `__init__.py` files included, followed by each command's `scripts/` stub:
-  54 entries, 50 of them under `src/`. A subprocess test checks that the list equals what such an
+  37 entries, 33 of them under `src/`; the commands no longer load the evaluator or the release builder, which a test asserts. A subprocess test checks that the list equals what such an
   interpreter loads, and `plan.json` records the SHA-256 of each file. `verified_frozen_selection`
   (`models/hmm_experiment_frozen.py`) is the gate that finalize, verify and package all pass: it refuses a
   study whose recorded hashes differ from the code on disk.
@@ -119,7 +125,7 @@ scripts/            25 three-line stubs (scripts/<name>.py, scripts/reporting/<n
 | `evaluation/`, `cli/evaluate_models.py` (`recap evaluate-models`), `reporting/`, results | Member 5 | Gold + predictions → verified reports |
 | Comparison methods and robustness checks: `models/gap_classifier.py`, `models/hidden_event_lm.py` (+ `hidden_event_lm_viterbi.py`, `ngram_lm.py`, `truecaser.py`), τ × γ decoding and its grid scoring in `models/threshold.py` (driven by `cli/tune_threshold.py`), question lookback, `models/factored.py` and the CRF `CASE` mode, `data/asr_noise.py`, `data/gold_noise.py` (the gold-noise check), the demo loader; commands `recap train-hidden-event-lm`, `recap factor-predictions`, `recap simulate-asr-noise`, `recap find-gold-noise`, `recap project-joint`, `recap build-leakage-subsets`, `recap crf-convergence`, `recap length-position`, `recap asr-noise-table` (+ `reporting/asr_noise_stats.py`, `asr_noise_report.py`, `asr_noise_findings.py`) | Member 5 | Exploratory comparisons and checks next to the course baselines |
 | `pipeline.py` (`load_model`, `ModelAdapter`, `RestorationPipeline`) and `cli/run_demo.py` (`recap run-demo`, the demo path), presentation | Member 6 | Text + saved HMM or hidden-event LM (`.json`), or CRF or gap classifier (`.joblib`, `.pkl`) → restored text |
-| `cli/__init__.py` (dispatcher), `paths.py`, `file_io.py`, `hashing.py`, `progress.py`, the shared helpers and error boundary in `prediction_io.py`, the `scripts/` stubs | Team (restructure, 2026-11-01) | Command routing and shared plumbing; no model or data logic |
+| `cli/__init__.py` (dispatcher), `paths.py`, `errors.py`, `file_io.py`, `lazy_exports.py`, `hashing.py`, `progress.py`, the shared helpers and error boundary in `prediction_io.py`, the `scripts/` stubs | Team (restructure, 2026-11-01) | Command routing and shared plumbing; no model or data logic |
 
 The feature code in `crf_features.py`, both presets included, was written by Member 3; Member 4's
 branch has no commits ([contributions](../contributions/Mohamed_2309015740_Mokamaleldin.md)). The threshold
