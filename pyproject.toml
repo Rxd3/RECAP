@@ -17,7 +17,7 @@ Repository = "https://github.com/Rxd3/RECAP"
 recap = "punct_restore.cli:main"
 
 [project.optional-dependencies]
-dev = ["pytest==9.2.0", "ruff==0.17.3"]
+dev = ["pytest==9.2.0", "ruff==0.17.3", "mypy==2.4.1", "coverage==7.17.0"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -36,3 +36,13 @@ select = ["E", "W", "F", "I", "UP", "B"]
 [tool.ruff.lint.per-file-ignores]
 # The stub docstring text is fixed by the spec, so long command names push it past 120 characters.
 "scripts/**" = ["E501"]
+
+[tool.mypy]
+# The model libraries (joblib, sklearn-crfsuite, scikit-learn) ship no type stubs; their imports are typed as Any.
+ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["punct_restore"]
+
+[tool.coverage.report]
+fail_under = 80
