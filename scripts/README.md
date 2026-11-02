@@ -143,20 +143,26 @@ exits 1; a usage error from argparse exits 2. No line shows a full path or a tra
   the `.json` written with it is removed. A failure in a command's temporary output folder names the final
   folder (`out: <reason>`).
 - **Data root and release** (`recap simulate-asr-noise`, `recap build-leakage-subsets`,
-  `recap build-word-clusters`, `recap find-gold-noise`, `recap run-ablations`): `<data-root>: data root not found`,
+  `recap build-word-clusters`, `recap find-gold-noise`, `recap run-ablations`, `recap time-models`): `<data-root>: data root not found`,
   `<data-root>: is a file, not a folder`, and
   `<release>: release folder not found in <data-root>; run recap prepare-data build first`.
-  `recap asr-noise-table` without its scores folder: `<name>: scores folder not found`.
+  The four table commands (`recap build-m3-tables`, `recap build-m3-final-sections`, `recap build-ablation-table`,
+  `recap asr-noise-table`) with a missing `--scores-root`: `<name>: scores folder not found`, or
+  `<name>: is a file, not a folder`.
 - **`recap prepare-data build`:** `MANIFEST.sha256: not found; copy it from the release's provenance package`
   (the same for `video_metadata_oembed.jsonl`), `sponspeech_text: folder not found in the raw root; run recap
   prepare-data extract first`, `sponspeech_text/<file>: listed in MANIFEST.sha256 but missing; run recap
   prepare-data extract again`, and `MANIFEST.sha256 line N (<last path part>): listed but outside the raw root`.
 - **Evaluator JSON read by the reporting commands** (`recap build-m3-tables`, `recap build-m3-final-sections`,
   `recap build-ablation-table`, `recap asr-noise-table`): `<file>: not valid JSON`, `<file>: not valid UTF-8`,
-  `<file>: missing <dotted.key>`, `<file>: <dotted.key> is not <kind>`.
+  `<file>: missing <dotted.key>`, `<file>: <dotted.key> is not <kind>`, and `<file>: <key> is not a score` for a
+  NaN, an infinity or an out-of-range value (a score is 0 to 1, a difference -1 to 1). Command-specific checks
+  include `<file>: blocks.<b>.confusion is not <n> rows of <n> counts` (`build-m3-tables`), a run whose
+  environment or `counts.sequences` differs from the first file it is compared with (`build-m3-final-sections`),
+  and `summary.json: tokens_before or budget of seed <s> differs from seed <first>` (`asr-noise-table`).
 - **CRF model files** (`recap train-crf predict` and `inspect`, `recap run-demo`, `recap tune-threshold tune`,
   `recap time-models --kind crf`): `<file>: corrupt artifact: missing <field>`,
-  `<file>: corrupt artifact: <field> is not <kind>`, `<file>: corrupt artifact: backend_state is not a CRF model`.
+  `<file>: corrupt artifact: <field> is not <kind>`, `<file>: corrupt artifact: backend_state is not a fitted CRF model`.
   `inspect` refuses a model file with missing sections instead of printing empty ones.
 - **CRF training records** (`recap train-crf train`): `<file> line <n>: tokens must be a non-empty list.`,
   `<file> line <n>: punct_labels must be a list of strings.`, `<file> line <n>: unknown punct_labels ['FOO'] for
@@ -175,5 +181,8 @@ exits 1; a usage error from argparse exits 2. No line shows a full path or a tra
   `runtime.json: modes.<mode>.prediction_seconds must hold <n> numbers above zero`;
   `recap package-hmm-handoff`: `<folder>: handoff must be a separate directory inside artifacts/` and
   `<folder, ZIP or checksum file>: already exists; use a new immutable handoff ID`. Every held-out step:
-  `mode_<mode>/selection.json: changed after freezing`, and for `--evaluator-root`
+  `mode_<mode>/selection.json: changed after freezing` or `... winner is inconsistent with the validation
+  search`, and for `--evaluator-root`
   `<folder>: evaluator checkout not found` or `<name>: is a file, not a folder`.
+- **`recap result-stats label-audit`:** `label_audit_sheet.csv: row N: missed marks without a by-design note`
+  (rows 1-50 only).
