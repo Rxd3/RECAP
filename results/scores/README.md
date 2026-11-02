@@ -10,8 +10,9 @@ All files were written by `recap evaluate-models` (`score`, `compare`, `errors`)
 - `runtime/` comes from the timing script;
 - `crf_training_manifests/*.manifest.json` come from `recap train-crf train` (Member 3);
 - `asr_noise/wer<rate>/summary.json` and `asr_noise_v2/<edit_model>/wer<rate>/seed<seed>/summary.json` come from `recap simulate-asr-noise`, and `asr_noise_v2/summary.json` comes from `recap asr-noise-table`;
-- `clusters/clusters_summary.json` was assembled from the six `clusters/compare_*.json` files during the word-cluster run (the K choice and its caveat; every number in it repeats a compare file);
-- `gold_noise/label_audit_sheet.csv` is the team's filled audit sheet (100 primary-validation records; rows 51–100 checked by hand, rows 1–50 agent counts only), and `gold_noise/label_audit.json` holds the precision, recall and casing accuracy computed from it with 95% Wilson intervals;
+- `clusters/clusters_summary.json` was assembled from the six `clusters/compare_*.json` files during the word-cluster run, and `recap result-stats clusters` regenerates it from them byte for byte (the K choice and its caveat; every number in it repeats a compare file);
+- `gold_noise/label_audit_sheet.csv` is the team's filled audit sheet (100 primary-validation records; rows 51–100 checked by hand, rows 1–50 agent counts only), and `gold_noise/label_audit.json` holds the precision, recall and casing accuracy computed from it with 95% Wilson intervals (`recap result-stats label-audit` regenerates it byte for byte);
+- `holm.json` comes from `recap result-stats holm`: the Holm-adjusted p-values behind the multiple-comparisons check (21 test comparisons, 18 ablations);
 - `gold_noise/*_B_noisy.tsv` (sample ID, exclusion rule) and `gold_noise/*_B_summary.json` (counts, including test_amb and `default_train`) come from `recap find-gold-noise`;
 - `crf_convergence/convergence.json` comes from `recap crf-convergence`;
 - `hmm/length_position_A_test.json` comes from `recap length-position`.

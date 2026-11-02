@@ -184,7 +184,7 @@ file in `results/scores/neural/` records the SHA-256 of the predictions it score
 | B | 36.43 (34.41–38.26) | 36.79 (34.32–39.28) |
 | C | not run | not run |
 
-They beat the improved CRF by +26.33 to +26.84 points in A and +13.61 to +13.97 in B (every interval excludes 0). They start from large pretrained corpora, which may overlap with these transcripts.
+They beat the improved CRF by +26.33 to +26.84 points in A and +13.61 to +13.97 in B. They start from large pretrained corpora, which may overlap with these transcripts.
 
 ## Quickstart
 
@@ -199,7 +199,7 @@ python -m pytest -q
 recap --help
 ```
 
-The tests use small fixtures and download nothing. `recap --help` lists the 25 commands, and
+The tests use small fixtures and download nothing. `recap --help` lists the 26 commands, and
 `recap <command> --help` prints the options of one. `recap` and the `scripts/` stubs need the editable
 install (`pip install -e .`): the commands find `configs/` and their default folders (such as
 `results/scores/`) through the checkout (`src/punct_restore/paths.py`), so a plain `pip install .` does
@@ -230,9 +230,11 @@ each file in `scripts/` is a 3-line stub that runs the same command, so running
 `scripts/train_crf.py train ...` with Python equals `recap train-crf train ...`. Runs made before
 the restructure (2026-11-01) ran the same commands under those paths, and their manifests record them.
 
-Before a pull request, also run the linter: `ruff check src scripts tests` (ruff 0.17.3 comes with the
-`dev` extra; its settings are in `pyproject.toml`). The CI workflow `.github/workflows/ci.yml` runs
-ruff and pytest on Python 3.12 and 3.13 for every push and pull request. Each run installs with
+Before a pull request, also run the linter, the type checker and the coverage gate:
+`ruff check src scripts tests`, `mypy src/punct_restore`, then `coverage run -m pytest -q` and
+`coverage report --fail-under=80`. The `dev` extra pins ruff 0.17.3, mypy 2.4.1 and coverage 7.17.0; their
+settings are in `pyproject.toml`. The CI workflow `.github/workflows/ci.yml` runs the same steps on Python
+3.12 and 3.13 for every push and pull request: lint (`ruff check src scripts tests`), type check (`mypy src/punct_restore`), test with coverage (`coverage run -m pytest -q`) and the coverage gate (`coverage report --fail-under=80`). Each run installs with
 `pip install -e ".[dev]" -c requirements-lock.txt`, so the pinned versions of the lock file apply.
 
 ## Data access
@@ -264,7 +266,7 @@ report `test` and `test_amb` separately (they share 25 videos).
 | `experiments/` | Model notes and runbooks: `experiments/HMM_NOTES.md`, `experiments/HMM_RUNBOOK.md`, `experiments/HMM_RESULTS.md`, `experiments/CRF_NOTES.md`, `experiments/FEATURE_NOTES.md`. Local run outputs go to the ignored folder experiments/runs/ (create it with `mkdir -p`). |
 | `presentation/` | Presentation workspace (`presentation/README.md`); the outline is `docs/PRESENTATION_OUTLINE.md`. |
 | `results/` | `results/scores/` holds the committed evaluator JSON behind every reported number (`results/scores/README.md`), including Member 3's six CRF training manifests in `results/scores/crf_training_manifests/`. Local evaluator outputs go to the ignored folders results/predictions/ and results/tables/; create them with `mkdir -p` first, because the evaluator never creates folders. |
-| `scripts/` | Compatibility stubs: one 3-line file per command (25, including `scripts/reporting/`) that runs the same `recap` command; listed in the command table below and in `scripts/README.md`. |
+| `scripts/` | Compatibility stubs: one 3-line file per command (26, including `scripts/reporting/`) that runs the same `recap` command; listed in the command table below and in `scripts/README.md`. |
 | `src/punct_restore/` | The Python package: the `recap` commands (`src/punct_restore/cli/`, `src/punct_restore/reporting/`), the shared `src/punct_restore/paths.py` and the library folders; every module is listed in the package table below. |
 | `tests/` | The pytest suite for data, models, features, CLIs and evaluation; fixtures only. Groups are listed in `tests/README.md`; the comparison-method and robustness tests are `tests/test_gap_classifier.py`, `tests/test_hidden_event_lm.py`, `tests/test_train_hidden_event_lm_cli.py`, `tests/test_factored.py`, `tests/test_factor_predictions.py`, `tests/test_crf_case_mode.py`, `tests/test_threshold_priors.py`, `tests/test_asr_noise.py`, `tests/test_simulate_asr_noise.py`, `tests/test_asr_noise_table.py`, `tests/test_asr_noise_findings.py` (with the fixture module `tests/asr_noise_table_fixtures.py`), `tests/test_prediction_io_helpers.py`, `tests/test_gold_noise.py`, `tests/test_find_gold_noise.py`, `tests/test_threshold_provenance.py`, `tests/test_crf_convergence.py`, `tests/test_length_position.py`, `tests/test_word_clusters.py`, `tests/test_build_word_clusters.py`, `tests/test_crf_word_clusters.py`. |
 
@@ -295,6 +297,7 @@ report `test` and `test_amb` separately (they share 25 videos).
 | `results/scores/question2/` | Question-lookback features vs the improved CRF on validation |
 | `results/scores/factored/` | Factored vs joint punctuation and casing, mode C validation |
 | `results/scores/neural/` | Member 2's BERT and FLAN-T5 predictions scored on validation, test and test_amb, with paired comparisons against the improved CRF, τ × γ and the HMM |
+| `results/scores/holm.json` | Holm-adjusted p-values of the 21 test comparisons and the 18 ablations (`recap result-stats holm`) |
 | `results/scores/clusters/` | Word-cluster features vs the improved CRF on validation (50k sample), K = 100 and 300, with the K choice in `clusters_summary.json` |
 
 **Package** (`src/punct_restore/`). Package initializers: `src/punct_restore/__init__.py`,
@@ -312,10 +315,12 @@ they were. Moved helpers also live in their new modules, for example `FILLERS` i
 | Module | Role |
 | --- | --- |
 | `src/punct_restore/cli/` | The `recap` command. `__init__` holds the dispatcher (`COMMANDS` maps each subcommand, the module name with `_` written as `-`, to its module; `recap --help` lists them). One module per command: `build_leakage_subsets`, `build_word_clusters`, `evaluate_models`, `factor_predictions`, `find_gold_noise`, `package_hmm_handoff`, `predict_hmm`, `prepare_data`, `project_joint`, `run_ablations`, `run_demo`, `run_hmm_experiments`, `simulate_asr_noise`, `train_crf`, `train_hidden_event_lm`, `train_hmm`, `tune_threshold`, `verify_hmm_experiments`. Each one parses arguments, reads and writes files and runs its command's own steps behind the error boundary; logic that several commands share lives in the library, and no cli module imports another. The HMM packager keeps its steps here because it copies its own source into the handoff. |
-| `src/punct_restore/reporting/` | The reporting commands `asr_noise_table`, `build_ablation_table`, `build_m3_final_sections`, `build_m3_tables`, `crf_convergence`, `length_position`, `time_models`, and their helpers `_cli` (safe output files and one-line errors), `build_tables` (Markdown helpers), `asr_noise_stats`, `asr_noise_report` and `asr_noise_findings` (the parts of the ASR noise report). |
+| `src/punct_restore/reporting/` | The reporting commands `asr_noise_table`, `build_ablation_table`, `build_m3_final_sections`, `build_m3_tables`, `crf_convergence`, `length_position`, `result_stats`, `time_models`, and their helpers `holm`, `clusters_summary` and `label_audit` (the three statistics files of `result_stats`), `_cli` (safe output files and one-line errors), `build_tables` (Markdown helpers), `asr_noise_stats`, `asr_noise_report` and `asr_noise_findings` (the parts of the ASR noise report). |
 | `src/punct_restore/paths.py` | `REPO_ROOT`, the checkout root, which the commands use for their default paths. |
 | `src/punct_restore/hashing.py` | `sha256_file` and `sha256_stream`: the one streaming SHA-256 for files and archive members. |
-| `src/punct_restore/file_io.py` | File helpers: `iter_jsonl`, `write_new_file`, `write_new_folder`, `read_json`, `read_json_object`, `require_file`, `refuse_existing`. |
+| `src/punct_restore/errors.py` | The error text every command prints: `one_line_error`, `one_line_error_with_short_paths`, `OS_REASONS`, `os_error_code`, `os_reason`, `reconfigure_stdout`; every runtime error is one `error: <file or folder name>: <reason>` line and exit 1. |
+| `src/punct_restore/lazy_exports.py` | Lazy (PEP 562) exports: `punct_restore.data` and `punct_restore.evaluation` load a submodule only when one of its names is first used. |
+| `src/punct_restore/file_io.py` | File helpers: `iter_jsonl`, `write_new_file`, `write_new_folder`, `read_json`, `read_json_object`, `read_object` and `require_object` (one-line shape checks), `require_file`, `require_folder`, `require_release` (the data root and release folder check), `inside_folder`, `file_identity`, `file_identity_with`, `refuse_existing`. |
 | `src/punct_restore/progress.py` | `Log` and `discard_log`: library functions report progress through a `log` callable and are silent by default. |
 | `src/punct_restore/data/` | Member 1's data pipeline: `extraction` (raw transcripts from the official archive), `preprocessing` (loading, cleaning, tokenization), `labeling` (punctuation and casing labels), `splits` (split assignment and leakage audits), `release` (versioned release build and load, with its parts `release_constants`, `release_stats`, `release_notes`, `release_checks`, `release_manifest` and `release_outputs`), `validation` (checks against the data contract), `asr_noise` (simulated ASR word errors with labels and masks kept aligned), `gold_noise` (rules that flag speaker labels, cue residue and auto-caption videos in the gold). |
 | `src/punct_restore/models/hmm.py` | Supervised HMM with Viterbi decoding. |
@@ -324,7 +329,7 @@ they were. Moved helpers also live in their new modules, for example `FILLERS` i
 | `src/punct_restore/models/hmm_release.py` | The HMM commands' checks of their inputs against a data release. |
 | `src/punct_restore/models/hmm_distributions.py` | `HMMModel.distributions`: a read-only view of the fitted probabilities. |
 | `src/punct_restore/models/hmm_records.py` | Validated, ordered record selection from JSONL files for the HMM commands. |
-| `src/punct_restore/models/hmm_experiment_identity.py` | `SOURCE_FILES` (every `punct_restore` file that a fresh interpreter loads when the four HMM command modules (`cli.train_hmm`, `cli.predict_hmm`, `cli.run_hmm_experiments`, `cli.verify_hmm_experiments`) are imported, package initializers included, followed by each command's `scripts/` stub; 54 entries), the code identity and the evaluator check. |
+| `src/punct_restore/models/hmm_experiment_identity.py` | `SOURCE_FILES` (every `punct_restore` file that a fresh interpreter loads when the four HMM command modules (`cli.train_hmm`, `cli.predict_hmm`, `cli.run_hmm_experiments`, `cli.verify_hmm_experiments`) are imported, package initializers included, followed by each command's `scripts/` stub; 37 entries), the code identity and the evaluator check. |
 | `src/punct_restore/models/hmm_experiment_tune.py` | The validation search: train and score every candidate, then freeze the winners. |
 | `src/punct_restore/models/hmm_experiment_frozen.py` | `verified_frozen_selection`, the gate every held-out step passes. |
 | `src/punct_restore/models/hmm_experiment_finalize.py` | The held-out step: predict and score every frozen winner, then time it. |
@@ -353,14 +358,14 @@ they were. Moved helpers also live in their new modules, for example `FILLERS` i
 | `src/punct_restore/features/crf_cues.py` | Per-position cue helpers of the CRF features: buckets, filler, question lookback, word clusters. |
 | `src/punct_restore/features/word_clusters.py` | Word clusters induced from `default_train` only: lowercased words with count ≥ 5, ±2 co-occurrence matrix, PPMI, TruncatedSVD (about 100 dimensions), L2-normalised rows, k-means (k ∈ {100, 300}, fixed seed); unknown words get `unk`. The JSON map records the train-ids sha256, k, the seed and the vocabulary size. |
 | `src/punct_restore/evaluation/` | Member 5's evaluator: `inputs` (input checks), `views` (scored positions and report blocks), `metrics` (token-level P/R/F1), `uncertainty` (bootstrap grouped by video), `comparison` (paired comparison), `error_analysis` (error examples), `baseline` (shortcut baseline), `manifest` (prediction-manifest check), `report` (JSON and Markdown reports). |
-| `src/punct_restore/prediction_io.py` | Shared command I/O: gold-free prediction JSONL and manifests, `read_ids`, the JSON-line parsers, and the error boundary (`one_line_error`, `one_line_error_naming`, `reconfigure_stdout`): every runtime error is one `error: <file or folder name>: <reason>` line and exit 1. |
+| `src/punct_restore/prediction_io.py` | Shared command I/O: gold-free prediction JSONL and manifests, `read_ids`, the JSON-line parsers, `select_records` (the one ID-list record selector), and the error helpers re-exported from `punct_restore.errors`. |
 | `src/punct_restore/pipeline.py` | Demo inference: load a trained HMM, hidden-event LM, CRF or gap classifier (`load_model`), clean raw text, predict labels, rebuild text. |
 
 Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM_TASKS.md`
 (work board), `pyproject.toml` and `requirements.txt` (package and dependencies),
 `requirements-lock.txt` (exact `pip freeze` of the tested environment, CPython 3.13.1),
-`requirements-hmm.txt` (the pinned HMM reproduction environment), `.github/workflows/ci.yml` (ruff and pytest on
-every push and pull request), `.gitignore`, `.gitattributes`.
+`requirements-hmm.txt` (the pinned HMM reproduction environment), `.github/workflows/ci.yml` (lint, type check,
+tests with a coverage gate on every push and pull request), `.gitignore`, `.gitattributes`.
 
 **Commands** (run from the repository root; `recap <command> --help` prints the options; the stub runs the
 same command):
@@ -392,6 +397,7 @@ same command):
 | `recap time-models` | `src/punct_restore/reporting/time_models.py` (`scripts/reporting/time_models.py`) | Reporting | Times HMM or CRF prediction (and an HMM fit) with the protocol used in the runtime tables. |
 | `recap crf-convergence` | `src/punct_restore/reporting/crf_convergence.py` (`scripts/reporting/crf_convergence.py`) | Reporting | Summarises the CRF training loss traces of trusted `.joblib` models (iterations, final loss, drop over the last 10 iterations). |
 | `recap length-position` | `src/punct_restore/reporting/length_position.py` (`scripts/reporting/length_position.py`) | Reporting | Mode A micro F1 by utterance length and QUESTION recall by position, per model (EVALUATION_RESULTS.md §6). |
+| `recap result-stats` | `src/punct_restore/reporting/result_stats.py` (`scripts/reporting/result_stats.py`) | Reporting | `holm`, `clusters` or `label-audit`: regenerates `results/scores/holm.json`, `clusters/clusters_summary.json` or `gold_noise/label_audit.json` from the committed inputs, byte for byte. |
 
 **Docs:**
 

@@ -735,8 +735,8 @@ Per class on test, neural − CRF improved (paired 95% CI, `compare --class`):
 - **FLAN-T5, mode B:** COLON +12.85 (0.53 to 26.71); COMMA +17.03 (15.54 to 18.81); DASH +2.22 (0.46 to 4.30); EXCLAMATION +1.02 (0.00 to 3.52); PERIOD +11.32 (9.75 to 13.11); QUESTION +50.20 (45.57 to 54.90); SEMICOLON +3.15 (0.00 to 7.64).
 
 Findings:
-- **Mode A:** the pretrained models beat the improved CRF on test by 26.33–26.84 points, every interval excluding 0.
-- **Mode B:** the pretrained models beat the improved CRF on test by 13.61–13.97 points, every interval excluding 0.
+- **Mode A:** the pretrained models beat the improved CRF on test by 26.33–26.84 points.
+- **Mode B:** the pretrained models beat the improved CRF on test by 13.61–13.97 points.
 - **The BERT mode B drop is unexplained:** BERT falls from 42.39 on validation to 36.43 on test. Over the same validation and test lists the improved CRF moves from 25.10 to 22.82 and the HMM from 18.47 to 16.79, so BERT falls further than the course models. Nothing in this repository explains it: the checkpoint-selection records are Member 2's, so a selection that fits validation too closely can be neither confirmed nor ruled out.
 - **Rare marks stay hard:** in mode B, the interval of the gain over the CRF includes 0 for at least one model on EXCLAMATION and SEMICOLON.
 - **Caveat:** the pretraining text of BERT and FLAN-T5 is not public in full, so overlap with these transcripts cannot be ruled out; the course models see only `default_train`.
@@ -755,7 +755,7 @@ The intervals in this document are not adjusted for the number of comparisons. A
   - Survive: removing word pairs (A, B), the ±2 window (A, B) or the question cues (A, B).
   - Do not survive: everything in mode C (word pairs p ≤ 0.096, window p ≤ 0.042, question p ≤ 0.032) and the small mode B effects of the clause cues and position buckets.
 
-The p-values are recomputed from the committed compare JSONs in `results/scores/crf_test/`, `results/scores/threshold/`, `results/scores/threshold_prior/`, `results/scores/hidden_event_lm/` and `results/scores/ablations/`.
+The p-values are in `results/scores/holm.json`, which `recap result-stats holm` recomputes from the committed compare JSONs in `results/scores/crf_test/`, `results/scores/threshold/`, `results/scores/threshold_prior/`, `results/scores/hidden_event_lm/` and `results/scores/ablations/`.
 
 ## Limitations
 

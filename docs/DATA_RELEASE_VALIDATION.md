@@ -64,6 +64,11 @@ reduce memory use. Truncated-view and other failure paths have regression tests.
 | Splits SHA256SUMS | `40ea6371b038d5d36e6da390493bfc0e45c513ec46c324ee1a6af8766e7546b7` |
 | Handoff ZIP (224,632,100 bytes) | `1e4b4a9504c68cd8e3af8d6a2a0ef7de5de0146c76457752a56a90dcf6504b9f` |
 
+The data package fingerprint is `code_sha256`, the SHA-256 of `src/punct_restore/data/*.py` when the
+release was built. It is written into `RELEASE_NOTES.md` and `release_manifest.json`, so a rebuild with
+different data code (the current code included) changes those two files and their lines in the processed `SHA256SUMS`, even when every data
+file is identical ([data/README.md](../data/README.md) step 5).
+
 The manifest records the Python version and exact checksums for every generated file.
 Corrected subset counts/distributions and remaining source limitations are recorded
 in [DATASET_PLAN.md](DATASET_PLAN.md).
@@ -100,7 +105,7 @@ With an AI agent's help, two team members compared 100 primary-validation uttera
 | 1–50, agent only | 50 | 255 | 100.00% (98.52–100.00) | 96.96% (94.11–98.45) | 1,809 | 100.00% (99.79–100.00) |
 | All 100 | 100 | 478 | 99.58% (98.49–99.89) | 98.35% (96.77–99.16) | 3,595 | 100.00% (99.89–100.00) |
 
-The two halves counted one case differently: in rows 1–50 the agent counted 8 marks that the normalization removes on purpose (leftover speaker names before a colon, leading turn dashes and a hyphen glued to a word) as missed; the hand-checked half did not. Without those, recall in rows 1–50 is 100.00% (98.52–100.00). The checkers' notes mention speaker labels in 11 rows (kept in our text or removed by the normalization); the gold-noise rules above count the kept ones. The sheet is `results/scores/gold_noise/label_audit_sheet.csv` and the numbers are in `results/scores/gold_noise/label_audit.json`.
+The two halves counted one case differently: in rows 1–50 the agent counted 8 marks that the normalization removes on purpose (leftover speaker names before a colon, leading turn dashes and a hyphen glued to a word) as missed; the hand-checked half did not. Without those, recall in rows 1–50 is 100.00% (98.52–100.00). The checkers' notes mention speaker labels in 11 rows (kept in our text or removed by the normalization); the gold-noise rules above count the kept ones. The sheet is `results/scores/gold_noise/label_audit_sheet.csv` and the numbers are in `results/scores/gold_noise/label_audit.json`, which `recap result-stats label-audit` regenerates from the sheet.
 
 ## Handoff
 
