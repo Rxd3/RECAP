@@ -517,3 +517,11 @@ def test_length_position_names_a_damaged_input_file(
     assert code == 1
     assert_one_error_line(err, f"error: {path.name}")
     assert str(tmp_path) not in err and not any(text in err for text in DECODER_TEXT), err
+
+
+def test_a_tau_grid_with_more_taus_than_mode_a_still_builds_as_on_main(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root = tree_of(FINAL, tmp_path)
+    edit_file(root / "threshold" / "tau_B.json", lambda doc: doc["grid"].append({"tau": 0.99, "macro_f1": 0.01}))
+    code, err = run_command(FINAL, root, tmp_path, capsys)
+    assert (code, err) == (0, "")

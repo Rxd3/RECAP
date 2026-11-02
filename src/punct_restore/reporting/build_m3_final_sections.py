@@ -58,7 +58,7 @@ def sec_threshold(root: Path) -> list[str]:
     files = {m: read_tau(tau_dir / f"tau_{m}.json") for m in MODES}
     grids = {m: {round(g["tau"], 2): g["macro_f1"] for g in files[m]["grid"]} for m in MODES}
     for m in MODES[1:]:
-        if grids[m].keys() != grids[MODES[0]].keys():
+        if not grids[MODES[0]].keys() <= grids[m].keys():  # extra taus are fine, as on main
             raise ValueError(f"tau_{m}.json: the grid does not have the taus of tau_{MODES[0]}.json")
     chosen = {m: files[m]["tau"] for m in MODES}
     viterbi = {m: pct(read_block(root / "crf_validation" / f"m3_improved_{m}.json", PRIMARY[m], CELL)["macro_f1"])

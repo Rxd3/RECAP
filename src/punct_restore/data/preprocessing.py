@@ -20,7 +20,6 @@ from itertools import chain, islice
 from pathlib import PureWindowsPath
 from typing import TypedDict
 
-from ..file_io import inside_folder
 from ..hashing import sha256_file
 
 # --- Source identity (SponSpeech; D1 approved) ------------------------------------------------------------------
@@ -109,12 +108,15 @@ def parse_manifest_line(line: str, number: int, manifest_name: str) -> tuple[str
 
 
 def _inside_raw_root(base: str, rel: str, manifest_name: str, number: int) -> str:
-    """The real path of manifest path ``rel`` (on line ``number``) below ``base`` (the real path of the raw root); a
-    ValueError if it resolves outside (``..``, an absolute path, a link), as ``extraction._write`` refuses an archive
-    entry. The message shows the line and the last part of ``rel`` only: the line can be an absolute path."""
-    path = inside_folder(base, rel)
-    if path is None:
-        last = PureWindowsPath(rel).name or rel  # either kind of separator; a bare root has no name
+    """The path of manifest path ``rel`` (on line ``number``) below ``base`` (the raw root); a ValueError if its text
+    leaves the raw root (an absolute or drive path, or ``..`` parts that climb out). Links are not resolved, as on
+    main 72ebfd1, so a linked ``sponspeech_text`` folder still verifies. The message shows the line and the last part
+    of ``rel`` only: the line can be an absolute path."""
+    text = PureWindowsPath(rel)  # either kind of separator
+    root = os.path.normpath(base)
+    path = os.path.normpath(os.path.join(root, rel))
+    if text.drive or text.root or os.path.commonpath([root, path]) != root:
+        last = text.name or rel  # a bare root has no name
         raise ValueError(f"{manifest_name} line {number} ({last}): listed but outside the raw root")
     return path
 
@@ -128,7 +130,7 @@ def verify_raw_manifest(manifest_path: str | os.PathLike[str]) -> list[str]:
     listed file that is not there ("<path>: listed in <manifest name> but missing; run recap prepare-data extract
     again").
     """
-    base = os.path.realpath(os.path.dirname(os.path.abspath(manifest_path)))
+    base = os.path.dirname(os.path.abspath(manifest_path))
     name = os.path.basename(manifest_path)
     def check_one(numbered_line: tuple[int, str]) -> str | None:
         digest, rel = parse_manifest_line(numbered_line[1], numbered_line[0], name)

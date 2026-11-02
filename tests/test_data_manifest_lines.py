@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 from pathlib import Path
 
 import pytest
@@ -133,3 +134,26 @@ def test_prepare_data_build_reports_a_partly_extracted_raw_root_in_one_line(
     assert capsys.readouterr().err == (
         "error: sponspeech_text/gone.txt: listed in MANIFEST.sha256 but missing; "
         "run recap prepare-data extract again\n")
+
+
+def _link_folder(link: Path, target: Path) -> None:
+    """A folder link: a symlink, or on Windows without that privilege a junction (which needs none)."""
+    try:
+        os.symlink(target, link, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        if os.name != "nt":
+            pytest.skip("symlinks are not available here")
+        import _winapi
+        _winapi.CreateJunction(str(target), str(link))
+
+
+def test_a_linked_text_folder_inside_the_raw_root_still_verifies_as_on_main(tmp_path: Path) -> None:
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    (elsewhere / "a.txt").write_text("hello", encoding="utf-8")
+    root = tmp_path / "raw"
+    root.mkdir()
+    _link_folder(root / "sponspeech_text", elsewhere)
+    manifest = root / "MANIFEST.sha256"
+    manifest.write_text(f"{hashlib.sha256(b'hello').hexdigest()}  sponspeech_text/a.txt\n", encoding="utf-8")
+    assert preprocessing.verify_raw_manifest(manifest) == []
