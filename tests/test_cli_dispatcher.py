@@ -19,7 +19,7 @@ CLI_MODULES = (
 )
 REPORTING_MODULES = (
     "asr_noise_table", "build_ablation_table", "build_m3_final_sections", "build_m3_tables", "crf_convergence",
-    "length_position", "time_models",
+    "length_position", "result_stats", "time_models",
 )
 EXPECTED_COMMANDS = {
     **{name.replace("_", "-"): f"punct_restore.cli.{name}" for name in CLI_MODULES},
@@ -93,8 +93,8 @@ def _line_for(lines: list[str], name: str) -> str:
     return next(line for line in lines if line.split()[:1] == [name])
 
 
-def test_there_are_25_commands_named_after_their_modules():
-    assert len(COMMANDS) == 25 and dict(COMMANDS) == EXPECTED_COMMANDS
+def test_there_are_26_commands_named_after_their_modules():
+    assert len(COMMANDS) == 26 and dict(COMMANDS) == EXPECTED_COMMANDS
 
 
 def test_the_listing_has_a_usage_line(capsys):

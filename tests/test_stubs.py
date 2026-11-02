@@ -48,7 +48,7 @@ def test_every_stub_answers_help_from_another_directory(path: Path, tmp_path: Pa
 
 
 def test_there_is_one_stub_per_command() -> None:
-    assert len(STUBS) == len(COMMANDS) == 25
+    assert len(STUBS) == len(COMMANDS) == 26
     assert sorted(_module_of(path) for path in STUBS) == sorted(COMMANDS.values())
 
 
