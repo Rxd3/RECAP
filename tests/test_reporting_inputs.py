@@ -525,3 +525,13 @@ def test_a_tau_grid_with_more_taus_than_mode_a_still_builds_as_on_main(
     edit_file(root / "threshold" / "tau_B.json", lambda doc: doc["grid"].append({"tau": 0.99, "macro_f1": 0.01}))
     code, err = run_command(FINAL, root, tmp_path, capsys)
     assert (code, err) == (0, "")
+
+
+def test_a_tau_grid_that_swaps_one_of_mode_a_taus_is_refused(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root = tree_of(FINAL, tmp_path)
+    taus = [point["tau"] for point in json.loads((root / "threshold" / "tau_A.json").read_text("utf-8"))["grid"]]
+    swapped = [{"tau": tau, "macro_f1": 0.4} for tau in taus[1:]] + [{"tau": 0.999, "macro_f1": 0.4}]
+    edit_file(root / "threshold" / "tau_B.json", put(swapped, "grid"))  # same size as mode A's grid, one tau differs
+    code, err = run_command(FINAL, root, tmp_path, capsys)
+    assert code == 1 and "tau_B.json: the grid does not have the taus of tau_A.json" in err

@@ -157,3 +157,16 @@ def test_a_linked_text_folder_inside_the_raw_root_still_verifies_as_on_main(tmp_
     manifest = root / "MANIFEST.sha256"
     manifest.write_text(f"{hashlib.sha256(b'hello').hexdigest()}  sponspeech_text/a.txt\n", encoding="utf-8")
     assert preprocessing.verify_raw_manifest(manifest) == []
+
+
+@pytest.mark.parametrize("listed", ["C:outside.txt", r"\\server\share\outside.txt", r"\outside.txt",
+                                    r"sponspeech_text\..\..\outside.txt", f"../{FOLDER}2/outside.txt"])
+def test_a_listed_path_whose_text_leaves_the_raw_root_is_refused(tmp_path: Path, listed: str) -> None:
+    _, digest = _outside_file(tmp_path)
+    sibling = tmp_path / f"{FOLDER}2"  # shares the raw root's name as a prefix: a startswith check would let it in
+    sibling.mkdir()
+    (sibling / "outside.txt").write_text("hello", encoding="utf-8")
+    _, manifest = _raw_root(tmp_path, f"{digest}  {listed}\n")
+    with pytest.raises(ValueError) as problem:
+        preprocessing.verify_raw_manifest(manifest)
+    assert str(problem.value) == "MANIFEST.sha256 line 1 (outside.txt): listed but outside the raw root"
