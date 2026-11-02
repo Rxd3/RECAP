@@ -20,6 +20,7 @@ from itertools import chain, islice
 from pathlib import PureWindowsPath
 from typing import TypedDict
 
+from ..file_io import inside_folder
 from ..hashing import sha256_file
 
 # --- Source identity (SponSpeech; D1 approved) ------------------------------------------------------------------
@@ -112,11 +113,9 @@ def _inside_raw_root(base: str, rel: str, manifest_name: str, number: int) -> st
     leaves the raw root (an absolute or drive path, or ``..`` parts that climb out). Links are not resolved, as on
     main 72ebfd1, so a linked ``sponspeech_text`` folder still verifies. The message shows the line and the last part
     of ``rel`` only: the line can be an absolute path."""
-    text = PureWindowsPath(rel)  # either kind of separator
-    root = os.path.normpath(base)
-    path = os.path.normpath(os.path.join(root, rel))
-    if text.drive or text.root or os.path.commonpath([root, path]) != root:
-        last = text.name or rel  # a bare root has no name
+    path = inside_folder(base, rel, resolve_links=False)
+    if path is None:
+        last = PureWindowsPath(rel).name or rel  # either kind of separator; a bare root has no name
         raise ValueError(f"{manifest_name} line {number} ({last}): listed but outside the raw root")
     return path
 

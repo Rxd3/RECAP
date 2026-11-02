@@ -16,7 +16,7 @@ import shutil
 import tempfile
 from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any, Literal, get_args, get_origin
 
 import yaml
@@ -101,12 +101,22 @@ def file_identity(path: str | Path) -> dict[str, str]:
     return file_identity_with(path, ROOT, 2)
 
 
-def inside_folder(base: str, rel: str) -> str | None:
-    """The real path of ``rel`` below ``base``, or None when it resolves outside (``..``, an absolute path, a link).
+def inside_folder(base: str, rel: str, *, resolve_links: bool = True) -> str | None:
+    """The path of ``rel`` below ``base``, or None when it leaves ``base`` (``..``, an absolute or drive path).
 
-    ``base`` is itself a real path (``os.path.realpath``), so a caller checking many paths resolves it once.
+    With ``resolve_links`` (writing archive entries) a link pointing outside also counts as leaving: ``base`` is
+    itself a real path (``os.path.realpath``), so a caller checking many paths resolves it once, and the real path is
+    returned. Without it (reading the raw manifest, as main 72ebfd1 did) only the text is checked, so a linked folder
+    inside ``base`` is followed.
     """
-    path = os.path.realpath(os.path.join(base, rel))
+    if resolve_links:
+        path = os.path.realpath(os.path.join(base, rel))
+    else:
+        text = PureWindowsPath(rel)  # either kind of separator
+        if text.drive or text.root:
+            return None
+        base = os.path.normpath(base)
+        path = os.path.normpath(os.path.join(base, rel))
     try:
         inside = os.path.commonpath([base, path]) == base
     except ValueError:  # on Windows, a path on another drive has no common path with base
