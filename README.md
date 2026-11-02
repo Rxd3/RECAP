@@ -230,9 +230,11 @@ each file in `scripts/` is a 3-line stub that runs the same command, so running
 `scripts/train_crf.py train ...` with Python equals `recap train-crf train ...`. Runs made before
 the restructure (2026-11-01) ran the same commands under those paths, and their manifests record them.
 
-Before a pull request, also run the linter: `ruff check src scripts tests` (ruff 0.17.3 comes with the
-`dev` extra; its settings are in `pyproject.toml`). The CI workflow `.github/workflows/ci.yml` runs
-ruff and pytest on Python 3.12 and 3.13 for every push and pull request. Each run installs with
+Before a pull request, also run the linter, the type checker and the coverage gate:
+`ruff check src scripts tests`, `mypy src/punct_restore`, then `coverage run -m pytest -q` and
+`coverage report --fail-under=80`. The `dev` extra pins ruff 0.17.3, mypy 2.4.1 and coverage 7.17.0; their
+settings are in `pyproject.toml`. The CI workflow `.github/workflows/ci.yml` runs the same steps on Python
+3.12 and 3.13 for every push and pull request: lint (`ruff check src scripts tests`), type check (`mypy src/punct_restore`), test with coverage (`coverage run -m pytest -q`) and the coverage gate (`coverage report --fail-under=80`). Each run installs with
 `pip install -e ".[dev]" -c requirements-lock.txt`, so the pinned versions of the lock file apply.
 
 ## Data access
@@ -362,8 +364,8 @@ they were. Moved helpers also live in their new modules, for example `FILLERS` i
 Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM_TASKS.md`
 (work board), `pyproject.toml` and `requirements.txt` (package and dependencies),
 `requirements-lock.txt` (exact `pip freeze` of the tested environment, CPython 3.13.1),
-`requirements-hmm.txt` (the pinned HMM reproduction environment), `.github/workflows/ci.yml` (ruff and pytest on
-every push and pull request), `.gitignore`, `.gitattributes`.
+`requirements-hmm.txt` (the pinned HMM reproduction environment), `.github/workflows/ci.yml` (lint, type check,
+tests with a coverage gate on every push and pull request), `.gitignore`, `.gitattributes`.
 
 **Commands** (run from the repository root; `recap <command> --help` prints the options; the stub runs the
 same command):

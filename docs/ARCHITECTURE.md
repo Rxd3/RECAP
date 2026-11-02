@@ -107,7 +107,8 @@ scripts/            26 three-line stubs (scripts/<name>.py, scripts/reporting/<n
   not part of that promise. `tests/test_code_limits.py`
   keeps every function in `src/` and `scripts/` at 50 lines or less (from its first decorator to its
   last line), nesting at 4 levels or less and every file at 400 lines or less; `tests/test_type_hints.py`
-  requires every function in `src/` to annotate its parameters and return type.
+  requires every function in `src/` to annotate its parameters and return type, and CI type-checks
+  `src/punct_restore` with mypy; `tests/test_public_docstrings.py` checks the docstrings of the public functions the clean-code review listed.
 - **HMM study provenance.** `models/hmm_experiment_identity.SOURCE_FILES` lists every `punct_restore` file that a fresh interpreter loads when the four HMM command modules (`cli.train_hmm`, `cli.predict_hmm`, `cli.run_hmm_experiments`, `cli.verify_hmm_experiments`) are imported, package `__init__.py` files included, followed by each command's `scripts/` stub:
   37 entries, 33 of them under `src/`; the commands no longer load the evaluator or the release builder, which a test asserts. A subprocess test checks that the list equals what such an
   interpreter loads, and `plan.json` records the SHA-256 of each file. `verified_frozen_selection`

@@ -54,6 +54,7 @@ python -m venv .venv
 python -m pip install -e ".[dev]"
 python -m pytest -q
 ruff check src scripts tests
+mypy src/punct_restore
 recap --help
 ```
 

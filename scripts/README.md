@@ -130,11 +130,18 @@ with `--overwrite`.
 Every command reports a runtime problem as one stderr line, `error: <file or folder name>: <reason>`, and
 exits 1; a usage error from argparse exits 2. No line shows a full path or a traceback. The lines users see:
 
-- **ID lists and records:** a listed ID with no record gives `<file>: N listed ID(s) are missing, first '<id>'`;
-  a repeated `sample_id` (listed or not) gives `<file> line N: duplicate sample_id '<id>'`.
+- **ID lists and records:** a repeated ID in an `.ids` list gives `<file> line N: duplicate ID '<id>'`; a listed
+  ID with no record gives `<file>: N listed ID(s) are missing, first '<id>'`; a repeated `sample_id` in a data
+  file (listed or not) gives `<file> line N: duplicate sample_id '<id>'`.
+- **File contents:** `<file>: not valid UTF-8` for an input file that is not UTF-8; YAML files say `<file>: not a mapping`,
+  `<key> is not a mapping` and `<key> is not a list`, JSON files `not a JSON object` and `not a JSON list`.
 - **Model files read with joblib:** `<file>: not a readable artifact`.
 - **Paths:** `<name>: <what> not found` (for example `data.jsonl: input JSONL not found`),
-  `<name>: is a folder, not a file`, `<name>: is a file, not a folder`.
+  `<name>: is a folder, not a file`, `<name>: is a file, not a folder`, and `<file>: not an existing file (--punct)`
+  for a missing input named by an option (the same for `--case`, `--gold` and others). `recap evaluate-models`
+  with `--out` in a missing folder: `<folder>: output folder not found`; if writing the `.md` report fails,
+  the `.json` written with it is removed. A failure in a command's temporary output folder names the final
+  folder (`out: <reason>`).
 - **Data root and release** (`recap simulate-asr-noise`, `recap build-leakage-subsets`,
   `recap build-word-clusters`, `recap find-gold-noise`, `recap run-ablations`): `<data-root>: data root not found`,
   `<data-root>: is a file, not a folder`, and
@@ -143,7 +150,7 @@ exits 1; a usage error from argparse exits 2. No line shows a full path or a tra
 - **`recap prepare-data build`:** `MANIFEST.sha256: not found; copy it from the release's provenance package`
   (the same for `video_metadata_oembed.jsonl`), `sponspeech_text: folder not found in the raw root; run recap
   prepare-data extract first`, `sponspeech_text/<file>: listed in MANIFEST.sha256 but missing; run recap
-  prepare-data extract again`, and `<path>: listed in MANIFEST.sha256 but outside the raw root`.
+  prepare-data extract again`, and `MANIFEST.sha256 line N (<last path part>): listed but outside the raw root`.
 - **Evaluator JSON read by the reporting commands** (`recap build-m3-tables`, `recap build-m3-final-sections`,
   `recap build-ablation-table`, `recap asr-noise-table`): `<file>: not valid JSON`, `<file>: not valid UTF-8`,
   `<file>: missing <dotted.key>`, `<file>: <dotted.key> is not <kind>`.
@@ -159,3 +166,14 @@ exits 1; a usage error from argparse exits 2. No line shows a full path or a tra
   `labels.yaml: explicit joint labels do not match the ordered 4-by-3 product`. As on `main`, the labels come
   from `punctuation[modes[<mode>].punctuation_set]` (mode C: its product with the casing labels, punctuation
   first), and mode A ignores `casing`.
+- **HMM commands:** `recap train-hmm`: `<folder>: output-dir already exists; choose a new run directory`;
+  `recap predict-hmm`: `<folder>: output-dir already exists; choose a new prediction run`;
+  `recap run-hmm-experiments tune`: `<folder>: run directory exists; choose a new experiment ID`;
+  `recap verify-hmm-experiments`: `<folder>: verification output already exists; use a new verification
+  directory`, `results.json: not found; run recap run-hmm-experiments finalize first`,
+  `runtime.json: modes must be exactly the configured modes A, C`,
+  `runtime.json: modes.<mode>.prediction_seconds must hold <n> numbers above zero`;
+  `recap package-hmm-handoff`: `<folder>: handoff must be a separate directory inside artifacts/` and
+  `<folder, ZIP or checksum file>: already exists; use a new immutable handoff ID`. Every held-out step:
+  `mode_<mode>/selection.json: changed after freezing`, and for `--evaluator-root`
+  `<folder>: evaluator checkout not found` or `<name>: is a file, not a folder`.
