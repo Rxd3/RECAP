@@ -36,7 +36,7 @@ def test_iterating_again_gives_the_same_counts_not_doubled_ones(tmp_path: Path) 
 def test_a_selected_id_that_is_missing_is_still_refused_after_the_last_row(tmp_path: Path) -> None:
     source = tmp_path / "in.jsonl"
     jsonl(source, [_row("a")])
-    with pytest.raises(ValueError, match="1 selection IDs missing"):
+    with pytest.raises(ValueError, match=r"^in\.jsonl: 1 listed ID\(s\) are missing, first 'gone'$"):
         list(SelectedRecords(source, ("a", "gone")))
 
 

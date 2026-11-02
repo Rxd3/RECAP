@@ -234,7 +234,7 @@ def test_a_corrupt_model_is_one_line_naming_the_file_only(tmp_path: Path, capsys
     bad.write_bytes(b"this is not a joblib file")
     assert train_crf.main(_predict_argv(bad, tmp_path)) == 1
     line = _only_line(capsys.readouterr().err, tmp_path)
-    assert line == "error: bad.joblib: not a readable CRF artifact"
+    assert line == "error: bad.joblib: not a readable artifact"
 
 
 def test_a_bug_while_loading_the_model_propagates(
@@ -301,7 +301,7 @@ def test_predict_input_problems_name_the_files_by_file_name_only(
     write_id_file(ids, ["e1", "nope"])
     assert train_crf.main([*argv, "--ids", str(ids)]) == 1
     line = _only_line(capsys.readouterr().err, tmp_path)
-    assert line.startswith("error: eval.jsonl: missing 1 selected IDs.")
+    assert line == "error: eval.jsonl: 1 listed ID(s) are missing, first 'nope'"
 
 
 # --- inspect -----------------------------------------------------------------------------------------------

@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from itertools import chain, islice
 from typing import TypedDict
 
+from ..file_io import inside_folder
 from ..hashing import sha256_file
 
 # --- Source identity (SponSpeech; D1 approved) ------------------------------------------------------------------
@@ -109,12 +110,8 @@ def parse_manifest_line(line: str, number: int, manifest_name: str) -> tuple[str
 def _inside_raw_root(base: str, rel: str, manifest_name: str) -> str:
     """The real path of manifest path ``rel`` below ``base`` (the real path of the raw root); a ValueError if it
     resolves outside (``..``, an absolute path, a link), as ``extraction._write`` refuses an archive entry."""
-    path = os.path.realpath(os.path.join(base, rel))
-    try:
-        inside = os.path.commonpath([base, path]) == base
-    except ValueError:  # on Windows, a path on another drive has no common path with base
-        inside = False
-    if not inside:
+    path = inside_folder(base, rel)
+    if path is None:
         raise ValueError(f"{rel}: listed in {manifest_name} but outside the raw root")
     return path
 

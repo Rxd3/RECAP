@@ -5,10 +5,10 @@ Used by punct_restore.cli.train_crf (`inspect`), which prints the lines and choo
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any, NamedTuple
 
+from punct_restore.file_io import read_json
 from punct_restore.models.crf_io import check_bundle_fields, load_artifact
 
 RULE = "=" * 70
@@ -59,9 +59,8 @@ def _summary_lines(bundle: dict[str, Any], file_name: str) -> list[str]:
 def _read_companion_manifest(path: Path) -> dict[str, Any] | None:
     """The manifest object at ``path``, or None when the file is unreadable, not UTF-8 or not a JSON object."""
     try:
-        with open(path, encoding="utf-8") as f:
-            data = json.load(f)
-    except (OSError, ValueError, RecursionError):  # unreadable, not UTF-8, not JSON or nested too deeply
+        data = read_json(path)
+    except (OSError, ValueError):  # unreadable, not UTF-8, not JSON or nested too deeply
         return None
     if not isinstance(data, dict) or not isinstance(data.get("provenance", {}), dict):
         return None

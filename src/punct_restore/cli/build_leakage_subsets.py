@@ -21,9 +21,10 @@ from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import Any
 
+from punct_restore.errors import one_line_error
 from punct_restore.file_io import iter_jsonl, require_release, write_new_folder
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import one_line_error, parse_sample_record, read_ids
+from punct_restore.prediction_io import parse_sample_record, read_ids
 
 QUALITY_REASON = "low_comma_or_tts_source"
 BUCKETS = ("excluded_train_video", "excluded_other_leak", "excluded_quality")

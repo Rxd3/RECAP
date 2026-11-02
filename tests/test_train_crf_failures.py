@@ -216,7 +216,7 @@ def test_the_loader_never_puts_the_folder_in_its_messages(tmp_path: Path) -> Non
     ids.write_text(ids.read_text(encoding="utf-8") + "ghost\n", encoding="utf-8")
     with pytest.raises(ValueError) as missing:
         train_crf.load_and_filter_training_records(data, ids, "A")
-    assert str(missing.value).startswith("data.jsonl: missing 1 selected IDs.")
+    assert str(missing.value) == "data.jsonl: 1 listed ID(s) are missing, first 'ghost'"
     ids.write_text("sample_0000\n", encoding="utf-8")
     lines = len(data.read_text(encoding="utf-8").splitlines())
     data.write_text(data.read_text(encoding="utf-8") * 2, encoding="utf-8")

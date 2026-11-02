@@ -416,6 +416,8 @@ DAMAGE = [  # (what to break under the data root, file the error must name, what
     (lambda r: append(r / DATA["B"], b"[1,2]\n"), "mode_B/validation.jsonl", "not a JSON object"),
     (lambda r: rewrite(r / DATA["B"], lambda x: x.append(dict(x[2]))), "mode_B/validation.jsonl",
      "duplicate sample_id"),
+    (lambda r: rewrite(r / DATA["B"], lambda x: x.append(dict(x[0]))), "mode_B/validation.jsonl",
+     "line 33: duplicate sample_id 'x00'"),  # x00 is in no ID list: a repeat is refused all the same
     (lambda r: with_token(r / DATA["A"], 1, ""), "mode_A/validation.jsonl", "nonempty list of nonempty strings"),
     (lambda r: with_token(r / DATA["A"], 1, 5), "mode_A/validation.jsonl", "nonempty list of nonempty strings"),
     (lambda r: with_offsets_cut(r / DATA["A"]), "mode_A/validation.jsonl",
@@ -428,10 +430,12 @@ DAMAGE = [  # (what to break under the data root, file the error must name, what
     (lambda r: with_offset(r / DATA["A"], 3, [-1, 5]), LINE_OF_ROW_2, BAD_SPAN),  # negative start
     (lambda r: (r / DATA["B"]).write_bytes(b"\xff\xfe\n"), "mode_B/validation.jsonl", "not UTF-8 text"),
     (lambda r: (r / IDS["B"]).unlink(), "validation_mode_B.ids", "No such file"),
-    (lambda r: append(r / IDS["A"], b"nope\n"), "mode_A/validation.jsonl", "1 listed ID(s) not found"),
+    (lambda r: append(r / IDS["A"], b"nope\n"), "mode_A/validation.jsonl",
+     "1 listed ID(s) are missing, first 'nope'"),
     (lambda r: append(r / IDS["A"], b"s00\n"), "validation_mode_A.ids", "Duplicate ID 's00' found at line"),
     (lambda r: (r / IDS["A"]).write_bytes(b"\n\n"), "validation_mode_A.ids", "ID list is empty"),
-    (lambda r: rewrite(r / MASKS, lambda x: x.pop(2)), "case_joint/validation.jsonl", "1 listed ID(s) not found"),
+    (lambda r: rewrite(r / MASKS, lambda x: x.pop(2)), "case_joint/validation.jsonl",
+     "1 listed ID(s) are missing, first 's00'"),
     (lambda r: rewrite(r / MASKS, lambda x: x[2].update(excluded_positions=[999])), "case_joint/validation.jsonl",
      "excluded_positions must be unique integers"),
 ]

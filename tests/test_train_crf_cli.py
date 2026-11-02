@@ -227,7 +227,7 @@ class TestCRFTrainCLI:
         ])
         assert ret == 1
         captured = capsys.readouterr()
-        assert "data.jsonl: missing 1 selected IDs" in captured.err
+        assert "data.jsonl: 1 listed ID(s) are missing, first 'ghost_sample_9999'" in captured.err
 
     def test_train_duplicate_id_in_frozen_list_failure(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]

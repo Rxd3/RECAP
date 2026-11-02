@@ -9,10 +9,10 @@ model wrote, for the gold file being scored.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
+from ..file_io import read_json
 from .inputs import Bundle, EvaluationInputError, Vocab
 
 REQUIRED = ("model_name", "label_mode", "ordered_labels", "predictions_sha256")
@@ -30,8 +30,8 @@ def _input_candidates(manifest: dict[str, Any]) -> list[Any]:
 def _load(path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
     """The manifest and its checked input identity."""
     try:
-        manifest = json.loads(path.read_text(encoding="utf-8-sig"))
-    except (UnicodeDecodeError, ValueError, RecursionError) as exc:  # RecursionError: nested too deeply
+        manifest = read_json(path, encoding="utf-8-sig")
+    except ValueError as exc:  # not UTF-8, not JSON or nested too deeply: one wording for the evaluator
         raise EvaluationInputError(f"{path.name}: not a JSON manifest") from exc
     if not isinstance(manifest, dict):
         raise EvaluationInputError(f"{path.name}: manifest must be a JSON object")

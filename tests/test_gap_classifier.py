@@ -14,7 +14,7 @@ from sklearn.feature_extraction import DictVectorizer
 from sklearn.linear_model import LogisticRegression
 
 from punct_restore.features.crf_features import FeatureConfig, extract_sequence_features
-from punct_restore.models import gap_classifier
+from punct_restore.models import crf_io, gap_classifier
 from punct_restore.models.crf import CRFModel, get_mode_vocabulary
 from punct_restore.models.gap_classifier import GapClassifier
 
@@ -449,7 +449,7 @@ def test_load_os_error_is_not_relabelled_as_a_corrupt_artifact(tmp_path, monkeyp
     def denied(_: Path) -> None:
         raise PermissionError("access denied")
 
-    monkeypatch.setattr(gap_classifier.joblib, "load", denied)
+    monkeypatch.setattr(crf_io.joblib, "load", denied)
     with pytest.raises(PermissionError):
         GapClassifier.load_model(path)
 
@@ -457,7 +457,7 @@ def test_load_os_error_is_not_relabelled_as_a_corrupt_artifact(tmp_path, monkeyp
 def test_load_corrupt_file_is_one_friendly_value_error(tmp_path):
     path = tmp_path / "bad.joblib"
     path.write_bytes(b"this is not a joblib file")
-    with pytest.raises(ValueError, match=r"^bad\.joblib: corrupt or unreadable model artifact$") as exc:
+    with pytest.raises(ValueError, match=r"^bad\.joblib: not a readable artifact$") as exc:
         GapClassifier.load_model(path)
     assert "\n" not in str(exc.value) and str(tmp_path) not in str(exc.value)
 

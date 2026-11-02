@@ -183,4 +183,4 @@ def test_load_artifact_does_not_show_the_unpickling_error_of_a_file_that_is_no_a
     path.write_bytes(b"not a pickle at all")
     with pytest.raises(ValueError) as caught:
         load_artifact(path, "thing")
-    assert str(caught.value) == "junk.joblib: not a readable CRF artifact"
+    assert str(caught.value) == "junk.joblib: not a readable artifact"

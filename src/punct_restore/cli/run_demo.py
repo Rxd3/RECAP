@@ -14,8 +14,8 @@ import argparse
 import sys
 from pathlib import Path
 
+from punct_restore.errors import one_line_error, reconfigure_stdout
 from punct_restore.pipeline import ModelAdapter, RestorationPipeline
-from punct_restore.prediction_io import one_line_error, reconfigure_stdout
 
 
 def _interactive(pipeline: RestorationPipeline) -> None:

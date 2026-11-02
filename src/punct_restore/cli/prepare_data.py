@@ -18,9 +18,9 @@ import sys
 
 from punct_restore.data import extraction
 from punct_restore.data.release import ReleaseSources, build_release_from
+from punct_restore.errors import one_line_error
 from punct_restore.file_io import require_folder
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import one_line_error
 
 
 def run_extract(args: argparse.Namespace) -> None:

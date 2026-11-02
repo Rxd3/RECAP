@@ -23,13 +23,8 @@ from pathlib import Path
 from typing import Any
 
 from punct_restore.data.labeling import load_label_sets
-from punct_restore.prediction_io import (
-    check_script_paths,
-    one_line_error,
-    read_prediction_lines,
-    reconfigure_stdout,
-    write_prediction_outputs,
-)
+from punct_restore.errors import one_line_error, reconfigure_stdout
+from punct_restore.prediction_io import check_script_paths, read_prediction_lines, write_prediction_outputs
 
 SEPARATOR = "|"
 SOURCES = {  # --from: (model_name suffix, what a valid input label looks like)

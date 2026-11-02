@@ -12,8 +12,10 @@ from punct_restore.paths import REPO_ROOT as ROOT
 
 # Every punct_restore file that is loaded when the four HMM commands are imported, package `__init__.py` files
 # included (Python runs those first, and they import more modules); this is checked against a fresh interpreter. The
-# order: the HMM modules, then every other file that gets loaded, sorted, then each command's module and the stub that
-# still runs it. This module is listed too: a change to the code that computes the record must change the record.
+# `data` and `evaluation` packages load their submodules lazily (`lazy_exports`), so the evaluator and the release
+# builder are not part of the study's code. The order: the HMM modules, then every other file that gets loaded,
+# sorted, then each command's module and the stub that still runs it. This module is listed too: a change to the code
+# that computes the record must change the record.
 SOURCE_FILES = (
     "src/punct_restore/models/hmm.py",
     "src/punct_restore/models/hmm_distributions.py",
@@ -33,30 +35,13 @@ SOURCE_FILES = (
     "src/punct_restore/__init__.py",
     "src/punct_restore/cli/__init__.py",
     "src/punct_restore/data/__init__.py",
-    "src/punct_restore/data/extraction.py",
     "src/punct_restore/data/labeling.py",
     "src/punct_restore/data/preprocessing.py",
-    "src/punct_restore/data/release.py",
-    "src/punct_restore/data/release_checks.py",
-    "src/punct_restore/data/release_constants.py",
-    "src/punct_restore/data/release_manifest.py",
-    "src/punct_restore/data/release_notes.py",
-    "src/punct_restore/data/release_outputs.py",
-    "src/punct_restore/data/release_stats.py",
-    "src/punct_restore/data/splits.py",
     "src/punct_restore/data/validation.py",
-    "src/punct_restore/evaluation/__init__.py",
-    "src/punct_restore/evaluation/baseline.py",
-    "src/punct_restore/evaluation/comparison.py",
-    "src/punct_restore/evaluation/error_analysis.py",
-    "src/punct_restore/evaluation/inputs.py",
-    "src/punct_restore/evaluation/manifest.py",
-    "src/punct_restore/evaluation/metrics.py",
-    "src/punct_restore/evaluation/report.py",
-    "src/punct_restore/evaluation/uncertainty.py",
-    "src/punct_restore/evaluation/views.py",
+    "src/punct_restore/errors.py",
     "src/punct_restore/file_io.py",
     "src/punct_restore/hashing.py",
+    "src/punct_restore/lazy_exports.py",
     "src/punct_restore/models/__init__.py",
     "src/punct_restore/paths.py",
     "src/punct_restore/prediction_io.py",

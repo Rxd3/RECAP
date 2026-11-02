@@ -1,5 +1,6 @@
 """File-level helpers shared by the commands: the create-new writers for a file and a folder, the JSONL, JSON and
-YAML readers, the shape check of a parsed file, and the checks that a path is a file or a folder or does not exist yet.
+YAML readers, the shape check of a parsed file, the checks that a path is a file or a folder or does not exist yet, the
+file identity recorded in manifests and the "inside this folder" check.
 
 Every error names a file by its name only (never the folder it sits in), so a command can print it as one line.
 """
@@ -15,6 +16,9 @@ import tempfile
 from collections.abc import Callable, Iterator, Mapping
 from pathlib import Path
 from typing import Any, get_args, get_origin
+
+from .hashing import sha256_file
+from .paths import REPO_ROOT as ROOT
 
 
 def require_file(path: str | os.PathLike[str], what: str) -> None:
@@ -65,6 +69,37 @@ def require_release(data_root: str | os.PathLike[str], release: str) -> Path:
         raise FileNotFoundError(
             f"{release}: release folder not found in {root_name}; run recap prepare-data build first")
     return processed
+
+
+def file_identity_with(path: str | Path, root: Path, outside_parts: int) -> dict[str, str]:
+    """POSIX path relative to the repository ``root``, and SHA-256; no absolute paths.
+
+    A file outside ``root`` shows its last ``outside_parts`` path parts (2: folder and file name; 1: file name).
+    """
+    resolved = Path(path).resolve()
+    try:
+        shown = resolved.relative_to(root).as_posix()
+    except ValueError:
+        shown = "/".join(resolved.parts[-outside_parts:])
+    return {"path": shown, "sha256": sha256_file(resolved)}
+
+
+def file_identity(path: str | Path) -> dict[str, str]:
+    """Repo-relative POSIX path (folder/name outside the repo) and SHA-256; no absolute paths."""
+    return file_identity_with(path, ROOT, 2)
+
+
+def inside_folder(base: str, rel: str) -> str | None:
+    """The real path of ``rel`` below ``base``, or None when it resolves outside (``..``, an absolute path, a link).
+
+    ``base`` is itself a real path (``os.path.realpath``), so a caller checking many paths resolves it once.
+    """
+    path = os.path.realpath(os.path.join(base, rel))
+    try:
+        inside = os.path.commonpath([base, path]) == base
+    except ValueError:  # on Windows, a path on another drive has no common path with base
+        return None
+    return path if inside else None
 
 
 def refuse_existing(*paths: Path | None) -> None:
@@ -125,29 +160,41 @@ def write_new_folder(out: Path, files: Mapping[str, str | Callable[[Path], None]
         raise
 
 
-def iter_jsonl[T](path: str | os.PathLike[str], parse: Callable[[str, str], T]) -> Iterator[tuple[int, T]]:
+def iter_jsonl[T](
+    path: str | os.PathLike[str],
+    parse: Callable[[str, str], T],
+    *,
+    encoding: str = "utf-8",
+    skip_blank: bool = True,
+) -> Iterator[tuple[int, T]]:
     """``(line number, parse(line, where))`` for every nonblank line of a UTF-8 JSONL file, in file order.
 
     ``parse`` gets the line without surrounding whitespace and ``where``, ``<file name> line <number>``, which
     starts the ValueError it raises for a bad line (``prediction_io.parse_json_object`` and ``parse_sample_record``
-    do). Blank lines are skipped but counted in the numbering. The file is read lazily, a line at a time.
+    do). Blank lines are skipped but counted in the numbering, unless ``skip_blank`` is False: then one is refused.
+    ``encoding`` is ``utf-8-sig`` for a file that may start with a byte order mark. The file is read lazily, a line
+    at a time.
 
     Raises:
         OSError: If the file cannot be read.
-        ValueError: ``<file name>: not valid UTF-8``, or what ``parse`` raises.
+        ValueError: ``<file name>: not valid UTF-8``, ``<file name> line <number>: blank JSONL record`` (with
+            ``skip_blank`` False), or what ``parse`` raises.
     """
     path = Path(path)
     try:
-        with open(path, encoding="utf-8") as handle:
+        with open(path, encoding=encoding) as handle:
             for number, line in enumerate(handle, 1):
-                if line.strip():
-                    yield number, parse(line.strip(), f"{path.name} line {number}")
+                text, where = line.strip(), f"{path.name} line {number}"
+                if text:
+                    yield number, parse(text, where)
+                elif not skip_blank:
+                    raise ValueError(f"{where}: blank JSONL record")
     except UnicodeDecodeError as exc:
         raise ValueError(f"{path.name}: not valid UTF-8") from exc
 
 
-def read_json(path: Path) -> Any:
-    """Parse a UTF-8 JSON file.
+def read_json(path: Path, *, encoding: str = "utf-8") -> Any:
+    """Parse a JSON file (UTF-8; ``encoding="utf-8-sig"`` also drops a leading byte order mark).
 
     Raises:
         OSError: If the file cannot be read.
@@ -155,7 +202,7 @@ def read_json(path: Path) -> Any:
             document nested too deeply or a number beyond Python's integer digit limit).
     """
     try:
-        text = path.read_text(encoding="utf-8")
+        text = path.read_text(encoding=encoding)
     except UnicodeDecodeError as exc:
         raise ValueError(f"{path.name}: not valid UTF-8") from exc
     try:

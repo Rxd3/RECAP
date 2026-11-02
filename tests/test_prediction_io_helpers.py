@@ -345,5 +345,5 @@ def test_read_observations_never_puts_the_folder_in_its_message(tmp_path: Path) 
     (tmp_path / "want.ids").write_text("a\nb\n", encoding="utf-8")
     with pytest.raises(ValueError) as caught:
         prediction_io.read_observations(tmp_path / "in.jsonl", tmp_path / "want.ids")
-    assert str(caught.value).startswith("in.jsonl: missing 1 selected IDs.")
+    assert str(caught.value) == "in.jsonl: 1 listed ID(s) are missing, first 'b'"
     assert str(tmp_path) not in str(caught.value)

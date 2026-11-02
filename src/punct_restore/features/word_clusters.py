@@ -21,6 +21,8 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import TruncatedSVD
 from sklearn.preprocessing import normalize
 
+from punct_restore.file_io import read_json
+
 FORMAT_VERSION = 1
 
 _KMEANS_N_INIT = 4
@@ -220,18 +222,11 @@ def load_cluster_map(path: str | Path) -> ClusterMap:
     """Read and check a cluster-map file.
 
     Raises FileNotFoundError for a missing file and a one-line ValueError (starting with the file name) for
-    anything malformed: bad JSON, wrong version, wrong field types, cluster ids outside 0..k-1, or a
-    vocabulary_size that differs from the number of words.
+    anything malformed: bytes that are not UTF-8, bad JSON, wrong version, wrong field types, cluster ids outside
+    0..k-1, or a vocabulary_size that differs from the number of words.
     """
     path = Path(path)
-    try:
-        text = path.read_text(encoding="utf-8")
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"{path.name}: not valid UTF-8") from exc
-    try:
-        payload = json.loads(text)
-    except (json.JSONDecodeError, RecursionError) as exc:  # RecursionError: nested too deeply
-        raise ValueError(f"{path.name}: invalid JSON ({getattr(exc, 'msg', 'nested too deeply')})") from exc
+    payload = read_json(path)  # a one-line ValueError for bytes that are not UTF-8 or text that is not JSON
     try:
         payload = _check_fields(payload)
         clusters = _check_clusters(payload["clusters"], payload["k"], payload["vocabulary_size"])

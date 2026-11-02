@@ -19,9 +19,8 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, cast
 
-import joblib
-
-from punct_restore.evaluation.inputs import sha256_file
+from punct_restore.hashing import sha256_file
+from punct_restore.models.crf_io import load_artifact
 from punct_restore.reporting._cli import check_out, run, write_new_text
 
 LOOKBACK = 10  # the drop is measured between iteration n - 10 and iteration n
@@ -43,16 +42,13 @@ def model_files(paths: Sequence[Path]) -> list[Path]:
     return files
 
 
-def read_bundle(path: Path) -> dict[str, Any]:
-    """The saved CRF bundle (a dict); anything else is refused by file name."""
+def read_convergence_bundle(path: Path) -> dict[str, Any]:
+    """The saved CRF bundle (a dict); anything else is refused by file name. Not `crf_io.read_bundle`: this one
+    checks only what the loss trace needs, so a model of any schema version still reports."""
     try:
-        bundle = joblib.load(path)  # trusted files only: this is a pickle
-    except OSError:
-        raise  # run() names the file and the system reason (e.g. "is a folder, not a file")
-    except ImportError as exc:  # the pickle names a class from a package that is not installed
-        raise ValueError(f"{path.name}: needs the Python package {exc.name} to open it") from exc
-    except Exception as exc:  # a pickle can fail in many ways; the message would quote the whole path
-        raise ValueError(f"{path.name}: not a readable joblib file") from exc
+        bundle = load_artifact(path, "model file")  # trusted files only: this is a pickle
+    except (FileNotFoundError, IsADirectoryError) as exc:  # the reporting boundary hides a message-only OSError
+        raise ValueError(str(exc)) from exc
     if not isinstance(bundle, dict) or bundle.get("model_family") != "crf":
         raise ValueError(f"{path.name}: not a CRF model file")
     return bundle
@@ -72,7 +68,7 @@ def read_losses(bundle: dict[str, Any], path: Path) -> list[float]:
 
 def convergence_entry(path: Path) -> dict[str, Any]:
     """The report entry of one model file."""
-    bundle = read_bundle(path)
+    bundle = read_convergence_bundle(path)
     losses = read_losses(bundle, path)
     final = losses[-1]
     before = losses[-1 - LOOKBACK] if len(losses) > LOOKBACK else None

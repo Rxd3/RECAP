@@ -35,10 +35,11 @@ from punct_restore.data.gold_noise import (
     speaker_label_colons,
     validate_record,
 )
+from punct_restore.errors import one_line_error
 from punct_restore.file_io import iter_jsonl, require_folder, require_release, write_new_folder
 from punct_restore.hashing import sha256_file
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import one_line_error, parse_json_object, read_ids
+from punct_restore.prediction_io import parse_json_object, read_ids
 
 SPLITS = ("validation", "test", "test_amb", "default_train")
 

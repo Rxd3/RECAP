@@ -9,7 +9,8 @@ from typing import Any
 
 from punct_restore.data.labeling import load_label_sets
 from punct_restore.data.validation import check_model_input, validate_record
-from punct_restore.prediction_io import parse_json_object
+from punct_restore.file_io import iter_jsonl
+from punct_restore.prediction_io import parse_json_object, select_records
 
 
 def read_jsonl(path: Path) -> Iterator[dict[str, Any]]:
@@ -17,14 +18,8 @@ def read_jsonl(path: Path) -> Iterator[dict[str, Any]]:
 
     Every rejection is a ValueError of one line that names the file by name only.
     """
-    try:
-        with path.open(encoding="utf-8") as handle:
-            for number, line in enumerate(handle, 1):
-                if not line.strip():
-                    raise ValueError(f"{path.name} line {number}: blank JSONL record")
-                yield parse_json_object(line, f"{path.name} line {number}")
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"{path.name}: not valid UTF-8") from exc
+    for _, record in iter_jsonl(path, parse_json_object, skip_blank=False):
+        yield record
 
 
 def _check_record_basics(record: dict[str, Any], path: Path, seen: set[str]) -> tuple[str, list[Any]]:
@@ -70,13 +65,18 @@ def _check_training_record(record: dict[str, Any], sid: str, tokens: list[Any], 
             raise ValueError(f"{sid}: record does not match the canonical release policy")
 
 
-def _check_selection_complete(path: Path, wanted: set[str] | None, selected: set[str]) -> None:
-    """Reject missing selection IDs and empty selections."""
-    if wanted is not None and selected != wanted:
-        missing = sorted(wanted - selected)
-        raise ValueError(f"{path.name}: {len(missing)} selection IDs missing, first: {missing[:3]}")
-    if not selected:
-        raise ValueError(f"{path.name}: selection is empty")
+def _checked_rows(
+    path: Path, rules: _TrainingRules | None, counts: dict[str, int]
+) -> Iterator[tuple[int, dict[str, Any]]]:
+    """Every row of the file as ``(line number, record)`` once checked, selected or not; counts the rows read."""
+    seen: set[str] = set()
+    for number, record in iter_jsonl(path, parse_json_object, skip_blank=False):
+        sid, tokens = _check_record_basics(record, path, seen)
+        seen.add(sid)
+        if rules is not None:
+            _check_training_record(record, sid, tokens, rules)
+        counts["input_records"] += 1
+        yield number, record
 
 
 def _scan(
@@ -87,7 +87,6 @@ def _scan(
     source_revision: str | None,
 ) -> Generator[dict[str, Any], None, dict[str, int]]:
     """Yield the selected records in file order; the generator's result is the counts of everything it read."""
-    wanted = None if ids is None else set(ids)
     rules = None
     if training_mode is not None:
         rules = _TrainingRules(
@@ -96,22 +95,18 @@ def _scan(
             policy_version=policy_version,
             source_revision=source_revision,
         )
-    seen: set[str] = set()
-    selected: set[str] = set()
-    read = tokens_selected = 0
-    for record in read_jsonl(path):
-        sid, tokens = _check_record_basics(record, path, seen)
-        seen.add(sid)
-        if rules is not None:
-            _check_training_record(record, sid, tokens, rules)
-        read += 1
-        if wanted is not None and sid not in wanted:
-            continue
-        selected.add(sid)
-        tokens_selected += len(tokens)
-        yield record if rules is not None else {"schema_version": 1, "sample_id": sid, "tokens": tokens}
-    _check_selection_complete(path, wanted, selected)
-    return {"input_records": read, "selected_records": len(selected), "selected_tokens": tokens_selected}
+    counts = {"input_records": 0, "selected_records": 0, "selected_tokens": 0}
+
+    def keep(record: dict[str, Any], _where: str) -> dict[str, Any]:
+        counts["selected_records"] += 1
+        counts["selected_tokens"] += len(record["tokens"])
+        return record if rules is not None else {"schema_version": 1, "sample_id": record["sample_id"],
+                                                  "tokens": record["tokens"]}
+
+    yield from select_records(_checked_rows(path, rules, counts), path.name, ids, keep)
+    if not counts["selected_records"]:
+        raise ValueError(f"{path.name}: selection is empty")
+    return counts
 
 
 class SelectedRecords:

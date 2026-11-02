@@ -22,6 +22,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
+from punct_restore.errors import one_line_error, one_line_error_with_short_paths, reconfigure_stdout
 from punct_restore.features.crf_features import FeatureConfig
 from punct_restore.hashing import sha256_file
 from punct_restore.models.crf import CRFModel
@@ -45,12 +46,7 @@ from punct_restore.models.crf_training import (
     process_memory,
 )
 from punct_restore.models.crf_training_data import load_and_filter_training_records
-from punct_restore.prediction_io import (
-    check_new_output_paths,
-    one_line_error,
-    one_line_error_with_short_paths,
-    reconfigure_stdout,
-)
+from punct_restore.prediction_io import check_new_output_paths
 
 __all__ = ["main"]
 

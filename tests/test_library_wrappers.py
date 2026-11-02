@@ -116,7 +116,7 @@ def test_selected_records_need_no_counts_argument(tmp_path: Path) -> None:
 
 def test_selected_records_still_refuse_a_missing_selected_id_after_the_last_row(tmp_path: Path) -> None:
     counts: dict[str, int] = {}
-    with pytest.raises(ValueError, match="1 selection IDs missing"):
+    with pytest.raises(ValueError, match=r"^in\.jsonl: 1 listed ID\(s\) are missing, first 'gone'$"):
         list(selected_records(_source(tmp_path), ("a", "gone"), counts=counts))
     assert counts == dict.fromkeys(COUNT_KEYS, 0)  # documented: no partial totals after an error
 

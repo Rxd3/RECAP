@@ -19,6 +19,7 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
+from punct_restore.errors import one_line_error, reconfigure_stdout
 from punct_restore.evaluation import (
     BootstrapSpec,
     EvaluationInputError,
@@ -42,12 +43,7 @@ from punct_restore.evaluation.uncertainty import (
     MAX_RESAMPLES,
     MIN_RESAMPLES,
 )
-from punct_restore.prediction_io import (
-    one_line_error,
-    reconfigure_stdout,
-    refuse_existing,
-    write_new_file,
-)
+from punct_restore.prediction_io import refuse_existing, write_new_file
 
 
 def _bounded(minimum: int, maximum: int | None = None) -> Callable[[str], int]:

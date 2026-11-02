@@ -1,24 +1,28 @@
 """Input/output shared by the commands: gold-free prediction files and manifests (train_crf, tune_threshold,
-project_joint, factor_predictions), the one ``.ids`` reader, the JSON-line parsers, output path checks and one-line
-errors. The file-level helpers (create-new writers, JSONL and JSON readers) are in punct_restore.file_io."""
+project_joint, factor_predictions), the one ``.ids`` reader, the JSON-line parsers, the one record-selection reader and
+output path checks. The file-level helpers (create-new writers, JSONL and JSON readers, the file identity) are in
+punct_restore.file_io; the one-line error text is in punct_restore.errors."""
 
 from __future__ import annotations
 
 import contextlib
-import errno
 import json
 import os
-import sys
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from .evaluation.inputs import file_identity
-from .file_io import iter_jsonl, require_file
+from .file_io import file_identity, iter_jsonl, require_file
 from .hashing import sha256_file
 
 # isort: split
-# old import path kept: these helpers moved to file_io (restructure spec section 2)
+# old import paths kept: these helpers moved to file_io and to errors (restructure spec section 2)
+from .errors import OS_REASONS as OS_REASONS
+from .errors import one_line_error as one_line_error
+from .errors import one_line_error_with_short_paths as one_line_error_with_short_paths
+from .errors import os_error_code as os_error_code
+from .errors import os_reason as os_reason
+from .errors import reconfigure_stdout as reconfigure_stdout
 from .file_io import refuse_existing as refuse_existing
 from .file_io import write_new_file as write_new_file
 
@@ -120,6 +124,39 @@ def read_observations(input_path: Path, ids_path: Path | None) -> list[dict[str,
     return select_observations(input_path, read_ids(ids_path) if ids_path is not None else None)
 
 
+def select_records[T](
+    rows: Iterable[tuple[int, dict[str, Any]]],
+    name: str,
+    ids: Sequence[str] | None,
+    keep: Callable[[dict[str, Any], str], T],
+) -> Iterator[T]:
+    """``keep(record, where)`` for each record of ``rows`` whose sample_id is in ``ids``, in file order.
+
+    The one reader behind every command that keeps the listed records of a JSONL file. ``rows`` are the ``(line
+    number, record)`` pairs of the file (``iter_jsonl``), each record holding a string ``sample_id``; ``name`` is how
+    the messages call the file; ``ids`` is the list in list order, or ``None`` to keep every record. ``keep`` checks and
+    reshapes one record (``where`` is ``<name> line <number>``, the start of the ValueError it raises). The records
+    come one at a time; the list is checked after the last one.
+
+    Raises:
+        ValueError: ``<name> line N: duplicate sample_id 'x'`` for a sample_id seen before (listed or not), or, after
+            the last record, ``<name>: N listed ID(s) are missing, first 'x'`` (first in list order); or what
+            ``keep`` raises.
+    """
+    wanted = None if ids is None else set(ids)
+    seen: set[str] = set()
+    for number, record in rows:
+        sample_id, where = record["sample_id"], f"{name} line {number}"
+        if sample_id in seen:
+            raise ValueError(f"{where}: duplicate sample_id {sample_id!r}")
+        seen.add(sample_id)
+        if wanted is None or sample_id in wanted:
+            yield keep(record, where)
+    missing = [sample_id for sample_id in dict.fromkeys(ids or ()) if sample_id not in seen]
+    if missing:
+        raise ValueError(f"{name}: {len(missing)} listed ID(s) are missing, first {missing[0]!r}")
+
+
 def select_observations(input_path: Path, ids: Sequence[str] | None) -> list[dict[str, Any]]:
     """``read_observations`` for an ID list that is already read (``None``: keep every record).
 
@@ -129,33 +166,8 @@ def select_observations(input_path: Path, ids: Sequence[str] | None) -> list[dic
         ValueError: As ``read_observations``; the message starts with the input's file name.
     """
     require_file(input_path, "input JSONL")
-    wanted = set(ids) if ids is not None else None
-    observations: list[dict[str, Any]] = []
-    seen_ids: set[str] = set()
-    for line_num, rec in iter_jsonl(input_path, parse_sample_record):
-        s_id = rec["sample_id"]
-        where = f"{input_path.name} line {line_num}"
-        if s_id in seen_ids:
-            raise ValueError(f"{where}: duplicate sample_id {s_id!r}")
-        seen_ids.add(s_id)
-        if wanted is None or s_id in wanted:
-            observations.append(_gold_free_observation(rec, where))
-    if ids is not None:
-        _require_all_found(input_path, ids, observations)
-    return observations
-
-
-def _require_all_found(input_path: Path, ids: Sequence[str], observations: Sequence[Mapping[str, Any]]) -> None:
-    """Raise ValueError (leading with the input's name) unless the observations are exactly the listed IDs."""
-    missing_ids = set(ids) - {o["sample_id"] for o in observations}
-    if missing_ids:
-        raise ValueError(
-            f"{input_path.name}: missing {len(missing_ids)} selected IDs. Examples: {sorted(missing_ids)[:5]}"
-        )
-    if len(observations) != len(ids):
-        raise ValueError(
-            f"{input_path.name}: found {len(observations)} matching records, expected {len(ids)} from the ID list"
-        )
+    rows = iter_jsonl(input_path, parse_sample_record)
+    return list(select_records(rows, input_path.name, ids, _gold_free_observation))
 
 
 def write_predictions_jsonl(predictions: Sequence[Mapping[str, Any]], path: Path) -> None:
@@ -297,80 +309,10 @@ def read_prediction_lines(path: Path) -> Iterator[tuple[int, dict[str, Any]]]:
             JSON object, or a file without any record.
         OSError: If the file cannot be read.
     """
-    try:
-        text = path.read_text(encoding="utf-8-sig")  # a leading BOM is dropped, as the evaluator's reader does
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"{path.name}: not valid UTF-8") from exc
     found = False
-    for number, line in enumerate(text.split("\n"), 1):
-        if not line.strip():
-            continue
-        record = parse_json_object(line, f"{path.name} line {number}")
+    # utf-8-sig: a leading byte order mark is dropped, as the evaluator's reader does
+    for number, record in iter_jsonl(path, parse_json_object, encoding="utf-8-sig"):
         found = True
         yield number, record
     if not found:
         raise ValueError(f"{path.name}: no predictions found")
-
-
-# The friendly reason for the OS errors a user causes (evaluate-models words every one of them this way).
-OS_REASONS: Mapping[int | None, str] = {errno.EEXIST: "already exists; refusing to overwrite",
-                                         errno.ENOENT: "file or folder not found",
-                                         errno.EISDIR: "is a folder, not a file",
-                                         errno.EACCES: "permission denied",
-                                         errno.EPERM: "permission denied"}
-
-
-def _is_folder(name: str | bytes) -> bool:
-    """Whether ``name`` is a folder; False when it cannot even be looked at (a folder above it may not be entered)."""
-    try:
-        return Path(os.fsdecode(name)).is_dir()
-    except OSError:
-        return False
-
-
-def os_error_code(exc: OSError) -> int | None:
-    """The errno of ``exc``; EISDIR when Windows reports opening a single folder as permission denied."""
-    single_file = bool(exc.filename) and exc.filename2 is None  # a two-path call (a rename) keeps its own reason
-    if exc.errno in (errno.EACCES, errno.EPERM) and single_file and _is_folder(exc.filename):
-        return errno.EISDIR
-    return exc.errno
-
-
-def os_reason(exc: OSError) -> str | None:
-    """Why an OS error is shown: the folder wording for a folder opened as a file (Windows says "permission
-    denied" for it), else the system text; None when the error has none."""
-    return OS_REASONS[errno.EISDIR] if os_error_code(exc) == errno.EISDIR else exc.strerror
-
-
-def one_line_error_with_short_paths(exc: BaseException, *paths: str | os.PathLike[str] | None) -> str:
-    """The message on one line, without the ``error: `` prefix.
-
-    An OSError reads ``<file name>: <reason>`` (its own text carries the full path, which is never shown);
-    anything else keeps its text. Each of ``paths`` that the text quotes is cut to its file name.
-    """
-    text = str(exc)
-    if isinstance(exc, OSError):
-        reason = os_reason(exc)
-        if reason:
-            name = Path(os.fsdecode(exc.filename)).name if exc.filename else ""
-            text = f"{name}: {reason}" if name else reason
-    for path in (given for given in paths if given):
-        text = text.replace(str(Path(path)), Path(path).name)
-    return " ".join(text.splitlines())
-
-
-def one_line_error(exc: BaseException) -> str:
-    """The message on one line, in main's call form ``one_line_error(exc)`` (kept, spec section 2).
-
-    A path quoted in the text of a non-OS error stays; ``one_line_error_with_short_paths`` also cuts the paths it is
-    given. One wording differs from main: opening a folder as a file, which Windows reports as "permission denied",
-    now reads ``<name>: is a folder, not a file``.
-    """
-    return one_line_error_with_short_paths(exc)
-
-
-def reconfigure_stdout() -> None:
-    """Print unencodable characters as backslash escapes instead of failing; a stdout that cannot is left alone."""
-    reconfigure = getattr(sys.stdout, "reconfigure", None)
-    if reconfigure is not None:
-        reconfigure(errors="backslashreplace")

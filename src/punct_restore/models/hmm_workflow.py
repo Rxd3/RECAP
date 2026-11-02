@@ -12,8 +12,7 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any
 
-from punct_restore.evaluation.inputs import file_identity_with
-from punct_restore.file_io import write_new_file
+from punct_restore.file_io import file_identity_with, write_new_file
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_records import SelectedRecords
@@ -41,7 +40,7 @@ def portable_path(path: Path) -> str:
 
 
 def file_identity(path: Path) -> dict[str, str]:
-    """The evaluator's file identity, with the file name alone for a file outside the repository."""
+    """The shared file identity, with the file name alone for a file outside the repository."""
     return file_identity_with(path, ROOT, 1)
 
 

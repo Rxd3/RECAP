@@ -10,12 +10,8 @@ import sys
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
-from punct_restore.prediction_io import (
-    check_new_output_paths,
-    one_line_error,
-    reconfigure_stdout,
-    write_new_file,
-)
+from punct_restore.errors import one_line_error, reconfigure_stdout
+from punct_restore.prediction_io import check_new_output_paths, write_new_file
 
 
 def check_out(out: Path, inputs: Mapping[str, Path | None] | None = None) -> None:

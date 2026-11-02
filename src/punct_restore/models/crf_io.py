@@ -59,17 +59,27 @@ def load_artifact(path: str | Path, what: str) -> Any:
     """The object the joblib artifact file at ``path`` holds; the caller checks its type. ``what`` names the file in
     a not-found message.
 
+    The one joblib loader: the CRF reader, the inspection, the gap classifier, the model pipeline and the convergence
+    report all open an artifact through it. Artifacts are pickles: open only files you trust.
+
     Raises:
         FileNotFoundError: ``<name>: <what> not found``.
         IsADirectoryError: ``<name>: is a folder, not a file``.
-        ValueError: ``<name>: not a readable CRF artifact`` (the unpickling text is not shown).
+        OSError: The file cannot be read (permissions, I/O); passed through as is, for the caller to word.
+        ValueError: ``<name>: needs the Python package <X> to open it`` when the pickle names a class of a package that
+            is not installed, else ``<name>: not a readable artifact`` (the unpickling text is not shown).
     """
     load_path = Path(path)
     require_file(load_path, what)
-    try:  # joblib is pickle: artifacts are this project's own saved models, or a local file the user chose to inspect
+    try:  # joblib is pickle: artifacts are this project's own saved models, or a local file the user chose to open
         return joblib.load(load_path)
-    except Exception as e:  # broad on purpose: unpickling a corrupt or foreign file can raise any exception type
-        raise ValueError(f"{load_path.name}: not a readable CRF artifact") from e
+    except OSError:
+        raise  # permission and I/O errors are not a corrupt artifact
+    except ImportError as exc:
+        reason = f"needs the Python package {exc.name} to open it" if exc.name else "not a readable artifact"
+        raise ValueError(f"{load_path.name}: {reason}") from exc
+    except Exception as exc:  # broad on purpose: unpickling a corrupt or foreign file can raise any exception type
+        raise ValueError(f"{load_path.name}: not a readable artifact") from exc
 
 
 # What a saved bundle holds besides the checked schema_version, model_family and label_mode (see

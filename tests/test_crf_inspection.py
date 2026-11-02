@@ -174,7 +174,7 @@ def test_a_missing_artifact_is_a_file_not_found_error_naming_the_file_only(tmp_p
 def test_a_file_that_is_not_an_artifact_is_a_value_error(tmp_path: Path) -> None:
     junk = tmp_path / "junk.joblib"
     junk.write_bytes(b"this is not a joblib file")
-    with pytest.raises(ValueError, match=r"^junk\.joblib: not a readable CRF artifact$"):
+    with pytest.raises(ValueError, match=r"^junk\.joblib: not a readable artifact$"):
         inspect_artifact(junk)
 
     listing = tmp_path / "list.joblib"

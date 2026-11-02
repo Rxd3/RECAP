@@ -12,6 +12,7 @@ from time import perf_counter
 from typing import Any, NamedTuple
 
 from punct_restore.data.labeling import read_label_config
+from punct_restore.errors import one_line_error
 from punct_restore.file_io import require_object
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm import HMMModel
@@ -25,7 +26,7 @@ from punct_restore.models.hmm_workflow import (
     write_predictions_file,
 )
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import one_line_error, read_ids
+from punct_restore.prediction_io import read_ids
 
 
 def _joint_labels(name: str, config: dict[str, Any], punctuation: list[str]) -> list[str]:
