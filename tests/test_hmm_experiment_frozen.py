@@ -146,11 +146,11 @@ def test_a_candidate_report_whose_score_disagrees_with_the_record_is_refused(
 @pytest.mark.parametrize(
     ("item", "message"),
     [
-        ({}, "selection.json: missing candidates.0.smoothing"),
-        (["O"], "selection.json: candidates.0 is not a JSON object"),
-        (1, "selection.json: candidates.0 is not a JSON object"),
-        (None, "selection.json: candidates.0 is not a JSON object"),
-        ("text", "selection.json: candidates.0 is not a JSON object"),
+        ({}, "mode_A/selection.json: missing candidates.0.smoothing"),
+        (["O"], "mode_A/selection.json: candidates.0 is not a JSON object"),
+        (1, "mode_A/selection.json: candidates.0 is not a JSON object"),
+        (None, "mode_A/selection.json: candidates.0 is not a JSON object"),
+        ("text", "mode_A/selection.json: candidates.0 is not a JSON object"),
     ],
     ids=["object", "list", "number", "null", "text"],
 )

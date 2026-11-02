@@ -87,7 +87,7 @@ def _check_mode(
         raise ValueError(f"mode_{mode}/selection.json: changed after freezing")
     mode_selection = read_object(run / f"mode_{mode}/selection.json", _MODE_SELECTION)
     for number, candidate in enumerate(mode_selection["candidates"]):
-        require_object("selection.json", candidate, _CANDIDATE, f"candidates.{number}")
+        require_object(f"mode_{mode}/selection.json", candidate, _CANDIDATE, f"candidates.{number}")
     _check_search_complete(config, mode_selection)
     for candidate in mode_selection["candidates"]:
         _check_candidate(run, candidate)

@@ -99,7 +99,7 @@ def train_videos(train_path: Path, ids_path: Path) -> set[str]:
     def group_of(record: dict[str, Any], where: str) -> str:
         group = _group(record)
         if group is None:
-            raise ValueError(f"{train_path.name}: ID {record['sample_id']} has no string metadata.group_id")
+            raise ValueError(f"{where}: ID {record['sample_id']} has no string metadata.group_id")
         return group
 
     rows = iter_jsonl(train_path, parse_sample_record)

@@ -330,7 +330,8 @@ def committed_sheet() -> str:
     return (SCORES / SHEET).read_text(encoding="utf-8").replace("\r\n", "\n")
 
 
-@pytest.mark.parametrize("note", ["", "CHECK: comma missing after 'however'", "missed colon"])
+@pytest.mark.parametrize("note", ["", "CHECK: comma missing after 'however'", "missed colon",
+                                  "CHECK: comma removed by annotator", "period removed"])
 def test_a_missed_mark_in_rows_1_to_50_whose_note_is_no_by_design_removal_is_refused(
     note: str, tmp_path: Path, capsys: Capsys
 ) -> None:
@@ -342,6 +343,7 @@ def test_a_missed_mark_in_rows_1_to_50_whose_note_is_no_by_design_removal_is_ref
 
 @pytest.mark.parametrize("note", [
     "CHECK: GARY ILLYES: speaker tag removed; its colon counted as missed.",
+    "CHECK: STEPHAN KINSELLA: removed (1 missed colon); cut-off ellipsis.",
     "CHECK: leading speaker-turn dash omitted; counted as 1 missed mark.",
     "CHECK: RAN- vRAN trailing hyphen treated as a dash (1 missed).",
 ])

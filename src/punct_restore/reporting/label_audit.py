@@ -29,7 +29,7 @@ HAND_FROM = 51  # rows 51-100 were checked by hand, rows 1-50 are the agent's co
 SHEET_PATH = "gold_noise/label_audit_sheet.csv"  # under the scores root
 # how the notes of rows 1-50 name a removal that our normalization makes by design: a speaker name before a colon
 # ("speaker tag removed", "NAME: removed"), a leading turn dash ("speaker-turn dash omitted"), a trailing hyphen
-BY_DESIGN_NOTE = re.compile(r"\bremoved\b|speaker-turn dash|trailing hyphen", re.IGNORECASE)
+BY_DESIGN_NOTE = re.compile(r"speaker tag removed|[A-Z]: removed|speaker-turn dash|trailing hyphen")
 STRATA = ("rare", "random")
 COLUMNS = ("row", "stratum", "our_marks", "wrong_marks", "missed_marks", "casing_errors", "notes", "checked_by")
 # the helper sheets that the committed file names as its inputs (the sheet in the repository holds all 100 rows)
