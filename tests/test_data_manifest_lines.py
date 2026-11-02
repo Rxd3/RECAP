@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -159,8 +160,11 @@ def test_a_linked_text_folder_inside_the_raw_root_still_verifies_as_on_main(tmp_
     assert preprocessing.verify_raw_manifest(manifest) == []
 
 
-@pytest.mark.parametrize("listed", ["C:outside.txt", r"\\server\share\outside.txt", r"\outside.txt",
-                                    r"sponspeech_text\..\..\outside.txt", f"../{FOLDER}2/outside.txt"])
+@pytest.mark.parametrize("listed", [
+    "C:outside.txt", r"\\server\share\outside.txt", r"\outside.txt", f"../{FOLDER}2/outside.txt",
+    pytest.param(r"sponspeech_text\..\..\outside.txt", marks=pytest.mark.skipif(
+        sys.platform != "win32", reason="on POSIX a backslash is part of the file name, so this path stays inside")),
+])
 def test_a_listed_path_whose_text_leaves_the_raw_root_is_refused(tmp_path: Path, listed: str) -> None:
     _, digest = _outside_file(tmp_path)
     sibling = tmp_path / f"{FOLDER}2"  # shares the raw root's name as a prefix: a startswith check would let it in
