@@ -41,15 +41,16 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
+from punct_restore.errors import one_line_error
 from punct_restore.features.crf_features import FeatureConfig
 from punct_restore.features.word_clusters import load_cluster_map
-from punct_restore.file_io import iter_jsonl
+from punct_restore.file_io import iter_jsonl, require_release
 from punct_restore.hashing import sha256_file
 from punct_restore.models.crf import CRFModel
 from punct_restore.models.factored import combine
 from punct_restore.models.gap_classifier import GapClassifier
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import one_line_error, parse_sample_record, read_ids
+from punct_restore.prediction_io import parse_sample_record, read_ids, select_records
 
 SEED = 2026
 # group name -> FeatureConfig.improved() override that removes it
@@ -152,21 +153,10 @@ def variants_problem(mode: str, variants: list[str] | None, has_cluster_map: boo
     return None
 
 
-def read_records(path: Path, ids: set[str]) -> dict[str, dict[str, Any]]:
-    """Stream a JSONL file and keep only the rows whose sample_id is in ids."""
-    keep: dict[str, dict[str, Any]] = {}
-    seen: set[str] = set()
-    for number, row in iter_jsonl(path, parse_sample_record):
-        sid = row["sample_id"]
-        if sid in seen:
-            raise ValueError(f"{path.name} line {number}: duplicate sample_id {sid!r}")
-        seen.add(sid)
-        if sid in ids:
-            keep[sid] = row
-    missing = ids - keep.keys()
-    if missing:
-        raise ValueError(f"{len(missing)} IDs missing from {path.name}")
-    return keep
+def read_records(path: Path, ids: Sequence[str]) -> dict[str, dict[str, Any]]:
+    """Stream a JSONL file and keep only the rows whose sample_id is in ids (by sample_id, in file order)."""
+    rows = iter_jsonl(path, parse_sample_record)
+    return {row["sample_id"]: row for row in select_records(rows, path.name, ids, lambda row, _where: row)}
 
 
 def load_inputs(
@@ -179,9 +169,9 @@ def load_inputs(
         raise ValueError(f"--sample {args.sample} exceeds the {len(train_ids)} default_train IDs")
     sample = sorted(random.Random(SEED).sample(train_ids, args.sample))
     processed = root / "processed" / release / f"mode_{mode}"
-    train = read_records(processed / "train.jsonl", set(sample))
+    train = read_records(processed / "train.jsonl", sample)
     val_ids = read_ids(root / "splits" / release / "primary_eval" / f"validation_mode_{mode}.ids")
-    val = read_records(processed / "validation.jsonl", set(val_ids))
+    val = read_records(processed / "validation.jsonl", val_ids)
     gold_free = [{"sample_id": k, "tokens": v.get("tokens")} for k, v in sorted(val.items())]
     return sample, [train[i] for i in sample], gold_free
 
@@ -215,7 +205,7 @@ def run_factored(
     out_dir.mkdir()
     write_predictions(out_dir / "punct_A.jsonl", punct)
     ids = [row["sample_id"] for row in gold_free]
-    case_rows = read_records(out_dir.parent / CASE_VARIANT / "validation.jsonl", set(ids))
+    case_rows = read_records(out_dir.parent / CASE_VARIANT / "validation.jsonl", ids)
     joint = combine(punct, [case_rows[i] for i in ids], model_name="crf_factored")
     write_predictions(out_dir / "validation.jsonl", joint)
 
@@ -281,6 +271,7 @@ def run(args: argparse.Namespace) -> None:
     root = args.out / f"mode_{args.mode}"
     if root.exists():  # fail early, before reading the large train.jsonl
         raise _already_exists(root)
+    require_release(args.data_root, args.release)
     # cheap, and a wrong map must stop the run first
     clusters = load_clusters(args.cluster_map, args.mode, args.release, args.data_root)
     sample, records, gold_free = load_inputs(args)

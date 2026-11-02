@@ -28,6 +28,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from punct_restore.errors import one_line_error_with_short_paths
 from punct_restore.evaluation.inputs import (
     file_identity,
     load_bundle,
@@ -50,7 +51,6 @@ from punct_restore.models.threshold import (
 )
 from punct_restore.prediction_io import (
     check_new_output_paths,
-    one_line_error_with_short_paths,
     read_observations,
     refuse_existing,
     write_new_file,

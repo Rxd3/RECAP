@@ -24,13 +24,13 @@ from sklearn.feature_extraction import DictVectorizer
 from sklearn.linear_model import LogisticRegression
 
 from punct_restore.features.crf_features import FeatureConfig
-from punct_restore.file_io import require_file
 from punct_restore.models.crf import (
     SCORING_MODES,
     CRFModel,
     get_mode_vocabulary,
     require_scoring_mode,
 )
+from punct_restore.models.crf_io import load_artifact
 
 SCHEMA_VERSION = 1
 MODEL_FAMILY = "gap_classifier"
@@ -301,16 +301,11 @@ class GapClassifier:
             FileNotFoundError: ``<name>: model artifact not found``.
             IsADirectoryError: ``<name>: is a folder, not a file``.
             OSError: The file cannot be read (permissions, I/O); passed through as is.
-            ValueError: An unreadable file, wrong family or schema, or inconsistent or missing parts.
+            ValueError: An unreadable file (``crf_io.load_artifact`` words it), wrong family or schema, or
+                inconsistent or missing parts.
         """
         source = Path(path)
-        require_file(source, "model artifact")
-        try:
-            bundle = joblib.load(source)  # pickle: trusted files only (see docstring)
-        except OSError:
-            raise  # permission and I/O errors are not a corrupt artifact
-        except Exception as exc:  # any unpickling failure means a corrupt or foreign file
-            raise ValueError(f"{source.name}: corrupt or unreadable model artifact") from exc
+        bundle = load_artifact(source, "model artifact")  # pickle: trusted files only (see docstring)
         problem = _bundle_problem(bundle)
         if problem is not None:
             raise ValueError(f"{source.name}: corrupt model artifact: {problem}")

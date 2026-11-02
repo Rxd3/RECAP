@@ -90,13 +90,13 @@ def test_a_missing_key_is_a_value_error_naming_the_file_and_the_key(
 @pytest.mark.parametrize(
     ("keys", "value", "expected"),
     [
-        (("punctuation",), ["O"], "punctuation is not a JSON object"),
-        (("punctuation", "standard"), "O,COMMA,PERIOD,QUESTION", "punctuation.standard is not a JSON list"),
-        (("casing",), "LOWER", "casing is not a JSON list"),
+        (("punctuation",), ["O"], "punctuation is not a mapping"),
+        (("punctuation", "standard"), "O,COMMA,PERIOD,QUESTION", "punctuation.standard is not a list"),
+        (("casing",), "LOWER", "casing is not a list"),
         (("modes", "C", "separator"), 7, "modes.C.separator is not nonempty text"),
         (("modes", "C", "separator"), "", "modes.C.separator is not nonempty text"),
-        (("modes", "C", "labels"), {"O|LOWER": 1}, "modes.C.labels is not a JSON list"),
-        (("extended_to_standard",), ["approved"], "extended_to_standard is not a JSON object"),
+        (("modes", "C", "labels"), {"O|LOWER": 1}, "modes.C.labels is not a list"),
+        (("extended_to_standard",), ["approved"], "extended_to_standard is not a mapping"),
     ],
 )
 def test_a_value_of_the_wrong_type_is_a_value_error_naming_the_file_and_the_key(
@@ -126,7 +126,7 @@ def test_a_file_that_is_not_a_mapping_at_the_top_is_a_value_error(tmp_path: Path
     path = _written(tmp_path, content)
     with pytest.raises(ValueError) as problem:
         labeling.load_label_sets(path)
-    assert str(problem.value) == f"{path.name}: not a JSON object"
+    assert str(problem.value) == f"{path.name}: not a mapping"
 
 
 def test_the_message_names_the_file_only_not_its_folder(tmp_path: Path) -> None:

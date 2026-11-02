@@ -18,7 +18,7 @@ _CLI_MODULES = (
 )
 _REPORTING_MODULES = (
     "asr_noise_table", "build_ablation_table", "build_m3_final_sections", "build_m3_tables", "crf_convergence",
-    "length_position", "time_models",
+    "length_position", "result_stats", "time_models",
 )
 _DOTTED_MODULES = (
     *(f"punct_restore.cli.{name}" for name in _CLI_MODULES),

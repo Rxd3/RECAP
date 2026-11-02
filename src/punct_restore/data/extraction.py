@@ -23,7 +23,7 @@ from collections.abc import Callable, Iterator, Mapping
 from pathlib import Path
 from typing import Any
 
-from ..file_io import require_file
+from ..file_io import inside_folder, require_file
 from ..progress import Log, discard_log
 from .preprocessing import parse_manifest_line, verify_raw_manifest
 
@@ -153,13 +153,8 @@ def _keep(name: str) -> bool:
 
 def _write(raw_root: str | os.PathLike[str], name: str, data: bytes) -> None:
     """Write one archive member below raw_root/sponspeech_text; a name that resolves outside it is refused."""
-    base = os.path.realpath(os.path.join(raw_root, OUTPUT_DIR))
-    path = os.path.realpath(os.path.join(base, name[len("sponspeech/"):]))
-    try:
-        inside = os.path.commonpath([base, path]) == base
-    except ValueError:  # on Windows, a path on another drive has no common path with base
-        inside = False
-    if not inside:
+    path = inside_folder(os.path.realpath(os.path.join(raw_root, OUTPUT_DIR)), name[len("sponspeech/"):])
+    if path is None:
         raise ValueError(f"{name}: archive entry would be written outside {OUTPUT_DIR}")
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "wb") as f:

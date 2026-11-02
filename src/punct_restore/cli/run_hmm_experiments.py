@@ -11,10 +11,10 @@ import sys
 from functools import partial
 from pathlib import Path
 
+from punct_restore.errors import one_line_error
 from punct_restore.models.hmm_experiment_commands import HmmCommandFailed
 from punct_restore.models.hmm_experiment_finalize import finalize
 from punct_restore.models.hmm_experiment_tune import tune
-from punct_restore.prediction_io import one_line_error
 
 __all__ = ["main"]
 

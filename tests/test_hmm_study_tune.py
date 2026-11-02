@@ -309,7 +309,7 @@ def test_tune_refuses_a_release_file_that_was_edited(fresh: Study) -> None:
 def test_tune_refuses_an_existing_run_folder_and_leaves_it_untouched(fresh: Study) -> None:
     marker = fresh.run / "marker.txt"
     write_text(marker, "mine\n")
-    with pytest.raises(ValueError, match=f"^{re.escape(RUN_EXISTS)}$"):
+    with pytest.raises(ValueError, match=f"^{re.escape(fresh.run.name)}: {re.escape(RUN_EXISTS)}$"):
         tune(fresh.config_path, fresh.evaluator, fresh.run)
     assert [path.name for path in fresh.run.iterdir()] == ["marker.txt"]
     assert marker.read_text(encoding="utf-8") == "mine\n"

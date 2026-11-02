@@ -12,8 +12,8 @@ import sys
 from pathlib import Path
 
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.reporting._cli import check_out, run, write_new_text
-from punct_restore.reporting.build_tables import MODES, PRIMARY, cell, diff_cell, load
+from punct_restore.reporting._cli import check_out, check_scores_folder, run, write_new_text
+from punct_restore.reporting.build_tables import CELL, DIFF, MODES, PRIMARY, cell, diff_cell, read_scores
 
 ORDER = ("window2", "bigrams", "lexcls", "qcue", "ngrams", "question", "clause", "casing", "position")
 DEFAULT_SETUP = "50k-sequence sample, 100 iterations, frozen c1/c2"
@@ -25,14 +25,15 @@ def groups(scores: Path) -> list[str]:
 
 
 def mode_lines(scores: Path, mode: str) -> list[str]:
-    full = load(scores / "improved.json")["blocks"]
+    shown = (PRIMARY[mode], "punctuation/non_final")
+    full = read_scores(scores / "improved.json", dict.fromkeys(shown, CELL))["blocks"]
     lines = [(f"**Mode {mode}**: full improved {cell(full[PRIMARY[mode]])} primary, "
               f"{cell(full['punctuation/non_final'])} non_final"), "",
              "| Without | Primary | Δ primary | non_final | Δ non_final |", "|---|---|---|---|---|"]
     for group in groups(scores):
         variant = f"improved_minus_{group}"
-        score = load(scores / f"{variant}.json")["blocks"]
-        comp = load(scores / f"full_vs_{variant}.json")["blocks"]
+        score = read_scores(scores / f"{variant}.json", dict.fromkeys(shown, CELL))["blocks"]
+        comp = read_scores(scores / f"full_vs_{variant}.json", dict.fromkeys(shown, DIFF))["blocks"]
         lines.append(f"| {group} | {cell(score[PRIMARY[mode]])} | {diff_cell(comp[PRIMARY[mode]])} | "
                      f"{cell(score['punctuation/non_final'])} | {diff_cell(comp['punctuation/non_final'])} |")
     return lines + [""]
@@ -40,6 +41,7 @@ def mode_lines(scores: Path, mode: str) -> list[str]:
 
 def build(root: Path, out_md: Path, setup: str = DEFAULT_SETUP) -> None:
     check_out(out_md)  # before reading anything
+    check_scores_folder(root)
     lines = [f"## Feature ablations (validation; {setup})", "",
              ("Each row removes one feature group from the improved CRF. Difference = without − with, in points "
               "(95% paired CI, grouped bootstrap by video, 1,000 resamples, seed 2026; * = interval excludes 0). "

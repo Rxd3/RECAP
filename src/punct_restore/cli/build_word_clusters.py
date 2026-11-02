@@ -15,56 +15,42 @@ from __future__ import annotations
 import argparse
 import sys
 import time
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import Any
 
+from punct_restore.errors import one_line_error, reconfigure_stdout
 from punct_restore.features.word_clusters import (
     ClusterMap,
     induce_clusters,
     map_to_json,
 )
-from punct_restore.file_io import iter_jsonl
+from punct_restore.file_io import iter_jsonl, require_release
 from punct_restore.hashing import sha256_file
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import (
-    one_line_error,
-    parse_sample_record,
-    read_ids,
-    reconfigure_stdout,
-    write_new_file,
-)
+from punct_restore.prediction_io import parse_sample_record, read_ids, select_records, write_new_file
 
 
-def _tokens(record: dict[str, Any], name: str, number: int) -> list[str]:
+def _tokens(record: dict[str, Any], where: str) -> list[str]:
     tokens = record.get("tokens")
     if not isinstance(tokens, list) or not all(isinstance(token, str) for token in tokens):
-        raise ValueError(f"{name} line {number}: tokens must be a list of strings")
+        raise ValueError(f"{where}: tokens must be a list of strings")
     return tokens
 
 
-def train_tokens(path: Path, wanted: set[str]) -> Iterator[list[str]]:
+def train_tokens(path: Path, wanted: Sequence[str]) -> Iterator[list[str]]:
     """Stream the token list of every wanted record of the JSONL file; fail at the end if some are missing."""
-    seen: set[str] = set()
-    for number, record in iter_jsonl(path, parse_sample_record):
-        sample_id = record["sample_id"]
-        if sample_id not in wanted:
-            continue
-        if sample_id in seen:
-            raise ValueError(f"{path.name} line {number}: duplicate sample_id")
-        seen.add(sample_id)
-        yield _tokens(record, path.name, number)
-    if len(seen) != len(wanted):
-        raise ValueError(f"{path.name}: {len(wanted) - len(seen)} ID(s) of the ids file not found")
+    return select_records(iter_jsonl(path, parse_sample_record), path.name, wanted, _tokens)
 
 
 def build(args: argparse.Namespace) -> ClusterMap:
     """Read the train data of ``args.mode``, induce the clusters and write the map file."""
     if args.out.exists():
         raise ValueError(f"{args.out.name} already exists; refusing to overwrite")
+    processed = require_release(args.data_root, args.release)
     ids_path = args.data_root / "splits" / args.release / "default_train" / f"mode_{args.mode}.ids"
-    train_path = args.data_root / "processed" / args.release / f"mode_{args.mode}" / "train.jsonl"
-    ids, ids_sha256 = set(read_ids(ids_path)), sha256_file(ids_path)
+    train_path = processed / f"mode_{args.mode}" / "train.jsonl"
+    ids, ids_sha256 = read_ids(ids_path), sha256_file(ids_path)
     clusters = induce_clusters(
         train_tokens(train_path, ids), k=args.k, seed=args.seed,
         min_count=args.min_count, dims=args.dims, window=args.window,

@@ -12,13 +12,13 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
+from punct_restore.errors import one_line_error
 from punct_restore.file_io import read_object
 from punct_restore.hashing import sha256_file, sha256_stream
 from punct_restore.models.hmm_experiment_frozen import verified_frozen_selection
 from punct_restore.models.hmm_experiment_protocol import now
 from punct_restore.models.hmm_workflow import code_identity, file_identity, write_json
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import one_line_error
 
 __all__ = ["main"]
 
@@ -132,11 +132,12 @@ def _bundle_paths(run: Path, output: Path) -> tuple[Path, Path, Path]:
         or output.is_relative_to(run)
         or run.is_relative_to(output)
     ):
-        raise ValueError("handoff must be a separate directory inside artifacts/")
+        raise ValueError(f"{output.name}: handoff must be a separate directory inside artifacts/")
     archive_path = output.parent / f"{output.name}.zip"
     # the cleanup after a failed run removes all three, so a run may only start when none of them exists
-    if output.exists() or archive_path.exists() or archive_path.with_suffix(".zip.sha256").exists():
-        raise ValueError("handoff/archive already exists; use a new immutable handoff ID")
+    for taken in (output, archive_path, archive_path.with_suffix(".zip.sha256")):
+        if taken.exists():
+            raise ValueError(f"{taken.name}: already exists; use a new immutable handoff ID")
     return run, output, archive_path
 
 
@@ -229,6 +230,15 @@ def _verify_archive(archive_path: Path, hashes: dict[str, str], sums: str) -> No
 
 
 def package(run: Path, evaluator: Path, output: Path) -> dict[str, Any]:
+    """Build the handoff of a verified run: the folder ``output``, its ZIP and the ZIP's checksum file.
+
+    ``output`` must be a new folder inside ``artifacts/``. Returns the archive's identity, size and file count. If
+    anything fails, the folder, the ZIP and the checksum file this call made are removed.
+
+    Raises:
+        ValueError: One line: the run is not frozen, finalized and independently verified, or ``output`` is not a
+            new separate folder inside ``artifacts/``.
+    """
     plan, selection = verified_frozen_selection(run, evaluator)
     modes = list(selection["modes"])
     verified = read_object(run / "verification/verification.json", _verification_schema(modes))

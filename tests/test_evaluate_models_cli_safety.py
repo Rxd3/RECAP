@@ -59,7 +59,7 @@ def test_cli_non_utf8_input_exit_1(cli: ModuleType, capsys: pytest.CaptureFixtur
     out = tmp_path / "RUN.json"
     code, stdout, err = run(cli, capsys, score_argv(case, out))
     assert code == 1
-    assert err == f"error: {FILE_NAMES[target]} line 2: not UTF-8 text\n"
+    assert err == f"error: {FILE_NAMES[target]}: not valid UTF-8\n"
     assert stdout == ""
     assert not out.exists()
     assert not out.with_suffix(".md").exists()
@@ -73,7 +73,7 @@ def test_cli_baseline_non_utf8_gold_exit_1(cli: ModuleType, capsys: pytest.Captu
     code, stdout, err = run(cli, capsys, ["baseline", "--gold", str(case.gold), "--ids", str(case.ids),
                                           "--out", str(out)])
     assert code == 1
-    assert err == "error: gold.jsonl line 2: not UTF-8 text\n"
+    assert err == "error: gold.jsonl: not valid UTF-8\n"
     assert stdout == ""
     assert not out.exists()
 
@@ -139,3 +139,32 @@ def test_cli_out_suffix_is_case_insensitive(cli: ModuleType, capsys: pytest.Capt
     assert (code, err) == (0, "")
     assert out.exists()
     assert (tmp_path / "RUN.md").exists()
+
+
+# ---------------------------------------------------------------- --out in a folder that is not there
+# (a missing folder is pinned in test_evaluate_models_cli.py::test_cli_missing_out_folder)
+def test_cli_out_whose_parent_is_a_file_is_refused_naming_that_file(
+        cli: ModuleType, capsys: pytest.CaptureFixture[str], tmp_path: Path) -> None:
+    case = valid_case(tmp_path, "A")
+    (tmp_path / "afile").write_text("x", encoding="utf-8")
+    code, stdout, err = run(cli, capsys, score_argv(case, tmp_path / "afile" / "RUN.json"))
+    assert (code, stdout, err) == (1, "", "error: afile: is a file, not a folder\n")
+
+
+# ---------------------------------------------------------------- a report is the .json and the .md together
+def test_cli_failed_markdown_write_removes_the_json_so_no_half_pair_is_left(
+        cli: ModuleType, capsys: pytest.CaptureFixture[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    case = valid_case(tmp_path, "A")
+    out = tmp_path / "RUN.json"
+    real = cli.write_new_file
+
+    def full_disk_for_markdown(path: Path, text: str, **kwargs: Any) -> None:
+        if path.suffix == ".md":
+            raise OSError(28, "No space left on device", str(path))
+        real(path, text, **kwargs)
+
+    monkeypatch.setattr(cli, "write_new_file", full_disk_for_markdown)
+    code, stdout, err = run(cli, capsys, score_argv(case, out))
+    assert (code, stdout, err) == (1, "", "error: RUN.md: No space left on device\n")
+    assert not out.exists()
+    assert not out.with_suffix(".md").exists()

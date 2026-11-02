@@ -14,11 +14,13 @@ Existing outputs are never overwritten and folders are never created.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import sys
 from collections.abc import Callable
 from pathlib import Path
 
+from punct_restore.errors import one_line_error, reconfigure_stdout
 from punct_restore.evaluation import (
     BootstrapSpec,
     EvaluationInputError,
@@ -42,12 +44,8 @@ from punct_restore.evaluation.uncertainty import (
     MAX_RESAMPLES,
     MIN_RESAMPLES,
 )
-from punct_restore.prediction_io import (
-    one_line_error,
-    reconfigure_stdout,
-    refuse_existing,
-    write_new_file,
-)
+from punct_restore.file_io import require_folder
+from punct_restore.prediction_io import refuse_existing, write_new_file
 
 
 def _bounded(minimum: int, maximum: int | None = None) -> Callable[[str], int]:
@@ -115,14 +113,21 @@ def _report_outputs(out: Path) -> tuple[Path, Path]:
     if out.suffix.lower() != ".json":
         raise EvaluationInputError(
             f"--out must be a .json path (the .md summary goes next to it), got {out.name}")
+    require_folder(out.parent, "output folder")  # a missing folder would otherwise fail as "RUN.json not found"
     outputs = (out, out.with_suffix(".md"))
     refuse_existing(*outputs)
     return outputs
 
 
 def _write_report(outputs: tuple[Path, Path], report: dict, summary: str) -> None:
+    """Write the .json and then the .md; if the .md fails, remove the .json so no half pair is left."""
     write_new_file(outputs[0], json.dumps(report, indent=1, sort_keys=True) + "\n")
-    write_new_file(outputs[1], summary)
+    try:
+        write_new_file(outputs[1], summary)
+    except BaseException:
+        with contextlib.suppress(OSError):  # best effort: the write error is the one to show
+            outputs[0].unlink(missing_ok=True)
+        raise
 
 
 def _bootstrap(args: argparse.Namespace) -> BootstrapSpec | None:
@@ -169,6 +174,7 @@ def _errors(args: argparse.Namespace) -> None:
 
 
 def _baseline(args: argparse.Namespace) -> None:
+    require_folder(args.out.parent, "output folder")
     refuse_existing(args.out)
     mode, records = load_scored_gold(args.gold, args.ids, load_vocab())
     lines = (json.dumps(record, sort_keys=True) + "\n"

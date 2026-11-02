@@ -10,7 +10,7 @@ from typing import Any
 
 import yaml
 
-from punct_restore.file_io import read_yaml
+from punct_restore.file_io import read_yaml, short_name
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm_experiment_commands import Study, execute, score, train_command
 from punct_restore.models.hmm_experiment_identity import check_evaluator, implementation
@@ -126,7 +126,7 @@ def tune(config_path: Path, evaluator: Path, run: Path, *, log: Log = discard_lo
     evaluator_identity = check_evaluator(evaluator, config["evaluation"]["repository_commit"])
     _, verified = authenticate(config, "tune")
     if run.exists():
-        raise ValueError("run directory exists; choose a new experiment ID")
+        raise ValueError(f"{short_name(run)}: run directory exists; choose a new experiment ID")
     plan = _tune_plan(config, config_path, evaluator_identity, verified)
     run.mkdir(parents=True, exist_ok=False)
     write_json(run / "plan.json", plan)

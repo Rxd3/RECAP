@@ -62,7 +62,7 @@ def _case_with_gold(folder: Path, gold: list[dict[str, Any]]) -> Case:
 def test_non_utf8_input_names_file_and_line(tmp_path: Path, vocab: Vocab, target: str) -> None:
     case = valid_case(tmp_path, "C")
     corrupt_line_two(getattr(case, target))
-    assert _load_error(case, vocab) == f"{FILE_NAMES[target]} line 2: not UTF-8 text"
+    assert _load_error(case, vocab) == f"{FILE_NAMES[target]}: not valid UTF-8"
 
 
 @pytest.mark.parametrize("target", ["gold", "predictions", "masks"])
@@ -75,7 +75,7 @@ def test_json_nested_too_deeply_names_file_and_line(tmp_path: Path, vocab: Vocab
 def test_non_utf8_first_line_is_line_1(tmp_path: Path, vocab: Vocab) -> None:
     case = valid_case(tmp_path, "C")
     case.gold.write_bytes(BAD_UTF8_LINE + case.gold.read_bytes())
-    assert _load_error(case, vocab) == "gold.jsonl line 1: not UTF-8 text"
+    assert _load_error(case, vocab) == "gold.jsonl: not valid UTF-8"
 
 
 def test_latin1_gold_record_is_rejected_not_decoded(tmp_path: Path, vocab: Vocab) -> None:
@@ -85,7 +85,7 @@ def test_latin1_gold_record_is_rejected_not_decoded(tmp_path: Path, vocab: Vocab
     lines = [json.dumps(latin1_first, ensure_ascii=False).encode("latin-1")]
     lines += [json.dumps(row).encode("utf-8") for row in rest]
     case.gold.write_bytes(b"\n".join(lines) + b"\n")
-    assert _load_error(case, vocab) == "gold.jsonl line 1: not UTF-8 text"
+    assert _load_error(case, vocab) == "gold.jsonl: not valid UTF-8"
 
 
 @pytest.mark.parametrize("target", FILE_NAMES)

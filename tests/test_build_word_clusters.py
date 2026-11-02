@@ -207,8 +207,8 @@ def _train_not_utf8(root: Path) -> None:
 BROKEN = {
     "missing ids file": (_drop_ids, "mode_A.ids"),
     "missing train file": (_drop_train, "train.jsonl"),
-    "id not in train": (_add_unknown_id, "train.jsonl: 1 ID"),
-    "duplicate id in ids file": (_duplicate_id, "Duplicate ID 's:0' found at line 41 in mode_A.ids"),
+    "id not in train": (_add_unknown_id, "train.jsonl: 1 listed ID(s) are missing, first 's:ghost'"),
+    "duplicate id in ids file": (_duplicate_id, "mode_A.ids line 41: duplicate ID 's:0'"),
     "empty ids file": (_empty_ids, "mode_A.ids: ID list is empty"),
     "ids file not utf-8": (_ids_not_utf8, "mode_A.ids: not valid UTF-8"),
     "train file not utf-8": (_train_not_utf8, "train.jsonl: not valid UTF-8"),

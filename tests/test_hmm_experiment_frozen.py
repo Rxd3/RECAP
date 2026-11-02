@@ -108,7 +108,7 @@ def test_a_mode_selection_edited_after_freezing_is_refused(tmp_path: Path, monke
     run = _study(tmp_path, monkeypatch)
     path = run / "mode_A/selection.json"
     path.write_text(path.read_text(encoding="utf-8") + " ", encoding="utf-8")
-    with pytest.raises(ValueError, match="mode selection changed after freezing"):
+    with pytest.raises(ValueError, match=r"^mode_A/selection\.json: changed after freezing$"):
         verified_frozen_selection(run, tmp_path / "evaluator")
 
 
@@ -146,11 +146,11 @@ def test_a_candidate_report_whose_score_disagrees_with_the_record_is_refused(
 @pytest.mark.parametrize(
     ("item", "message"),
     [
-        ({}, "selection.json: missing candidates.0.smoothing"),
-        (["O"], "selection.json: candidates.0 is not a JSON object"),
-        (1, "selection.json: candidates.0 is not a JSON object"),
-        (None, "selection.json: candidates.0 is not a JSON object"),
-        ("text", "selection.json: candidates.0 is not a JSON object"),
+        ({}, "mode_A/selection.json: missing candidates.0.smoothing"),
+        (["O"], "mode_A/selection.json: candidates.0 is not a JSON object"),
+        (1, "mode_A/selection.json: candidates.0 is not a JSON object"),
+        (None, "mode_A/selection.json: candidates.0 is not a JSON object"),
+        ("text", "mode_A/selection.json: candidates.0 is not a JSON object"),
     ],
     ids=["object", "list", "number", "null", "text"],
 )
@@ -171,8 +171,9 @@ def test_a_winner_that_is_not_the_best_validation_candidate_is_refused(
     run = _study(tmp_path, monkeypatch)
     worse = _rewrite_winner_to_the_worse_candidate(run)
     assert worse["candidate"] == "s0.1-c1"
-    with pytest.raises(ValueError, match="winner is inconsistent with the validation search"):
+    with pytest.raises(ValueError) as refused:
         verified_frozen_selection(run, tmp_path / "evaluator")
+    assert str(refused.value) == "mode_A/selection.json: winner is inconsistent with the validation search"
 
 
 def _rewrite_winner_to_the_worse_candidate(run: Path) -> dict[str, Any]:

@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
 from punct_restore.cli import train_hidden_event_lm
 from punct_restore.models import crf_records
+from punct_restore.prediction_io import select_records
 
 ROW = {"sample_id": "s1", "split": "train", "label_mode": "A", "tokens": ["a", "b"], "punct_labels": ["O", "PERIOD"],
        "metadata": {"unused": True}}
@@ -27,19 +29,31 @@ def test_a_crf_record_whose_id_was_seen_is_refused() -> None:
         crf_records._checked_training_record(ROW, "Record at index 1", {"s1"})
 
 
-def test_a_kept_hidden_event_line_is_returned_slim_and_not_added_to_the_kept_mapping() -> None:
-    kept = {"earlier": {"sample_id": "earlier"}}
+def test_a_slimmed_hidden_event_record_is_a_new_object_and_the_given_one_is_left_alone() -> None:
+    before = json.dumps(ROW)
 
-    record = train_hidden_event_lm._keep_line(json.dumps(ROW), "f.jsonl line 1", {"s1"}, kept, "A")
+    record = train_hidden_event_lm._slim_training_record(ROW, "f.jsonl line 1", "A")
 
     assert record == {key: ROW[key] for key in ("sample_id", "split", "label_mode", "tokens", "punct_labels")}
-    assert list(kept) == ["earlier"]
+    assert record is not ROW and record["tokens"] is not ROW["tokens"] and json.dumps(ROW) == before
 
 
-def test_an_unlisted_hidden_event_line_is_skipped() -> None:
-    assert train_hidden_event_lm._keep_line(json.dumps(ROW), "f.jsonl line 1", {"other"}, {}, "A") is None
+def test_the_record_selection_reader_leaves_the_id_list_and_the_records_alone() -> None:
+    ids = ["s1", "gone"]
+    rows = [(1, dict(ROW)), (2, {"sample_id": "s2"})]
+    snapshot = json.dumps(rows)
+
+    with pytest.raises(ValueError, match="1 listed ID"):
+        list(select_records(iter(rows), "f.jsonl", ids, lambda record, where: record))
+
+    assert ids == ["s1", "gone"] and json.dumps(rows) == snapshot
 
 
-def test_a_listed_id_that_was_kept_before_is_refused() -> None:
+def test_an_unlisted_hidden_event_line_is_skipped_and_a_listed_repeat_is_refused(tmp_path: Path) -> None:
+    path, ids = tmp_path / "f.jsonl", tmp_path / "f.ids"
+    ids.write_text("s1\n", encoding="utf-8")
+    path.write_text(json.dumps({**ROW, "sample_id": "other"}) + "\n" + json.dumps(ROW) + "\n", encoding="utf-8")
+    assert [r["sample_id"] for r in train_hidden_event_lm.read_training_records(path, ids, "A")] == ["s1"]
+    path.write_text(json.dumps(ROW) + "\n" + json.dumps(ROW) + "\n", encoding="utf-8")
     with pytest.raises(ValueError, match="f.jsonl line 2: duplicate sample_id 's1'"):
-        train_hidden_event_lm._keep_line(json.dumps(ROW), "f.jsonl line 2", {"s1"}, {"s1": {}}, "A")
+        train_hidden_event_lm.read_training_records(path, ids, "A")

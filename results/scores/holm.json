@@ -1,0 +1,447 @@
+{
+ "method": "p = 2 * min(share_b_better, 1 - share_b_better) from the primary block of each compare file (difference = B minus A; the shares have a resolution of 0.001, and p = 0 means no resample went the other way); p_holm is Holm's step-down adjustment within the family; survives = p_holm <= alpha",
+ "alpha": 0.05,
+ "families": {
+  "test_comparisons": {
+   "count": 21,
+   "survivors": 18,
+   "comparisons": [
+    {
+     "comparison": "improved - basic",
+     "mode": "A",
+     "file": "crf_test/m3_improved_vs_basic_A_test.json",
+     "block": "punctuation/all",
+     "difference": 0.062693,
+     "share_b_better": 1.0,
+     "p": 0.0,
+     "p_holm": 0.0,
+     "survives": true
+    },
+    {
+     "comparison": "improved - basic",
+     "mode": "B",
+     "file": "crf_test/m3_improved_vs_basic_B_test.json",
+     "block": "punctuation/all",
+     "difference": 0.025703,
+     "share_b_better": 1.0,
+     "p": 0.0,
+     "p_holm": 0.0,
+     "survives": true
+    },
+    {
+     "comparison": "improved - basic",
+     "mode": "C",
+     "file": "crf_test/m3_improved_vs_basic_C_test.json",
+     "block": "joint/unmasked",
+     "difference": 0.031736,
+     "share_b_better": 1.0,
+     "p": 0.0,
+     "p_holm": 0.0,
+     "survives": true
+    },
+    {
+     "comparison": "basic - hmm",
+     "mode": "A",
+     "file": "crf_test/m3_basic_vs_hmm_A_test.json",
+     "block": "punctuation/all",
+     "difference": 0.085315,
+     "share_b_better": 1.0,
+     "p": 0.0,
+     "p_holm": 0.0,
+     "survives": true
+    },
+    {
+     "comparison": "basic - hmm",
+     "mode": "B",
+     "file": "crf_test/m3_basic_vs_hmm_B_test.json",
+     "block": "punctuation/all",
+     "difference": 0.034557,
+     "share_b_better": 1.0,
+     "p": 0.0,
+     "p_holm": 0.0,
+     "survives": true
+    },
+    {
+     "comparison": "basic - hmm",
+     "mode": "C",
+     "file": "crf_test/m3_basic_vs_hmm_C_test.json",
+     "block": "joint/unmasked",
+     "difference": 0.064334,
+     "share_b_better": 0.997,
+     "p": 0.006,
+     "p_holm": 0.024,
+     "survives": true
+    },
+    {
+     "comparison": "improved - hmm",
+     "mode": "A",
+     "file": "crf_test/m3_improved_vs_hmm_A_test.json",
+     "block": "punctuation/all",
+     "difference": 0.148008,
+     "share_b_better": 1.0,
+     "p": 0.0,
+     "p_holm": 0.0,
+     "survives": true
+    },
+    {
+     "comparison": "improved - hmm",
+     "mode": "B",
+     "file": "crf_test/m3_improved_vs_hmm_B_test.json",
+     "block": "punctuation/all",
+     "difference": 0.06026,
+     "share_b_better": 1.0,
+     "p": 0.0,
+     "p_holm": 0.0,
+     "survives": true
+    },
+    {
+     "comparison": "improved - hmm",
+     "mode": "C",
+     "file": "crf_test/m3_improved_vs_hmm_C_test.json",
+     "block": "joint/unmasked",
+     "difference": 0.09607,
+     "share_b_better": 1.0,
+     "p": 0.0,
+     "p_holm": 0.0,
+     "survives": true
+    },
+    {
+     "comparison": "threshold - improved",
+     "mode": "A",
+     "file": "threshold/tau_vs_improved_A_test.json",
+     "block": "punctuation/all",
+     "difference": 0.005114,
+     "share_b_better": 0.999,
+     "p": 0.002,
+     "p_holm": 0.014,
+     "survives": true
+    },
+    {
+     "comparison": "threshold - improved",
+     "mode": "B",
+     "file": "threshold/tau_vs_improved_B_test.json",
+     "block": "punctuation/all",
+     "difference": 0.004055,
+     "share_b_better": 0.95,
+     "p": 0.1,
+     "p_holm": 0.2,
+     "survives": false
+    },
+    {
+     "comparison": "threshold - improved",
+     "mode": "C",
+     "file": "threshold/tau_vs_improved_C_test.json",
+     "block": "joint/unmasked",
+     "difference": 0.007019,
+     "share_b_better": 0.998,
+     "p": 0.004,
+     "p_holm": 0.02,
+     "survives": true
+    },
+    {
+     "comparison": "prior-adjusted threshold - improved",
+     "mode": "A",
+     "file": "threshold_prior/tg_vs_improved_A_test.json",
+     "block": "punctuation/all",
+     "difference": 0.014184,
+     "share_b_better": 0.999,
+     "p": 0.002,
+     "p_holm": 0.014,
+     "survives": true
+    },
+    {
+     "comparison": "prior-adjusted threshold - improved",
+     "mode": "B",
+     "file": "threshold_prior/tg_vs_improved_B_test.json",
+     "block": "punctuation/all",
+     "difference": 0.014317,
+     "share_b_better": 1.0,
+     "p": 0.0,
+     "p_holm": 0.0,
+     "survives": true
+    },
+    {
+     "comparison": "prior-adjusted threshold - improved",
+     "mode": "C",
+     "file": "threshold_prior/tg_vs_improved_C_test.json",
+     "block": "joint/unmasked",
+     "difference": 0.027445,
+     "share_b_better": 1.0,
+     "p": 0.0,
+     "p_holm": 0.0,
+     "survives": true
+    },
+    {
+     "comparison": "hidden-event LM - hmm",
+     "mode": "A",
+     "file": "hidden_event_lm/hel_vs_hmm_A_test.json",
+     "block": "punctuation/all",
+     "difference": 0.132568,
+     "share_b_better": 1.0,
+     "p": 0.0,
+     "p_holm": 0.0,
+     "survives": true
+    },
+    {
+     "comparison": "hidden-event LM - hmm",
+     "mode": "B",
+     "file": "hidden_event_lm/hel_vs_hmm_B_test.json",
+     "block": "punctuation/all",
+     "difference": 0.057132,
+     "share_b_better": 1.0,
+     "p": 0.0,
+     "p_holm": 0.0,
+     "survives": true
+    },
+    {
+     "comparison": "hidden-event LM - hmm",
+     "mode": "C",
+     "file": "hidden_event_lm/hel_vs_hmm_C_test.json",
+     "block": "joint/unmasked",
+     "difference": 0.037707,
+     "share_b_better": 0.986,
+     "p": 0.028,
+     "p_holm": 0.084,
+     "survives": false
+    },
+    {
+     "comparison": "hidden-event LM - improved",
+     "mode": "A",
+     "file": "hidden_event_lm/hel_vs_crf_improved_A_test.json",
+     "block": "punctuation/all",
+     "difference": -0.01544,
+     "share_b_better": 0.0,
+     "p": 0.0,
+     "p_holm": 0.0,
+     "survives": true
+    },
+    {
+     "comparison": "hidden-event LM - improved",
+     "mode": "B",
+     "file": "hidden_event_lm/hel_vs_crf_improved_B_test.json",
+     "block": "punctuation/all",
+     "difference": -0.003129,
+     "share_b_better": 0.243,
+     "p": 0.486,
+     "p_holm": 0.486,
+     "survives": false
+    },
+    {
+     "comparison": "hidden-event LM - improved",
+     "mode": "C",
+     "file": "hidden_event_lm/hel_vs_crf_improved_C_test.json",
+     "block": "joint/unmasked",
+     "difference": -0.058363,
+     "share_b_better": 0.0,
+     "p": 0.0,
+     "p_holm": 0.0,
+     "survives": true
+    }
+   ]
+  },
+  "ablations": {
+   "count": 18,
+   "survivors": 6,
+   "comparisons": [
+    {
+     "group": "casing",
+     "mode": "A",
+     "file": "ablations/mode_A/full_vs_improved_minus_casing.json",
+     "block": "punctuation/all",
+     "difference": 0.000105,
+     "share_b_better": 0.528,
+     "p": 0.944,
+     "p_holm": 1.0,
+     "survives": false
+    },
+    {
+     "group": "casing",
+     "mode": "B",
+     "file": "ablations/mode_B/full_vs_improved_minus_casing.json",
+     "block": "punctuation/all",
+     "difference": -0.000415,
+     "share_b_better": 0.353,
+     "p": 0.706,
+     "p_holm": 1.0,
+     "survives": false
+    },
+    {
+     "group": "casing",
+     "mode": "C",
+     "file": "ablations/mode_C/full_vs_improved_minus_casing.json",
+     "block": "joint/unmasked",
+     "difference": -0.000843,
+     "share_b_better": 0.328,
+     "p": 0.656,
+     "p_holm": 1.0,
+     "survives": false
+    },
+    {
+     "group": "clause",
+     "mode": "A",
+     "file": "ablations/mode_A/full_vs_improved_minus_clause.json",
+     "block": "punctuation/all",
+     "difference": -0.000679,
+     "share_b_better": 0.236,
+     "p": 0.472,
+     "p_holm": 1.0,
+     "survives": false
+    },
+    {
+     "group": "clause",
+     "mode": "B",
+     "file": "ablations/mode_B/full_vs_improved_minus_clause.json",
+     "block": "punctuation/all",
+     "difference": 0.001681,
+     "share_b_better": 0.994,
+     "p": 0.012,
+     "p_holm": 0.144,
+     "survives": false
+    },
+    {
+     "group": "clause",
+     "mode": "C",
+     "file": "ablations/mode_C/full_vs_improved_minus_clause.json",
+     "block": "joint/unmasked",
+     "difference": -0.00286,
+     "share_b_better": 0.045,
+     "p": 0.09,
+     "p_holm": 0.72,
+     "survives": false
+    },
+    {
+     "group": "ngrams",
+     "mode": "A",
+     "file": "ablations/mode_A/full_vs_improved_minus_ngrams.json",
+     "block": "punctuation/all",
+     "difference": -0.035945,
+     "share_b_better": 0.0,
+     "p": 0.0,
+     "p_holm": 0.0,
+     "survives": true
+    },
+    {
+     "group": "ngrams",
+     "mode": "B",
+     "file": "ablations/mode_B/full_vs_improved_minus_ngrams.json",
+     "block": "punctuation/all",
+     "difference": -0.016252,
+     "share_b_better": 0.0,
+     "p": 0.0,
+     "p_holm": 0.0,
+     "survives": true
+    },
+    {
+     "group": "ngrams",
+     "mode": "C",
+     "file": "ablations/mode_C/full_vs_improved_minus_ngrams.json",
+     "block": "joint/unmasked",
+     "difference": -0.014872,
+     "share_b_better": 0.048,
+     "p": 0.096,
+     "p_holm": 0.72,
+     "survives": false
+    },
+    {
+     "group": "position",
+     "mode": "A",
+     "file": "ablations/mode_A/full_vs_improved_minus_position.json",
+     "block": "punctuation/all",
+     "difference": -0.00199,
+     "share_b_better": 0.058,
+     "p": 0.116,
+     "p_holm": 0.72,
+     "survives": false
+    },
+    {
+     "group": "position",
+     "mode": "B",
+     "file": "ablations/mode_B/full_vs_improved_minus_position.json",
+     "block": "punctuation/all",
+     "difference": 0.002098,
+     "share_b_better": 0.991,
+     "p": 0.018,
+     "p_holm": 0.198,
+     "survives": false
+    },
+    {
+     "group": "position",
+     "mode": "C",
+     "file": "ablations/mode_C/full_vs_improved_minus_position.json",
+     "block": "joint/unmasked",
+     "difference": 0.008261,
+     "share_b_better": 0.808,
+     "p": 0.384,
+     "p_holm": 1.0,
+     "survives": false
+    },
+    {
+     "group": "question",
+     "mode": "A",
+     "file": "ablations/mode_A/full_vs_improved_minus_question.json",
+     "block": "punctuation/all",
+     "difference": -0.013548,
+     "share_b_better": 0.0,
+     "p": 0.0,
+     "p_holm": 0.0,
+     "survives": true
+    },
+    {
+     "group": "question",
+     "mode": "B",
+     "file": "ablations/mode_B/full_vs_improved_minus_question.json",
+     "block": "punctuation/all",
+     "difference": -0.004401,
+     "share_b_better": 0.001,
+     "p": 0.002,
+     "p_holm": 0.026,
+     "survives": true
+    },
+    {
+     "group": "question",
+     "mode": "C",
+     "file": "ablations/mode_C/full_vs_improved_minus_question.json",
+     "block": "joint/unmasked",
+     "difference": -0.003985,
+     "share_b_better": 0.016,
+     "p": 0.032,
+     "p_holm": 0.32,
+     "survives": false
+    },
+    {
+     "group": "window2",
+     "mode": "A",
+     "file": "ablations/mode_A/full_vs_improved_minus_window2.json",
+     "block": "punctuation/all",
+     "difference": -0.013389,
+     "share_b_better": 0.0,
+     "p": 0.0,
+     "p_holm": 0.0,
+     "survives": true
+    },
+    {
+     "group": "window2",
+     "mode": "B",
+     "file": "ablations/mode_B/full_vs_improved_minus_window2.json",
+     "block": "punctuation/all",
+     "difference": -0.007568,
+     "share_b_better": 0.0,
+     "p": 0.0,
+     "p_holm": 0.0,
+     "survives": true
+    },
+    {
+     "group": "window2",
+     "mode": "C",
+     "file": "ablations/mode_C/full_vs_improved_minus_window2.json",
+     "block": "joint/unmasked",
+     "difference": -0.005345,
+     "share_b_better": 0.021,
+     "p": 0.042,
+     "p_holm": 0.378,
+     "survives": false
+    }
+   ]
+  }
+ }
+}

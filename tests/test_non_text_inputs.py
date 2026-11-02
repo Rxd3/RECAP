@@ -296,5 +296,5 @@ def test_a_group_id_that_is_not_text_is_one_error_line(
     argv = ["--data-root", str(root), "--release", LEAK_REL, "--out", str(tmp_path / "out")]
     assert build_leakage_subsets.main(argv) == 1
     err = capsys.readouterr().err
-    assert err.startswith("error: train.jsonl: ID ") and "has no string metadata.group_id" in err, err[:300]
+    assert err.startswith("error: train.jsonl line ") and "has no string metadata.group_id" in err, err[:300]
     assert len(err.splitlines()) == 1 and "secretfolder" not in err

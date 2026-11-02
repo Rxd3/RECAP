@@ -258,8 +258,8 @@ REAL_LABEL_CONFIG = (ROOT / "configs/label_sets.yaml").read_text(encoding="utf-8
 LABEL_CONFIG_PROBLEMS = [  # (id, the label config file's text, the one reason train-hmm gives for it)
     ("invalid-yaml", "a: [unclosed\n", "not valid YAML"),
     ("missing-section", "schema_version: 1\n", "missing punctuation"),
-    ("wrong-structure", REAL_LABEL_CONFIG.replace("casing: [LOWER, FIRST_UPPER, ALL_UPPER]", "casing: [LOWER]"),
-     "does not have the agreed 4/8/12 structure"),
+    ("wrong-num-classes", REAL_LABEL_CONFIG.replace("num_classes: 4", "num_classes: 5", 1),
+     "num_classes does not match label vocabulary"),  # mode A ignores casing, as on main (N6)
 ]
 
 
@@ -463,7 +463,8 @@ LIST_FIELDS = [
     *[(report, "verify", (*BLOCK, name), f"{Path(report).name}: {'.'.join(BLOCK)}.{name}.0 is not nonempty text")
       for report in REPORTS for name in ("labels", "macro_over")],
     *[(report, "verify", (*BLOCK, "confusion"), "confusion matrix/support mismatch") for report in REPORTS],
-    (f"{RUN}/runtime.json", "verify", ("modes", "A", "prediction_seconds"), "invalid runtime repetitions"),
+    (f"{RUN}/runtime.json", "verify", ("modes", "A", "prediction_seconds"),
+     "runtime.json: modes.A.prediction_seconds must hold"),
     *[(f"{RUN}/plan.json", command, path, f"plan.json: invalid experiment config: {'.'.join(path[1:])}.0 is not")
       for command in GATED for path in CONFIG_LISTS],
 ]

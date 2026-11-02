@@ -123,9 +123,9 @@ def test_stream_train_labels_yields_the_label_lists_of_the_listed_records_only_i
 
 @pytest.mark.parametrize(
     ("rows", "message"),
-    [([_row("a", ["O"])], r"^train\.jsonl: 1 listed ID\(s\) are missing$"),
+    [([_row("a", ["O"])], r"^train\.jsonl: 1 listed ID\(s\) are missing, first 'b'$"),
      ([_row("a", ["O"]), _row("b", ["O"]), _row("b", ["O"])],
-      r"^train\.jsonl line 3: a listed sample_id appears twice$"),
+      r"^train\.jsonl line 3: duplicate sample_id 'b'$"),
      ([_row("a", ["O"]), _row("b", ["O"], "B")],
       r"^train\.jsonl line 2: a listed record is not label mode A$")],
     ids=["missing-id", "repeated-id", "other-mode"],

@@ -12,69 +12,83 @@ from punct_restore.models.crf_modes import CASING_VOCABULARY
 FeatureExtractor = Callable[..., list[dict[str, Any]]]
 
 
-def _check_label_strings(labels: Sequence[Any], field: str, where: str, sample_id: str) -> None:
+def _check_label_strings(labels: Sequence[Any], field: str, where: str) -> None:
     """Raise ValueError unless every label is a string (a dict or list label cannot even be looked up in a set)."""
     if any(not isinstance(label, str) for label in labels):
-        raise ValueError(f"{where} ({sample_id}): {field} must be a list of strings.")
+        raise ValueError(f"{where}: {field} must be a list of strings.")
 
 
-def _checked_case_labels(rec: Mapping[str, Any], where: str, sample_id: str, seq_len: int) -> list[str]:
+def _checked_case_labels(rec: Mapping[str, Any], where: str, seq_len: int) -> list[str]:
     """Return the record's case_labels as a new list after checking length and vocabulary."""
     case_labels = rec.get("case_labels")
     if not isinstance(case_labels, list) or len(case_labels) != seq_len:
         raise ValueError(
-            f"{where} ({sample_id}): case_labels length "
+            f"{where}: case_labels length "
             f"({len(case_labels) if isinstance(case_labels, list) else None}) "
             f"does not match tokens length ({seq_len})."
         )
-    _check_label_strings(case_labels, "case_labels", where, sample_id)
+    _check_label_strings(case_labels, "case_labels", where)
     unknown_cases = [c for c in case_labels if c not in CASING_VOCABULARY]
     if unknown_cases:
-        raise ValueError(f"{where} ({sample_id}): unknown case_labels {unknown_cases!r}.")
+        raise ValueError(f"{where}: unknown case_labels {unknown_cases!r}.")
     return list(case_labels)
 
 
 def _target_sequence(
-    rec: Mapping[str, Any], where: str, sample_id: str, seq_len: int, label_mode: str, vocabulary: Sequence[str]
+    rec: Mapping[str, Any], where: str, seq_len: int, label_mode: str, vocabulary: Sequence[str]
 ) -> list[str]:
     """Derive the per-token training targets of the given label mode from one record."""
     punct_labels = rec.get("punct_labels")
-    if not isinstance(punct_labels, list) or len(punct_labels) != seq_len:
+    if not isinstance(punct_labels, list):
+        raise ValueError(f"{where}: punct_labels must be a list of strings.")
+    if len(punct_labels) != seq_len:
         raise ValueError(
-            f"{where} ({sample_id}): punct_labels length "
-            f"({len(punct_labels) if isinstance(punct_labels, list) else None}) "
-            f"does not match tokens length ({seq_len})."
+            f"{where}: punct_labels length ({len(punct_labels)}) does not match tokens length ({seq_len})."
         )
-    _check_label_strings(punct_labels, "punct_labels", where, sample_id)
+    _check_label_strings(punct_labels, "punct_labels", where)
     vocab_set = set(vocabulary)
 
     if label_mode in ("A", "B"):
         unknown_labels = [lbl for lbl in punct_labels if lbl not in vocab_set]
         if unknown_labels:
-            raise ValueError(
-                f"{where} ({sample_id}): unknown punct_labels {unknown_labels!r} "
-                f"for Mode {label_mode}."
-            )
+            raise ValueError(f"{where}: unknown punct_labels {unknown_labels!r} for Mode {label_mode}.")
         return list(punct_labels)
 
     if label_mode == "CASE":
-        return _checked_case_labels(rec, where, sample_id, seq_len)
+        return _checked_case_labels(rec, where, seq_len)
 
     if label_mode == "C":
-        case_labels = _checked_case_labels(rec, where, sample_id, seq_len)
+        case_labels = _checked_case_labels(rec, where, seq_len)
         try:
             target_sequence = join_labels(punct_labels, case_labels, separator="|")
         except ValueError as e:  # join_labels raises only this, for sequences of different lengths
-            raise ValueError(f"{where} ({sample_id}): failed to derive Mode C targets: {e}") from e
+            raise ValueError(f"{where}: failed to derive Mode C targets: {e}") from e
         unknown_joint = [lbl for lbl in target_sequence if lbl not in vocab_set]
         if unknown_joint:
-            raise ValueError(
-                f"{where} ({sample_id}): derived joint labels {unknown_joint!r} "
-                f"outside Mode C vocabulary."
-            )
+            raise ValueError(f"{where}: derived joint labels {unknown_joint!r} outside Mode C vocabulary.")
         return target_sequence
 
     raise ValueError(f"Unsupported label_mode: {label_mode}")
+
+
+def _checked_tokens(rec: Mapping[str, Any], where: str) -> list[str]:
+    """The record's tokens, after checking that they are a non-empty list of non-empty strings."""
+    tokens = rec.get("tokens")
+    if not isinstance(tokens, list) or len(tokens) == 0:
+        raise ValueError(f"{where}: tokens must be a non-empty list.")
+    if any(not isinstance(t, str) or not t.strip() for t in tokens):
+        raise ValueError(f"{where}: tokens must contain non-empty strings.")
+    return tokens
+
+
+def checked_targets(rec: Mapping[str, Any], where: str, label_mode: str, vocabulary: Sequence[str]) -> list[str]:
+    """The per-token training targets of one record of ``label_mode``, after checking its tokens and labels.
+
+    This is the check ``CRFModel.fit`` makes of each record, so a reader can make it on the line a record came from.
+    ``where`` starts every ValueError message (``<file> line N``): it is followed by ``: <what is wrong>``.
+    """
+    tokens = _checked_tokens(rec, where)
+    return _target_sequence(rec, where, len(tokens), label_mode, vocabulary)
 
 
 def _checked_training_record(rec: Any, where: str, seen_ids: set[str]) -> tuple[str, list[str]]:
@@ -92,12 +106,7 @@ def _checked_training_record(rec: Any, where: str, seen_ids: set[str]) -> tuple[
             f"{where} ({sample_id}): cannot train on record with split={split!r}. "
             "Training data must have split='train'."
         )
-    tokens = rec.get("tokens")
-    if not isinstance(tokens, list) or len(tokens) == 0:
-        raise ValueError(f"{where} ({sample_id}): tokens must be a non-empty list.")
-    if any(not isinstance(t, str) or not t.strip() for t in tokens):
-        raise ValueError(f"{where} ({sample_id}): tokens must contain non-empty strings.")
-    return sample_id, tokens
+    return sample_id, _checked_tokens(rec, f"{where} ({sample_id})")
 
 
 def validate_training_records(
@@ -123,7 +132,7 @@ def validate_training_records(
         sample_id, tokens = _checked_training_record(rec, where, seen_ids)
         seen_ids.add(sample_id)
         seq_len = len(tokens)
-        target_sequence = _target_sequence(rec, where, sample_id, seq_len, label_mode, vocabulary)
+        target_sequence = _target_sequence(rec, f"{where} ({sample_id})", seq_len, label_mode, vocabulary)
 
         # Extract features strictly using observable tokens (gold leakage prevention)
         features = feature_extractor(tokens, config=feature_config)

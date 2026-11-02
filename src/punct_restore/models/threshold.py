@@ -26,7 +26,7 @@ from typing import Any, TypeGuard
 
 from punct_restore.file_io import iter_jsonl, read_object, require_file
 from punct_restore.hashing import sha256_file
-from punct_restore.prediction_io import parse_sample_record, read_ids, write_predictions_jsonl
+from punct_restore.prediction_io import parse_sample_record, read_ids, select_records, write_predictions_jsonl
 
 NO_PUNCT = "O"
 
@@ -287,20 +287,13 @@ def _check_train_labels(record: Mapping[str, Any], mode: str, where: str) -> Non
 
 def stream_train_labels(train_path: Path, ids: Sequence[str], mode: str) -> Iterator[dict[str, Any]]:
     """Yield the gold label lists of the listed records, one line at a time; all IDs must be found."""
-    wanted, found = set(ids), set()
-    for number, record in iter_jsonl(train_path, parse_sample_record):
-        if record["sample_id"] not in wanted:
-            continue
-        where = f"{train_path.name} line {number}"
-        if record["sample_id"] in found:
-            raise ValueError(f"{where}: a listed sample_id appears twice")
+    def labels(record: dict[str, Any], where: str) -> dict[str, Any]:
         if record.get("label_mode") != mode:
             raise ValueError(f"{where}: a listed record is not label mode {mode}")
-        found.add(record["sample_id"])
         _check_train_labels(record, mode, where)
-        yield {key: record.get(key) for key in ("punct_labels", "case_labels")}
-    if len(found) < len(wanted):
-        raise ValueError(f"{train_path.name}: {len(wanted) - len(found)} listed ID(s) are missing")
+        return {key: record.get(key) for key in ("punct_labels", "case_labels")}
+
+    yield from select_records(iter_jsonl(train_path, parse_sample_record), train_path.name, ids, labels)
 
 
 def train_priors(train: Path, train_ids: Path, mode: str, vocabulary: Sequence[str]) -> dict[str, float]:

@@ -218,6 +218,15 @@ def test_missing_input_file_is_a_one_line_error_naming_the_file_only(
     assert not setup.out.exists() and not setup.man.exists()
 
 
+@pytest.mark.parametrize("flag", ["punct", "case", "gold"])
+def test_an_input_that_is_not_a_file_is_one_line_in_file_then_reason_form(
+        setup: Setup, capsys, tmp_path: Path, flag: str) -> None:
+    folder = tmp_path / "afolder.jsonl"
+    folder.mkdir()
+    err = _refused(capsys, tmp_path, setup.argv(**{flag: folder}))
+    assert err == f"error: afolder.jsonl: not an existing file (--{flag})\n"
+
+
 def test_os_error_is_reported_as_one_line_without_the_full_path(
         setup: Setup, capsys, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     def full_disk(*args: Any, **kwargs: Any) -> None:

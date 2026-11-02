@@ -61,7 +61,7 @@ def test_predict_with_a_corrupt_model_names_the_file_only(
     argv = _predict_argv(mode_a, tau_file, tmp_path / "p.jsonl", tmp_path / "p.man.json")
     argv[argv.index("--model") + 1] = str(bad)
     assert tune_threshold.main(argv) == 1
-    assert _one_line(capsys) == "error: bad.joblib: not a readable CRF artifact\n"
+    assert _one_line(capsys) == "error: bad.joblib: not a readable artifact\n"
 
 
 def test_predict_with_a_missing_tau_file_names_the_file_only(

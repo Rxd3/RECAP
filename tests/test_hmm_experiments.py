@@ -187,10 +187,27 @@ def test_check_evaluator_rejects_a_dirty_or_unpinned_checkout(tmp_path, monkeypa
 
 def test_the_evaluator_refusal_names_the_folder_and_a_short_commit_but_no_path_and_no_member(tmp_path, monkeypatch):
     checkout = tmp_path / "shared-evaluator"
+    checkout.mkdir()
     monkeypatch.setattr(hmm_experiment_identity, "code_identity", lambda _root: {"commit": "other", "dirty": True})
     with pytest.raises(ValueError) as caught:
         check_evaluator(checkout, "0123456789abcdef0123456789abcdef01234567")
     assert str(caught.value) == "shared-evaluator: evaluator checkout must be clean at the pinned commit 0123456789ab"
+
+
+def test_a_missing_evaluator_folder_is_reported_as_not_found_not_as_unclean(tmp_path, monkeypatch):
+    """A folder git cannot read looks "dirty and unpinned"; the user needs to hear that it is not there."""
+    monkeypatch.setattr(hmm_experiment_identity, "code_identity", lambda _root: {"commit": None, "dirty": None})
+    with pytest.raises(FileNotFoundError) as caught:
+        check_evaluator(tmp_path / "no-such-checkout", "pinned")
+    assert str(caught.value) == "no-such-checkout: evaluator checkout not found"
+
+
+def test_an_evaluator_that_is_a_file_is_reported_as_a_file(tmp_path, monkeypatch):
+    monkeypatch.setattr(hmm_experiment_identity, "code_identity", lambda _root: {"commit": None, "dirty": None})
+    (tmp_path / "evaluator.txt").write_text("x", encoding="utf-8")
+    with pytest.raises(NotADirectoryError) as caught:
+        check_evaluator(tmp_path / "evaluator.txt", "pinned")
+    assert str(caught.value) == "evaluator.txt: is a file, not a folder"
 
 
 def test_selection_uses_only_validation_score_and_predeclared_tie_break():
@@ -308,7 +325,7 @@ def test_saved_model_inference_is_reproducible_and_does_not_read_gold(tmp_path, 
     assert before["predictions_sha256"] == after["predictions_sha256"]
     assert before["num_sequences"] == 2 and before["num_tokens"] == 3
     assert before["inputs"]["input"]["sha256"] != after["inputs"]["input"]["sha256"]
-    with pytest.raises(ValueError, match="already exists"):
+    with pytest.raises(ValueError, match=f"^{first.name}: output-dir already exists; choose a new prediction run$"):
         predict_run(trained / "model.json", prediction, first)
 
 

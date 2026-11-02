@@ -128,7 +128,7 @@ def test_a_corrupt_artifact_is_one_line_naming_the_file_only(tmp_path: Path) -> 
         load_scoring_model(bad)
 
     message = str(caught.value)
-    assert message == "bad.joblib: not a readable CRF artifact"
+    assert message == "bad.joblib: not a readable artifact"
     assert "\n" not in message and str(tmp_path) not in message
 
 
@@ -172,7 +172,7 @@ def test_an_id_missing_from_the_input_is_one_line_naming_the_file_only(tmp_path:
     with pytest.raises(PredictionFailed) as caught:
         read_input_records(source, ids)
 
-    assert str(caught.value).startswith("eval.jsonl: missing 1 selected IDs.")
+    assert str(caught.value) == "eval.jsonl: 1 listed ID(s) are missing, first 'nope'"
     assert str(tmp_path) not in str(caught.value)
 
 

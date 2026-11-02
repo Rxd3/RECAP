@@ -12,16 +12,14 @@ turned back into punctuated, cased text. Only load model artifacts you trust:
 
 from __future__ import annotations
 
-import json
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-import joblib
-
 from punct_restore.data.labeling import LABEL_SETS_PATH, load_label_sets
-from punct_restore.file_io import require_file
+from punct_restore.file_io import read_json, require_file
 from punct_restore.models.crf import CRFModel
+from punct_restore.models.crf_io import load_artifact
 from punct_restore.models.gap_classifier import MODEL_FAMILY as GAP_CLASSIFIER_FAMILY
 from punct_restore.models.gap_classifier import GapClassifier
 from punct_restore.models.hidden_event_lm import MODEL_FAMILY as HIDDEN_EVENT_LM_FAMILY
@@ -59,11 +57,11 @@ def _read_payload(path: Path) -> Any:
     """Parse the artifact only to read its family marker; the class loader parses it again."""
     try:
         if path.suffix.lower() == ".json":
-            return json.loads(path.read_text(encoding="utf-8"))
-        return joblib.load(path)  # pickle: load trusted files only (see the module docstring)
+            return read_json(path)
+        return load_artifact(path, "model file")  # pickle: load trusted files only (see the module docstring)
     except OSError as exc:  # the file exists but cannot be read: an OS problem, not a bad artifact
         raise OSError(f"{path.name}: cannot read model file ({exc.strerror or 'read error'})") from exc
-    except Exception as exc:  # a corrupt or foreign file; the reason is not shown to the user
+    except ValueError as exc:  # a corrupt or foreign file; the reason is not shown to the user
         raise _unsupported(path, "unreadable") from exc
 
 
