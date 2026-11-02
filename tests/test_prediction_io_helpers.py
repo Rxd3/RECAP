@@ -163,14 +163,14 @@ def test_check_script_paths_refuses_a_dangling_symlink_as_existing(tmp_path: Pat
 
 def test_check_script_paths_requires_every_input_to_be_an_existing_file(tmp_path: Path) -> None:
     inputs = {**_inputs(tmp_path), "--gold": tmp_path / "absent.jsonl"}
-    with pytest.raises(ValueError, match=r"^--gold: absent\.jsonl is not an existing file$"):
+    with pytest.raises(ValueError, match=r"^absent\.jsonl: not an existing file \(--gold\)$"):
         prediction_io.check_script_paths({"--out": tmp_path / "o.jsonl"}, inputs)
 
 
 def test_check_script_paths_rejects_a_folder_input(tmp_path: Path) -> None:
     folder = tmp_path / "folder"
     folder.mkdir()
-    with pytest.raises(ValueError, match=r"--first: folder is not an existing file"):
+    with pytest.raises(ValueError, match=r"^folder: not an existing file \(--first\)$"):
         prediction_io.check_script_paths({"--out": tmp_path / "o.jsonl"}, {"--first": folder})
 
 

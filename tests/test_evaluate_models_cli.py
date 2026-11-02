@@ -295,7 +295,7 @@ def test_cli_missing_out_folder(cli, capsys, tmp_path, command):
     out = tmp_path / "missing" / OUT_NAMES[command]
     code, _, err = run(cli, capsys, command_argv(command, case, out))
     assert code == 1
-    assert err == f"error: {out.name}: {os.strerror(errno.ENOENT)}\n"
+    assert err == "error: missing: output folder not found\n"  # the folder, not "RUN.json: No such file or directory"
     assert not (tmp_path / "missing").exists()
 
 

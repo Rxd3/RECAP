@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 
+from punct_restore.file_io import require_folder, short_name
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm_workflow import code_identity
 from punct_restore.paths import REPO_ROOT as ROOT
@@ -65,13 +65,15 @@ def implementation() -> dict[str, str]:
 def check_evaluator(root: Path, expected_commit: str) -> dict[str, Any]:
     """Require a clean evaluator checkout at the pinned commit; return its commit and the hashes of its files.
 
-    The ValueError for a checkout that is not, `<folder name>: evaluator checkout must be clean at the pinned commit
-    <first 12 characters>`, names the folder by its own name only.
+    A folder that is not there is a FileNotFoundError `<folder name>: evaluator checkout not found` (a file:
+    NotADirectoryError). The ValueError for a checkout that is not clean and pinned, `<folder name>: evaluator
+    checkout must be clean at the pinned commit <first 12 characters>`, names the folder by its own name only.
     """
+    require_folder(root, "evaluator checkout")
     identity = code_identity(root)
     if identity != {"commit": expected_commit, "dirty": False}:
-        name = Path(os.path.abspath(root)).name or str(root)
-        raise ValueError(f"{name}: evaluator checkout must be clean at the pinned commit {expected_commit[:12]}")
+        raise ValueError(
+            f"{short_name(root)}: evaluator checkout must be clean at the pinned commit {expected_commit[:12]}")
     names = sorted(
         p.relative_to(root).as_posix() for p in (root / "src/punct_restore/evaluation").glob("*.py")
     )

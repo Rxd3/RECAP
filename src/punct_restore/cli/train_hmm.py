@@ -13,7 +13,7 @@ from typing import Any, NamedTuple
 
 from punct_restore.data.labeling import read_label_config
 from punct_restore.errors import one_line_error
-from punct_restore.file_io import require_object
+from punct_restore.file_io import require_object, short_name
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_records import SelectedRecords
@@ -50,13 +50,13 @@ def load_labels(path: Path, mode: str) -> list[str]:
     if mode == "C":
         mode_wants = {**mode_wants, "separator": str, "labels": list[str]}
         wanted = {**wanted, "casing": list[str]}
-    config = require_object(name, read_label_config(path), {**wanted, "modes": {mode: mode_wants}})
+    config = require_object(name, read_label_config(path), {**wanted, "modes": {mode: mode_wants}}, is_yaml=True)
     version = config["schema_version"]
     if type(version) is not int or version != 1:
         raise ValueError(f"{name}: unsupported label configuration version")
     mode_config = config["modes"][mode]
     chosen = mode_config["punctuation_set"]
-    punctuation = require_object(name, config["punctuation"], {chosen: list[str]}, "punctuation")[chosen]
+    punctuation = require_object(name, config["punctuation"], {chosen: list[str]}, "punctuation", is_yaml=True)[chosen]
     labels = _joint_labels(name, config, punctuation) if mode == "C" else list(punctuation)
     if mode_config["num_classes"] != len(labels):
         raise ValueError(f"{name}: num_classes does not match label vocabulary")
@@ -64,6 +64,7 @@ def load_labels(path: Path, mode: str) -> list[str]:
 
 
 def nonempty(value: str) -> str:
+    """The argparse type of a text option: the text itself, or an error for a blank one."""
     if not value.strip():
         raise argparse.ArgumentTypeError("must not be blank")
     return value
@@ -151,7 +152,7 @@ def _read_selections(
 ) -> tuple[tuple[str, ...], tuple[str, ...] | None, list[str], dict[str, Any] | None]:
     """Check the run arguments; read the ID selections, the labels and the optional release record."""
     if args.output_dir.exists():
-        raise ValueError("output-dir already exists; choose a new run directory")
+        raise ValueError(f"{short_name(args.output_dir)}: output-dir already exists; choose a new run directory")
     train_ids = tuple(read_ids(args.train_ids, strict=True))
     predict = args.predict_ids
     prediction_ids = None if predict is None else tuple(read_ids(predict, strict=True))

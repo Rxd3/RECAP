@@ -97,7 +97,7 @@ def test_a_listed_path_that_climbs_out_of_the_raw_root_is_refused_although_its_h
     _, manifest = _raw_root(tmp_path, f"{digest}  ../outside.txt\n")
     with pytest.raises(ValueError) as problem:
         preprocessing.verify_raw_manifest(manifest)
-    assert str(problem.value) == "../outside.txt: listed in MANIFEST.sha256 but outside the raw root"
+    assert str(problem.value) == "MANIFEST.sha256 line 1 (outside.txt): listed but outside the raw root"
 
 
 def test_a_listed_path_that_climbs_out_after_going_in_is_refused(tmp_path: Path) -> None:
@@ -109,10 +109,11 @@ def test_a_listed_path_that_climbs_out_after_going_in_is_refused(tmp_path: Path)
 
 def test_an_absolute_listed_path_is_refused_even_when_the_file_is_there(tmp_path: Path) -> None:
     outside, digest = _outside_file(tmp_path)
-    _, manifest = _raw_root(tmp_path, f"{digest}  {outside}\n")
+    _, manifest = _raw_root(tmp_path, f"{GOOD}{digest}  {outside}\n")
     with pytest.raises(ValueError) as problem:
         preprocessing.verify_raw_manifest(manifest)
-    assert str(problem.value) == f"{outside}: listed in MANIFEST.sha256 but outside the raw root"
+    assert str(problem.value) == "MANIFEST.sha256 line 2 (outside.txt): listed but outside the raw root"
+    assert str(tmp_path) not in str(problem.value)  # the line was an absolute path; only its last part is shown
 
 
 def test_a_listed_path_that_stays_inside_by_a_detour_is_still_checked(tmp_path: Path) -> None:

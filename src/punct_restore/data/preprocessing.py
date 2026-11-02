@@ -17,6 +17,7 @@ from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from itertools import chain, islice
+from pathlib import PureWindowsPath
 from typing import TypedDict
 
 from ..file_io import inside_folder
@@ -87,7 +88,7 @@ def read_source_split(raw_dir: str | os.PathLike[str], source_split: str) -> lis
         try:
             text = raw.decode("utf-8")
         except UnicodeDecodeError as e:
-            raise SourceError(f"{source_split}/{utt_id}: not UTF-8") from e
+            raise SourceError(f"{source_split}/{utt_id}: not valid UTF-8") from e
         id_match = UTT_ID_RE.match(utt_id)
         if not id_match or id_match.group(1) != video_id:
             raise SourceError(f"{source_split}/{utt_id}: ID does not match utt2spk video {video_id}")
@@ -107,12 +108,14 @@ def parse_manifest_line(line: str, number: int, manifest_name: str) -> tuple[str
     return digest, rel
 
 
-def _inside_raw_root(base: str, rel: str, manifest_name: str) -> str:
-    """The real path of manifest path ``rel`` below ``base`` (the real path of the raw root); a ValueError if it
-    resolves outside (``..``, an absolute path, a link), as ``extraction._write`` refuses an archive entry."""
+def _inside_raw_root(base: str, rel: str, manifest_name: str, number: int) -> str:
+    """The real path of manifest path ``rel`` (on line ``number``) below ``base`` (the real path of the raw root); a
+    ValueError if it resolves outside (``..``, an absolute path, a link), as ``extraction._write`` refuses an archive
+    entry. The message shows the line and the last part of ``rel`` only: the line can be an absolute path."""
     path = inside_folder(base, rel)
     if path is None:
-        raise ValueError(f"{rel}: listed in {manifest_name} but outside the raw root")
+        last = PureWindowsPath(rel).name or rel  # either kind of separator; a bare root has no name
+        raise ValueError(f"{manifest_name} line {number} ({last}): listed but outside the raw root")
     return path
 
 
@@ -120,7 +123,8 @@ def verify_raw_manifest(manifest_path: str | os.PathLike[str]) -> list[str]:
     """Paths (relative to the manifest) whose SHA-256 no longer matches. Empty list means raw data is unchanged.
 
     Raises ValueError for a line of another shape ("<manifest name> line N: expected '<sha256>  <path>'"), for a path
-    that leaves the folder of the manifest ("<path>: listed in <manifest name> but outside the raw root") and for a
+    that leaves the folder of the manifest ("<manifest name> line N (<last part of the path>): listed but outside the
+    raw root"; the path itself can be absolute, so it is not shown) and for a
     listed file that is not there ("<path>: listed in <manifest name> but missing; run recap prepare-data extract
     again").
     """
@@ -128,7 +132,7 @@ def verify_raw_manifest(manifest_path: str | os.PathLike[str]) -> list[str]:
     name = os.path.basename(manifest_path)
     def check_one(numbered_line: tuple[int, str]) -> str | None:
         digest, rel = parse_manifest_line(numbered_line[1], numbered_line[0], name)
-        path = _inside_raw_root(base, rel, name)
+        path = _inside_raw_root(base, rel, name, numbered_line[0])
         try:
             return rel if sha256_file(path) != digest else None
         except FileNotFoundError as exc:

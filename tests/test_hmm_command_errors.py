@@ -124,7 +124,7 @@ def test_train_hmm_with_a_repeated_train_id_is_one_error_line_from_the_shared_id
     argv = setup_run(tmp_path)[0][2:]
     (tmp_path / "train.ids").write_text("unit-train\nunit-train\n", encoding="utf-8")
     assert train_hmm.main(argv) == 1
-    assert capsys.readouterr().err == "error: Duplicate ID 'unit-train' found at line 2 in train.ids\n"
+    assert capsys.readouterr().err == "error: train.ids line 2: duplicate ID 'unit-train'\n"
     assert not (tmp_path / "new-run").exists()
 
 
@@ -167,19 +167,19 @@ def _real_config_with(change: Any) -> str:
 
 INVALID = "experiment.yaml: invalid experiment config: "
 CONFIG_PROBLEMS = [  # (id, the config file's text, the one line the command gives for it, after `error: `)
-    ("empty-file", "", f"{INVALID}not a JSON object"),
-    ("null", "null\n", f"{INVALID}not a JSON object"),
-    ("list-of-numbers", "[1]\n", f"{INVALID}not a JSON object"),
-    ("list-of-keys", "- not\n- a mapping\n", f"{INVALID}not a JSON object"),
-    ("text", "just text\n", f"{INVALID}not a JSON object"),
+    ("empty-file", "", f"{INVALID}not a mapping"),
+    ("null", "null\n", f"{INVALID}not a mapping"),
+    ("list-of-numbers", "[1]\n", f"{INVALID}not a mapping"),
+    ("list-of-keys", "- not\n- a mapping\n", f"{INVALID}not a mapping"),
+    ("text", "just text\n", f"{INVALID}not a mapping"),
     ("empty-object", "{}\n", f"{INVALID}missing schema_version"),
     ("only-the-version", "schema_version: 1\n", f"{INVALID}missing experiment_id"),
-    ("search-is-a-list", _real_config_with(lambda c: {**c, "search": []}), f"{INVALID}search is not a JSON object"),
-    ("search-is-null", _real_config_with(lambda c: {**c, "search": None}), f"{INVALID}search is not a JSON object"),
+    ("search-is-a-list", _real_config_with(lambda c: {**c, "search": []}), f"{INVALID}search is not a mapping"),
+    ("search-is-null", _real_config_with(lambda c: {**c, "search": None}), f"{INVALID}search is not a mapping"),
     ("search-is-empty", _real_config_with(lambda c: {**c, "search": {}}), f"{INVALID}missing search.smoothing"),
     ("modes-is-a-list-of-lists", _real_config_with(lambda c: {**c, "modes": [["A"]]}),
      f"{INVALID}modes.0 is not nonempty text"),
-    ("modes-is-text", _real_config_with(lambda c: {**c, "modes": "ABC"}), f"{INVALID}modes is not a JSON list"),
+    ("modes-is-text", _real_config_with(lambda c: {**c, "modes": "ABC"}), f"{INVALID}modes is not a list"),
     ("smoothing-holds-a-list", _real_config_with(lambda c: {**c, "search": {**c["search"], "smoothing": [[1]]}}),
      f"{INVALID}search.smoothing.0 is not a number"),
     ("repetitions-is-text", _real_config_with(lambda c: {**c, "runtime": {**c["runtime"], "repetitions": "3"}}),

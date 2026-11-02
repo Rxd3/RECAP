@@ -1,6 +1,6 @@
 """File-level helpers shared by the commands: the create-new writers for a file and a folder, the JSONL, JSON and
 YAML readers, the shape check of a parsed file, the checks that a path is a file or a folder or does not exist yet, the
-file identity recorded in manifests and the "inside this folder" check.
+name a message shows for a path, the file identity recorded in manifests and the "inside this folder" check.
 
 Every error names a file by its name only (never the folder it sits in), so a command can print it as one line.
 """
@@ -17,8 +17,19 @@ from collections.abc import Callable, Iterator, Mapping
 from pathlib import Path
 from typing import Any, get_args, get_origin
 
+import yaml
+
 from .hashing import sha256_file
 from .paths import REPO_ROOT as ROOT
+
+
+def short_name(path: str | os.PathLike[str]) -> str:
+    """The last part of ``path`` for a message (never the folder it sits in); the path itself when it has no name.
+
+    A relative path gets the name of what it points at (``"."`` is the current folder's name); a drive or root, which
+    has none, is shown as it was given.
+    """
+    return Path(os.path.abspath(path)).name or str(path)
 
 
 def require_file(path: str | os.PathLike[str], what: str) -> None:
@@ -28,8 +39,8 @@ def require_file(path: str | os.PathLike[str], what: str) -> None:
         IsADirectoryError: ``<name>: is a folder, not a file`` for a folder.
         FileNotFoundError: ``<name>: <what> not found`` for anything else that is not a file.
     """
+    name = short_name(path)
     path = Path(path)
-    name = Path(os.path.abspath(path)).name or str(path)
     if path.is_dir():
         raise IsADirectoryError(f"{name}: is a folder, not a file")
     if not path.is_file():
@@ -43,8 +54,8 @@ def require_folder(path: str | os.PathLike[str], what: str) -> None:
         NotADirectoryError: ``<name>: is a file, not a folder`` for a file.
         FileNotFoundError: ``<name>: <what> not found`` for anything else that is not a folder.
     """
+    name = short_name(path)
     path = Path(path)
-    name = Path(os.path.abspath(path)).name or str(path)
     if path.is_file():
         raise NotADirectoryError(f"{name}: is a file, not a folder")
     if not path.is_dir():
@@ -65,9 +76,8 @@ def require_release(data_root: str | os.PathLike[str], release: str) -> Path:
     require_folder(data_root, "data root")
     processed = Path(data_root) / "processed" / release
     if not processed.is_dir():
-        root_name = Path(os.path.abspath(data_root)).name or str(data_root)
         raise FileNotFoundError(
-            f"{release}: release folder not found in {root_name}; run recap prepare-data build first")
+            f"{release}: release folder not found in {short_name(data_root)}; run recap prepare-data build first")
     return processed
 
 
@@ -146,11 +156,14 @@ def write_new_folder(out: Path, files: Mapping[str, str | Callable[[Path], None]
     UTF-8 with LF line ends, or to a function that writes the file at the path it is given (for a streamed file).
     The files are written in the order given, into a temporary sibling folder that is renamed to ``out`` at the end.
     The folder that holds ``out`` is created when missing. If anything fails, the temporary folder is removed and
-    the error is re-raised. The caller checks beforehand that ``out`` does not exist (an existing ``out`` is not
-    looked at here).
+    the error is re-raised; a temporary folder that cannot be made is an OSError that names ``out``. The caller
+    checks beforehand that ``out`` does not exist (an existing ``out`` is not looked at here).
     """
     out.parent.mkdir(parents=True, exist_ok=True)
-    temp = Path(tempfile.mkdtemp(dir=out.parent, prefix=f".{out.name}."))
+    try:
+        temp = Path(tempfile.mkdtemp(dir=out.parent, prefix=f".{out.name}."))
+    except OSError as exc:  # its filename is the temporary name, which the user never gave
+        raise OSError(exc.errno, exc.strerror, str(out)) from exc
     try:
         for name, content in files.items():
             _fill(temp / name, content)
@@ -219,7 +232,6 @@ def read_yaml(path: str | os.PathLike[str]) -> Any:
         ValueError: One line that names the file only (a YAML error mark shows the whole path):
             `<file name>: not valid UTF-8` or `<file name>: not valid YAML` (also for a document nested too deeply).
     """
-    import yaml  # PyYAML is a declared runtime dependency of RECAP; imported here so file_io loads without it
     try:
         with open(path, encoding="utf-8") as handle:
             return yaml.safe_load(handle)
@@ -230,6 +242,11 @@ def read_yaml(path: str | os.PathLike[str]) -> Any:
 
 
 _KIND_NAMES = {str: "nonempty text", list: "a JSON list", float: "a number", int: "a whole number"}
+
+
+def _kind_name(kind: type, is_yaml: bool) -> str:
+    """How a message calls a kind: a YAML file holds a list, not a JSON list."""
+    return "a list" if is_yaml and kind is list else _KIND_NAMES[kind]
 
 
 def _has_kind(value: Any, kind: type) -> bool:
@@ -243,37 +260,42 @@ def _has_kind(value: Any, kind: type) -> bool:
     return kind is object or isinstance(value, kind)
 
 
-def _check_kind(name: str, value: Any, want: Any, place: str) -> None:
+def _check_kind(name: str, value: Any, want: Any, place: str, is_yaml: bool) -> None:
     """Require `value`, found at `place` in the file `name`, to match one entry of a schema (see `require_object`)."""
     if isinstance(want, Mapping):
-        require_object(name, value, want, place)
+        require_object(name, value, want, place, is_yaml=is_yaml)
     elif get_origin(want) is list:
-        _check_kind(name, value, list, place)
+        _check_kind(name, value, list, place, is_yaml)
         (item_kind,) = get_args(want)
         for number, item in enumerate(value):
-            _check_kind(name, item, item_kind, f"{place}.{number}")
+            _check_kind(name, item, item_kind, f"{place}.{number}", is_yaml)
     elif not _has_kind(value, want):
-        raise ValueError(f"{name}: {place} is not {_KIND_NAMES[want]}")
+        raise ValueError(f"{name}: {place} is not {_kind_name(want, is_yaml)}")
 
 
-def require_object(name: str, value: Any, schema: Mapping[str, Any], at: str = "") -> dict[str, Any]:
+def require_object(
+    name: str, value: Any, schema: Mapping[str, Any], at: str = "", *, is_yaml: bool = False
+) -> dict[str, Any]:
     """Require `value`, the content of the file `name`, to be a JSON object that holds every key of `schema`.
 
     A schema value says what its key must hold: `object` anything (the key only has to be there), `str` nonempty
     text, `float` a number, `int` a whole number, `list` a JSON list, `list[str]` (or `list[float]`, `list[int]`) a
     list whose every item is of that kind, or a schema of its own for a nested object (`{}`: any object). Other
-    keys are not looked at. `at` is where `value` sits inside the file (a dotted path), for a nested call.
+    keys are not looked at. `at` is where `value` sits inside the file (a dotted path), for a nested call. For a
+    YAML file (`is_yaml`) the message says "a mapping" and "a list" where a JSON file's says "a JSON object" and
+    "a JSON list".
 
     Raises:
         ValueError: One line, `<name>: <what is wrong>`, that names the key (or the list item) by its dotted path.
     """
     if not isinstance(value, dict):
-        raise ValueError(f"{name}: {at} is not a JSON object" if at else f"{name}: not a JSON object")
+        noun = "a mapping" if is_yaml else "a JSON object"
+        raise ValueError(f"{name}: {at} is not {noun}" if at else f"{name}: not {noun}")
     for key, want in schema.items():
         place = f"{at}.{key}" if at else key
         if key not in value:
             raise ValueError(f"{name}: missing {place}")
-        _check_kind(name, value[key], want, place)
+        _check_kind(name, value[key], want, place, is_yaml)
     return value
 
 

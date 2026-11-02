@@ -71,31 +71,34 @@ def _line_text(line: str, _where: str) -> str:
     return line.removeprefix("\ufeff")  # a byte order mark on the first line is not part of the JSON
 
 
-def _lines(path: Path) -> Iterator[tuple[int, str]]:
-    """(line number, text) of the non-blank lines of a UTF-8 file; problems name the file."""
+def _lines(path: Path, label: str) -> Iterator[tuple[int, str]]:
+    """(line number, text) of the non-blank lines of a UTF-8 file; problems start with ``label``."""
     try:
         yield from iter_jsonl(path, _line_text)
     except ValueError:  # the only one iter_jsonl raises here: the bytes are not UTF-8 (``_line_text`` cannot fail)
-        raise InputError(f"{_display_name(path)}: not UTF-8 text") from None
+        raise InputError(f"{label}: not valid UTF-8") from None
     except OSError as exc:  # os_reason words a folder alike on Windows (EACCES) and POSIX (EISDIR)
-        raise InputError(f"{_display_name(path)}: {os_reason(exc) or 'cannot be read'}") from None
+        raise InputError(f"{label}: {os_reason(exc) or 'cannot be read'}") from None
 
 
-def _rows(path: Path) -> Iterator[tuple[int, dict[str, Any]]]:
+def _rows(path: Path, label: str) -> Iterator[tuple[int, dict[str, Any]]]:
     """(line number, record) of every record with a text sample_id (a row without one cannot be listed)."""
-    label = _display_name(path)
-    for number, line in _lines(path):
+    for number, line in _lines(path, label):
         record = parse_json_object(line, f"{label} line {number}")
         if isinstance(record.get("sample_id"), str):
             yield number, record
 
 
-def scan[T](path: Path, ids: Sequence[str], keep: Callable[[dict[str, Any], str], T]) -> Iterator[T]:
-    """``keep(record, where)`` for the listed records in file order; ``where`` is ``<folder>/<file> line N``.
+def scan[T](path: Path, ids: Sequence[str], keep: Callable[[dict[str, Any], str], T],
+            label: str | None = None) -> Iterator[T]:
+    """``keep(record, where)`` for the listed records in file order; ``where`` is ``<label> line N``.
 
-    Each listed ID must occur exactly once (``select_records`` words a repeat and a missing ID).
+    ``label`` is how the messages call the file: ``<folder>/<file>`` by default, for a file of the data root. Pass the
+    file name alone for a path the user typed. Each listed ID must occur exactly once (``select_records`` words a
+    repeat and a missing ID).
     """
-    return select_records(_rows(path), _display_name(path), ids, keep)
+    label = label or _display_name(path)
+    return select_records(_rows(path, label), label, ids, keep)
 
 
 def _is_span(span: Any) -> bool:
@@ -152,8 +155,10 @@ def shared_tokens(inputs: Sequence[ModeInput]) -> dict[str, list[str]]:
 
 
 def remapped_masks(masks_path: Path, c_ids: Sequence[str], tokens: Mapping[str, Sequence[str]],
-                   plan: Mapping[str, Edits]) -> list[dict[str, Any]]:
-    """The mode C masks of the listed records, positions moved through the edits, in file order."""
+                   plan: Mapping[str, Edits], label: str | None = None) -> list[dict[str, Any]]:
+    """The mode C masks of the listed records, positions moved through the edits, in file order.
+
+    Messages call the file ``label`` (see ``scan``)."""
     def remap(mask: dict[str, Any], where: str) -> dict[str, Any]:
         n = len(tokens[mask["sample_id"]])
         positions = mask.get("excluded_positions")
@@ -163,10 +168,11 @@ def remapped_masks(masks_path: Path, c_ids: Sequence[str], tokens: Mapping[str, 
         order = align(n, plan.get(mask["sample_id"], NO_EDITS))
         return {**mask, "excluded_positions": remap_positions(positions, order)}
 
-    return list(scan(masks_path, c_ids, remap))
+    return list(scan(masks_path, c_ids, remap, label))
 
 
 def write_jsonl(path: Path, rows: Iterable[Mapping[str, Any]]) -> None:
+    """Write ``rows`` to ``path`` as compact JSON, one per line (UTF-8, LF line ends); its folders are made."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="\n") as handle:
         for row in rows:
@@ -175,6 +181,7 @@ def write_jsonl(path: Path, rows: Iterable[Mapping[str, Any]]) -> None:
 
 def summarize(args: argparse.Namespace, inputs: Sequence[ModeInput], tokens: Mapping[str, Sequence[str]],
               plan: Mapping[str, Edits]) -> dict[str, Any]:
+    """The summary.json content of a run: its settings, the record and token counts, the edits made and their cost."""
     edit_model = args.edit_model
     counts, before = edit_counts(plan, edit_model=edit_model), sum(len(t) for t in tokens.values())
     kind_to_cost = {"deletion": "delete", "insertion": "insert", "substitution": "replace", "swap": "swap"}
@@ -279,7 +286,7 @@ def run(args: argparse.Namespace) -> str:
     default_masks = args.data_root / "processed" / args.release / "masks" / "case_joint" / f"{args.split}.jsonl"
     masks_path = args.masks or default_masks
     c_ids = next(item.ids for item in inputs if item.mode == "C")
-    masks = remapped_masks(masks_path, c_ids, tokens, plan)
+    masks = remapped_masks(masks_path, c_ids, tokens, plan, masks_path.name if args.masks else None)
     summary = summarize(args, inputs, tokens, plan)
     write_new_folder(out, output_files(args, inputs, masks, plan, summary))
     return (f"wrote {out.name}: edit cost {summary['edit_cost']} of budget {summary['budget']} "

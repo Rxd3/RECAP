@@ -14,6 +14,14 @@ from punct_restore.hashing import sha256_file
 def checked_release_file(
     path: Path, root: Path, entries: dict[str, Any], *, expected: str | None = None
 ) -> str:
+    """Require ``path`` to be a file of the release folder ``root`` that ``entries`` list with its size and SHA-256.
+
+    Returns its path relative to ``root`` in POSIX form. ``expected`` is the one relative path it must have.
+
+    Raises:
+        ValueError: One line that starts with the file name or the release path: the file is outside ``root``, is not
+            listed (or not the ``expected`` one), or its size or checksum differs from the entry.
+    """
     try:
         relative = path.resolve().relative_to(root.resolve()).as_posix()
     except ValueError as exc:

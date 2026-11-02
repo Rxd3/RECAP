@@ -249,7 +249,7 @@ class TestCRFTrainCLI:
         ])
         assert ret == 1
         captured = capsys.readouterr()
-        assert "Duplicate ID 'sample_0000'" in captured.err
+        assert "duplicate ID 'sample_0000'" in captured.err
 
     def test_train_empty_frozen_ids_failure(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
         """Verify failure when the frozen ID file is empty."""

@@ -143,9 +143,9 @@ def test_load_vocab_bad_structure_rejected(tmp_path: Path, build: Callable[[dict
 LOAD_VOCAB_REASONS = {
     "casing_key_missing": ("casing", "bad.yaml: missing casing"),
     "joint_labels_missing": ("joint", "bad.yaml: missing modes.C.labels"),
-    "casing_is_text": ("casing_text", "bad.yaml: casing is not a JSON list"),
-    "whole_file_is_a_list": ("list", "bad.yaml: not a JSON object"),
-    "empty_file": ("empty", "bad.yaml: not a JSON object"),
+    "casing_is_text": ("casing_text", "bad.yaml: casing is not a list"),
+    "whole_file_is_a_list": ("list", "bad.yaml: not a mapping"),
+    "empty_file": ("empty", "bad.yaml: not a mapping"),
     "invalid_yaml": ("syntax", "bad.yaml: not valid YAML"),
 }
 

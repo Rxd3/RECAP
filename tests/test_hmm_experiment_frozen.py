@@ -108,7 +108,7 @@ def test_a_mode_selection_edited_after_freezing_is_refused(tmp_path: Path, monke
     run = _study(tmp_path, monkeypatch)
     path = run / "mode_A/selection.json"
     path.write_text(path.read_text(encoding="utf-8") + " ", encoding="utf-8")
-    with pytest.raises(ValueError, match="mode selection changed after freezing"):
+    with pytest.raises(ValueError, match=r"^mode_A/selection\.json: changed after freezing$"):
         verified_frozen_selection(run, tmp_path / "evaluator")
 
 

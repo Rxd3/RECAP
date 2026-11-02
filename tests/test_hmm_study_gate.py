@@ -328,7 +328,7 @@ def _select_other_in_both_files(study: Study, mode: str) -> None:
 
 
 MODE_CASES = [
-    ("mode-selection-edited", _edit_mode_selection_file, "mode selection changed after freezing"),
+    ("mode-selection-edited", _edit_mode_selection_file, "mode_{mode}/selection.json: changed after freezing"),
     ("loser-model-changed", _change_loser_model, EVIDENCE_DIFFERS),
     ("loser-report-changed", _change_loser_report, EVIDENCE_DIFFERS),
     ("winner-model-changed", _change_winner_model, EVIDENCE_DIFFERS),
@@ -355,7 +355,7 @@ def test_gate_refuses_a_mode_whose_evidence_changed(
 ) -> None:
     mutate(study, mode)
 
-    _assert_refused(study, message)
+    _assert_refused(study, message.replace("{mode}", mode))  # names the mode's own selection file
 
 
 # ---- finalize: what the finished study wrote ----

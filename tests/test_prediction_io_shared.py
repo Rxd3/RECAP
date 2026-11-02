@@ -36,7 +36,7 @@ def test_read_ids_drops_a_leading_byte_order_mark(tmp_path: Path) -> None:
 
 def test_read_ids_rejects_a_duplicate_naming_the_id_the_line_and_the_file_by_name_only(tmp_path: Path) -> None:
     path = _ids(tmp_path, b"a\n\nb\na\n")
-    with pytest.raises(ValueError, match=r"^Duplicate ID 'a' found at line 4 in x\.ids$"):
+    with pytest.raises(ValueError, match=r"^x\.ids line 4: duplicate ID 'a'$"):
         prediction_io.read_ids(path)
 
 
@@ -52,7 +52,7 @@ def test_read_ids_allow_empty_returns_an_empty_list_instead_of_the_error(tmp_pat
 
 
 def test_read_ids_allow_empty_still_refuses_a_duplicate_and_bad_bytes(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="Duplicate ID 'a'"):
+    with pytest.raises(ValueError, match="duplicate ID 'a'"):
         prediction_io.read_ids(_ids(tmp_path, b"a\na\n"), allow_empty=True)
     with pytest.raises(ValueError, match=r"^x\.ids: not valid UTF-8$"):
         prediction_io.read_ids(_ids(tmp_path, b"\xff\n"), allow_empty=True)
@@ -81,7 +81,7 @@ def test_read_ids_reports_a_missing_file_as_an_os_error_that_one_line_error_name
         (b"a\n b\n", r"^x\.ids line 2: IDs must be nonempty, with no whitespace or blank lines$"),
         (b"a\r\nb \r\n", r"^x\.ids line 2: IDs must be nonempty, with no whitespace or blank lines$"),
         (b"a\nb\n\n", r"^x\.ids line 3: IDs must be nonempty, with no whitespace or blank lines$"),
-        (b"a\nb\na\n", r"^Duplicate ID 'a' found at line 3 in x\.ids$"),
+        (b"a\nb\na\n", r"^x\.ids line 3: duplicate ID 'a'$"),
         (b"", r"^x\.ids: ID list is empty$"),
     ],
 )

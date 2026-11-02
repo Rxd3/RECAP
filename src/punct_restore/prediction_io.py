@@ -56,7 +56,7 @@ def read_ids(path: str | os.PathLike[str], *, strict: bool = False, allow_empty:
         if not sample_id:
             continue
         if sample_id in seen:
-            raise ValueError(f"Duplicate ID {sample_id!r} found at line {number} in {path.name}")
+            raise ValueError(f"{path.name} line {number}: duplicate ID {sample_id!r}")
         seen.add(sample_id)
         ids.append(sample_id)
     if not ids and not allow_empty:
@@ -296,7 +296,7 @@ def check_script_paths(outputs: Mapping[str, Path], inputs: Mapping[str, Path]) 
             raise ValueError(f"{flag}: {path.name} already exists, refusing to overwrite it")
     for flag, path in inputs.items():
         if not path.is_file():
-            raise ValueError(f"{flag}: {path.name} is not an existing file")
+            raise ValueError(f"{path.name}: not an existing file ({flag})")
 
 
 def read_prediction_lines(path: Path) -> Iterator[tuple[int, dict[str, Any]]]:

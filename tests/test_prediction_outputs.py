@@ -648,7 +648,7 @@ def test_read_ids_skips_blanks_and_rejects_missing_empty_and_duplicate_lists(
     ids.write_text("a\n\nb\n", encoding="utf-8")
     assert prediction_io.read_ids(ids) == ["a", "b"]
     ids.write_text("a\na\n", encoding="utf-8")
-    with pytest.raises(ValueError, match="Duplicate ID 'a' found at line 2"):
+    with pytest.raises(ValueError, match=r"^x\.ids line 2: duplicate ID 'a'$"):
         prediction_io.read_ids(ids)
     ids.write_text("\n", encoding="utf-8")
     with pytest.raises(ValueError, match="empty"):

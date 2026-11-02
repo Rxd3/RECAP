@@ -129,8 +129,9 @@ def test_cli_does_not_overwrite_an_existing_run(tmp_path):
     marker = output / "existing.txt"
     marker.write_text("keep this", encoding="utf-8")
     result = subprocess.run(args, text=True, capture_output=True, check=False)
-    assert result.returncode == 1 and result.stderr.startswith("error: ") and "already exists" in result.stderr
-    assert result.stderr.count("\n") == 1 and "usage:" not in result.stderr
+    assert result.returncode == 1 and result.stderr == (
+        f"error: {output.name}: output-dir already exists; choose a new run directory\n")
+    assert "usage:" not in result.stderr
     assert list(output.iterdir()) == [marker]
     assert marker.read_text(encoding="utf-8") == "keep this"
 

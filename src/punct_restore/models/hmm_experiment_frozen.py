@@ -84,7 +84,7 @@ def _check_mode(
 ) -> None:
     """Require one mode's selection file, candidates and winner to be what was frozen."""
     if sha256_file(run / f"mode_{mode}/selection.json") != selection["mode_selection_sha256"][mode]:
-        raise ValueError("mode selection changed after freezing")
+        raise ValueError(f"mode_{mode}/selection.json: changed after freezing")
     mode_selection = read_object(run / f"mode_{mode}/selection.json", _MODE_SELECTION)
     for number, candidate in enumerate(mode_selection["candidates"]):
         require_object("selection.json", candidate, _CANDIDATE, f"candidates.{number}")

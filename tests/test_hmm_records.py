@@ -33,6 +33,21 @@ def test_iterating_again_gives_the_same_counts_not_doubled_ones(tmp_path: Path) 
     assert selection.counts == {"input_records": 2, "selected_records": 2, "selected_tokens": 2}
 
 
+def test_a_counts_dict_given_to_the_selection_is_the_one_filled_as_each_row_is_read(tmp_path: Path) -> None:
+    source = tmp_path / "in.jsonl"
+    jsonl(source, [_row("a", ["x", "y"]), _row("skip"), _row("c")])
+    sink = {"input_records": 99, "selected_records": 99, "selected_tokens": 99}
+    selection = SelectedRecords(source, ("a", "c"), counts=sink)
+    assert selection.counts is sink
+    rows = iter(selection)
+    next(rows)
+    assert sink == {"input_records": 1, "selected_records": 1, "selected_tokens": 2}  # reset, then the first row
+    next(rows)
+    assert sink == {"input_records": 3, "selected_records": 2, "selected_tokens": 3}  # the skipped row was read too
+    list(rows)
+    assert selection.counts is sink
+
+
 def test_a_selected_id_that_is_missing_is_still_refused_after_the_last_row(tmp_path: Path) -> None:
     source = tmp_path / "in.jsonl"
     jsonl(source, [_row("a")])

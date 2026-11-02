@@ -85,8 +85,15 @@ def _scan(
     training_mode: str | None,
     policy_version: str | None,
     source_revision: str | None,
+    counts: dict[str, int] | None,
 ) -> Generator[dict[str, Any], None, dict[str, int]]:
-    """Yield the selected records in file order; the generator's result is the counts of everything it read."""
+    """Yield the selected records in file order; the generator's result is the counts of everything it read.
+
+    ``counts`` is the dict to fill, in place and row by row (so a stopped iteration leaves partial totals), or None
+    for a new one. Its three keys are reset when the first row is asked for.
+    """
+    counts = {} if counts is None else counts
+    counts.update(input_records=0, selected_records=0, selected_tokens=0)
     rules = None
     if training_mode is not None:
         rules = _TrainingRules(
@@ -95,7 +102,6 @@ def _scan(
             policy_version=policy_version,
             source_revision=source_revision,
         )
-    counts = {"input_records": 0, "selected_records": 0, "selected_tokens": 0}
 
     def keep(record: dict[str, Any], _where: str) -> dict[str, Any]:
         counts["selected_records"] += 1
@@ -114,7 +120,9 @@ class SelectedRecords:
 
     Missing IDs are rejected even after the last yielded row. Training validates every row, including excluded
     rows, to catch mixed splits; prediction checks observable fields only and removes gold and source metadata.
-    `counts` is complete once the iteration has finished; each iteration reads the file again and replaces it.
+    `counts` is complete once the iteration has finished; each iteration reads the file again and replaces it. A
+    ``counts`` dict given to the constructor is the one filled, in place and row by row, so the caller sees partial
+    totals when it stops early or the file is refused (the old `hmm_workflow.selected_records` contract).
     """
 
     def __init__(
@@ -125,9 +133,10 @@ class SelectedRecords:
         training_mode: str | None = None,
         policy_version: str | None = None,
         source_revision: str | None = None,
+        counts: dict[str, int] | None = None,
     ) -> None:
-        self._scan_args = (path, ids, training_mode, policy_version, source_revision)
-        self.counts: dict[str, int] = {}
+        self._scan_args = (path, ids, training_mode, policy_version, source_revision, counts)
+        self.counts: dict[str, int] = {} if counts is None else counts
 
     def __iter__(self) -> Iterator[dict[str, Any]]:
         self.counts = yield from _scan(*self._scan_args)

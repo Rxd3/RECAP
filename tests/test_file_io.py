@@ -7,9 +7,11 @@ exports them: the last test pins that those names are the very objects of file_i
 
 from __future__ import annotations
 
+import ast
 import errno
 import json
 import os
+import tempfile
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -18,6 +20,7 @@ import pytest
 
 from punct_restore import file_io, prediction_io
 from punct_restore.data import labeling
+from punct_restore.errors import one_line_error
 from punct_restore.file_io import (
     iter_jsonl,
     read_json,
@@ -26,6 +29,7 @@ from punct_restore.file_io import (
     read_yaml,
     require_folder,
     require_object,
+    short_name,
     write_new_folder,
 )
 from punct_restore.models import hmm_experiment_protocol, hmm_workflow
@@ -145,6 +149,20 @@ def test_write_new_folder_leaves_nothing_when_the_final_rename_fails(
     assert list(tmp_path.iterdir()) == []
 
 
+def test_write_new_folder_names_out_not_its_temporary_folder_when_that_cannot_be_made(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The failed `mkdtemp` knows only a name like `.out.k3j9x2`; the user gave `out`."""
+    def deny(**_: object) -> str:
+        raise PermissionError(errno.EACCES, "Permission denied", str(tmp_path / ".out.k3j9x2"))
+
+    monkeypatch.setattr(tempfile, "mkdtemp", deny)
+    with pytest.raises(PermissionError) as problem:
+        write_new_folder(tmp_path / "out", {"a.txt": "x"})
+    assert problem.value.filename == str(tmp_path / "out")
+    assert one_line_error(problem.value) == "out: Permission denied"
+    assert list(tmp_path.iterdir()) == []
+
+
 # ---------------------------------------------------------------- read_json / read_json_object
 @pytest.mark.parametrize(("content", "message"), [
     (b"\xff\xfe", "doc.json: not valid UTF-8"),
@@ -248,6 +266,19 @@ def test_a_whole_number_is_an_int_but_no_bool_or_float(value: Any) -> None:
         require_object("f.json", {"n": value}, {"n": int})
 
 
+@pytest.mark.parametrize("value", [[], None, "text", 3], ids=["list", "null", "text", "number"])
+def test_require_object_calls_a_yaml_document_a_mapping(value: Any) -> None:
+    with pytest.raises(ValueError, match="^f.yaml: not a mapping$"):
+        require_object("f.yaml", value, {}, is_yaml=True)
+
+
+def test_require_object_calls_a_nested_yaml_value_a_mapping_or_a_list() -> None:
+    with pytest.raises(ValueError, match="^f.yaml: a.b is not a mapping$"):
+        require_object("f.yaml", {"a": {"b": []}}, {"a": {"b": {}}}, is_yaml=True)
+    with pytest.raises(ValueError, match="^f.yaml: a.xs is not a list$"):
+        require_object("f.yaml", {"a": {"xs": {}}}, {"a": {"xs": list}}, is_yaml=True)
+
+
 def test_read_object_names_the_file_without_its_folder(tmp_path: Path) -> None:
     folder = tmp_path / "deep"
     folder.mkdir()
@@ -335,6 +366,26 @@ def test_require_folder_gives_a_relative_path_its_own_name(tmp_path: Path, monke
     with pytest.raises(FileNotFoundError) as caught:
         require_folder(Path("missing"), "folder")
     assert str(caught.value) == "missing: folder not found"
+
+
+# ---------------------------------------------------------------- short_name
+def test_short_name_is_the_last_part_of_a_path(tmp_path: Path) -> None:
+    assert short_name(tmp_path / "deep" / "run-7") == "run-7"
+    assert short_name(str(tmp_path / "deep" / "notes.txt")) == "notes.txt"
+
+
+def test_short_name_gives_a_relative_path_its_own_name_and_a_path_without_one_the_text(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    assert short_name(Path(".")) == tmp_path.name  # `Path(".").name` is empty
+    assert short_name("a/../run") == "run"
+    assert short_name(Path(tmp_path.anchor)) == tmp_path.anchor  # a drive or root has no name at all
+
+
+def test_file_io_imports_yaml_at_the_top_of_the_module() -> None:
+    tree = ast.parse(Path(file_io.__file__).read_text(encoding="utf-8"))
+    assert any(isinstance(node, ast.Import) and any(alias.name == "yaml" for alias in node.names)
+               for node in tree.body)
 
 
 # ---------------------------------------------------------------- old names

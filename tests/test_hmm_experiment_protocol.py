@@ -47,7 +47,7 @@ def test_a_text_key_that_is_not_nonempty_text_is_refused(key: str, value: Any) -
 
 def test_modes_must_be_a_list_not_a_string_of_letters() -> None:
     """The string 'ABC' passes every other check, because iterating it gives the three letters."""
-    with pytest.raises(ValueError, match="^x.yaml: invalid experiment config: modes is not a JSON list$"):
+    with pytest.raises(ValueError, match="^x.yaml: invalid experiment config: modes is not a list$"):
         validate_config({**config(), "modes": "ABC"}, "x.yaml")
 
 
@@ -115,7 +115,7 @@ def test_a_config_that_lacks_a_key_names_it(path: str) -> None:
 def test_a_section_that_is_no_object_is_refused_by_name(path: str, value: Any) -> None:
     with pytest.raises(ValueError) as problem:
         validate_config(damaged(path, value), "x.yaml")
-    assert str(problem.value) == f"{PREFIX}{path} is not a JSON object"
+    assert str(problem.value) == f"{PREFIX}{path} is not a mapping"
 
 
 @pytest.mark.parametrize("path", LISTS)
@@ -123,7 +123,7 @@ def test_a_section_that_is_no_object_is_refused_by_name(path: str, value: Any) -
 def test_a_list_that_is_no_list_is_refused_by_name(path: str, value: Any) -> None:
     with pytest.raises(ValueError) as problem:
         validate_config(damaged(path, value), "x.yaml")
-    assert str(problem.value) == f"{PREFIX}{path} is not a JSON list"
+    assert str(problem.value) == f"{PREFIX}{path} is not a list"
 
 
 @pytest.mark.parametrize(
@@ -157,7 +157,7 @@ def test_a_runtime_count_that_is_not_a_whole_number_is_refused(path: str, value:
 def test_a_config_that_is_no_object_is_refused(content: Any) -> None:
     with pytest.raises(ValueError) as problem:
         validate_config(content, "x.yaml")
-    assert str(problem.value) == f"{PREFIX}not a JSON object"
+    assert str(problem.value) == f"{PREFIX}not a mapping"
 
 
 def test_a_config_object_with_no_key_is_refused_naming_the_first_key() -> None:

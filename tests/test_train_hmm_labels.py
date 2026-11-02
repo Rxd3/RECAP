@@ -108,7 +108,7 @@ def test_a_mode_that_is_no_mapping_is_named(tmp_path: Path) -> None:
     path.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
     with pytest.raises(ValueError) as problem:
         load_labels(path, "A")
-    assert str(problem.value) == "labels.yaml: modes.A is not a JSON object"
+    assert str(problem.value) == "labels.yaml: modes.A is not a mapping"
 
 
 def _main_load_labels(path: Path, mode: str) -> list[str]:

@@ -303,8 +303,22 @@ def test_masks_given_as_a_folder_says_so_whatever_the_platform_errno(sim, capsys
     code, stdout, err = run(sim, capsys, argv_for(root, tmp_path / "out", 0.10, "--masks", str(folder)))
     assert code == 1 and stdout == ""
     assert_one_error_line(err)
-    assert err == f"error: {tmp_path.name}/maskdir: is a folder, not a file\n"
+    assert err == "error: maskdir: is a folder, not a file\n"
     assert sorted(p.name for p in tmp_path.iterdir()) == ["data", "maskdir"]
+
+
+def test_a_masks_file_the_user_gave_is_named_without_its_folder_in_every_message(sim, capsys, root, tmp_path):
+    """The data root's own files are shown as `folder/file`; a path the user typed is theirs, shown by name only."""
+    moved = tmp_path / "userdir" / "m.jsonl"
+    moved.parent.mkdir()
+    moved.write_bytes(b"\xff\xfe\n")
+    code, stdout, err = run(sim, capsys, argv_for(root, tmp_path / "out", 0.10, "--masks", str(moved)))
+    assert (code, stdout) == (1, "")
+    assert err == "error: m.jsonl: not valid UTF-8\n"
+    moved.write_bytes(b'{"sample_id": "s00", "excluded_positions": [999]}\n')
+    code, stdout, err = run(sim, capsys, argv_for(root, tmp_path / "out", 0.10, "--masks", str(moved)))
+    assert (code, stdout) == (1, "")
+    assert err.startswith("error: m.jsonl line 1: ") and "userdir" not in err
 
 
 def test_display_name_is_the_parent_and_file_without_an_empty_parent(sim):
@@ -428,11 +442,11 @@ DAMAGE = [  # (what to break under the data root, file the error must name, what
     (lambda r: with_offset(r / DATA["A"], 3, [True, 5]), LINE_OF_ROW_2, BAD_SPAN),  # bool is not an int here
     (lambda r: with_offset(r / DATA["A"], 3, [9, 3]), LINE_OF_ROW_2, BAD_SPAN),  # start after end
     (lambda r: with_offset(r / DATA["A"], 3, [-1, 5]), LINE_OF_ROW_2, BAD_SPAN),  # negative start
-    (lambda r: (r / DATA["B"]).write_bytes(b"\xff\xfe\n"), "mode_B/validation.jsonl", "not UTF-8 text"),
+    (lambda r: (r / DATA["B"]).write_bytes(b"\xff\xfe\n"), "mode_B/validation.jsonl", "not valid UTF-8"),
     (lambda r: (r / IDS["B"]).unlink(), "validation_mode_B.ids", "No such file"),
     (lambda r: append(r / IDS["A"], b"nope\n"), "mode_A/validation.jsonl",
      "1 listed ID(s) are missing, first 'nope'"),
-    (lambda r: append(r / IDS["A"], b"s00\n"), "validation_mode_A.ids", "Duplicate ID 's00' found at line"),
+    (lambda r: append(r / IDS["A"], b"s00\n"), "validation_mode_A.ids", "duplicate ID 's00'"),
     (lambda r: (r / IDS["A"]).write_bytes(b"\n\n"), "validation_mode_A.ids", "ID list is empty"),
     (lambda r: rewrite(r / MASKS, lambda x: x.pop(2)), "case_joint/validation.jsonl",
      "1 listed ID(s) are missing, first 's00'"),

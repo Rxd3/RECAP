@@ -463,7 +463,8 @@ LIST_FIELDS = [
     *[(report, "verify", (*BLOCK, name), f"{Path(report).name}: {'.'.join(BLOCK)}.{name}.0 is not nonempty text")
       for report in REPORTS for name in ("labels", "macro_over")],
     *[(report, "verify", (*BLOCK, "confusion"), "confusion matrix/support mismatch") for report in REPORTS],
-    (f"{RUN}/runtime.json", "verify", ("modes", "A", "prediction_seconds"), "invalid runtime repetitions"),
+    (f"{RUN}/runtime.json", "verify", ("modes", "A", "prediction_seconds"),
+     "runtime.json: modes.A.prediction_seconds must hold"),
     *[(f"{RUN}/plan.json", command, path, f"plan.json: invalid experiment config: {'.'.join(path[1:])}.0 is not")
       for command in GATED for path in CONFIG_LISTS],
 ]
