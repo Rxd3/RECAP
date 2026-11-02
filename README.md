@@ -356,7 +356,7 @@ they were. Moved helpers also live in their new modules, for example `FILLERS` i
 | `src/punct_restore/features/crf_cues.py` | Per-position cue helpers of the CRF features: buckets, filler, question lookback, word clusters. |
 | `src/punct_restore/features/word_clusters.py` | Word clusters induced from `default_train` only: lowercased words with count ≥ 5, ±2 co-occurrence matrix, PPMI, TruncatedSVD (about 100 dimensions), L2-normalised rows, k-means (k ∈ {100, 300}, fixed seed); unknown words get `unk`. The JSON map records the train-ids sha256, k, the seed and the vocabulary size. |
 | `src/punct_restore/evaluation/` | Member 5's evaluator: `inputs` (input checks), `views` (scored positions and report blocks), `metrics` (token-level P/R/F1), `uncertainty` (bootstrap grouped by video), `comparison` (paired comparison), `error_analysis` (error examples), `baseline` (shortcut baseline), `manifest` (prediction-manifest check), `report` (JSON and Markdown reports). |
-| `src/punct_restore/prediction_io.py` | Shared command I/O: gold-free prediction JSONL and manifests, `read_ids`, the JSON-line parsers, `select_records` (the one ID-list record selector), and the error helpers re-exported from `errors.py`. |
+| `src/punct_restore/prediction_io.py` | Shared command I/O: gold-free prediction JSONL and manifests, `read_ids`, the JSON-line parsers, `select_records` (the one ID-list record selector), and the error helpers re-exported from `punct_restore.errors`. |
 | `src/punct_restore/pipeline.py` | Demo inference: load a trained HMM, hidden-event LM, CRF or gap classifier (`load_model`), clean raw text, predict labels, rebuild text. |
 
 Top-level files: `LICENSE` (MIT), `CONTRIBUTING.md` (daily Git checklist), `TEAM_TASKS.md`
