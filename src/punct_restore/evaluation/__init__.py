@@ -23,13 +23,15 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from .report import evaluate, to_markdown
     from .uncertainty import BootstrapSpec
 
-__all__ = ["BootstrapSpec", "EvaluationInputError", "check_manifest", "compare",
-           "comparison_markdown", "error_examples", "errors_markdown", "evaluate", "load_bundle",
-           "load_scored_gold", "load_vocab", "shortcut_predictions", "to_markdown"]
-
-__getattr__, __dir__ = lazy_exports(__name__, {
+_EXPORTS = {
     "BootstrapSpec": "uncertainty", "EvaluationInputError": "inputs", "check_manifest": "manifest",
     "compare": "comparison", "comparison_markdown": "comparison", "error_examples": "error_analysis",
     "errors_markdown": "error_analysis", "evaluate": "report", "load_bundle": "inputs",
     "load_scored_gold": "inputs", "load_vocab": "inputs", "shortcut_predictions": "baseline",
-    "to_markdown": "report"})
+    "to_markdown": "report"}
+__all__ = ["BootstrapSpec", "EvaluationInputError", "check_manifest", "compare",
+           "comparison_markdown", "error_examples", "errors_markdown", "evaluate", "load_bundle",
+           "load_scored_gold", "load_vocab", "shortcut_predictions", "to_markdown"]  # a literal, which linters read
+
+if not TYPE_CHECKING:  # the imports above are what type checkers see; this lookup would make every name valid to them
+    __getattr__, __dir__ = lazy_exports(__name__, _EXPORTS)

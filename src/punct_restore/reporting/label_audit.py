@@ -8,7 +8,8 @@ Wilson intervals treat marks (words) as independent; marks inside one utterance 
 somewhat narrow. Rows 51-100 were checked by hand; rows 1-50 are an AI agent's counts only. The file reports both
 halves and all 100 rows, each pooled and per stratum (the sample over-represents rare marks), and rows 1-50 again
 with the marks that our normalization removes by design (speaker names before a colon, leading turn dashes, a
-trailing hyphen) not counted as missed: all 8 marks missed in rows 1-50 are such removals, as their notes say.
+trailing hyphen) not counted as missed: all 8 marks missed in rows 1-50 are such removals, as their notes say (a
+row whose note does not say so is refused).
 """
 
 from __future__ import annotations
@@ -25,6 +26,10 @@ from typing import Any
 Z = 1.959964
 ROWS = 100
 HAND_FROM = 51  # rows 51-100 were checked by hand, rows 1-50 are the agent's counts
+SHEET_PATH = "gold_noise/label_audit_sheet.csv"  # under the scores root
+# how the notes of rows 1-50 name a removal that our normalization makes by design: a speaker name before a colon
+# ("speaker tag removed", "NAME: removed"), a leading turn dash ("speaker-turn dash omitted"), a trailing hyphen
+BY_DESIGN_NOTE = re.compile(r"\bremoved\b|speaker-turn dash|trailing hyphen", re.IGNORECASE)
 STRATA = ("rare", "random")
 COLUMNS = ("row", "stratum", "our_marks", "wrong_marks", "missed_marks", "casing_errors", "notes", "checked_by")
 # the helper sheets that the committed file names as its inputs (the sheet in the repository holds all 100 rows)
@@ -159,11 +164,28 @@ def _section(sheet: str, rows: Sequence[AuditRow]) -> dict[str, Any]:
                       "any": sum(bool(n) for n in notes)}}
 
 
-def label_audit_text(sheet: Path) -> str:
-    """The text of label_audit.json (LF line ends, two-space indent, one trailing newline) from the audit sheet."""
+def _without_by_design_removals(agent: Sequence[AuditRow], name: str) -> list[AuditRow]:
+    """``agent`` with no mark counted as missed; a missed mark whose note names no by-design removal is refused."""
+    for row in agent:
+        if row.missed_marks and not BY_DESIGN_NOTE.search(row.notes):
+            raise ValueError(f"{name}: row {row.number}: missed marks without a by-design note")
+    return [replace(row, missed_marks=0) for row in agent]
+
+
+def label_audit_text(scores_root: Path) -> str:
+    """The text of label_audit.json (LF line ends, two-space indent, one trailing newline).
+
+    Reads ``gold_noise/label_audit_sheet.csv`` under ``scores_root``.
+
+    Raises:
+        OSError: If the sheet cannot be read.
+        ValueError: As ``read_sheet``, or ``<sheet>: row N: missed marks without a by-design note`` for a row in
+            1-50 with missed marks whose note does not name a removal that our normalization makes by design.
+    """
+    sheet = scores_root / SHEET_PATH
     rows = read_sheet(sheet)
     agent, hand = rows[:HAND_FROM - 1], rows[HAND_FROM - 1:]
-    by_design = [replace(row, missed_marks=0) for row in agent]  # every missed mark in rows 1-50 is a removal
+    by_design = _without_by_design_removals(agent, sheet.name)
     document = {"what": WHAT, "method": METHOD, "definitions": DEFINITIONS,
                 "hand_checked_rows_51_100": _section(SHEETS["hand"], hand),
                 "agent_only_rows_1_50": _section(SHEETS["agent"], agent),

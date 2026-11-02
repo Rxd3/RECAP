@@ -171,8 +171,9 @@ def test_a_winner_that_is_not_the_best_validation_candidate_is_refused(
     run = _study(tmp_path, monkeypatch)
     worse = _rewrite_winner_to_the_worse_candidate(run)
     assert worse["candidate"] == "s0.1-c1"
-    with pytest.raises(ValueError, match="winner is inconsistent with the validation search"):
+    with pytest.raises(ValueError) as refused:
         verified_frozen_selection(run, tmp_path / "evaluator")
+    assert str(refused.value) == "mode_A/selection.json: winner is inconsistent with the validation search"
 
 
 def _rewrite_winner_to_the_worse_candidate(run: Path) -> dict[str, Any]:

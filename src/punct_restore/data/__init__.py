@@ -19,10 +19,12 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from .release import ReleaseSources, build_release, build_release_from, load_records, read_ids
     from .validation import validate_file, validate_record
 
-__all__ = ["ReleaseSources", "build_release", "build_release_from", "join_labels", "load_label_sets",
-           "load_records", "read_ids", "validate_file", "validate_record"]
-
-__getattr__, __dir__ = lazy_exports(__name__, {
+_EXPORTS = {
     "ReleaseSources": "release", "build_release": "release", "build_release_from": "release",
     "join_labels": "labeling", "load_label_sets": "labeling", "load_records": "release", "read_ids": "release",
-    "validate_file": "validation", "validate_record": "validation"})
+    "validate_file": "validation", "validate_record": "validation"}
+__all__ = ["ReleaseSources", "build_release", "build_release_from", "join_labels", "load_label_sets",
+           "load_records", "read_ids", "validate_file", "validate_record"]  # a literal, which linters read
+
+if not TYPE_CHECKING:  # the imports above are what type checkers see; this lookup would make every name valid to them
+    __getattr__, __dir__ = lazy_exports(__name__, _EXPORTS)

@@ -92,7 +92,7 @@ def _check_mode(
     for candidate in mode_selection["candidates"]:
         _check_candidate(run, candidate)
     if choose(mode_selection["candidates"]) != winner or mode_selection["selected"] != winner:
-        raise ValueError("winner is inconsistent with the validation search")
+        raise ValueError(f"mode_{mode}/selection.json: winner is inconsistent with the validation search")
     if sha256_file(run / winner["model"]) != winner["model_sha256"]:
         raise ValueError("selected artifact checksum mismatch")
 

@@ -5,6 +5,7 @@ Every name the two packages exported before stays importable (PEP 562 module __g
 
 from __future__ import annotations
 
+import ast
 import importlib
 import os
 import subprocess
@@ -61,10 +62,40 @@ def test_from_import_and_hasattr_and_star_import_find_every_exported_name(packag
 
 
 @pytest.mark.parametrize("package", PACKAGES)
-def test_all_and_dir_list_every_exported_name(package: str) -> None:
+def test_all_lists_exactly_the_exported_names_once_and_dir_lists_them(package: str) -> None:
     module = importlib.import_module(package)
-    assert set(PACKAGES[package]) <= set(module.__all__)
+    assert sorted(module.__all__) == sorted(PACKAGES[package])
     assert set(PACKAGES[package]) <= set(dir(module))
+
+
+# ---------------------------------------------------------------- the type checkers see the names
+def _init_tree(package: str) -> ast.Module:
+    path = REPO_ROOT / "src" / Path(*package.split(".")) / "__init__.py"
+    return ast.parse(path.read_text(encoding="utf-8"))
+
+
+def _guarded(tree: ast.Module, test: str) -> list[ast.If]:
+    return [node for node in tree.body if isinstance(node, ast.If) and ast.unparse(node.test) == test]
+
+
+@pytest.mark.parametrize("package", PACKAGES)
+def test_all_the_lazy_lookup_and_the_names_the_type_checkers_import_are_one_list(package: str) -> None:
+    """Three spellings of the exported names (``__all__``, the lookup table, the type-checker imports) must agree."""
+    module = importlib.import_module(package)
+    (block,) = _guarded(_init_tree(package), "TYPE_CHECKING")
+    imported = [alias.asname or alias.name for node in block.body if isinstance(node, ast.ImportFrom)
+                for alias in node.names]
+    assert sorted(imported) == sorted(module.__all__) == sorted(module._EXPORTS)
+
+
+@pytest.mark.parametrize("package", PACKAGES)
+def test_the_lazy_lookup_is_hidden_from_type_checkers_so_a_misspelled_name_is_an_error(package: str) -> None:
+    """With a module __getattr__ in view, mypy takes every name for valid; the lookup is for the runtime only."""
+    tree = _init_tree(package)
+    (hidden,) = _guarded(tree, "not TYPE_CHECKING")
+    assert [ast.unparse(node).split(" = ")[0] for node in hidden.body] == ["__getattr__, __dir__"]
+    assigned = [ast.unparse(target) for node in tree.body if isinstance(node, ast.Assign) for target in node.targets]
+    assert "__getattr__, __dir__" not in assigned  # not also assigned outside the guard
 
 
 @pytest.mark.parametrize("package", PACKAGES)
@@ -121,6 +152,23 @@ def test_lazy_exports_gives_the_getattr_and_dir_of_a_package(monkeypatch: pytest
     with pytest.raises(AttributeError, match=unknown):
         getattr(module, unknown)
     for name in ("lazy_pkg_for_test", "lazy_pkg_for_test.inner"):
+        sys.modules.pop(name, None)
+
+
+def test_a_submodule_whose_own_import_fails_raises_that_error_and_not_an_attribute_error(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    package = tmp_path / "lazy_pkg_broken_for_test"
+    package.mkdir()
+    (package / "__init__.py").write_text(
+        "from punct_restore.lazy_exports import lazy_exports\n"
+        "__getattr__, __dir__ = lazy_exports(__name__, {})\n", encoding="utf-8")
+    (package / "broken.py").write_text("import no_such_dependency_for_test\n", encoding="utf-8")
+    monkeypatch.syspath_prepend(str(tmp_path))
+    module = importlib.import_module("lazy_pkg_broken_for_test")
+    with pytest.raises(ModuleNotFoundError, match="no_such_dependency_for_test") as raised:
+        _ = module.broken
+    assert not isinstance(raised.value, AttributeError)
+    for name in ("lazy_pkg_broken_for_test", "lazy_pkg_broken_for_test.broken"):
         sys.modules.pop(name, None)
 
 

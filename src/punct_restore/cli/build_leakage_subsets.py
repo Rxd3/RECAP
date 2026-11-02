@@ -24,7 +24,7 @@ from typing import Any
 from punct_restore.errors import one_line_error
 from punct_restore.file_io import iter_jsonl, require_release, write_new_folder
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import parse_sample_record, read_ids
+from punct_restore.prediction_io import parse_sample_record, read_ids, select_records
 
 QUALITY_REASON = "low_comma_or_tts_source"
 BUCKETS = ("excluded_train_video", "excluded_other_leak", "excluded_quality")
@@ -96,22 +96,14 @@ def partition(
 
 def train_videos(train_path: Path, ids_path: Path) -> set[str]:
     """Group IDs of the default-train records (streams ``train.jsonl``, holds only IDs)."""
-    ids = read_ids(ids_path)
-    wanted = set(ids)
-    found: set[str] = set()
-    videos: set[str] = set()
-    for sample_id, record in _records(train_path):
-        if sample_id not in wanted:
-            continue
+    def group_of(record: dict[str, Any], where: str) -> str:
         group = _group(record)
         if group is None:
-            raise ValueError(f"{train_path.name}: ID {sample_id} has no string metadata.group_id")
-        found.add(sample_id)
-        videos.add(group)
-    for sample_id in ids:
-        if sample_id not in found:
-            raise ValueError(f"{train_path.name}: ID {sample_id} of {ids_path.name} is missing")
-    return videos
+            raise ValueError(f"{train_path.name}: ID {record['sample_id']} has no string metadata.group_id")
+        return group
+
+    rows = iter_jsonl(train_path, parse_sample_record)
+    return set(select_records(rows, train_path.name, read_ids(ids_path), group_of))
 
 
 def bucket_excluded(

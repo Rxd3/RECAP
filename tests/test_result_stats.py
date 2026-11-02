@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import csv
+import inspect
+import io
 import json
 import shutil
 from pathlib import Path
@@ -12,7 +15,7 @@ from reporting_fixtures import assert_one_error_line, run_main
 
 from punct_restore.paths import REPO_ROOT
 from punct_restore.reporting import label_audit, result_stats
-from punct_restore.reporting.holm import holm_adjust
+from punct_restore.reporting.holm import MODES, TEST_COMPARISONS, holm_adjust, two_sided_p
 
 SCORES = REPO_ROOT / "results" / "scores"
 # subcommand -> the committed file it regenerates (holm.json is new: it backs the "Multiple comparisons" section)
@@ -134,6 +137,24 @@ def test_a_share_of_resamples_is_turned_into_a_two_sided_p(tmp_path: Path, capsy
     assert (entry["share_b_better"], entry["p"], entry["survives"]) == (0.3, 0.6, False)
 
 
+@pytest.mark.parametrize(("share", "p"), [(0.3, 0.6), (0.7, 0.6), (0.5, 1.0), (0.0, 0.0), (1.0, 0.0), (0.025, 0.05)])
+def test_the_two_sided_p_is_twice_the_smaller_tail(share: float, p: float) -> None:
+    assert two_sided_p(share) == p
+
+
+def test_a_comparison_whose_holm_p_is_exactly_alpha_survives(tmp_path: Path, capsys: Capsys) -> None:
+    """The last of 21 sorted p-values keeps its own p, so p_holm is 0.05 exactly; `survives` is `<=`, not `<`."""
+    root = holm_root(tmp_path)
+    rels = [rel.format(mode=mode) for _, rel in TEST_COMPARISONS for mode in MODES]
+    for rel in rels:
+        set_share(root, rel, 0.0)  # p = 0: ranked first, p_holm = 0
+    set_share(root, rels[0], 0.025)
+    out = tmp_path / "holm.json"
+    assert run(capsys, "holm", "--scores-root", root, "--out", out) == (0, "")
+    entry = next(e for e in holm_entries(out.read_text(encoding="utf-8")) if e["file"] == rels[0])
+    assert (entry["p"], entry["p_holm"], entry["survives"]) == (0.05, 0.05, True)
+
+
 # ---- clusters ------------------------------------------------------------------------------------------------
 
 
@@ -168,6 +189,29 @@ def test_the_compare_file_hash_does_not_depend_on_the_line_ends(tmp_path: Path, 
     out = tmp_path / "summary.json"
     assert run(capsys, "clusters", "--scores-root", root, "--out", out) == (0, "")
     assert out.read_bytes() == committed("clusters/clusters_summary.json")
+
+
+def test_compare_files_that_were_bootstrapped_with_different_settings_are_refused(
+    tmp_path: Path, capsys: Capsys
+) -> None:
+    root = copy_inputs(tmp_path / "scores", CLUSTER_FILES)
+    path = root / "clusters" / "compare_B_k100.json"
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    doc["blocks"][doc["primary_block"]]["difference_ci"]["seed"] += 1
+    path.write_text(json.dumps(doc), encoding="utf-8")
+    code, err = run(capsys, "clusters", "--scores-root", root, "--out", tmp_path / "c.json")
+    assert code == 1 and not (tmp_path / "c.json").exists()
+    assert err == "error: compare_B_k100.json: bootstrap settings differ from compare_A_k100.json\n"
+
+
+# ---- the three reports take the same input -------------------------------------------------------------------
+
+
+def test_the_three_text_functions_take_the_scores_root_and_are_the_ones_the_command_calls() -> None:
+    texts = {name: report[0] for name, report in result_stats.REPORTS.items()}
+    assert [list(inspect.signature(function).parameters) for function in texts.values()] == [["scores_root"]] * 3
+    assert [function.__name__ for function in texts.values()] == ["holm_text", "clusters_summary_text",
+                                                                  "label_audit_text"]
 
 
 # ---- label audit ---------------------------------------------------------------------------------------------
@@ -246,6 +290,10 @@ def test_a_missing_audit_sheet_is_one_line_naming_it(tmp_path: Path, capsys: Cap
     (lambda text: text.replace(",rare,", ",odd,", 1), "row 1: stratum is not rare or random"),
     (lambda text: text.split("\n", 2)[0] + "\n" + text.split("\n", 2)[2], "has 99 rows, not 100"),
     (lambda text: text.replace("our_marks,", "marks,", 1), "missing column our_marks"),
+    (lambda text: text.replace(",5,0,0,0,,", ",5,-1,0,0,,", 1), "row 1: wrong_marks is negative"),
+    (lambda text: text + "x" * 200_000, "not a valid CSV file"),  # a field over the csv module's size limit
+    (lambda text: text.replace("\n2,sponspeech", "\n102,sponspeech", 1), "the rows are not numbered 1 to 100"),
+    (lambda text: sheet_with(text, 52, "checked_by", ""), "rows 51-100 must all have checked_by"),
 ])
 def test_a_damaged_audit_sheet_is_one_line_naming_it(
     edit: Any, reason: str, tmp_path: Path, capsys: Capsys
@@ -258,6 +306,58 @@ def test_a_damaged_audit_sheet_is_one_line_naming_it(
     code, err = run(capsys, "label-audit", "--scores-root", root, "--out", tmp_path / "a.json")
     assert code == 1 and not (tmp_path / "a.json").exists()
     assert_one_error_line(err, "error: label_audit_sheet.csv: ", reason)
+
+
+def sheet_with(text: str, row: int, column: str, value: str) -> str:
+    """The sheet text with ``column`` of row number ``row`` set to ``value``."""
+    rows = list(csv.reader(io.StringIO(text, newline="")))
+    rows[row][rows[0].index(column)] = value
+    out = io.StringIO()
+    csv.writer(out, lineterminator="\n").writerows(rows)
+    return out.getvalue()
+
+
+def audit_from(text: str, tmp_path: Path, capsys: Capsys) -> tuple[int, str]:
+    """Run `label-audit` on a sheet with this text; returns (exit code, stderr)."""
+    root = tmp_path / "scores"
+    sheet = root / SHEET
+    sheet.parent.mkdir(parents=True)
+    sheet.write_text(text, encoding="utf-8", newline="\n")
+    return run(capsys, "label-audit", "--scores-root", root, "--out", tmp_path / "a.json")
+
+
+def committed_sheet() -> str:
+    return (SCORES / SHEET).read_text(encoding="utf-8").replace("\r\n", "\n")
+
+
+@pytest.mark.parametrize("note", ["", "CHECK: comma missing after 'however'", "missed colon"])
+def test_a_missed_mark_in_rows_1_to_50_whose_note_is_no_by_design_removal_is_refused(
+    note: str, tmp_path: Path, capsys: Capsys
+) -> None:
+    text = sheet_with(sheet_with(committed_sheet(), 7, "missed_marks", "1"), 7, "notes", note)
+    code, err = audit_from(text, tmp_path, capsys)
+    assert code == 1 and not (tmp_path / "a.json").exists()
+    assert err == "error: label_audit_sheet.csv: row 7: missed marks without a by-design note\n"
+
+
+@pytest.mark.parametrize("note", [
+    "CHECK: GARY ILLYES: speaker tag removed; its colon counted as missed.",
+    "CHECK: leading speaker-turn dash omitted; counted as 1 missed mark.",
+    "CHECK: RAN- vRAN trailing hyphen treated as a dash (1 missed).",
+])
+def test_a_missed_mark_whose_note_says_the_normalization_removed_it_by_design_is_not_counted(
+    note: str, tmp_path: Path, capsys: Capsys
+) -> None:
+    text = sheet_with(sheet_with(committed_sheet(), 7, "missed_marks", "1"), 7, "notes", note)
+    assert audit_from(text, tmp_path, capsys) == (0, "")
+    doc = json.loads((tmp_path / "a.json").read_text(encoding="utf-8"))
+    assert doc["agent_only_rows_1_50"]["pooled"]["missed_marks"] == 9
+    assert doc["agent_only_rows_1_50_by_design_removals_not_missed"]["pooled"]["missed_marks"] == 0
+
+
+def test_a_missed_mark_in_the_hand_checked_rows_needs_no_by_design_note(tmp_path: Path, capsys: Capsys) -> None:
+    text = sheet_with(sheet_with(committed_sheet(), 60, "missed_marks", "1"), 60, "notes", "")
+    assert audit_from(text, tmp_path, capsys) == (0, "")
 
 
 def test_an_audit_sheet_that_is_not_utf8_is_one_line(tmp_path: Path, capsys: Capsys) -> None:

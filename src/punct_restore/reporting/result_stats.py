@@ -26,16 +26,11 @@ from punct_restore.reporting.clusters_summary import clusters_summary_text
 from punct_restore.reporting.holm import holm_text
 from punct_restore.reporting.label_audit import label_audit_text
 
-
-def _label_audit(scores_root: Path) -> str:
-    return label_audit_text(scores_root / "gold_noise" / "label_audit_sheet.csv")
-
-
 # subcommand -> (the function that returns the file's text, what the file holds)
 REPORTS: Mapping[str, tuple[Callable[[Path], str], str]] = {
     "holm": (holm_text, "Holm-adjusted p-values of the 21 test comparisons and the 18 ablations"),
     "clusters": (clusters_summary_text, "the K choice of the word-cluster comparison"),
-    "label-audit": (_label_audit, "label-audit precision, recall and casing accuracy with 95% Wilson intervals"),
+    "label-audit": (label_audit_text, "label-audit precision, recall and casing accuracy with 95% Wilson intervals"),
 }
 
 

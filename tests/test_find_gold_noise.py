@@ -217,9 +217,9 @@ def test_missing_input_names_the_file_and_leaves_nothing(mod: ModuleType, root: 
 
 def test_listed_id_that_is_not_in_the_file_is_refused(mod: ModuleType, root: Path, tmp_path: Path,
                                                       capsys: pytest.CaptureFixture[str]) -> None:
-    write_ids(root / "splits" / RELEASE / "primary_eval" / "test_mode_B.ids", ["tst-0", "nope-9"])
+    write_ids(root / "splits" / RELEASE / "primary_eval" / "test_mode_B.ids", ["tst-0", "nope-9", "nope-8"])
     err = refused(mod, capsys, argv_for(root, tmp_path / "out"), tmp_path)
-    assert "test_mode_B.ids" in err and "nope-9" in err
+    assert err == "error: test.jsonl: 2 listed ID(s) are missing, first 'nope-9'\n"
 
 
 def test_invalid_json_names_file_and_line(mod: ModuleType, root: Path, tmp_path: Path,
@@ -372,7 +372,7 @@ def test_a_missing_id_is_found_without_reading_the_file_a_third_time(
     calls = []
     real = mod._records
 
-    def counting(path: Path) -> Iterator[tuple[str, dict[str, Any]]]:
+    def counting(path: Path) -> Iterator[tuple[int, dict[str, Any]]]:
         calls.append(path.name)
         return real(path)
 

@@ -37,7 +37,7 @@ COMPLETE = "Final predictions, shared scores and runtime measurements complete."
 FROZEN_ON_VALIDATION = "all mode selections must freeze on validation before test access"
 EVIDENCE_DIFFERS = "candidate model/report differs from frozen validation evidence"
 PLAN_MISMATCH = "selection does not match its frozen plan"
-INCONSISTENT_WINNER = "winner is inconsistent with the validation search"
+INCONSISTENT_WINNER = "mode_{mode}/selection.json: winner is inconsistent with the validation search"
 
 
 # ---- fixtures ----
