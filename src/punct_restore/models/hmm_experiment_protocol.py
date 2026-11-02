@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from punct_restore.file_io import require_object
@@ -97,10 +98,12 @@ def validate_config(config: Any, source: str = "config") -> dict[str, Any]:
     `source` names the file the config came from. The shape comes first: a config that is not an object, or lacks
     a key a later step indexes, or holds a value of another kind (a mode that is no text, a search value that is
     no number) is a ValueError of one line, `<source>: invalid experiment config: <what is wrong>`, that names
-    the key. Only then are the protocol rules checked; a rule that fails is a ValueError of the same form.
+    the key; it calls a value "a mapping" or "a list" when `source` is a YAML file, "a JSON object" or "a JSON list"
+    otherwise. Only then are the protocol rules checked; a rule that fails is a ValueError of the same form.
     """
     where = f"{source}: invalid experiment config"
-    require_object(where, config, _CONFIG_SCHEMA)
+    is_yaml = Path(source).suffix.lower() in (".yaml", ".yml")
+    require_object(where, config, _CONFIG_SCHEMA, fmt="yaml" if is_yaml else "json")
     try:
         _check_rules(config)
     except ValueError as exc:

@@ -100,7 +100,7 @@ def test_a_repeated_id_in_an_id_list_is_one_friendly_line(tmp_path, capsys):
     code = run_ablations.main(_argv(root, tmp_path / "out", "--sample", "3"))
     err = capsys.readouterr().err
     assert code == 1
-    assert len(err.splitlines()) == 1 and err.startswith("error: Duplicate ID ") and "in mode_A.ids" in err
+    assert len(err.splitlines()) == 1 and err.startswith("error: mode_A.ids line ") and ": duplicate ID " in err
     assert str(tmp_path) not in err
     assert not (tmp_path / "out").exists()
 

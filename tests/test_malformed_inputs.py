@@ -380,7 +380,7 @@ def test_a_file_that_is_not_a_model_is_named_and_its_text_is_not_echoed(
     folder.mkdir()
     run = build(Env(folder, NOT_A_MODEL, crf))
     assert run.main(run.argv) == 1
-    assert _error_line(capsys) == "error: notamodel.joblib: not a readable CRF artifact\n"
+    assert _error_line(capsys) == "error: notamodel.joblib: not a readable artifact\n"
 
 
 def test_prepare_data_build_without_the_manifest_is_one_error_line(

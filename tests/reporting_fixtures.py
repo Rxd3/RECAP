@@ -58,7 +58,7 @@ def block(level: float, labels: list[str]) -> dict[str, Any]:
     size = len(labels)
     return {
         "macro_f1": level,
-        "macro_f1_ci": {"low": round(level - 0.1, 6), "high": round(level + 0.1, 6)},
+        "macro_f1_ci": {"low": max(0.0, round(level - 0.1, 6)), "high": min(1.0, round(level + 0.1, 6))},  # a score
         "micro": {"precision": round(level + 0.01, 6), "recall": round(level + 0.02, 6),
                   "f1": round(level + 0.03, 6)},
         "accuracy": 0.9,

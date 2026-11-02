@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import hashlib
+import os
+import sys
 from pathlib import Path
 
 import pytest
 
+from punct_restore.cli import prepare_data
 from punct_restore.data import extraction, preprocessing
 
 FOLDER = "secretfolder"
@@ -58,3 +61,116 @@ def test_the_message_names_the_manifest_that_was_given_not_a_fixed_name(tmp_path
     with pytest.raises(ValueError) as problem:
         preprocessing.verify_raw_manifest(manifest)
     assert str(problem.value) == "OTHER.sha256 line 1: expected '<sha256>  <path>'"
+
+
+# --- a listed file that is missing, and a listed path that leaves the raw root --------------------------------------
+
+
+def test_a_listed_file_that_is_missing_names_the_path_and_says_what_to_run(tmp_path: Path) -> None:
+    gone = f"{hashlib.sha256(b'x').hexdigest()}  sponspeech_text/sub/gone.txt\n"
+    _, manifest = _raw_root(tmp_path, GOOD + gone)
+    with pytest.raises(ValueError) as problem:
+        preprocessing.verify_raw_manifest(manifest)
+    assert str(problem.value) == (
+        "sponspeech_text/sub/gone.txt: listed in MANIFEST.sha256 but missing; run recap prepare-data extract again")
+    assert FOLDER not in str(problem.value)
+
+
+def test_the_missing_file_message_names_the_manifest_that_was_given(tmp_path: Path) -> None:
+    _, manifest = _raw_root(tmp_path, f"{hashlib.sha256(b'x').hexdigest()}  gone.txt\n", name="OTHER.sha256")
+    with pytest.raises(ValueError, match=r"^gone\.txt: listed in OTHER\.sha256 but missing"):
+        preprocessing.verify_raw_manifest(manifest)
+
+
+def test_a_listed_file_that_differs_is_still_returned_not_raised(tmp_path: Path) -> None:
+    _, manifest = _raw_root(tmp_path, f"{hashlib.sha256(b'other').hexdigest()}  sponspeech_text/a.txt\n")
+    assert preprocessing.verify_raw_manifest(manifest) == ["sponspeech_text/a.txt"]
+
+
+def _outside_file(tmp_path: Path) -> tuple[Path, str]:
+    """A file next to the raw root, and its SHA-256: a manifest that lists it would verify clean without the check."""
+    outside = tmp_path / "outside.txt"
+    outside.write_text("hello", encoding="utf-8")
+    return outside, hashlib.sha256(b"hello").hexdigest()
+
+
+def test_a_listed_path_that_climbs_out_of_the_raw_root_is_refused_although_its_hash_matches(tmp_path: Path) -> None:
+    _, digest = _outside_file(tmp_path)
+    _, manifest = _raw_root(tmp_path, f"{digest}  ../outside.txt\n")
+    with pytest.raises(ValueError) as problem:
+        preprocessing.verify_raw_manifest(manifest)
+    assert str(problem.value) == "MANIFEST.sha256 line 1 (outside.txt): listed but outside the raw root"
+
+
+def test_a_listed_path_that_climbs_out_after_going_in_is_refused(tmp_path: Path) -> None:
+    _, digest = _outside_file(tmp_path)
+    _, manifest = _raw_root(tmp_path, f"{digest}  sponspeech_text/../../outside.txt\n")
+    with pytest.raises(ValueError, match="outside the raw root"):
+        preprocessing.verify_raw_manifest(manifest)
+
+
+def test_an_absolute_listed_path_is_refused_even_when_the_file_is_there(tmp_path: Path) -> None:
+    outside, digest = _outside_file(tmp_path)
+    _, manifest = _raw_root(tmp_path, f"{GOOD}{digest}  {outside}\n")
+    with pytest.raises(ValueError) as problem:
+        preprocessing.verify_raw_manifest(manifest)
+    assert str(problem.value) == "MANIFEST.sha256 line 2 (outside.txt): listed but outside the raw root"
+    assert str(tmp_path) not in str(problem.value)  # the line was an absolute path; only its last part is shown
+
+
+def test_a_listed_path_that_stays_inside_by_a_detour_is_still_checked(tmp_path: Path) -> None:
+    root, _ = _raw_root(tmp_path, GOOD)
+    detour = f"{hashlib.sha256(b'hello').hexdigest()}  sponspeech_text/../sponspeech_text/a.txt\n"
+    (root / "MANIFEST.sha256").write_text(detour, encoding="utf-8", newline="\n")
+    assert preprocessing.verify_raw_manifest(root / "MANIFEST.sha256") == []
+
+
+def test_prepare_data_build_reports_a_partly_extracted_raw_root_in_one_line(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root, _ = _raw_root(tmp_path, GOOD + f"{hashlib.sha256(b'x').hexdigest()}  sponspeech_text/gone.txt\n")
+    (root / "video_metadata_oembed.jsonl").write_text("", encoding="utf-8")
+    argv = ["build", "--raw-root", str(root), "--release-id", "rel", "--processed-dir", str(tmp_path / "p"),
+            "--splits-dir", str(tmp_path / "s")]
+    assert prepare_data.main(argv) == 1
+    assert capsys.readouterr().err == (
+        "error: sponspeech_text/gone.txt: listed in MANIFEST.sha256 but missing; "
+        "run recap prepare-data extract again\n")
+
+
+def _link_folder(link: Path, target: Path) -> None:
+    """A folder link: a symlink, or on Windows without that privilege a junction (which needs none)."""
+    try:
+        os.symlink(target, link, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        if os.name != "nt":
+            pytest.skip("symlinks are not available here")
+        import _winapi
+        _winapi.CreateJunction(str(target), str(link))
+
+
+def test_a_linked_text_folder_inside_the_raw_root_still_verifies_as_on_main(tmp_path: Path) -> None:
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    (elsewhere / "a.txt").write_text("hello", encoding="utf-8")
+    root = tmp_path / "raw"
+    root.mkdir()
+    _link_folder(root / "sponspeech_text", elsewhere)
+    manifest = root / "MANIFEST.sha256"
+    manifest.write_text(f"{hashlib.sha256(b'hello').hexdigest()}  sponspeech_text/a.txt\n", encoding="utf-8")
+    assert preprocessing.verify_raw_manifest(manifest) == []
+
+
+@pytest.mark.parametrize("listed", [
+    "C:outside.txt", r"\\server\share\outside.txt", r"\outside.txt", f"../{FOLDER}2/outside.txt",
+    pytest.param(r"sponspeech_text\..\..\outside.txt", marks=pytest.mark.skipif(
+        sys.platform != "win32", reason="on POSIX a backslash is part of the file name, so this path stays inside")),
+])
+def test_a_listed_path_whose_text_leaves_the_raw_root_is_refused(tmp_path: Path, listed: str) -> None:
+    _, digest = _outside_file(tmp_path)
+    sibling = tmp_path / f"{FOLDER}2"  # shares the raw root's name as a prefix: a startswith check would let it in
+    sibling.mkdir()
+    (sibling / "outside.txt").write_text("hello", encoding="utf-8")
+    _, manifest = _raw_root(tmp_path, f"{digest}  {listed}\n")
+    with pytest.raises(ValueError) as problem:
+        preprocessing.verify_raw_manifest(manifest)
+    assert str(problem.value) == "MANIFEST.sha256 line 1 (outside.txt): listed but outside the raw root"

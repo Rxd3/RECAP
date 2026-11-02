@@ -15,10 +15,14 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any, cast
 
-from ..file_io import read_yaml, require_object
-from ..hashing import sha256_file
+from ..file_io import file_identity, read_yaml, require_object
 from ..paths import REPO_ROOT as ROOT
 from .metrics import join_joint
+
+# isort: split
+# old import paths kept: the file identity moved to file_io (restructure spec section 2)
+from ..file_io import file_identity_with as file_identity_with
+from ..hashing import sha256_file as sha256_file
 
 LABEL_SETS_PATH = ROOT / "configs" / "label_sets.yaml"
 MODES = ("A", "B", "C")
@@ -98,7 +102,7 @@ def load_vocab(path: str | Path = LABEL_SETS_PATH) -> Vocab:
     """
     name = Path(path).name
     try:
-        config = require_object(name, read_yaml(path), _VOCAB_SCHEMA)
+        config = require_object(name, read_yaml(path), _VOCAB_SCHEMA, fmt="yaml")
     except ValueError as exc:
         raise EvaluationInputError(str(exc)) from exc
     standard = tuple(config["punctuation"]["standard"])
@@ -113,44 +117,31 @@ def load_vocab(path: str | Path = LABEL_SETS_PATH) -> Vocab:
     return Vocab(A=standard, B=extended, C=joint, casing=casing)
 
 
-def file_identity_with(path: str | Path, root: Path, outside_parts: int) -> dict[str, str]:
-    """POSIX path relative to the repository ``root``, and SHA-256; no absolute paths.
-
-    A file outside ``root`` shows its last ``outside_parts`` path parts (2: folder and file name; 1: file name).
-    """
-    resolved = Path(path).resolve()
-    try:
-        shown = resolved.relative_to(root).as_posix()
-    except ValueError:
-        shown = "/".join(resolved.parts[-outside_parts:])
-    return {"path": shown, "sha256": sha256_file(resolved)}
-
-
-def file_identity(path: str | Path) -> dict[str, str]:
-    """Repo-relative POSIX path (folder/name outside the repo) and SHA-256; no absolute paths."""
-    return file_identity_with(path, ROOT, 2)
-
-
 def _text_lines(path: Path) -> Iterator[tuple[int, str]]:
-    """(line number, text) of a UTF-8 file; a leading BOM is dropped, bad bytes name the line."""
+    """(line number, text) of a UTF-8 file; a leading BOM is dropped, bytes that are not UTF-8 name the file."""
     with path.open("rb") as handle:
         for number, raw in enumerate(handle, 1):
             try:
                 text = raw.decode("utf-8")
             except UnicodeDecodeError as exc:
-                raise EvaluationInputError(f"{path.name} line {number}: not UTF-8 text") from exc
+                raise EvaluationInputError(f"{path.name}: not valid UTF-8") from exc
             yield number, text.removeprefix(BOM) if number == 1 else text
 
 
 def _read_jsonl(path: Path) -> Iterator[tuple[int, dict[str, Any]]]:
-    """(line number, object) for every non-blank line; a file without records is an error."""
+    """(line number, object) for every non-blank line; a file without records is an error.
+
+    Not `file_io.iter_jsonl`: the evaluator words its JSON errors as EvaluationInputError (a ValueError that the
+    command prints as it is; test_evaluation_input_hardening pins them) and shares `_text_lines` with the ID reader.
+    Bytes that are not UTF-8 read ``<file name>: not valid UTF-8``, as everywhere else.
+    """
     found = False
     for number, line in _text_lines(path):
         if not line.strip():
             continue
         try:
             record = json.loads(line)
-        except RecursionError as exc:  # nested too deeply (prediction_io imports this module: no parse_json_object)
+        except RecursionError as exc:  # nested too deeply
             raise EvaluationInputError(
                 f"{path.name} line {number}: invalid JSON (nested too deeply)") from exc
         except ValueError as exc:  # JSONDecodeError, or an integer beyond Python's digit limit

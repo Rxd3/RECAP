@@ -12,8 +12,7 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any
 
-from punct_restore.evaluation.inputs import file_identity_with
-from punct_restore.file_io import write_new_file
+from punct_restore.file_io import file_identity_with, short_name, write_new_file
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_records import SelectedRecords
@@ -34,6 +33,7 @@ from punct_restore.models.hmm_release import verify_training_release as verify_t
 
 
 def portable_path(path: Path) -> str:
+    """The path relative to the repository in POSIX form, or the file name alone for a path outside it."""
     try:
         return path.resolve().relative_to(ROOT).as_posix()
     except ValueError:
@@ -41,11 +41,12 @@ def portable_path(path: Path) -> str:
 
 
 def file_identity(path: Path) -> dict[str, str]:
-    """The evaluator's file identity, with the file name alone for a file outside the repository."""
+    """The shared file identity, with the file name alone for a file outside the repository."""
     return file_identity_with(path, ROOT, 1)
 
 
 def code_identity(root: Path = ROOT) -> dict[str, Any]:
+    """The Git commit of the checkout at ``root`` and whether it has uncommitted changes (both None without Git)."""
     def git(*args: str) -> str:
         return subprocess.run(
             ["git", "-C", str(root), *args], capture_output=True, text=True, check=True
@@ -82,21 +83,21 @@ def selected_records(
     """Main's generator over `SelectedRecords` (old import path kept, restructure spec §2).
 
     The old API's contract, and the one place an argument is deliberately changed: a caller-supplied `counts` dict is
-    filled in place. Its three keys are reset when the first row is asked for and hold the totals of everything the
-    file held once the iteration has finished (`SelectedRecords` only knows them then, so they are not live). If the
-    iteration stops early or raises, the counts stay at zero, where main kept partial totals.
+    filled in place. Its three keys are reset when the first row is asked for and updated as each row is read, so an
+    iteration that stops early or raises leaves the totals of the rows read so far, as main did.
     """
-    selection = SelectedRecords(
-        path, ids, training_mode=training_mode, policy_version=policy_version, source_revision=source_revision
+    yield from SelectedRecords(
+        path,
+        ids,
+        training_mode=training_mode,
+        policy_version=policy_version,
+        source_revision=source_revision,
+        counts=counts,
     )
-    if counts is not None:
-        counts.update(input_records=0, selected_records=0, selected_tokens=0)
-    yield from selection
-    if counts is not None:
-        counts.update(selection.counts)
 
 
 def write_json(path: Path, value: Any) -> None:
+    """Write ``value`` to the new file ``path`` as sorted, indented UTF-8 JSON; an existing file is never replaced."""
     write_new_file(path, json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False, allow_nan=False) + "\n")
 
 
@@ -238,7 +239,7 @@ def predict_run_with(
     options = options or PredictionOptions()
     ids_path, release_manifest, selection_record = options.ids_path, options.release_manifest, options.selection_record
     if output_dir.exists():
-        raise ValueError("output-dir already exists; choose a new prediction run")
+        raise ValueError(f"{short_name(output_dir)}: output-dir already exists; choose a new prediction run")
     inputs = _input_identities(model_path, input_path, options)
     started_at = datetime.now(UTC).isoformat()
     start = perf_counter()

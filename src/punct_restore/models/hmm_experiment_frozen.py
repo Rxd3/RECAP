@@ -84,15 +84,15 @@ def _check_mode(
 ) -> None:
     """Require one mode's selection file, candidates and winner to be what was frozen."""
     if sha256_file(run / f"mode_{mode}/selection.json") != selection["mode_selection_sha256"][mode]:
-        raise ValueError("mode selection changed after freezing")
+        raise ValueError(f"mode_{mode}/selection.json: changed after freezing")
     mode_selection = read_object(run / f"mode_{mode}/selection.json", _MODE_SELECTION)
     for number, candidate in enumerate(mode_selection["candidates"]):
-        require_object("selection.json", candidate, _CANDIDATE, f"candidates.{number}")
+        require_object(f"mode_{mode}/selection.json", candidate, _CANDIDATE, f"candidates.{number}")
     _check_search_complete(config, mode_selection)
     for candidate in mode_selection["candidates"]:
         _check_candidate(run, candidate)
     if choose(mode_selection["candidates"]) != winner or mode_selection["selected"] != winner:
-        raise ValueError("winner is inconsistent with the validation search")
+        raise ValueError(f"mode_{mode}/selection.json: winner is inconsistent with the validation search")
     if sha256_file(run / winner["model"]) != winner["model_sha256"]:
         raise ValueError("selected artifact checksum mismatch")
 

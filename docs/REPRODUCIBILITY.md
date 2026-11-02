@@ -54,12 +54,16 @@ python -m venv .venv
 python -m pip install -e ".[dev]"
 python -m pytest -q
 ruff check src scripts tests
+mypy src/punct_restore
 recap --help
 ```
 
 On macOS/Linux, activate with `source .venv/bin/activate`. The tests use small fixtures and
-download nothing. Checked on 2026-10-30: a fresh `git clone` of the final `release/final` branch passes
-the full `python -m pytest -q` suite with the pinned dependency versions installed. The lock file was
+download nothing. Checked on 2026-11-02 by CI on a fresh checkout, not by a local run: GitHub Actions run 41388107627
+on commit `a0575d3` (branch `refactor/final-fixes`) checked the repository out on `ubuntu-latest`,
+installed it with `pip install -e ".[dev]" -c requirements-lock.txt`, and passed
+`ruff check src scripts tests`, `mypy src/punct_restore`, `coverage run -m pytest -q` and
+`coverage report --fail-under=80` on Python 3.12 and 3.13. The lock file was
 produced on Python 3.13.1.
 
 ## 2. Data
@@ -77,7 +81,10 @@ python -m pytest
 ```
 
 Then compare `data/processed/<release>/SHA256SUMS` and `data/splits/<release>/SHA256SUMS` with
-the published copies. If the byte ranges can no longer be read, add `--archive <path>/sponspeech.tar.gz`
+the published copies. In the processed list, the `RELEASE_NOTES.md` and `release_manifest.json` lines
+differ whenever the data code differs from the version that built the release (it does on the current
+code): both files record `code_sha256`, the SHA-256 of `src/punct_restore/data/*.py`. Compare the other
+lines, as in [data/README.md](../data/README.md) step 5. If the byte ranges can no longer be read, add `--archive <path>/sponspeech.tar.gz`
 to `extract` (the full 63.5 GB archive). To use the team's archive instead of rebuilding:
 
 ```bash
@@ -284,12 +291,18 @@ recap build-m3-final-sections --out experiments/runs/crf_sections_7_10.md
 recap build-ablation-table --out experiments/runs/ablation_tables.md
 recap asr-noise-table --json-out experiments/runs/asr_noise_v2_summary.json --out experiments/runs/ASR_NOISE_V2.md
 recap time-models --kind crf --model <model>.joblib --mode A --out experiments/runs/runtime_crf_A.json
+recap result-stats holm --out experiments/runs/holm.json
+recap result-stats clusters --out experiments/runs/clusters_summary.json
+recap result-stats label-audit --out experiments/runs/label_audit.json
 ```
 
 The first four read only the committed JSON in `results/scores/` and the committed training manifests
 (`--manifests` defaults to `results/scores/crf_training_manifests`);
 they reproduce the tables of [EVALUATION_RESULTS_CRF.md](EVALUATION_RESULTS_CRF.md) (§1–4 with errors and
-confusion matrices, §7–10, §6) and [ASR_NOISE_V2.md](ASR_NOISE_V2.md). `recap time-models` needs a saved model and the release.
+confusion matrices, §7–10, §6) and [ASR_NOISE_V2.md](ASR_NOISE_V2.md). The three `recap result-stats` lines
+rebuild `results/scores/holm.json`, `clusters/clusters_summary.json` and `gold_noise/label_audit.json`
+byte for byte from the committed files (on a Windows checkout that converts line endings, compare with
+`git show HEAD:<path>`). `recap time-models` needs a saved model and the release.
 
 ## 10. Demo
 

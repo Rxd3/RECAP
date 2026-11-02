@@ -15,33 +15,53 @@ machine of the six manifests) are checked.
 from __future__ import annotations
 
 import argparse
+import math
 import sys
 from collections.abc import Callable, Iterable
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from punct_restore.file_io import Number, is_finite_number, read_object, require_object
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.reporting._cli import check_out, run, write_new_text
+from punct_restore.reporting._cli import check_out, check_scores_folder, run, write_new_text
 from punct_restore.reporting.build_tables import (
+    CELL,
+    DIFF,
     MODES,
     PRIMARY,
+    SCORE,
     cell,
     diff_cell,
     half_up,
     load,
     pct,
+    read_block,
+    read_scores,
 )
 
 PRESETS = ("basic", "improved")
 LEAK_BLOCK = "punctuation/all"
+SECONDS = Number("a non-negative number", 0.0)  # a fit time
+
+
+def read_tau(path: Path) -> dict[str, Any]:
+    """A tau_<mode>.json file: the chosen ``tau`` and the ``grid`` of {tau, macro_f1} points."""
+    doc = read_object(path, {"tau": float, "grid": list})
+    for number, point in enumerate(doc["grid"]):
+        require_object(path.name, point, {"tau": float, "macro_f1": SCORE}, f"grid.{number}")
+    return doc
 
 
 def sec_threshold(root: Path) -> list[str]:
     tau_dir = root / "threshold"
-    grids = {m: {round(g["tau"], 2): g["macro_f1"] for g in load(tau_dir / f"tau_{m}.json")["grid"]} for m in MODES}
-    chosen = {m: load(tau_dir / f"tau_{m}.json")["tau"] for m in MODES}
-    viterbi = {m: pct(load(root / "crf_validation" / f"m3_improved_{m}.json")["blocks"][PRIMARY[m]]["macro_f1"])
+    files = {m: read_tau(tau_dir / f"tau_{m}.json") for m in MODES}
+    grids = {m: {round(g["tau"], 2): g["macro_f1"] for g in files[m]["grid"]} for m in MODES}
+    for m in MODES[1:]:
+        if not grids[MODES[0]].keys() <= grids[m].keys():  # extra taus are fine, as on main
+            raise ValueError(f"tau_{m}.json: the grid does not have the taus of tau_{MODES[0]}.json")
+    chosen = {m: files[m]["tau"] for m in MODES}
+    viterbi = {m: pct(read_block(root / "crf_validation" / f"m3_improved_{m}.json", PRIMARY[m], CELL)["macro_f1"])
                for m in MODES}
     out = ["## 7. Threshold decoding (Member 5 extension)", "",
            ("For each token, the improved CRF's marginals give P(O); in mode C, P(O) sums every `O|*` label. If "
@@ -101,10 +121,16 @@ def leakage_prose(docs: dict[tuple[str, str], Any]) -> str:
             f"Reporting the official test as-is {official_phrase(whole_gain(docs, 'crf', 'official_all'))}.")
 
 
+def leak_file(model: str, key: str) -> str:
+    """The name of the leakage file of ``model`` (hmm or crf) for the scored set ``key``."""
+    return f"{model}_A_test_{key}.json"
+
+
 def official_count(docs: dict[tuple[str, str], Any]) -> int:
     counts = {model: docs[(model, "official_all")]["counts"]["sequences"] for model in ("hmm", "crf")}
     if counts["hmm"] != counts["crf"]:
-        raise ValueError("official_all: the HMM and CRF files cover different numbers of utterances")
+        raise ValueError(f"{leak_file('crf', 'official_all')}: counts.sequences differs from "
+                         f"{leak_file('hmm', 'official_all')}")
     return counts["hmm"]
 
 
@@ -116,7 +142,9 @@ def sec_leakage(supp: Path) -> list[str]:
              "other_leak"),
             ("Excluded: quality filter (low comma density or TTS source)", "canonical", "quality"),
             ("Official test, all utterances", "SponSpeech native", "native_all")]
-    docs = {(model, key): load(supp / f"{model}_A_test_{key}.json") for _, _, key in rows for model in ("hmm", "crf")}
+    docs = {(model, key): read_scores(supp / leak_file(model, key), {LEAK_BLOCK: CELL},
+                                      {"counts": {"sequences": int}})
+            for _, _, key in rows for model in ("hmm", "crf")}
     out = ["## 8. Leakage: official vs leakage-controlled test (mode A)", "",
            ("Supplementary. The frozen improved CRF and the HMM predicted all "
             f"{official_count(docs):,} official test utterances once "
@@ -144,14 +172,14 @@ def sec_test_amb(refs: Path, test: Path, tau_dir: Path) -> list[str]:
            ("Primary macro F1 % (95% CI) on the primary test_amb lists. test_amb shares 25 videos with test, so the "
             "two are reported separately and never pooled."), "", "| Model | A | B | C |", "|---|---|---|---|"]
     for name, f in names:
-        out.append(f"| {name} | " + " | ".join(cell(load(f(m))["blocks"][PRIMARY[m]]) for m in MODES) + " |")
+        out.append(f"| {name} | " + " | ".join(cell(read_block(f(m), PRIMARY[m], CELL)) for m in MODES) + " |")
     out += ["", "| Paired difference (test_amb) | A | B | C |", "|---|---|---|---|"]
     for stem, label, folder in (("m3_improved_vs_basic", "M3 improved − M3 basic", test),
                                 ("m3_basic_vs_hmm", "M3 basic − HMM", test),
                                 ("m3_improved_vs_hmm", "M3 improved − HMM", test),
                                 ("tau_vs_improved", "threshold − M3 improved", tau_dir)):
         out.append(f"| {label} | " + " | ".join(
-            diff_cell(load(folder / f"{stem}_{m}_test_amb.json")["blocks"][PRIMARY[m]]) for m in MODES) + " |")
+            diff_cell(read_block(folder / f"{stem}_{m}_test_amb.json", PRIMARY[m], DIFF)) for m in MODES) + " |")
     return out + [""]
 
 
@@ -160,12 +188,18 @@ def fit_text(seconds: float) -> str:
     return half_up(seconds, 1, grouping=True)
 
 
-def agreed[T](values: Iterable[T], files: str, what: str) -> T:
-    """The one value all ``files`` hold for ``what``; a ValueError when they differ."""
-    found = set(values)
-    if len(found) != 1:
-        raise ValueError(f"{files} do not agree on the {what}")
-    return found.pop()
+def agreed[T](values: Iterable[T], names: Iterable[str], what: str) -> T:
+    """The one value all files hold for ``what`` (``values[i]`` is in the file ``names[i]``).
+
+    Raises:
+        ValueError: ``<file>: <what> differs from <first file>`` for the first file that holds another value.
+    """
+    pairs = list(zip(names, values, strict=True))
+    first_name, first_value = pairs[0]
+    for name, value in pairs[1:]:
+        if value != first_value:
+            raise ValueError(f"{name}: {what} differs from {first_name}")
+    return first_value
 
 
 def is_text(value: Any) -> bool:
@@ -190,12 +224,17 @@ def facts(docs: dict[tuple[str, str], Any], names: dict[tuple[str, str], str], s
 
 
 def check_speeds(runs: dict[tuple[str, str], Any], names: dict[tuple[str, str], str]) -> None:
-    """Every runtime file's speeds are positive numbers (a zero speed would divide by zero below)."""
+    """Every runtime file's speeds are positive numbers (a zero speed would divide by zero below), and each improved
+    speed over the basic one of its mode is a number (1e300 over 1e-300 overflows)."""
     for which, record in runs.items():
         for field in ("median_seconds", "tokens_per_second", "ms_per_sequence"):
-            value = record.get(field) if isinstance(record, dict) else None
-            if isinstance(value, bool) or not isinstance(value, (int, float)) or not value > 0:
+            value: Any = record.get(field) if isinstance(record, dict) else None
+            if not (is_finite_number(value) and value > 0):  # NaN, Infinity and 1e999 are no speed either
                 raise ValueError(f"{names[which]}: {field} must be a positive number")
+    for mode in MODES:
+        better, basic = ("improved", mode), ("basic", mode)
+        if not math.isfinite(runs[better]["tokens_per_second"] / runs[basic]["tokens_per_second"]):
+            raise ValueError(f"{names[better]}: tokens_per_second cannot be compared with that of {names[basic]}")
 
 
 def ms_bound(values: Iterable[Any]) -> str:
@@ -219,16 +258,15 @@ def sec_runtime(runtime: Path, manifests: Path) -> list[str]:
     run_names = {(p, m): f"crf_{p}_{m}.json" for p in PRESETS for m in MODES}
     sheet_names = {(p, m): f"crf_mode_{m.lower()}_{p}_full_01.manifest.json" for p in PRESETS for m in MODES}
     runs = {key: load(runtime / name) for key, name in run_names.items()}
-    sheets = {key: load(manifests / name) for key, name in sheet_names.items()}
+    sheets = {key: load(manifests / name, {"training_duration_seconds": SECONDS}) for key, name in sheet_names.items()}
     check_speeds(runs, run_names)
+    run_files, sheet_files = list(run_names.values()), list(sheet_names.values())
     processors = facts(runs, run_names, "hardware", "processor", is_text, "a string")
-    cpu = agreed((text.split(" Stepping")[0] for text in processors), "the runtime files", "processor")
-    python = agreed(facts(runs, run_names, "hardware", "python", is_text, "a string"),
-                    "the runtime files", "Python version")
-    machine = agreed(facts(sheets, sheet_names, "environment", "machine", is_text, "a string"),
-                     "the training manifests", "machine")
+    cpu = agreed([text.split(" Stepping")[0] for text in processors], run_files, "processor")
+    python = agreed(facts(runs, run_names, "hardware", "python", is_text, "a string"), run_files, "Python version")
+    machine = agreed(facts(sheets, sheet_names, "environment", "machine", is_text, "a string"), sheet_files, "machine")
     cpus = agreed(facts(sheets, sheet_names, "environment", "cpu_count", is_count, "a positive integer"),
-                  "the training manifests", "CPU count")
+                  sheet_files, "CPU count")
     out = ["## 10. Runtime", "",
            (f"Prediction speed on one laptop ({cpu}, Python {python}, one process, no other jobs): "
             "median of 3 passes over the primary validation set after a 200-record warm-up, model loading excluded "
@@ -248,6 +286,7 @@ def sec_runtime(runtime: Path, manifests: Path) -> list[str]:
 
 def build(root: Path, manifests: Path, out_md: Path) -> None:
     check_out(out_md)  # before reading anything
+    check_scores_folder(root)
     body = (sec_threshold(root) + sec_leakage(root / "leakage")
             + sec_test_amb(root / "hmm", root / "crf_test", root / "threshold")
             + sec_runtime(root / "runtime", manifests))

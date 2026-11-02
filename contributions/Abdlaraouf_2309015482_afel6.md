@@ -23,6 +23,65 @@
 
 | Commit | Date | Subject |
 | --- | --- | --- |
+| `008ef72` | 2026-11-02 | docs: date the fresh-checkout check to the 2026-11-02 CI run |
+| `fe4e267` | 2026-11-02 | docs: gate-fix error wordings (score fields, fitted CRF, table commands, label audit) |
+| `c169320` | 2026-11-02 | fix(review): by-design audit notes matched by their exact wordings, mode selection and leakage messages name their file and line |
+| `a43827e` | 2026-11-02 | fix(review): refuse non-finite and out-of-range numbers, unfitted CRF artifacts and bad folders by name |
+| `14d3042` | 2026-11-02 | refactor(review): lazy exports hidden from type checkers, one select-by-ID path, label-audit by-design check |
+| `3ad578d` | 2026-11-02 | docs: CI lint, mypy and coverage gate, the remaining error lines, public-docstring test |
+| `712d5a0` | 2026-11-02 | ci: pin mypy and coverage, type-check and gate coverage at 80 percent, Node 24 actions |
+| `591c658` | 2026-11-02 | fix(messages): every error names its file or folder, one UTF-8 and YAML wording, per-row HMM counts, public docstrings |
+| `08a32d9` | 2026-11-02 | docs: name the errors module by its import path |
+| `38fe854` | 2026-11-02 | docs: errors and lazy-export modules, one record selector, recap result-stats, 37-entry HMM closure, new tests |
+| `fe99422` | 2026-11-02 | feat(reporting): recap result-stats regenerates holm.json, clusters_summary.json and label_audit.json |
+| `4c75a98` | 2026-11-02 | refactor(dedup): one record selector and joblib loader, errors module, file identity in file_io, lazy data/evaluation package inits |
+| `1023ba2` | 2026-11-02 | docs: list test_non_text_inputs in tests/README |
+| `a0c2f17` | 2026-11-02 | docs: list the error lines users see, the new file_io checks and the round-3 tests |
+| `4fd586f` | 2026-11-02 | fix(errors): main's HMM label order, checked CRF artifacts and reporting inputs, release-folder and manifest messages, per-line CRF record checks |
+| `d40744c` | 2026-11-02 | docs: list the pinned data-pipeline test in tests/README |
+| `fbb5857` | 2026-11-02 | test: pin the data pipeline's output to main 72ebfd1 |
+| `a89e0fa` | 2026-11-02 | docs: correct the error-helper name and HMM list history, drop verbal significance for the neural reference, explain the fingerprint lines in SHA256SUMS |
+| `8b97fe8` | 2026-11-02 | test: make the deep-nesting and folder-listing tests platform-independent |
+| `54a49f3` | 2026-11-01 | fix(review): non-string labels refused in every model, uniform <file>: <reason> messages, one YAML reader and folder check |
+| `a6e62a9` | 2026-11-01 | fix(review): shape-first HMM config and study checks, one schema checker, require_file and iter_jsonl everywhere, named artifact errors |
+| `62deed8` | 2026-11-01 | refactor(types): mypy-clean src, descriptive names, no getattr leftovers, help texts without team roles |
+| `0760fbd` | 2026-11-01 | docs: name the package initializers and the threshold module without file-path forms |
+| `1e7833e` | 2026-11-01 | docs: tau grid in models.threshold, runtime-closure HMM provenance, main's signatures, new error wording and tests |
+| `3b4db1c` | 2026-11-01 | refactor(api): main's call signatures restored, runtime-closure HMM provenance, read-only HMM view, tau grid in models.threshold |
+| `a00883c` | 2026-11-01 | refactor(dedup): file_io helpers (iter_jsonl, write_new_folder, JSON readers), one joblib loader, one pct, one file identity |
+| `0b78f4a` | 2026-11-01 | fix(errors): shape-checked study files, named config and folder errors, TrainingFailed, typed label checks |
+| `b0f7508` | 2026-11-01 | docs: ID-list rule, exact demo cleaning, public-name promise, cli wording; one copy of the old-study steps |
+| `21b2cd0` | 2026-11-01 | docs: demote the neural reference, drop the unmeasured source-error figure, word leakage headlines descriptively |
+| `8f37466` | 2026-11-01 | docs: list the HMM study and library-name tests in tests/README |
+| `1c7cb9d` | 2026-11-01 | test: run the HMM study in-process and pin its tune, gate, finalize, verify and handoff steps |
+| `831dbb3` | 2026-11-01 | fix(api): keep old library import paths (restructure spec §2) |
+| `14f42d2` | 2026-11-01 | docs: restore the library import-path promise and list test_library_names |
+| `81e07f8` | 2026-11-01 | docs: follow the fix-round module moves, error lines, CI matrix and new tests |
+| `c6ca363` | 2026-11-01 | fix(errors): label config, titles and manifest files report one named error line; split the ablation tests |
+| `a5e1796` | 2026-11-01 | fix(errors): every malformed input file is one error line naming it, with command-level regression tests |
+| `3e0f05d` | 2026-11-01 | fix(review): config errors as one line, shared JSON-line and refuse-existing checks, silent HMM library, full HMM provenance closure |
+| `2864c94` | 2026-11-01 | chore(cli): command summaries without team roles, run-ablations argument help, CI matrix 3.12/3.13 with lock constraints |
+| `d51552c` | 2026-11-01 | fix(security): refuse archive entries that resolve outside the extraction folder |
+| `7b22ef9` | 2026-11-01 | refactor(types): annotate every function, descriptive names, main(argv) signatures, one error prefix, decorators count in the limit |
+| `904965e` | 2026-11-01 | refactor(structure): HMM study and CRF predict/inspect logic in the library, no cli-to-cli imports, no argument mutation |
+| `465e3c8` | 2026-11-01 | refactor(dedup): one sha256 helper, one .ids reader, one JSON-line parser and new-file writer |
+| `ffdb8ea` | 2026-11-01 | fix(errors): one error boundary, one-line errors with exit 1, no catch-all handlers |
+| `061cf63` | 2026-11-01 | test: pin refactor outputs against main 72ebfd1 |
+| `24a92d2` | 2026-11-01 | docs: address restructure grade findings (old HMM studies, neural reference, toy run, caveats) |
+| `5d3551c` | 2026-11-01 | chore: keep YAML workflow files at LF line endings |
+| `65c01ff` | 2026-11-01 | chore(lint): add ruff config, fix all findings, remove dead code, add CI |
+| `bc7b337` | 2026-11-01 | docs: name load_records and read_ids as the release consumer API in ARCHITECTURE |
+| `a296c4e` | 2026-11-01 | docs: switch commands to the recap CLI and describe the new layout |
+| `6eb7be5` | 2026-11-01 | refactor(cli): split long command functions into library helpers and enforce size limits |
+| `574a4de` | 2026-11-01 | refactor(models): split CRF, hidden-event LM and HMM code into short functions and modules |
+| `d36c926` | 2026-11-01 | refactor(features): split CRF feature extraction into short helpers and lexicon/cue modules |
+| `b6703d9` | 2026-11-01 | refactor(data): split release building and normalize into short functions and modules |
+| `5b3683b` | 2026-11-01 | refactor(cli): move the command scripts into punct_restore.cli |
+| `e8d66bb` | 2026-11-01 | refactor(reporting): move reporting commands into the package |
+| `6738680` | 2026-11-01 | refactor(cli): add recap dispatcher and REPO_ROOT |
+| `8d71b2d` | 2026-11-01 | docs(eval): attribute the neural training and selection claims to Member 2 |
+| `a5d1c8b` | 2026-11-01 | docs(eval): score Member 2's BERT and FLAN-T5 taggers and add section 15 |
+| `3d4985c` | 2026-11-01 | docs(contributions): regenerate the contribution files after Member 2's rename |
 | `cc55140` | 2026-11-01 | docs(contributions): add Member 2's student ID |
 | `e685607` | 2026-11-01 | docs(results): name the label-audit sheet among the committed excerpts |
 | `ee38614` | 2026-11-01 | docs: name the label-audit sheet wherever committed dataset excerpts are listed |
@@ -146,6 +205,18 @@ Merge commits:
 
 | Commit | Date | Subject |
 | --- | --- | --- |
+| `a0575d3` | 2026-11-02 | merge: final round docs |
+| `9a30be2` | 2026-11-02 | merge: data pipeline pinned to main 72ebfd1 |
+| `4a85cc2` | 2026-11-02 | merge: final round backend (label order, CRF artifact checks, reporting errors, result-stats, CI checks) |
+| `b992e29` | 2026-11-02 | Merge pull request #9 from Rxd3/refactor/package-cli |
+| `2d6b4c9` | 2026-11-01 | merge: fix round 2 docs |
+| `7c37d30` | 2026-11-01 | merge: fix round 2 backend (errors, dedup, API signatures, types, review fixes) |
+| `8950c71` | 2026-11-01 | merge: in-process HMM study tests (fix item 24) |
+| `0c7085e` | 2026-11-01 | merge: docs follow-up for round 1 module moves and import-path promise |
+| `3dd35b3` | 2026-11-01 | merge: refactor equivalence tests pinned to main 72ebfd1 |
+| `7a30f5e` | 2026-11-01 | merge: docs fix round 1 (items 26-34) |
+| `0760384` | 2026-11-01 | Merge branch 'wip/restructure-docs' into refactor/package-cli |
+| `72ebfd1` | 2026-11-01 | Merge pull request #7 from Rxd3/release/final |
 | `302536b` | 2026-11-01 | chore: merge word-cluster features into release/final |
 | `3053cbb` | 2026-10-31 | chore: merge ASR-noise v2 report fixes into release/final |
 | `1dbc843` | 2026-10-31 | chore: merge simulated-ASR v2 edit model and seed variance into release/final |
@@ -179,12 +250,13 @@ Merge commits:
 
 ## Files added or changed
 
-- repository root: 9 files (2 added); commits 0eeffba, 11bb5c3, 16f4b74, 1bc35eb, 1c1ebd5, 1da392b, 284c593, 345bc97, 3645bfb, 4b2c616, 4c7619b, 4d33521, 5002994, 54a5666, 54eed84, 55eb978, 5c5aa30, 5c786a4, 6c8130c, 6d72f6d, 6e125d5, 71886ec, 72b9148, 766aeb7, 8c52025, 8c65522, 8fecfbd, 9802964, 9d26cb6, 9fe6f00, a7ab470, b2840dc, b6a3799, bbf8367, c3030b9, c685d08, cc55140, cfc8b20, d27de6f, d2953ce, d418fc5, d4ab315, d80a141, e377552, eafde4c, ee38614, f5a4721, f889d0f, f9082a7, f97855a, fbd8d45, fe9710b
+- repository root: 9 files (2 added); commits 0760fbd, 08a32d9, 0eeffba, 11bb5c3, 14f42d2, 16f4b74, 1bc35eb, 1c1ebd5, 1da392b, 1e7833e, 21b2cd0, 24a92d2, 284c593, 345bc97, 3645bfb, 38fe854, 3ad578d, 4b2c616, 4c7619b, 4d33521, 5002994, 54a5666, 54eed84, 55eb978, 5c5aa30, 5c786a4, 5d3551c, 65c01ff, 6738680, 6c8130c, 6d72f6d, 6e125d5, 712d5a0, 71886ec, 72b9148, 766aeb7, 81e07f8, 8c52025, 8c65522, 8fecfbd, 9802964, 9d26cb6, 9fe6f00, a0c2f17, a296c4e, a5d1c8b, a7ab470, a89e0fa, b0f7508, b2840dc, b6a3799, bbf8367, c3030b9, c685d08, cc55140, cfc8b20, d27de6f, d2953ce, d418fc5, d4ab315, d80a141, e377552, eafde4c, ee38614, f5a4721, f889d0f, f9082a7, f97855a, fbd8d45, fe9710b
+- `.github/workflows/`: `ci.yml` (A in 65c01ff; M in 712d5a0, 2864c94)
 - `artifacts/`: `README.md` (M in f9082a7, 5c786a4, 766aeb7)
 - `artifacts/models/`: `.gitkeep` (D in 5c786a4)
 - `configs/`: `README.md` (M in f97855a, 766aeb7), `datasets.yaml` (M in 3645bfb), `experiment.example.yaml` (D in 766aeb7)
-- `contributions/`: 12 files (6 added); commits 16f4b74, 2831c4c, 30514af, 345bc97, 45554af, 54a5666, 73618ee, 9864d80, a2df0db, a7ab470, b752c42, c685d08, cc55140
-- `data/`: `README.md` (M in 55eb978, 1c1ebd5, 3645bfb)
+- `contributions/`: 12 files (6 added); commits 16f4b74, 2831c4c, 30514af, 345bc97, 3d4985c, 45554af, 54a5666, 73618ee, 9864d80, a2df0db, a7ab470, b752c42, c685d08, cc55140
+- `data/`: `README.md` (M in a0c2f17, a89e0fa, 1e7833e, a296c4e, 55eb978, 1c1ebd5, 3645bfb)
 - `data/processed/`: `.gitkeep` (D in 55eb978)
 - `data/raw/`: `.gitkeep` (D in 55eb978)
 - `data/release_metadata/`: `README.md` (A in 1c1ebd5)
@@ -193,16 +265,16 @@ Merge commits:
 - `data/release_metadata/sponspeech-m1-v2/splits/leakage_controlled/`: `report.json` (A in 1c1ebd5)
 - `data/sample/`: `README.md` (A in 1c1ebd5), `case_joint_mask_validation.jsonl` (A in 1c1ebd5), `mode_A_validation.jsonl` (A in 1c1ebd5), `mode_B_validation.jsonl` (A in 1c1ebd5), `mode_C_validation.jsonl` (A in 1c1ebd5), `sample.ids` (A in 1c1ebd5)
 - `data/splits/`: `.gitkeep` (D in 55eb978)
-- `docs/`: 23 files (7 added); commits 0eeffba, 102393e, 11bb5c3, 15e5ebf, 1bc35eb, 1c1ebd5, 1da392b, 20c2a51, 255fc68, 284c593, 3645bfb, 3948341, 3f10555, 44d81a0, 45a3deb, 472abc5, 488a0dd, 4b2c616, 4c7619b, 4d33521, 51bd400, 54a5666, 5562e32, 55eb978, 5c5aa30, 5c786a4, 6356916, 680438f, 6c64226, 6c8130c, 6d72f6d, 6e125d5, 72b9148, 766aeb7, 8c65522, 9802964, 9fe6f00, a0e9c57, a5c3ac8, a60428c, b2840dc, b6a3799, b752c42, bbf8367, c3030b9, c685d08, d27de6f, d2953ce, d418fc5, d80a141, e00b3d1, e377552, e543704, eacfa31, eafde4c, ec37d19, ee38614, f5a4721, f889d0f, f9082a7, f97855a, fc68dbd, fe9710b
-- `experiments/`: `CRF_NOTES.md` (M in 4c7619b, 0eeffba, 1da392b, 5c786a4, 4d33521, f97855a, b752c42, fe9710b, a7ab470, 54a5666), `FEATURE_NOTES.md` (M in c685d08, eafde4c, 1da392b, f5a4721, b752c42, fe9710b, a7ab470), `HMM_RESULTS.md` (M in 1da392b, f5a4721, 766aeb7), `HMM_RUNBOOK.md` (M in f5a4721), `README.md` (M in 4d33521, 766aeb7, b752c42, a7ab470)
+- `docs/`: 23 files (7 added); commits 008ef72, 0eeffba, 102393e, 11bb5c3, 14f42d2, 15e5ebf, 1bc35eb, 1c1ebd5, 1da392b, 1e7833e, 20c2a51, 21b2cd0, 24a92d2, 255fc68, 284c593, 3645bfb, 38fe854, 3948341, 3ad578d, 3f10555, 44d81a0, 45a3deb, 472abc5, 488a0dd, 4b2c616, 4c7619b, 4d33521, 51bd400, 54a5666, 5562e32, 55eb978, 5c5aa30, 5c786a4, 6356916, 680438f, 6c64226, 6c8130c, 6d72f6d, 6e125d5, 72b9148, 766aeb7, 81e07f8, 8c65522, 8d71b2d, 9802964, 9fe6f00, a0c2f17, a0e9c57, a296c4e, a5c3ac8, a5d1c8b, a60428c, a89e0fa, b0f7508, b2840dc, b6a3799, b752c42, bbf8367, bc7b337, c3030b9, c685d08, d27de6f, d2953ce, d418fc5, d80a141, e00b3d1, e377552, e543704, eacfa31, eafde4c, ec37d19, ee38614, f5a4721, f889d0f, f9082a7, f97855a, fc68dbd, fe9710b
+- `experiments/`: `CRF_NOTES.md` (M in a296c4e, 4c7619b, 0eeffba, 1da392b, 5c786a4, 4d33521, f97855a, b752c42, fe9710b, a7ab470, 54a5666), `FEATURE_NOTES.md` (M in a296c4e, c685d08, eafde4c, 1da392b, f5a4721, b752c42, fe9710b, a7ab470), `HMM_RESULTS.md` (M in a296c4e, 1da392b, f5a4721, 766aeb7), `HMM_RUNBOOK.md` (M in 38fe854, a89e0fa, 1e7833e, b0f7508, 81e07f8, 24a92d2, a296c4e, f5a4721), `README.md` (M in 4d33521, 766aeb7, b752c42, a7ab470)
 - `experiments/runs/`: `.gitkeep` (D in 55eb978)
 - `experiments/runs/recap_m3_handoff_eval/`: `README.md` (D in 766aeb7)
 - `presentation/`: `README.md` (M in 5c786a4, b752c42, a7ab470)
 - `presentation/assets/`: `.gitkeep` (D in 5c786a4)
-- `results/`: `README.md` (M in e685607, 11bb5c3, f889d0f, 55eb978, 72b9148, 1c1ebd5, d27de6f, 3645bfb, b752c42, a7ab470, 680438f)
+- `results/`: `README.md` (M in a296c4e, a5d1c8b, e685607, 11bb5c3, f889d0f, 55eb978, 72b9148, 1c1ebd5, d27de6f, 3645bfb, b752c42, a7ab470, 680438f)
 - `results/figures/`: `.gitkeep` (D in 5c786a4)
 - `results/predictions/`: `.gitkeep` (D in 55eb978)
-- `results/scores/`: `README.md` (A in d2953ce; M in ee38614, 5c5aa30, 11bb5c3, f889d0f, b2840dc, eafde4c, 6d72f6d, 4c7619b, 284c593, 6c8130c, 1bc35eb, 6c64226, c3030b9, 102393e, 9802964, 1c1ebd5, f9082a7, 15e5ebf)
+- `results/scores/`: `README.md` (A in d2953ce; M in 38fe854, a296c4e, a5d1c8b, ee38614, 5c5aa30, 11bb5c3, f889d0f, b2840dc, eafde4c, 6d72f6d, 4c7619b, 284c593, 6c8130c, 1bc35eb, 6c64226, c3030b9, 102393e, 9802964, 1c1ebd5, f9082a7, 15e5ebf), `holm.json` (A in fe99422)
 - `results/scores/ablations/mode_A/`: 13 files (13 added); commits d2953ce
 - `results/scores/ablations/mode_B/`: 13 files (13 added); commits d2953ce
 - `results/scores/ablations/mode_C/`: 13 files (13 added); commits d2953ce
@@ -237,6 +309,7 @@ Merge commits:
 - `results/scores/hidden_event_lm/`: 45 files (45 added); commits 1bc35eb
 - `results/scores/hmm/`: 26 files (26 added); commits a60428c, d2953ce, fc68dbd
 - `results/scores/leakage/`: 14 files (14 added); commits d2953ce
+- `results/scores/neural/`: 35 files (35 added); commits a5d1c8b
 - `results/scores/per_class/`: 12 files (12 added); commits 9802964
 - `results/scores/question2/`: `question2_vs_improved_A.json` (A in 1bc35eb), `question2_vs_improved_B.json` (A in 1bc35eb), `question2_vs_improved_C.json` (A in 1bc35eb)
 - `results/scores/runtime/`: 9 files (9 added); commits d2953ce, fc68dbd
@@ -244,14 +317,17 @@ Merge commits:
 - `results/scores/threshold/`: 15 files (15 added); commits d2953ce, eafde4c
 - `results/scores/threshold_prior/`: 21 files (21 added); commits 1bc35eb, 3f10555, eafde4c
 - `results/tables/`: `.gitkeep` (D in 55eb978)
-- `scripts/`: 16 files (8 added); commits 01858ae, 09bc390, 0eeffba, 1da392b, 31e59f9, 3ca76d5, 3ec548b, 4304e4c, 4b2c616, 5373a82, 54a5666, 6356916, 649bd53, 6507152, 680438f, 6d72f6d, 71886ec, 72b9148, 7889149, 84f10d5, 8fecfbd, 910e552, 9fe6f00, a930859, b2840dc, b875ea3, b973981, bbf8367, c0453c8, c575279, ca96025, cfc8b20, d27de6f, d3284b9, d3c86dc, d80a141, e377552, e7095cf, e743928, eafde4c, eb6afa7, ec37d19, f889d0f, fbd8d45
-- `scripts/reporting/`: 12 files (12 added); commits 1da392b, 3814f38, 4998b31, 596310b, 597dd43, aad6c70, f4dee77, f889d0f
-- `src/punct_restore/`: `__init__.py` (M in 5002994), `pipeline.py` (M in c7934ef, c575279, 4304e4c), `prediction_io.py` (A in 3ca76d5; M in 649bd53, 31e59f9)
-- `src/punct_restore/data/`: `asr_noise.py` (A in 910e552; M in 84f10d5, 7889149), `gold_noise.py` (A in 3ec548b)
+- `scripts/`: 19 files (8 added); commits 01858ae, 09bc390, 0eeffba, 1da392b, 31e59f9, 38fe854, 3ad578d, 3ca76d5, 3ec548b, 4304e4c, 4b2c616, 5373a82, 54a5666, 5b3683b, 6356916, 649bd53, 6507152, 680438f, 6d72f6d, 71886ec, 72b9148, 7889149, 84f10d5, 8fecfbd, 910e552, 9fe6f00, a0c2f17, a296c4e, a930859, b0f7508, b2840dc, b875ea3, b973981, bbf8367, c0453c8, c575279, ca96025, cfc8b20, d27de6f, d3284b9, d3c86dc, d80a141, e377552, e7095cf, e743928, eafde4c, eb6afa7, ec37d19, f889d0f, fbd8d45, fe4e267
+- `scripts/reporting/`: 13 files (13 added); commits 1da392b, 3814f38, 4998b31, 596310b, 597dd43, aad6c70, e8d66bb, f4dee77, f889d0f, fe99422
+- `src/punct_restore/`: 9 files (7 added); commits 0b78f4a, 31e59f9, 3b4db1c, 3ca76d5, 3e0f05d, 4304e4c, 465e3c8, 4c75a98, 4fd586f, 5002994, 54a49f3, 591c658, 62deed8, 649bd53, 65c01ff, 6738680, 7b22ef9, 831dbb3, a00883c, a43827e, a5e1796, a6e62a9, c575279, c7934ef, ffdb8ea
+- `src/punct_restore/cli/`: 21 files (21 added); commits 0b78f4a, 14d3042, 2864c94, 3b4db1c, 3e0f05d, 465e3c8, 4c75a98, 4fd586f, 54a49f3, 591c658, 5b3683b, 62deed8, 65c01ff, 6738680, 6eb7be5, 7b22ef9, 904965e, a00883c, a43827e, a5e1796, a6e62a9, c169320, fe99422, ffdb8ea
+- `src/punct_restore/data/`: 15 files (8 added); commits 0b78f4a, 14d3042, 3b4db1c, 3e0f05d, 3ec548b, 465e3c8, 4c75a98, 4fd586f, 54a49f3, 591c658, 5b3683b, 62deed8, 65c01ff, 7889149, 7b22ef9, 831dbb3, 84f10d5, 904965e, 910e552, a00883c, a43827e, a6e62a9, b6703d9, c6ca363, d51552c, ffdb8ea
 - `src/punct_restore/demo/`: `__init__.py` (D in 4304e4c), `inference.py` (D in 4304e4c)
-- `src/punct_restore/evaluation/`: 10 files (7 added); commits 6340b59, 6356916, 680438f, 9155a7e, eb6afa7, ec37d19
-- `src/punct_restore/features/`: `__init__.py` (M in 5002994), `crf_features.py` (M in 09bc390, 5373a82, 7c75d4e, e7095cf), `word_clusters.py` (A in d3c86dc)
-- `src/punct_restore/models/`: `__init__.py` (M in 5002994), `crf.py` (M in 649bd53, fbd8d45), `factored.py` (A in 649bd53), `gap_classifier.py` (A in cfc8b20; M in 09bc390, eafde4c, 649bd53, 5373a82), `hidden_event_lm.py` (A in e743928), `ngram_lm.py` (A in e743928), `threshold.py` (A in a930859; M in b875ea3), `truecaser.py` (A in e743928)
-- `tests/`: 58 files (51 added); commits 01858ae, 09bc390, 1da392b, 31e59f9, 3ca76d5, 3ec548b, 4304e4c, 4998b31, 4b2c616, 5002994, 5373a82, 54eed84, 596310b, 597dd43, 6340b59, 6356916, 649bd53, 6507152, 680438f, 6d72f6d, 766aeb7, 7c75d4e, 84f10d5, 910e552, 9155a7e, a930859, aad6c70, b2840dc, b875ea3, b973981, c0453c8, c575279, c7934ef, ca96025, cfc8b20, d3284b9, d3c86dc, d4ab315, d80a141, dcfe950, e377552, e7095cf, e743928, eb6afa7, ec37d19, efdd761, f4dee77, f9082a7, fbd8d45
+- `src/punct_restore/evaluation/`: 10 files (7 added); commits 14d3042, 465e3c8, 4c75a98, 54a49f3, 591c658, 5b3683b, 62deed8, 6340b59, 6356916, 65c01ff, 680438f, 9155a7e, a00883c, a43827e, a5e1796, eb6afa7, ec37d19
+- `src/punct_restore/features/`: `__init__.py` (M in 5002994), `crf_cues.py` (A in d36c926), `crf_features.py` (M in 62deed8, 831dbb3, 904965e, 65c01ff, d36c926, 09bc390, 5373a82, 7c75d4e, e7095cf), `crf_lexicons.py` (A in d36c926), `word_clusters.py` (A in d3c86dc; M in 4c75a98, a5e1796, 904965e, 65c01ff)
+- `src/punct_restore/models/`: 31 files (27 added); commits 09bc390, 0b78f4a, 14d3042, 3b4db1c, 3e0f05d, 465e3c8, 4c75a98, 4fd586f, 5002994, 5373a82, 54a49f3, 574a4de, 591c658, 5b3683b, 62deed8, 649bd53, 65c01ff, 6eb7be5, 7b22ef9, 831dbb3, 904965e, a00883c, a43827e, a5e1796, a6e62a9, a930859, b875ea3, c169320, c6ca363, cfc8b20, e743928, eafde4c, fbd8d45, ffdb8ea
+- `src/punct_restore/reporting/`: 17 files (12 added); commits 14d3042, 2864c94, 465e3c8, 4c75a98, 4fd586f, 54a49f3, 62deed8, 65c01ff, 6738680, 904965e, a00883c, a43827e, a5e1796, a6e62a9, c169320, c6ca363, e8d66bb, fe99422, ffdb8ea
+- `tests/`: 131 files (119 added); commits 01858ae, 061cf63, 0760fbd, 08a32d9, 09bc390, 0b78f4a, 1023ba2, 14d3042, 14f42d2, 1c7cb9d, 1da392b, 1e7833e, 2864c94, 31e59f9, 38fe854, 3ad578d, 3b4db1c, 3ca76d5, 3e0f05d, 3ec548b, 4304e4c, 465e3c8, 4998b31, 4b2c616, 4c75a98, 4fd586f, 5002994, 5373a82, 54a49f3, 54eed84, 591c658, 596310b, 597dd43, 5b3683b, 62deed8, 6340b59, 6356916, 649bd53, 6507152, 65c01ff, 6738680, 680438f, 6d72f6d, 6eb7be5, 766aeb7, 7b22ef9, 7c75d4e, 81e07f8, 831dbb3, 84f10d5, 8b97fe8, 8f37466, 904965e, 910e552, 9155a7e, a00883c, a0c2f17, a43827e, a5e1796, a6e62a9, a930859, aad6c70, b2840dc, b875ea3, b973981, c0453c8, c169320, c575279, c6ca363, c7934ef, ca96025, cfc8b20, d3284b9, d3c86dc, d40744c, d4ab315, d51552c, d80a141, dcfe950, e377552, e7095cf, e743928, e8d66bb, eb6afa7, ec37d19, efdd761, f4dee77, f9082a7, fbb5857, fbd8d45, fe99422, ffdb8ea
+- `tests/fixtures/`: `library_names_72ebfd1.json` (A in 831dbb3), `sigs_main.json` (A in 3b4db1c)
 
-Generated from `git log HEAD --author="Raouf"` at commit `cc55140` of `release/final` on 2026-10-31. Only the member's own commits are listed; later changes by others are not shown.
+Generated from `git log HEAD --author="Raouf"` at commit `008ef72` of `refactor/final-fixes` on 2026-11-02. Only the member's own commits are listed; later changes by others are not shown.

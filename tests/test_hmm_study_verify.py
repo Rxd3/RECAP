@@ -41,8 +41,8 @@ FINAL_SPLITS = ("validation", *TEST_SPLITS)
 SAMPLE_KEYS = {"sample_id", "position", "gold", "predicted", "context_tokens", "selection_rule"}
 REPORT_KEYS = {"schema", "at_utc", "plan", "selection", "python", "modes", "runtime_checked", "result"}
 
-EXISTS = "verification output already exists; use a new verification directory"
-INCOMPLETE = "finalization is incomplete"
+EXISTS = "verification: verification output already exists; use a new verification directory"  # names the folder
+INCOMPLETE = "results.json: not found; run recap run-hmm-experiments finalize first"
 UNBOUND = "final results are not bound to frozen selection"
 SIDECAR = "prediction sidecar provenance/hash mismatch"
 REFIT_PREDICTIONS = "independent refit changed full-split predictions"
@@ -52,8 +52,9 @@ SUPPORT = "learned state counts do not match the approved training subset"
 SEQUENCES = "model trained on the wrong sequence count"
 BYTES = "independent refit does not reproduce the frozen artifact bytes"
 PRIVILEGED = "predictions depend on privileged fields"
-RUNTIME_INCOMPLETE = "runtime measurements are incomplete"
-RUNTIME_INVALID = "invalid runtime repetitions"
+RUNTIME_INCOMPLETE = "runtime.json: modes must be exactly the configured modes A, C"
+RUNTIME_INVALID_A = "runtime.json: modes.A.prediction_seconds must hold 2 numbers above zero"
+RUNTIME_INVALID_C = "runtime.json: modes.C.prediction_seconds must hold 2 numbers above zero"
 PLAN_MOVED = "selection does not match its frozen plan"
 INPUT_HASH = "shared report input hash mismatch"
 
@@ -471,9 +472,9 @@ def _with_seconds(mode: str, seconds: list[float]) -> Callable[[dict[str, Any]],
     ("change", "message"),
     [
         pytest.param(_without_mode_c, RUNTIME_INCOMPLETE, id="mode-C-missing"),
-        pytest.param(_with_seconds("A", [0.001]), RUNTIME_INVALID, id="A-one-repetition"),
-        pytest.param(_with_seconds("C", [0.001, 0.0]), RUNTIME_INVALID, id="C-zero-time"),
-        pytest.param(_with_seconds("A", [-0.5, 0.001]), RUNTIME_INVALID, id="A-negative-time"),
+        pytest.param(_with_seconds("A", [0.001]), RUNTIME_INVALID_A, id="A-one-repetition"),
+        pytest.param(_with_seconds("C", [0.001, 0.0]), RUNTIME_INVALID_C, id="C-zero-time"),
+        pytest.param(_with_seconds("A", [-0.5, 0.001]), RUNTIME_INVALID_A, id="A-negative-time"),
     ],
 )
 def test_runtime_measurements_that_are_incomplete_or_invalid_are_refused(

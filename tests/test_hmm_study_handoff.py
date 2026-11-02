@@ -31,7 +31,7 @@ from punct_restore.cli import package_hmm_handoff
 
 HANDOFF_ID = "handoff-1"
 OUTSIDE = "handoff must be a separate directory inside artifacts/"
-EXISTS = "handoff/archive already exists; use a new immutable handoff ID"
+EXISTS = "already exists; use a new immutable handoff ID"  # after the name of the folder, ZIP or checksum file
 UNVERIFIED = "a matching complete independent verification is required"
 SUMMARY = "summary does not match the actual scored reports"
 UNCHECKED = "not every search candidate was independently checked"
@@ -331,7 +331,7 @@ def test_a_handoff_folder_that_is_not_separate_and_inside_artifacts_is_refused(s
         "contains-run": study.run.parent,
         "dotdot": study.root / "artifacts" / ".." / "elsewhere",
     }[where]
-    refuse(study, OUTSIDE, bad, fresh=False)
+    refuse(study, f"{bad.resolve().name}: {OUTSIDE}", bad, fresh=False)  # names the folder it was given
     assert (study.run / "plan.json").is_file()
 
 
@@ -340,7 +340,7 @@ def test_main_reports_an_outside_handoff_folder_as_the_exact_error_line(
     code = package_hmm_handoff.main(cli_args(study, study.root / "elsewhere"))
     captured = capsys.readouterr()
     assert code == 1 and captured.out == ""
-    assert captured.err == f"error: {OUTSIDE}\n"
+    assert captured.err == f"error: elsewhere: {OUTSIDE}\n"
     assert not (study.root / "elsewhere").exists()
 
 
@@ -349,7 +349,8 @@ def test_an_existing_handoff_item_is_refused_and_left_untouched(study: Study, wh
     output, archive, checksum = paths(study)
     item = {"folder": output / "marker.txt", "zip": archive, "checksum": checksum}[which]
     write_text(item, "keep me\n")
-    refuse(study, EXISTS, fresh=False)
+    taken = {"folder": output, "zip": archive, "checksum": checksum}[which]
+    refuse(study, f"{taken.name}: {EXISTS}", fresh=False)
     assert item.read_text(encoding="utf-8") == "keep me\n"
 
 

@@ -227,7 +227,7 @@ class TestCRFTrainCLI:
         ])
         assert ret == 1
         captured = capsys.readouterr()
-        assert "data.jsonl: missing 1 selected IDs" in captured.err
+        assert "data.jsonl: 1 listed ID(s) are missing, first 'ghost_sample_9999'" in captured.err
 
     def test_train_duplicate_id_in_frozen_list_failure(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -249,7 +249,7 @@ class TestCRFTrainCLI:
         ])
         assert ret == 1
         captured = capsys.readouterr()
-        assert "Duplicate ID 'sample_0000'" in captured.err
+        assert "duplicate ID 'sample_0000'" in captured.err
 
     def test_train_empty_frozen_ids_failure(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
         """Verify failure when the frozen ID file is empty."""
@@ -335,7 +335,7 @@ class TestCRFTrainCLI:
         ])
         assert ret == 1
         captured = capsys.readouterr()
-        assert "mismatched punct_labels length" in captured.err
+        assert "corrupt_data.jsonl line 1: punct_labels length (2) does not match tokens length (3)." in captured.err
 
     def test_train_corrupt_jsonl_failure(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
         """Verify failure when encountering non-JSON lines."""

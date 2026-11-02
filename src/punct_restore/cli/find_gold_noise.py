@@ -35,10 +35,11 @@ from punct_restore.data.gold_noise import (
     speaker_label_colons,
     validate_record,
 )
-from punct_restore.file_io import iter_jsonl, require_folder, write_new_folder
+from punct_restore.errors import one_line_error
+from punct_restore.file_io import iter_jsonl, require_folder, require_release, write_new_folder
 from punct_restore.hashing import sha256_file
 from punct_restore.paths import REPO_ROOT as ROOT
-from punct_restore.prediction_io import one_line_error, parse_json_object, read_ids
+from punct_restore.prediction_io import parse_json_object, read_ids, select_records
 
 SPLITS = ("validation", "test", "test_amb", "default_train")
 
@@ -62,15 +63,15 @@ def _checked_record(line: str, where: str) -> dict[str, Any]:
     return record
 
 
-def _records(path: Path) -> Iterator[tuple[str, dict[str, Any]]]:
-    """Stream ``(sample_id, record)`` per JSONL line; errors name the file and line."""
-    for _, record in iter_jsonl(path, _checked_record):
-        yield record["sample_id"], record
+def _records(path: Path) -> Iterator[tuple[int, dict[str, Any]]]:
+    """Stream ``(line number, record)`` per JSONL line; errors name the file and line."""
+    return iter_jsonl(path, _checked_record)
 
 
 def _unique_records(path: Path) -> Iterator[dict[str, Any]]:
     seen: set[str] = set()
-    for sample_id, record in _records(path):
+    for _, record in _records(path):
+        sample_id = record["sample_id"]
         if sample_id in seen:
             raise ValueError(f"{path.name}: ID {sample_id} is listed twice")
         seen.add(sample_id)
@@ -80,19 +81,14 @@ def _unique_records(path: Path) -> Iterator[dict[str, Any]]:
 def score_records(jsonl: Path, ids_path: Path) -> Iterator[Scored]:
     """Score the listed records in file order; the speaker inventory comes from every record of the file."""
     ids = read_ids(ids_path)
-    wanted = set(ids)
     inventories = build_inventories(_unique_records(jsonl))                      # pass 1: the whole file
-    found: set[str] = set()
-    for sample_id, record in _records(jsonl):                                    # pass 2: the listed records
-        if sample_id not in wanted:
-            continue
-        found.add(sample_id)
+
+    def score(record: dict[str, Any], where: str) -> Scored:
         inventory = inventories.get(record["metadata"]["group_id"], frozenset())
-        yield Scored(sample_id, rules_for(record, inventory), record["punct_labels"].count("COLON"),
-                     speaker_label_colons(record, inventory))
-    if len(found) != len(wanted):
-        missing = next(sample_id for sample_id in ids if sample_id not in found)
-        raise ValueError(f"{ids_path.name}: ID {missing} is not in {jsonl.name}")
+        return Scored(record["sample_id"], rules_for(record, inventory), record["punct_labels"].count("COLON"),
+                      speaker_label_colons(record, inventory))
+
+    yield from select_records(_records(jsonl), jsonl.name, ids, score)           # pass 2: the listed records
 
 
 def summarize(scored: Iterable[Scored]) -> dict[str, Any]:
@@ -134,15 +130,15 @@ def process_split(root: Path, release: str, mode: str, split: str) -> dict[str, 
     return files
 
 
-def check_folders(data_root: Path, out: Path) -> None:
-    """Refuse a data root that is not a folder, or an ``out`` whose parent is not an existing folder."""
-    require_folder(data_root, "data root")
+def check_folders(data_root: Path, release: str, out: Path) -> None:
+    """Refuse a data root or release folder that is not there, or an ``out`` whose parent is not a folder."""
+    require_release(data_root, release)
     require_folder(out.parent, "output parent")
 
 
 def build(data_root: Path, release: str, mode: str, out: Path) -> list[str]:
     """Score every split, then write the outputs; returns one status line per split."""
-    check_folders(data_root, out)
+    check_folders(data_root, release, out)
     if out.exists():
         raise ValueError(f"output path {out.name} already exists; refusing to overwrite")
     files: dict[str, str] = {}

@@ -265,14 +265,25 @@ def test_a_kept_id_missing_from_the_split_file_fails(tmp_path: Path, capsys: pyt
     assert not out.exists()
 
 
-def test_a_train_id_missing_from_train_jsonl_fails(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_train_ids_missing_from_train_jsonl_are_counted_with_the_first_in_list_order(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     root = make_root(tmp_path)
     ids = root / "splits" / REL / "default_train" / "mode_A.ids"
-    ids.write_text(ids.read_text(encoding="utf-8") + "train:99\n", encoding="utf-8", newline="\n")
+    ids.write_text(ids.read_text(encoding="utf-8") + "train:99\ntrain:98\n", encoding="utf-8", newline="\n")
     out = tmp_path / "out"
     assert run(root, out) == 1
-    assert_one_error_line(capsys, "train:99", "train.jsonl")
+    err = assert_one_error_line(capsys)
+    assert err == "error: train.jsonl: 2 listed ID(s) are missing, first 'train:99'\n"
     assert not out.exists()
+
+
+def test_a_duplicate_sample_id_in_train_jsonl_names_the_line(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root = make_root(tmp_path)
+    train = jsonl_path(root, "train")
+    _write(train, train.read_text(encoding="utf-8") + json.dumps(_record("train:2", "A")) + "\n")
+    assert run(root, tmp_path / "out") == 1
+    assert assert_one_error_line(capsys) == "error: train.jsonl line 5: duplicate sample_id 'train:2'\n"
 
 
 def test_a_needed_test_group_id_that_is_missing_fails(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -311,10 +322,10 @@ def test_a_bad_jsonl_line_fails_with_file_name(tmp_path: Path, capsys: pytest.Ca
     assert not out.exists()
 
 
-def test_a_missing_input_file_is_a_friendly_one_line_error(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_a_missing_data_root_is_a_friendly_one_line_error(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     out = tmp_path / "out"
     assert run(tmp_path / "no-such-root", out) == 1
-    err = assert_one_error_line(capsys, "test.jsonl")
+    err = assert_one_error_line(capsys, "no-such-root: data root not found")
     assert str(tmp_path) not in err
     assert not out.exists()
 

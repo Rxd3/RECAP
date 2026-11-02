@@ -13,6 +13,7 @@ import pytest
 from punct_restore import pipeline
 from punct_restore.cli import run_demo
 from punct_restore.data.labeling import load_label_sets
+from punct_restore.models import crf_io
 from punct_restore.models.crf import CRFModel
 from punct_restore.models.gap_classifier import GapClassifier
 from punct_restore.models.hidden_event_lm import HiddenEventLM
@@ -366,7 +367,7 @@ def test_load_model_keeps_an_os_read_error_an_os_error(
         raise PermissionError(13, "Permission denied", str(model_path))
 
     monkeypatch.setattr(Path, "read_text", denied)
-    monkeypatch.setattr(pipeline.joblib, "load", denied)
+    monkeypatch.setattr(crf_io.joblib, "load", denied)
     with pytest.raises(OSError, match=rf"^{name}: cannot read model file \(Permission denied\)$") as error:
         load_model(model_path)
     assert "unsupported model file" not in str(error.value) and tmp_path.name not in str(error.value)

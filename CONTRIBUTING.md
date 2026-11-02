@@ -29,17 +29,20 @@ Follow the README environment setup. Install the package in editable mode (`pip 
 dependencies with a clear reason and a compatible tested environment in
 implementation PRs.
 
-The whole suite runs with pytest from the repository root, on small fixtures only, and the code must
-pass the linter (ruff 0.17.3 from the `dev` extra; settings in `pyproject.toml`). Both must pass before
-you open a pull request and again before it is merged:
+The whole suite runs with pytest from the repository root, on small fixtures only. The code must also
+pass the linter and the type checker, and the tests must cover at least 80% of `punct_restore` (ruff
+0.17.3, mypy 2.4.1 and coverage 7.17.0 come with the `dev` extra; settings in `pyproject.toml`). All four
+must pass before you open a pull request and again before it is merged:
 
 ```powershell
-python -m pytest -q
 ruff check src scripts tests
+mypy src/punct_restore
+coverage run -m pytest -q
+coverage report --fail-under=80
 ```
 
-The CI workflow `.github/workflows/ci.yml` runs the same two checks on Python 3.12 and 3.13 for every
-push and pull request, after `pip install -e ".[dev]" -c requirements-lock.txt` (the lock file's pins as
+The CI workflow `.github/workflows/ci.yml` runs the same steps on Python 3.12 and 3.13 for every push and
+pull request, after `pip install -e ".[dev]" -c requirements-lock.txt` (the lock file's pins as
 constraints).
 
 - **One branch per member:** work on your `feat/m<N>-...` branch (owners and branches are in

@@ -22,7 +22,7 @@ from typing import Any
 from punct_restore.file_io import iter_jsonl, require_file
 from punct_restore.paths import REPO_ROOT as ROOT
 from punct_restore.prediction_io import parse_json_object, read_ids
-from punct_restore.reporting._cli import check_out, name_only, run, write_new_text
+from punct_restore.reporting._cli import check_out, check_release, name_only, run, write_new_text
 
 REPS, WARMUP = 3, 200
 FIT_OPTIONS = ("fit_train", "fit_ids", "smoothing", "min_token_count")
@@ -86,6 +86,7 @@ def measure(args: argparse.Namespace) -> dict[str, Any]:
     start = time.perf_counter()
     model = load_model(model_cls, args.model)
     load_s = time.perf_counter() - start
+    check_release(args.data_root, args.release)  # before the records are read: a missing release says what to run
     proc, spl = args.data_root / "processed" / args.release, args.data_root / "splits" / args.release
     ids = spl / f"primary_eval/validation_mode_{args.mode}.ids"
     recs = records(proc / f"mode_{args.mode}/validation.jsonl", ids)
@@ -141,7 +142,7 @@ def write_report(args: argparse.Namespace) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    return run(lambda: write_report(args), json_errors=False)  # it runs model code: no input-JSON relabelling
+    return run(lambda: write_report(args))
 
 
 if __name__ == "__main__":

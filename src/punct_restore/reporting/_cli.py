@@ -10,12 +10,9 @@ import sys
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
-from punct_restore.prediction_io import (
-    check_new_output_paths,
-    one_line_error,
-    reconfigure_stdout,
-    write_new_file,
-)
+from punct_restore.errors import one_line_error, reconfigure_stdout
+from punct_restore.file_io import require_folder, require_release
+from punct_restore.prediction_io import check_new_output_paths, write_new_file
 
 
 def check_out(out: Path, inputs: Mapping[str, Path | None] | None = None) -> None:
@@ -27,6 +24,32 @@ def check_out(out: Path, inputs: Mapping[str, Path | None] | None = None) -> Non
         raise ValueError(f"{out.name}: folder {out.parent.name or out.parent} not found")
     if out.exists():
         raise ValueError(f"{out.name} already exists")
+
+
+def _as_value_error(check: Callable[[], object]) -> None:
+    """Run ``check``; the message-only OSError of a ``file_io`` ``require_*`` becomes a ValueError with its text.
+
+    ``file_io`` words these OSErrors by file name only, but ``run`` hides a message-only OSError (it may quote a whole
+    path), so the text would be lost. A system error (it has an errno) is left for ``run`` to word.
+    """
+    try:
+        check()
+    except OSError as exc:
+        if exc.errno is not None:
+            raise
+        raise ValueError(str(exc)) from exc
+
+
+def check_scores_folder(scores_root: Path) -> None:
+    """Refuse a ``--scores-root`` that is missing or a file, as ``<name>: scores folder not found`` or ``<name>: is a
+    file, not a folder``. Call it before reading anything."""
+    _as_value_error(lambda: require_folder(scores_root, "scores folder"))
+
+
+def check_release(data_root: Path, release: str) -> None:
+    """Refuse a ``--data-root`` that is missing or a file, or without the processed folder of ``release`` (the
+    message says to run ``recap prepare-data build``), as ``file_io.require_release`` words it."""
+    _as_value_error(lambda: require_release(data_root, release))
 
 
 def write_new_text(out: Path, text: str) -> None:
@@ -47,12 +70,12 @@ def _fail(message: str) -> int:
     return 1
 
 
-def run(task: Callable[[], None], *, json_errors: bool = True) -> int:
-    """Run ``task``; a missing file or malformed input becomes ``error: <message>`` and exit code 1.
+def run(task: Callable[[], None]) -> int:
+    """Run ``task``; a missing file or a malformed input file becomes ``error: <message>`` and exit code 1.
 
-    Files are named by their file name only, never by their folder. With ``json_errors`` the task reads
-    JSON inputs, so ``KeyError``/``TypeError``/``ArithmeticError`` are reported as bad input; pass
-    ``json_errors=False`` when the task also runs model code, where those errors are bugs and propagate.
+    Files are named by their file name only, never by their folder. Only ``OSError`` and ``ValueError`` are input
+    problems: the readers raise a ``ValueError`` that names the file and the key (see ``build_tables.load``). Any
+    other exception is a bug in our own code and propagates with its traceback.
     """
     reconfigure_stdout()  # a non-ASCII ``--out`` on a cp1252 console must not crash print()
     try:
@@ -62,12 +85,4 @@ def run(task: Callable[[], None], *, json_errors: bool = True) -> int:
         return _fail(one_line_error(exc) if exc.strerror else "a file could not be read or written")
     except ValueError as exc:
         return _fail(one_line_error(exc))
-    except KeyError as exc:
-        if not json_errors:
-            raise
-        return _fail(f"missing key {exc} in an input JSON file")
-    except (TypeError, ArithmeticError):
-        if not json_errors:
-            raise
-        return _fail("an input JSON file holds a value of the wrong type")
     return 0

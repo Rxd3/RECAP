@@ -619,7 +619,7 @@ def test_read_observations_reports_ids_missing_from_the_input(tmp_path: Path) ->
     path, ids = tmp_path / "in.jsonl", tmp_path / "x.ids"
     path.write_text(_ONE + "\n", encoding="utf-8")
     ids.write_text("s\nt\n", encoding="utf-8")
-    with pytest.raises(ValueError, match=r"^in\.jsonl: missing 1 selected IDs\. Examples: \['t'\]$"):
+    with pytest.raises(ValueError, match=r"^in\.jsonl: 1 listed ID\(s\) are missing, first 't'$"):
         prediction_io.read_observations(path, ids)
 
 
@@ -635,7 +635,7 @@ def test_select_observations_takes_the_ids_already_read_and_keeps_input_file_ord
 def test_select_observations_names_the_input_for_a_missing_id_and_never_reads_an_id_file(tmp_path: Path) -> None:
     path = tmp_path / "in.jsonl"
     path.write_text(_ONE + "\n", encoding="utf-8")
-    with pytest.raises(ValueError, match=r"^in\.jsonl: missing 1 selected IDs\. Examples: \['t'\]$"):
+    with pytest.raises(ValueError, match=r"^in\.jsonl: 1 listed ID\(s\) are missing, first 't'$"):
         prediction_io.select_observations(path, ["s", "t"])
     with pytest.raises(FileNotFoundError, match=r"^ghost\.jsonl: input JSONL not found$"):
         prediction_io.select_observations(tmp_path / "ghost.jsonl", ["s"])
@@ -648,7 +648,7 @@ def test_read_ids_skips_blanks_and_rejects_missing_empty_and_duplicate_lists(
     ids.write_text("a\n\nb\n", encoding="utf-8")
     assert prediction_io.read_ids(ids) == ["a", "b"]
     ids.write_text("a\na\n", encoding="utf-8")
-    with pytest.raises(ValueError, match="Duplicate ID 'a' found at line 2"):
+    with pytest.raises(ValueError, match=r"^x\.ids line 2: duplicate ID 'a'$"):
         prediction_io.read_ids(ids)
     ids.write_text("\n", encoding="utf-8")
     with pytest.raises(ValueError, match="empty"):

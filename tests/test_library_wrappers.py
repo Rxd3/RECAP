@@ -41,7 +41,7 @@ def test_read_frozen_ids_raises_file_not_found_for_a_missing_file_and_for_a_fold
 
 
 def test_read_frozen_ids_refuses_a_duplicate_id(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="Duplicate ID 'a'"):
+    with pytest.raises(ValueError, match="duplicate ID 'a'"):
         read_frozen_ids(_ids(tmp_path, "a\nb\na\n"))
 
 
@@ -104,7 +104,7 @@ def test_selected_records_counts_stay_untouched_until_the_first_row_is_asked_for
     rows = selected_records(_source(tmp_path), None, counts=counts)
     assert counts == {"input_records": 99, "selected_records": 99, "selected_tokens": 99}
     next(rows)
-    assert counts == dict.fromkeys(COUNT_KEYS, 0)  # reset at the first next()
+    assert counts == {"input_records": 1, "selected_records": 1, "selected_tokens": 2}  # reset, then the first row
     assert list(counts) == COUNT_KEYS
     list(rows)
     assert counts == {"input_records": 4, "selected_records": 4, "selected_tokens": 7}
@@ -116,16 +116,39 @@ def test_selected_records_need_no_counts_argument(tmp_path: Path) -> None:
 
 def test_selected_records_still_refuse_a_missing_selected_id_after_the_last_row(tmp_path: Path) -> None:
     counts: dict[str, int] = {}
-    with pytest.raises(ValueError, match="1 selection IDs missing"):
+    with pytest.raises(ValueError, match=r"^in\.jsonl: 1 listed ID\(s\) are missing, first 'gone'$"):
         list(selected_records(_source(tmp_path), ("a", "gone"), counts=counts))
-    assert counts == dict.fromkeys(COUNT_KEYS, 0)  # documented: no partial totals after an error
+    assert counts == {"input_records": 4, "selected_records": 1, "selected_tokens": 2}  # main: the whole file was read
 
 
-def test_selected_records_counts_stay_zero_after_an_early_stop(tmp_path: Path) -> None:
+def test_selected_records_counts_are_partial_totals_after_an_early_stop_like_main(tmp_path: Path) -> None:
+    """A wrapper that fills `counts` at the end, or only when a row is yielded, leaves zeros or a row too few."""
     counts: dict[str, int] = {}
-    for _ in selected_records(_source(tmp_path), None, counts=counts):
-        break
-    assert counts == dict.fromkeys(COUNT_KEYS, 0)  # documented: no partial totals when the caller stops early
+    rows = selected_records(_source(tmp_path), ("b", "c"), counts=counts)
+    assert next(rows)["sample_id"] == "b"  # `a` was read and skipped, `b` selected
+    rows.close()  # the caller stops here
+    assert counts == {"input_records": 2, "selected_records": 1, "selected_tokens": 1}
+
+
+def test_selected_records_counts_follow_each_row_the_caller_receives(tmp_path: Path) -> None:
+    counts: dict[str, int] = {}
+    seen = [dict(counts) for _ in selected_records(_source(tmp_path), None, counts=counts)]
+    assert seen == [
+        {"input_records": 1, "selected_records": 1, "selected_tokens": 2},
+        {"input_records": 2, "selected_records": 2, "selected_tokens": 3},
+        {"input_records": 3, "selected_records": 3, "selected_tokens": 6},
+        {"input_records": 4, "selected_records": 4, "selected_tokens": 7},
+    ]
+
+
+def test_selected_records_counts_hold_the_rows_read_before_an_error_like_main(tmp_path: Path) -> None:
+    """The unselected row `b` is read without a row going to the caller; its count is there when `c` is refused."""
+    path = tmp_path / "in.jsonl"
+    jsonl(path, [_row("a", ["x"]), _row("b", ["y", "z"]), {"schema_version": 1, "sample_id": "c", "tokens": []}])
+    counts: dict[str, int] = {}
+    with pytest.raises(ValueError, match="tokens must be a nonempty list"):
+        list(selected_records(path, ("a",), counts=counts))
+    assert counts == {"input_records": 2, "selected_records": 1, "selected_tokens": 1}
 
 
 def _training_row(sample_id: str, source_revision: str) -> dict[str, Any]:

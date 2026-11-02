@@ -8,7 +8,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
-from punct_restore.file_io import read_object, require_object
+from punct_restore.file_io import read_object, require_object, short_name
 from punct_restore.hashing import sha256_file
 from punct_restore.models.hmm import HMMModel
 from punct_restore.models.hmm_experiment_audit import ReportOptions, check_report, probability_checks
@@ -174,13 +174,15 @@ def _verify_mode(
 def _check_runtime(run: Path, config: dict[str, Any]) -> None:
     """Require complete, positive runtime measurements for every configured mode."""
     runtime = read_object(run / "runtime.json", {"modes": {}})
-    if set(runtime["modes"]) != set(config["modes"]):
-        raise ValueError("runtime measurements are incomplete")
-    for mode in config["modes"]:
+    modes, repetitions = config["modes"], config["runtime"]["repetitions"]
+    if set(runtime["modes"]) != set(modes):
+        raise ValueError(f"runtime.json: modes must be exactly the configured modes {', '.join(modes)}")
+    for mode in modes:
         measured = require_object("runtime.json", runtime["modes"][mode], {"prediction_seconds": list}, f"modes.{mode}")
         values = measured["prediction_seconds"]
-        if len(values) != config["runtime"]["repetitions"] or any(not _is_positive(v) for v in values):
-            raise ValueError("invalid runtime repetitions")
+        if len(values) != repetitions or any(not _is_positive(v) for v in values):
+            raise ValueError(
+                f"runtime.json: modes.{mode}.prediction_seconds must hold {repetitions} numbers above zero")
 
 
 def _is_positive(value: Any) -> bool:
@@ -225,9 +227,9 @@ def verify(run: Path, evaluator: Path, output: Path, *, log: Log = discard_log) 
     plan, selection = verified_frozen_selection(run, evaluator)
     config = plan["config"]
     if output.exists():
-        raise ValueError("verification output already exists; use a new verification directory")
+        raise ValueError(f"{short_name(output)}: verification output already exists; use a new verification directory")
     if not (run / "results.json").exists():
-        raise ValueError("finalization is incomplete")
+        raise ValueError("results.json: not found; run recap run-hmm-experiments finalize first")
     authenticate(config, "tune")
     authenticate(config, "finalize")
     results = read_object(run / "results.json", _RESULTS)

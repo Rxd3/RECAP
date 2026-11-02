@@ -17,19 +17,18 @@ from __future__ import annotations
 
 import argparse
 import sys
-from collections.abc import Container
 from pathlib import Path
 from typing import Any
 
+from punct_restore.errors import one_line_error_with_short_paths, reconfigure_stdout
 from punct_restore.file_io import iter_jsonl, refuse_existing, require_file
 from punct_restore.models.hidden_event_lm import HiddenEventLM
 from punct_restore.prediction_io import (
     check_new_output_paths,
-    one_line_error_with_short_paths,
     parse_sample_record,
     read_ids,
-    reconfigure_stdout,
     select_observations,
+    select_records,
     write_prediction_outputs,
 )
 
@@ -56,16 +55,9 @@ def _slim(record: dict[str, Any], mode: str) -> dict[str, Any]:
     return {field: _interned(record.get(field)) for field in fields}
 
 
-def _keep_line(
-    line: str, where: str, wanted: set[str], taken_ids: Container[str], mode: str
-) -> dict[str, Any] | None:
-    """The slim record of a listed training line, or None for an unlisted one; ``taken_ids`` are the IDs so far."""
-    record = parse_sample_record(line, where)
+def _slim_training_record(record: dict[str, Any], where: str, mode: str) -> dict[str, Any]:
+    """The slim record of a listed training line; ``where`` is ``<file> line N``, the start of every message."""
     sample_id = record["sample_id"]
-    if sample_id not in wanted:
-        return None
-    if sample_id in taken_ids:
-        raise ValueError(f"{where}: duplicate sample_id {sample_id!r}")
     if record.get("split") != "train":
         raise ValueError(f"{where}: {sample_id!r} has split {record.get('split')!r}; only train records can be used")
     if record.get("label_mode") != mode:
@@ -78,20 +70,9 @@ def read_training_records(input_path: Path, ids_path: Path, mode: str) -> list[d
 
     ValueError if a listed ID is absent, is not split "train" or has another label mode.
     """
-    ids = read_ids(ids_path)
-    wanted = set(ids)
-    kept: dict[str, dict[str, Any]] = {}
-
-    def keep_line(line: str, where: str) -> dict[str, Any] | None:
-        return _keep_line(line, where, wanted, kept, mode)  # reads `kept` as it grows: iter_jsonl is lazy
-
-    for _, record in iter_jsonl(input_path, keep_line):
-        if record is not None:
-            kept[record["sample_id"]] = record
-    missing = [sample_id for sample_id in ids if sample_id not in kept]
-    if missing:
-        raise ValueError(f"{input_path.name}: {len(missing)} listed ID(s) are missing, first {missing[0]!r}")
-    return list(kept.values())
+    rows = iter_jsonl(input_path, parse_sample_record)
+    return list(select_records(rows, input_path.name, read_ids(ids_path),
+                               lambda record, where: _slim_training_record(record, where, mode)))
 
 
 def _cmd_train(args: argparse.Namespace) -> str:

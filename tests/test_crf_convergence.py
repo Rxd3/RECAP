@@ -12,6 +12,7 @@ import pytest
 from reporting_fixtures import TRAIN, assert_one_error_line, run_main
 
 from punct_restore.evaluation.inputs import sha256_file
+from punct_restore.models import crf_io
 from punct_restore.models.crf import CRFModel
 from punct_restore.reporting import crf_convergence
 
@@ -188,7 +189,7 @@ def test_an_iteration_without_a_finite_loss_is_refused(
 
 def test_an_unreadable_file_is_refused_by_name_only(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     (tmp_path / "junk.joblib").write_bytes(b"this is not a pickle")
-    refuse(capsys, tmp_path / "o.json", tmp_path / "junk.joblib", needle="junk.joblib: not a readable joblib file")
+    refuse(capsys, tmp_path / "o.json", tmp_path / "junk.joblib", needle="junk.joblib: not a readable artifact")
 
 
 def test_a_missing_python_package_is_named_not_called_unreadable(
@@ -199,7 +200,7 @@ def test_a_missing_python_package_is_named_not_called_unreadable(
     def need_package(_path: Path) -> None:
         raise ModuleNotFoundError("No module named 'sklearn_crfsuite'", name="sklearn_crfsuite")
 
-    monkeypatch.setattr(crf_convergence.joblib, "load", need_package)
+    monkeypatch.setattr(crf_io.joblib, "load", need_package)
     refuse(capsys, tmp_path / "o.json", model, needle="m.joblib: needs the Python package sklearn_crfsuite to open it")
 
 
@@ -211,7 +212,7 @@ def test_a_system_error_while_opening_reports_the_system_reason(
     def denied(path: Path) -> None:
         raise PermissionError(13, "Permission denied", str(path))
 
-    monkeypatch.setattr(crf_convergence.joblib, "load", denied)
+    monkeypatch.setattr(crf_io.joblib, "load", denied)
     refuse(capsys, tmp_path / "o.json", model, needle="m.joblib: Permission denied")
 
 
@@ -220,9 +221,9 @@ def test_a_folder_handed_to_the_loader_is_reported_as_a_folder(
 ) -> None:
     folder = tmp_path / "sub.joblib"
     folder.mkdir()
-    with pytest.raises(OSError):  # the system error is not relabelled "not a readable joblib file"
-        crf_convergence.read_bundle(folder)
-    assert crf_convergence.run(lambda: crf_convergence.read_bundle(folder), json_errors=False) == 1
+    with pytest.raises(ValueError, match=r"^sub\.joblib: is a folder, not a file$"):  # not "not a readable artifact"
+        crf_convergence.read_convergence_bundle(folder)
+    assert crf_convergence.run(lambda: crf_convergence.read_convergence_bundle(folder)) == 1
     assert_one_error_line(capsys.readouterr().err, "sub.joblib: is a folder, not a file")
 
 

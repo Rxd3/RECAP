@@ -454,3 +454,11 @@ def test_full_archive_fallback_and_manifest_check(tmp_path, monkeypatch):
     assert ex.verify_extraction(str(out), str(out / "MANIFEST.sha256")) == ([], [])
     (out / "sponspeech_text" / "README.txt").write_bytes(b"changed")
     assert ex.verify_extraction(str(out), str(out / "MANIFEST.sha256"))[0] == ["sponspeech_text/README.txt"]
+
+
+def test_a_transcript_that_is_not_utf8_is_refused_in_the_one_utf8_wording(tmp_path):
+    (tmp_path / "train" / "text").mkdir(parents=True)
+    (tmp_path / "train" / "utt2spk").write_text("aaaaaaaaaaa-0 aaaaaaaaaaa\n", encoding="utf-8")
+    (tmp_path / "train" / "text" / "aaaaaaaaaaa-0.txt").write_bytes(b"\xff\xfe")
+    with pytest.raises(preprocessing.SourceError, match="^train/aaaaaaaaaaa-0: not valid UTF-8$"):
+        preprocessing.read_source_split(tmp_path, "train")

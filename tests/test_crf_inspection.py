@@ -7,13 +7,30 @@ from pathlib import Path
 
 import joblib
 import pytest
+import sklearn_crfsuite
 
 from punct_restore.models.crf_inspection import RULE, inspect_artifact
 
+HYPERPARAMETERS = {"algorithm": "lbfgs", "c1": 0.1, "c2": 0.2, "max_iterations": 5, "all_possible_transitions": True}
+FEATURE_CONFIG = {
+    "preset": "basic", "window_size": 1, "use_affixes": True, "use_shape": True, "use_internal_punct": True,
+    "use_token_ngrams": False, "use_question_cues": False, "use_clause_cues": False, "use_casing_cues": False,
+    "include_utterance_boundaries": True, "use_positional_buckets": False, "version": "v1-basic",
+}
+
+
+def _tiny_fitted_crf() -> sklearn_crfsuite.CRF:
+    """A trained CRF (one two-token sequence): an unfitted one is refused as an artifact's backend."""
+    crf = sklearn_crfsuite.CRF(max_iterations=2)
+    crf.fit([[{"w": "a"}, {"w": "b"}]], [["O", "COMMA"]])
+    return crf
+
+
 BUNDLE = {
     "schema_version": 1, "model_name": "crf_probe", "label_mode": "A", "vocabulary": ["O", "COMMA"],
-    "hyperparameters": {"c1": 0.1}, "feature_config": {"preset": "basic"},
+    "hyperparameters": HYPERPARAMETERS, "feature_config": FEATURE_CONFIG,
     "training_metadata": {"num_sequences": 3}, "environment": {"platform": "test-os"},
+    "backend_state": _tiny_fitted_crf(),  # the kind and that it is trained are checked, not what it predicts
 }
 SIDECAR = {
     "run_id": "run-7", "provenance": {"dataset_release": "rel-1", "policy_version": "pol-1"},
@@ -46,10 +63,25 @@ def test_the_summary_lists_the_header_and_every_section_in_order(artifact: Path)
         "Vocabulary:         ['O', 'COMMA']",
         "",
         "Hyperparameters:",
+        "  algorithm               : lbfgs",
         "  c1                      : 0.1",
+        "  c2                      : 0.2",
+        "  max_iterations          : 5",
+        "  all_possible_transitions: True",
         "",
         "Feature Configuration:",
         "  preset                  : basic",
+        "  window_size             : 1",
+        "  use_affixes             : True",
+        "  use_shape               : True",
+        "  use_internal_punct      : True",
+        "  use_token_ngrams        : False",
+        "  use_question_cues       : False",
+        "  use_clause_cues         : False",
+        "  use_casing_cues         : False",
+        "  include_utterance_boundaries: True",
+        "  use_positional_buckets  : False",
+        "  version                 : v1-basic",
         "",
         "Training Metadata:",
         "  num_sequences           : 3",
@@ -60,14 +92,33 @@ def test_the_summary_lists_the_header_and_every_section_in_order(artifact: Path)
     assert RULE == "=" * 70
 
 
-def test_a_bundle_without_sections_gets_empty_ones(tmp_path: Path) -> None:
+@pytest.mark.parametrize("field", ["vocabulary", "hyperparameters", "feature_config", "training_metadata",
+                                   "environment", "backend_state"])
+def test_a_bundle_without_a_field_is_refused_naming_it(field: str, tmp_path: Path) -> None:
     path = tmp_path / "bare.joblib"
-    joblib.dump({}, path)
+    joblib.dump({k: v for k, v in BUNDLE.items() if k != field}, path)
 
-    summary = inspect_artifact(path).summary
+    with pytest.raises(ValueError) as caught:
+        inspect_artifact(path)
 
-    assert "Vocabulary Size:    0 classes" in summary and "Model Name:         None" in summary
-    assert summary[-2:] == ["", "Environment:"]
+    assert str(caught.value) == f"bare.joblib: corrupt artifact: missing {field}"
+
+
+@pytest.mark.parametrize(("field", "value", "reason"), [
+    ("hyperparameters", None, "hyperparameters is not a dict"),
+    ("vocabulary", 5, "vocabulary is not a list"),
+    ("environment", [], "environment is not a dict"),
+    ("backend_state", b"x", "backend_state is not a CRF model"),
+])
+def test_a_field_of_the_wrong_kind_is_refused_naming_it(field: str, value: object, reason: str,
+                                                        tmp_path: Path) -> None:
+    path = tmp_path / "odd.joblib"
+    joblib.dump({**BUNDLE, field: value}, path)
+
+    with pytest.raises(ValueError) as caught:
+        inspect_artifact(path)
+
+    assert str(caught.value) == f"odd.joblib: corrupt artifact: {reason}"
 
 
 # --- the companion manifest --------------------------------------------------------------------------------
@@ -132,7 +183,7 @@ def test_a_missing_artifact_is_a_file_not_found_error_naming_the_file_only(tmp_p
 def test_a_file_that_is_not_an_artifact_is_a_value_error(tmp_path: Path) -> None:
     junk = tmp_path / "junk.joblib"
     junk.write_bytes(b"this is not a joblib file")
-    with pytest.raises(ValueError, match=r"^junk\.joblib: not a readable CRF artifact$"):
+    with pytest.raises(ValueError, match=r"^junk\.joblib: not a readable artifact$"):
         inspect_artifact(junk)
 
     listing = tmp_path / "list.joblib"

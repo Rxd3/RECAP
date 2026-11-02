@@ -270,7 +270,7 @@ MALFORMED = {
     "extra field": (_edit(lambda p: p.update(extra=1)), "unexpected"),
     "not an object": ("[1, 2]", "object"),
     "invalid json": ('{"k": ', "JSON"),
-    "nested too deeply": ("[" * 100_000, "invalid JSON"),  # the json module gives up with a RecursionError
+    "nested too deeply": ("[" * 100_000, "not valid JSON"),  # the json module gives up with a RecursionError
     "empty file": ("", "JSON"),
 }
 
@@ -291,3 +291,12 @@ def test_a_file_that_is_not_utf8_is_rejected(tmp_path: Path):
     path.write_bytes(b"\xff\xfe\x00{")
     with pytest.raises(ValueError, match="bad_map.json: not valid UTF-8"):
         wc.load_cluster_map(path)
+
+
+@pytest.mark.parametrize("text", ['{"k": ', "", "[" * 100_000], ids=["cut", "empty", "too deep"])
+def test_a_file_that_is_not_json_is_refused_in_the_wording_of_the_one_json_reader(tmp_path, text):
+    path = tmp_path / "bad_map.json"
+    path.write_text(text, encoding="utf-8")
+    with pytest.raises(ValueError) as caught:
+        wc.load_cluster_map(path)
+    assert str(caught.value) == "bad_map.json: not valid JSON"

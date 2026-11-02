@@ -6,8 +6,8 @@ import argparse
 import sys
 from pathlib import Path
 
+from punct_restore.errors import one_line_error
 from punct_restore.models.hmm_workflow import PredictionOptions, portable_path, predict_run_with
-from punct_restore.prediction_io import one_line_error
 
 
 def main(argv: list[str] | None = None) -> int:
