@@ -130,7 +130,8 @@ with `--overwrite`.
 Every command reports a runtime problem as one stderr line, `error: <file or folder name>: <reason>`, and
 exits 1; a usage error from argparse exits 2. No line shows a full path or a traceback. The lines users see:
 
-- **ID lists and records:** a repeated ID in an `.ids` list gives `<file> line N: duplicate ID '<id>'`; a listed
+- **ID lists and records** (most commands; `evaluate-models baseline` and `build-leakage-subsets` word these
+  slightly differently): a repeated ID in an `.ids` list gives `<file> line N: duplicate ID '<id>'`; a listed
   ID with no record gives `<file>: N listed ID(s) are missing, first '<id>'`; a repeated `sample_id` in a data
   file (listed or not) gives `<file> line N: duplicate sample_id '<id>'`.
 - **File contents:** `<file>: not valid UTF-8` for an input file that is not UTF-8; YAML files say `<file>: not a mapping`,
