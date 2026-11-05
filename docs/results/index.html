@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RECAP Results</title>
+<meta name="description" content="RECAP: restoring punctuation and casing in informal English speech transcripts with an HMM and linear-chain CRFs. Test results with 95% intervals.">
+<style>
+/* Self-contained results page in the NALTRA dashboard style. Every number lives in the DATA block below. */
+:root {
+  color-scheme: light;
+  --bg: #f5f6fa; --surface: #ffffff; --surface-2: #f0f2f8;
+  --ink: #182033; --ink-2: #566177; --ink-3: #5b667c;
+  --rule: #e1e5ef; --grid: #edf0f6; --accent: #495dcc; --accent-soft: #edf0ff;
+  --shadow: 0 3px 6px rgb(20 32 62 / 0.02), 0 16px 40px rgb(20 32 62 / 0.04);
+  --s1: #7f8aa1; --s2: #b97800; --s3: #2a78d6; --s5: #d4561f;
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-data: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+@media (prefers-color-scheme: dark) { :root {  /* the page has no theme switch, so the system setting decides */
+  color-scheme: dark;
+  --bg: #0c1018; --surface: #141a25; --surface-2: #1c2433;
+  --ink: #edf1fa; --ink-2: #b0bbcf; --ink-3: #93a0b9;
+  --rule: #293246; --grid: #222b3b; --accent: #a6b3ff; --accent-soft: #252f4e;
+  --shadow: 0 10px 36px rgb(0 0 0 / 0.1);
+  --s1: #6c7790; --s2: #c98500; --s3: #3987e5; --s5: #d95926;
+} }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.6 var(--font-ui); -webkit-font-smoothing: antialiased; }
+a { color: var(--accent); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 1080px; margin: 0 auto; padding-block: 40px 72px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.hero { display: grid; gap: 14px; padding-bottom: 8px; }
+.eyebrow { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+h1 { font-size: clamp(30px, 5vw, 46px); line-height: 1.1; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h2 { font-size: 22px; line-height: 1.25; margin: 0; text-wrap: balance; }
+h3 { font-size: 15px; margin: 0; }
+p { margin: 0; max-width: 72ch; }
+.lede { font-size: 17px; color: var(--ink-2); }
+.links { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 14px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 12px; margin-top: 24px; }
+.kpi { background: var(--surface); border: 1px solid var(--rule); border-radius: 14px; padding: 16px 18px; box-shadow: var(--shadow); display: grid; gap: 4px; }
+.kpi .v { font: 600 30px/1.1 var(--font-data); font-variant-numeric: tabular-nums; }
+.kpi .l { font-size: 13px; color: var(--ink-2); }
+section { margin-top: 48px; display: grid; gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--rule); border-radius: 14px; padding: 20px; box-shadow: var(--shadow); display: grid; gap: 12px; min-width: 0; overflow-x: auto; }
+.note { color: var(--ink-2); font-size: 14px; }
+.tag { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); vertical-align: middle; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 14px; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { padding: 8px 10px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+th { font-weight: 600; color: var(--ink-2); white-space: nowrap; }
+td.n, th.n { text-align: right; font-family: var(--font-data); font-variant-numeric: tabular-nums; white-space: nowrap; }
+td .ci { color: var(--ink-3); font-size: 12px; }
+tr:last-child td { border-bottom: 0; }
+.best { color: var(--accent); font-weight: 600; }
+svg text { fill: var(--ink-2); font: 12px var(--font-ui); }
+svg .lbl { fill: var(--ink); font: 600 12px var(--font-data); }
+svg .axis { stroke: var(--rule); }
+svg .grid { stroke: var(--grid); }
+svg .whisk { stroke: var(--ink); stroke-width: 1.5; }
+svg .short { stroke: var(--s5); stroke-width: 2; stroke-dasharray: 6 5; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--ink-2); }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.legend i.dash { height: 0; border-top: 2px dashed var(--s5); width: 18px; border-radius: 0; vertical-align: 3px; }
+ul.facts { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+footer { margin-top: 56px; color: var(--ink-3); font-size: 13px; display: grid; gap: 6px; }
+@media (max-width: 560px) { .kpi .v { font-size: 26px; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <noscript><p class="note">The tables and chart on this page need JavaScript. The same results are in <a href="https://github.com/Rxd3/RECAP/blob/main/docs/EVALUATION_RESULTS_CRF.md">docs/EVALUATION_RESULTS_CRF.md</a>.</p></noscript>
+  <header class="hero">
+    <span class="eyebrow">COE025 Natural Language Processing · Project 2 · test results</span>
+    <h1>RECAP: restoring punctuation and casing in spoken English</h1>
+    <p class="lede">Lowercased, unpunctuated transcripts of informal English speech go in; every word gets a label for the punctuation mark after it and, in mode C, its own casing. A hidden Markov model with Viterbi decoding against linear-chain CRFs, on splits where no video appears in both training and test.</p>
+    <div class="links">
+      <a href="https://github.com/Rxd3/RECAP">Repository</a>
+      <a href="https://github.com/Rxd3/RECAP/blob/main/docs/EVALUATION_RESULTS_CRF.md">Full results</a>
+      <a href="https://github.com/Rxd3/RECAP/blob/main/docs/EVALUATION_PROTOCOL.md">Evaluation protocol</a>
+      <a href="https://github.com/Rxd3/RECAP/blob/main/docs/REPRODUCIBILITY.md">Reproduce</a>
+    </div>
+    <div class="kpis" id="kpis"></div>
+  </header>
+
+  <section aria-labelledby="main-h">
+    <h2 id="main-h">The improved CRF beats the HMM in every mode</h2>
+    <p class="note">Primary macro F1 % on the leak-free test lists. Modes A and B: macro F1 over the non-O punctuation classes; mode C: over all 12 joint punctuation-and-casing classes on unmasked positions. Whiskers: 95% intervals from a bootstrap that resamples whole videos (1,000 resamples). Modes B and C are different tasks, so compare models within a mode.</p>
+    <div class="card">
+      <div class="legend" id="legend"></div>
+      <div class="scroll"><svg id="chart" role="img" aria-label="Grouped bar chart of test macro F1 per mode with 95% intervals"></svg></div>
+    </div>
+    <div class="card scroll"><table id="main-table"></table></div>
+    <div class="grid2">
+      <div class="card"><h3>Paired differences (test)</h3><table id="diff-table"></table>
+        <p class="note">Every paired 95% interval excludes 0 and all nine survive a Holm correction over the 21 test comparisons. The ranking also holds on test_amb, the second held-out set (CRF improved − HMM: +16.47 / +7.27 / +10.82).</p></div>
+      <div class="card"><h3>Where the CRF gains (mode A test, class F1)</h3><table id="class-table"></table>
+        <p class="note">Casing in mode C (masked casing F1): HMM 79.81, CRF improved 85.09.</p></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="eou-h">
+    <h2 id="eou-h">Is it just the end of the utterance?</h2>
+    <p class="note">Every utterance ends in a period or a question mark. A shortcut that puts O everywhere and a period (or a question mark after a wh-word or auxiliary start) on the last word already reaches PERIOD F1 66.68 in mode A, against the HMM's 67.34. Dropping each utterance's last word shows what a model learns inside the sentence.</p>
+    <div class="grid2">
+      <div class="card"><h3>Mode A test, final word removed (macro F1)</h3><table id="eou-table"></table></div>
+      <div class="card"><h3>Non-final positions only (class F1)</h3><table id="nf-table"></table>
+        <p class="note">The HMM mostly learns "put a period at the end"; the CRF finds commas and questions inside the sentence.</p></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="leak-h">
+    <h2 id="leak-h">The CRF scores higher on videos it was trained on <span class="tag">descriptive</span></h2>
+    <p class="note">The official splits share source videos. Our primary lists drop every utterance whose video is in training (and, for test, in validation), plus exact and near duplicates: 4,716 of the 17,695 official test utterances (26.7%). Below, the frozen models score each subset separately. This is a descriptive comparison, not a measured leakage effect: the subsets are different videos and no interval was computed for the gap.</p>
+    <div class="card scroll"><table id="leak-table"></table></div>
+  </section>
+
+  <section aria-labelledby="abl-h">
+    <h2 id="abl-h">What the improved features add</h2>
+    <p class="note">Change in validation macro F1 when one feature group is removed from the improved CRF (50k-sequence training sample, one fit per row). * marks a paired interval that excludes 0; the mode C effects do not survive the Holm correction over 18 ablations.</p>
+    <div class="card scroll"><table id="abl-table"></table></div>
+  </section>
+
+  <section aria-labelledby="exp-h">
+    <h2 id="exp-h">Exploratory comparisons <span class="tag">added after the first test report</span></h2>
+    <p class="note">Settings were chosen on validation and each test list was predicted once, but these came after the first test report, so they are exploratory and not part of the course comparison.</p>
+    <div class="card scroll"><table id="exp-table"></table></div>
+    <div class="card"><h3>External reference: pretrained neural taggers <span class="tag">not verifiable from the repo</span></h3>
+      <table id="neural-table"></table>
+      <p class="note">A teammate fine-tuned BERT and FLAN-T5 for modes A and B; mode C was not run. Their training code, predictions and checkpoint-selection records are not in the repository, so these scores cannot be reproduced from it. We scored the delivered predictions with our evaluator after the course test results were public, and their pretraining text may overlap these transcripts.</p></div>
+  </section>
+
+  <section aria-labelledby="how-h">
+    <h2 id="how-h">How these numbers were produced</h2>
+    <div class="grid2">
+      <div class="card"><h3>Data and labels</h3><ul class="facts">
+        <li>SponSpeech reference transcripts (informal podcast-style English from YouTube), CC BY-NC 4.0; transcripts only, no audio.</li>
+        <li>Mode A: O, COMMA, PERIOD, QUESTION. Mode B adds EXCLAMATION, COLON, SEMICOLON, DASH. Mode C: mode A × LOWER, FIRST_UPPER, ALL_UPPER (12 joint labels).</li>
+        <li>Leak-free primary splits; a gold-noise audit flags leftover speaker labels (a third of validation COLONs), so COLON scores are an upper bound.</li>
+      </ul></div>
+      <div class="card"><h3>Models and settings</h3><ul class="facts">
+        <li>First-order HMM with Viterbi decoding, additive smoothing α = 0.01, chosen on validation.</li>
+        <li>Linear-chain CRF (CRFsuite, L-BFGS), c1 = c2 = 0.1, 100 iterations, not tuned. Basic features: ±1 window, affixes, shape, boundaries. Improved: adds the ±2 window, word pairs, question, clause, casing and position cues.</li>
+        <li>Each frozen model predicted each test list once.</li>
+      </ul></div>
+      <div class="card"><h3>Statistics</h3><ul class="facts">
+        <li>95% intervals: bootstrap over whole videos, 1,000 resamples, seed 2026; paired comparisons reuse the same resampled videos.</li>
+        <li>Holm step-down correction at α = 0.05 in two families: 21 test comparisons and 18 ablations.</li>
+        <li>Limits: one fit per setting (intervals cover test sampling only), CRF settings not tuned, rare mode B marks stay under 8 F1.</li>
+      </ul></div>
+      <div class="card"><h3>Reproduce</h3><ul class="facts">
+        <li>One command-line tool: <code>pip install -e ".[dev]"</code>, then <code>recap --help</code> (Python 3.12+).</li>
+        <li>Every course-model number comes from a committed evaluator file under <code>results/scores/</code>; <code>recap result-stats</code> regenerates the Holm, cluster and audit summaries. The neural rows are score files of predictions that are not in the repository.</li>
+        <li>CI on Python 3.12 and 3.13: lint, type check, tests and a coverage gate.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Team RECAP: Almutesim Alakili, Raşit İsaoğlu, Omar Alzyod, Mohamed Kamaleldin, Abdlaraouf Alkabir, Abdullah Gamal.</span>
+    <span>Numbers from <code>README.md</code> and <code>docs/EVALUATION_RESULTS_CRF.md</code> in the repository; macro F1 in % unless stated.</span>
+  </footer>
+</main>
+
+<script>
+const DATA = {
+  modes: ["A · 4 punct", "B · 8 punct", "C · 12 joint"],
+  main: [  // test, primary macro F1 % with 95% interval [low, high]; course models plus our reference rows
+    { name: "Shortcut", key: "s1", values: [27.48, 11.87, 18.09], ci: null, chart: false },
+    { name: "HMM", key: "s1", values: [35.12, 16.79, 37.41], ci: [[32.80, 37.31], [15.28, 18.49], [34.56, 40.71]], chart: true },
+    { name: "CRF basic", key: "s2", values: [43.65, 20.25, 43.85], ci: [[41.74, 45.59], [18.87, 21.95], [42.13, 45.47]], chart: true },
+    { name: "CRF improved", key: "s3", values: [49.92, 22.82, 47.02], ci: [[47.91, 52.01], [21.42, 24.42], [44.97, 49.00]], chart: true, best: true },
+    { name: "Hidden-event LM (exploratory)", values: [48.38, 22.51, 41.18], ci: [[46.21, 50.62], [21.08, 23.98], [39.42, 42.70]], chart: false },
+    { name: "CRF improved + τ × γ (exploratory)", values: [51.34, 24.25, 49.77], ci: [[49.61, 53.06], [23.06, 25.54], [47.26, 51.95]], chart: false },
+  ],
+  diffs: [
+    ["CRF improved − HMM", [14.80, 6.03, 9.61]],
+    ["CRF improved − CRF basic", [6.27, 2.57, 3.17]],
+    ["CRF basic − HMM", [8.53, 3.46, 6.43]],
+  ],
+  classes: [["COMMA", 26.28, 52.52], ["QUESTION", 11.75, 26.23], ["PERIOD", 67.34, 71.02]],
+  eou: [["Shortcut", 0.00], ["HMM", 9.13], ["CRF basic", 28.30], ["CRF improved", 36.40]],
+  nonfinal: [["Comma", 26.28, 52.52], ["Question", 0.20, 20.96], ["Period", 0.91, 35.70]],
+  leak: [  // mode A test macro F1 by subset
+    ["Leak-free primary test", "153 videos", 49.50, 34.74],
+    ["Whole official test", "17,695 utterances", 52.84, 34.98],
+    ["Test utterances from training videos", "2,706 utterances, 35 videos", 67.09, 33.54],
+  ],
+  ablation: [  // removed group: [A, B, C], * = interval excludes 0
+    ["word pairs", ["−3.59 *", "−1.63 *", "−1.49"]],
+    ["±2 window", ["−1.34 *", "−0.76 *", "−0.53 *"]],
+    ["question cues", ["−1.35 *", "−0.44 *", "−0.40 *"]],
+  ],
+  exploratory: [
+    ["Prior-adjusted threshold decoding (τ × γ)", "+1.42 / +1.43 / +2.74 over CRF improved (test, survives Holm); QUESTION A 26.23 → 30.24; costs PERIOD −1.79 in A"],
+    ["Hidden-event language model (n-gram)", "1.54 behind the CRF in A, tied in B, 5.84 behind in C, where its simple truecaser is weak (test)"],
+    ["Gap classifier (CRF features, no transitions)", "−1.27 / −1.70 / −4.74 vs the CRF (validation, 50k): transitions plus training settings"],
+    ["Question-lookback features", "QUESTION F1 +6.11 / +7.12 / +6.01 (validation, 50k)"],
+    ["Factored casing (punctuation CRF + casing CRF)", "+2.08 on the mode C joint metric over the joint CRF (validation, 50k)"],
+    ["Word clusters (K = 300)", "COMMA +0.44 (A), +0.25 (B); mode C joint +0.90 (validation, 50k); K was chosen on the same lists, so optimistic"],
+    ["Simulated ASR noise (15% word errors)", "CRF 49.92 → 45.42, HMM → 35.16 (mode A test); with a substitution-heavy mix, mean of 3 seeds: CRF 43.46 (43.10–43.88), HMM 33.82; ranking holds"],
+  ],
+  neural: [["BERT", "76.25 (74.51–77.90)", "36.43 (34.41–38.26)"], ["FLAN-T5", "76.76 (74.78–78.38)", "36.79 (34.32–39.28)"]],
+  kpis: [
+    ["49.92", "CRF improved, mode A test macro F1"],
+    ["+14.80", "points over the HMM (paired interval excludes 0)"],
+    ["9.13 vs 36.40", "HMM vs CRF without each utterance's last word"],
+    ["26.7%", "of the official test shares a video with train or validation"],
+  ],
+};
+
+const fmt = (v) => v.toFixed(2);
+const sign = (v) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const table = (id, head, rows, numeric) => {
+  const th = head.map((h, i) => `<th${numeric(i) ? ' class="n"' : ""}>${esc(h)}</th>`).join("");
+  const tr = rows.map((r) => "<tr>" + r.map((c, i) => `<td${numeric(i) ? ' class="n"' : ""}>${c}</td>`).join("") + "</tr>").join("");
+  document.getElementById(id).innerHTML = `<thead><tr>${th}</tr></thead><tbody>${tr}</tbody>`;
+};
+
+document.getElementById("kpis").innerHTML = DATA.kpis
+  .map(([v, l]) => `<div class="kpi"><span class="v">${esc(v)}</span><span class="l">${esc(l)}</span></div>`).join("");
+
+table("main-table", ["Model", ...DATA.modes], DATA.main.map((m) => [
+  m.best ? `<span class="best">${esc(m.name)}</span>` : esc(m.name),
+  ...m.values.map((v, i) => `${m.best ? `<span class="best">${fmt(v)}</span>` : fmt(v)}${m.ci ? `<br><span class="ci">${fmt(m.ci[i][0])}–${fmt(m.ci[i][1])}</span>` : ""}`),
+]), (i) => i > 0);
+table("diff-table", ["Comparison", "A", "B", "C"], DATA.diffs.map(([n, d]) => [esc(n), ...d.map(sign)]), (i) => i > 0);
+table("class-table", ["Class", "HMM", "CRF improved"], DATA.classes.map(([c, h, r]) => [esc(c), fmt(h), `<span class="best">${fmt(r)}</span>`]), (i) => i > 0);
+table("eou-table", ["Model", "Macro F1"], DATA.eou.map(([n, v]) => [esc(n), fmt(v)]), (i) => i > 0);
+table("nf-table", ["Class", "HMM", "CRF improved"], DATA.nonfinal.map(([c, h, r]) => [esc(c), fmt(h), `<span class="best">${fmt(r)}</span>`]), (i) => i > 0);
+table("leak-table", ["Mode A test subset", "Size", "CRF improved", "HMM"],
+  DATA.leak.map(([n, s, c, h]) => [esc(n), esc(s), fmt(c), h === null ? "—" : fmt(h)]), (i) => i > 1);
+table("abl-table", ["Removed group", "A", "B", "C"], DATA.ablation.map(([n, v]) => [esc(n), ...v.map(esc)]), (i) => i > 0);
+table("exp-table", ["Method", "Result"], DATA.exploratory.map(([n, r]) => [esc(n), esc(r)]), () => false);
+table("neural-table", ["Model", "Mode A test", "Mode B test"], DATA.neural.map((r) => r.map(esc)), (i) => i > 0);
+
+(function drawChart() {
+  const series = DATA.main.filter((m) => m.chart);
+  const shortcut = DATA.main.find((m) => m.name === "Shortcut");
+  const W = 960, H = 380, L = 44, R = 16, T = 16, B = 44, max = 60;
+  const plotW = W - L - R, plotH = H - T - B, groupW = plotW / DATA.modes.length;
+  const barW = Math.min(64, (groupW - 60) / series.length);
+  const y = (v) => T + plotH - (v / max) * plotH;
+  let s = `<svg role="img" aria-label="Grouped bar chart of test macro F1 per mode with 95% intervals" viewBox="0 0 ${W} ${H}" width="100%" style="min-width:560px" xmlns="http://www.w3.org/2000/svg">`;
+  for (let v = 0; v <= max; v += 20) {
+    s += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+  }
+  DATA.modes.forEach((mode, g) => {
+    const x0 = L + g * groupW + (groupW - barW * series.length - 8 * (series.length - 1)) / 2;
+    series.forEach((m, k) => {
+      const x = x0 + k * (barW + 8), v = m.values[g], [lo, hi] = m.ci[g], cx = x + barW / 2;
+      s += `<rect x="${x}" y="${y(v)}" width="${barW}" height="${y(0) - y(v)}" rx="3" fill="var(--${m.key})"><title>${esc(m.name)}, ${esc(mode)}: ${fmt(v)} (${fmt(lo)}–${fmt(hi)})</title></rect>`;
+      s += `<line class="whisk" x1="${cx}" x2="${cx}" y1="${y(lo)}" y2="${y(hi)}"/><line class="whisk" x1="${cx - 7}" x2="${cx + 7}" y1="${y(hi)}" y2="${y(hi)}"/><line class="whisk" x1="${cx - 7}" x2="${cx + 7}" y1="${y(lo)}" y2="${y(lo)}"/>`;
+      s += `<text class="lbl" x="${cx}" y="${y(hi) - 6}" text-anchor="middle">${v.toFixed(1)}</text>`;
+    });
+    const sx0 = x0 - 10, sx1 = x0 + series.length * (barW + 8) + 2;
+    s += `<line class="short" x1="${sx0}" x2="${sx1}" y1="${y(shortcut.values[g])}" y2="${y(shortcut.values[g])}"><title>Shortcut, ${esc(mode)}: ${fmt(shortcut.values[g])}</title></line>`;
+    s += `<text x="${L + g * groupW + groupW / 2}" y="${H - 14}" text-anchor="middle" style="font-weight:600;fill:var(--ink)">${esc(mode)}</text>`;
+  });
+  s += `<line class="axis" x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}"/></svg>`;
+  document.getElementById("chart").outerHTML = s;
+  document.getElementById("legend").innerHTML = series.map((m) => `<span><i style="background:var(--${m.key})"></i>${esc(m.name)}</span>`).join("")
+    + `<span><i class="dash"></i>end-of-utterance shortcut</span>`;
+})();
+</script>
+</body>
+</html>
