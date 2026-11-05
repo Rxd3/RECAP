@@ -421,6 +421,7 @@ same command):
 | `docs/RELATED_WORK.md` | Prior work, checked online, and how RECAP differs. |
 | `docs/REPRODUCIBILITY.md` | Every command, with the environments actually used. |
 | `docs/PRESENTATION_OUTLINE.md` | Four-slide outline with verified numbers. |
+| `docs/results/index.html` | The results page (test results with intervals, end-of-utterance and leakage analyses, ablations, exploratory comparisons), served by GitHub Pages. |
 
 ## Team
 
